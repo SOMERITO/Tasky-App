@@ -1,0 +1,15 @@
+{
+  "name": "Tasky Pro",
+  "short_name": "Tasky",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F3F4F6",
+  "theme_color": "#FFDFBA",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
