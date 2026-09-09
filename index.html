@@ -3,10 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- Tasky v12.0 - PWA Ready, Mobile Scroll Fix & Overdue Engine -->
+    <!-- ==========================================
+         TASKY - PRO EDITION 
+         Versión: 13.0
+         Actualizaciones: 
+         - Candado anti-borrado (Race Condition Fix) para evitar sobreescritura en recargas.
+         - UI Limpia: Eliminación de indicadores de nube invasivos. Sincronización silenciosa.
+         - Preparación para nuevo Icono Oficial.
+         ========================================== -->
     <title>Tasky</title>
     
-    <!-- Etiquetas PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#FFDFBA">
     <link rel="apple-touch-icon" href="icon.png">
@@ -37,17 +43,16 @@
         .container { width: 100%; max-width: 750px; }
 
         /* Contenedor de Header y Botones Superiores */
-        .header-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; position: relative; z-index: 100;}
+        .header-controls { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; position: relative; z-index: 100;}
         
-        .cloud-status, .btn-overdue {
+        .btn-overdue {
             background: rgba(255, 255, 255, 0.7); padding: 8px 14px; border-radius: 20px;
-            font-size: 0.9rem; font-weight: 700; color: var(--system-blue);
+            font-size: 0.9rem; font-weight: 700; color: var(--system-red);
             backdrop-filter: blur(10px); border: 1px solid rgba(0,0,0,0.05);
-            display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            display: none; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             cursor: pointer; transition: transform 0.2s var(--bounce);
         }
-        .cloud-status:active, .btn-overdue:active { transform: scale(0.95); }
-        .btn-overdue { color: var(--system-red); display: none; } /* Oculto si no hay atrasadas */
+        .btn-overdue:active { transform: scale(0.95); }
 
         h1 {
             font-size: 3.8rem; font-weight: 800; text-align: center; margin-bottom: 30px;
@@ -122,7 +127,9 @@
         .fab-wrapper.active .fab-sub { opacity: 1; visibility: visible; transform: translateY(0) scale(1); transition: 0.3s var(--bounce); }
         .fab-wrapper.active .fab-sub:nth-child(2) { bottom: 85px; }
         .fab-wrapper.active .fab-sub:nth-child(3) { bottom: 150px; transition-delay: 0.05s; }
+        .fab-wrapper.active .fab-sub:nth-child(4) { bottom: 215px; transition-delay: 0.1s; }
         .bg-green { background: var(--system-green); }
+        .bg-gray { background: #333333; }
 
         /* Modal Atrasadas */
         .modal-overlay {
@@ -144,12 +151,20 @@
         .overdue-actions button { background: var(--system-blue); border: none; color: white; padding: 6px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; }
         .overdue-actions button.del { background: rgba(255,59,48,0.1); color: var(--system-red); margin-right: 5px; }
 
+        /* Toast Silencioso */
+        .toast {
+            position: fixed; top: -80px; left: 50%; transform: translateX(-50%);
+            background: rgba(28, 28, 30, 0.95); backdrop-filter: blur(20px);
+            color: white; padding: 14px 28px; border-radius: 30px; font-weight: 500;
+            transition: top 0.6s var(--bounce); z-index: 1001; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-size: 0.95rem;
+        }
+        .toast.show { top: 40px; }
+
         @media (max-width: 768px) {
             body { padding: 20px 15px 140px 15px; }
             .activity-card { padding: 20px 15px; }
             .fab-wrapper { bottom: 25px; right: 25px; }
             .fab-main { width: 60px; height: 60px; }
-            /* Se oculta el botón de arrastre en móvil para evitar conflictos táctiles */
             .drag-handle { display: none; }
         }
     </style>
@@ -158,9 +173,6 @@
 
     <div class="container">
         <div class="header-controls">
-            <div class="cloud-status" id="cloudIndicator" onclick="forceSync()">
-                <span id="cloudIcon">☁️</span> <span id="cloudText">Conectando...</span>
-            </div>
             <div class="btn-overdue" id="btnOverdue" onclick="openOverdueModal()">
                 ⚠️ <span id="overdueCount">0</span> Atrasadas
             </div>
@@ -193,11 +205,14 @@
             <button class="fab-btn fab-main" onclick="toggleFabMenu()">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             </button>
-            <button class="fab-btn fab-sub bg-blue" onclick="addActivity(); toggleFabMenu();" style="background: var(--system-blue);">
+            <button class="fab-btn fab-sub bg-blue" onclick="addActivity(); toggleFabMenu();" style="background: var(--system-blue);" title="Nueva Fase">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             </button>
-            <button class="fab-btn fab-sub bg-green" onclick="copyToWhatsApp(); toggleFabMenu();">
+            <button class="fab-btn fab-sub bg-green" onclick="copyToWhatsApp(); toggleFabMenu();" title="Copiar WhatsApp">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            </button>
+            <button class="fab-btn fab-sub bg-gray" onclick="forceSync(); toggleFabMenu();" title="Sincronizar Manualmente">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
             </button>
         </div>
     </div>
@@ -211,12 +226,19 @@
         </div>
     </div>
 
+    <div id="toast" class="toast">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#34C759" width="20" height="20" stroke-width="2.5" id="toastIcon"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        <span id="toastMsg">Guardado silencioso...</span>
+    </div>
+
     <script>
         const JSONBIN_ID = '6aa08413ac6210605ab55f24';
         const JSONBIN_KEY = '$2a$10$7PwFegDVLzoS8bJTQPdA7.27bk7D4odCTFnynWW1NkB5H6.PBt.nm';
         const API_URL = 'https://api.jsonbin.io/v3/b/';
+        
         let cloudSyncTimer; 
         let overdueTasksDB = [];
+        let isAppLoaded = false; // CANDADO DE SEGURIDAD ANTI-BORRADO
 
         if (typeof Sortable !== 'undefined' && typeof Sortable.MultiDrag !== 'undefined') Sortable.mount(new Sortable.MultiDrag());
 
@@ -227,39 +249,52 @@
 
         window.onload = () => { loadApp(); };
 
+        // PREVENCIÓN DE BORRADO EN RECARGA (F5 / Cerrar pestaña)
+        window.addEventListener('beforeunload', () => {
+            if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+            if (isAppLoaded) { saveDataLocalAndCloud(); } // Solo guarda si la app ya había descargado todo
+        });
+
         function getTodayString() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
         function autoResizeTextarea(el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; }
         function toggleFabMenu() { document.getElementById('fabMenu').classList.toggle('active'); }
 
-        function updateCloudUI(status) {
-            const icon = document.getElementById('cloudIcon');
-            const text = document.getElementById('cloudText');
-            icon.classList.remove('spin');
-            if(status === 'offline') { icon.innerText = '☁️❌'; text.innerText = 'Local'; }
-            else if(status === 'syncing') { icon.innerText = '🔄'; icon.classList.add('spin'); text.innerText = 'Guardando...'; }
-            else if(status === 'online') { icon.innerText = '☁️✅'; text.innerText = 'Sincronizado'; }
-            else if(status === 'error') { icon.innerText = '☁️⚠️'; text.innerText = 'Error'; }
+        function showToast(msg, isSuccess = true) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            const icon = document.getElementById('toastIcon');
+            if(isSuccess) {
+                icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>`;
+                icon.setAttribute('stroke', '#34C759');
+            } else {
+                icon.innerHTML = `<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>`;
+                icon.setAttribute('stroke', '#FF3B30');
+            }
+            toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2500);
         }
 
         async function loadApp() {
-            updateCloudUI('syncing');
             let dataStr = null;
             try {
                 const response = await fetch(`${API_URL}${JSONBIN_ID}`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
                 if (response.ok) {
                     const json = await response.json();
                     dataStr = JSON.stringify(json.record);
-                    localStorage.setItem('tasky_pro_v12', dataStr);
-                    updateCloudUI('online');
+                    localStorage.setItem('tasky_pro_v13', dataStr);
                 } else throw new Error('API Error');
             } catch (error) {
-                updateCloudUI('error');
-                dataStr = localStorage.getItem('tasky_pro_v12') || localStorage.getItem('tasky_pro_v11'); 
+                dataStr = localStorage.getItem('tasky_pro_v13') || localStorage.getItem('tasky_pro_v12'); 
             }
             renderData(dataStr);
+            isAppLoaded = true; // Liberamos el candado. Ahora sí se puede guardar con seguridad.
         }
 
-        function forceSync() { updateCloudUI('syncing'); saveDataLocalAndCloud(true); }
+        function forceSync() { 
+            if(isAppLoaded) {
+                showToast("Sincronizando...", true);
+                saveDataLocalAndCloud(true); 
+            }
+        }
 
         function renderData(dataStr) {
             document.getElementById('activities-container').innerHTML = '';
@@ -274,7 +309,6 @@
                         const list = card.querySelector('.task-list');
                         
                         cat.tasks.forEach(task => {
-                            // Separar Atrasadas
                             if (task.date < today && !task.critical) {
                                 overdueTasksDB.push({ ...task, originCat: cat.id });
                             } else {
@@ -294,10 +328,9 @@
             updateOverdueUI();
             updateLogic();
             
-            // Mobile Scroll Fix en SortableJS
             new Sortable(document.getElementById('activities-container'), {
                 animation: 350, handle: '.card-drag-handle', forceFallback: true, 
-                delay: 150, delayOnTouchOnly: true, touchStartThreshold: 5, // FIX CELULAR
+                delay: 150, delayOnTouchOnly: true, touchStartThreshold: 5, 
                 onEnd: function() { saveDataLocalAndCloud(); }
             });
         }
@@ -357,6 +390,8 @@
         }
 
         function saveDataLocalAndCloud(instant = false) {
+            if (!isAppLoaded) return; // CANDADO ACTIVO: No guarda si la data real no ha llegado de internet
+
             const data = { categories: [], completed: [] };
             document.querySelectorAll('.activity-card:not(.completed-card)').forEach(card => {
                 const title = card.querySelector('.activity-title').value;
@@ -367,20 +402,18 @@
                         tasks.push({ text, date: t.dataset.date, critical: t.classList.contains('is-critical') });
                     }
                 });
-                // Re-inyectar las tareas atrasadas para que no se pierdan de la DB general
                 const cardOverdue = overdueTasksDB.filter(o => o.originCat === card.id);
                 data.categories.push({ id: card.id, title, tasks: [...tasks, ...cardOverdue] });
             });
             
             const dataStr = JSON.stringify(data);
-            localStorage.setItem('tasky_pro_v12', dataStr); // Guardado local inmediato a prueba de scroll
+            localStorage.setItem('tasky_pro_v13', dataStr);
 
             clearTimeout(cloudSyncTimer);
             const uploadTask = () => {
                 fetch(`${API_URL}${JSONBIN_ID}`, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY }, body: dataStr
-                }).then(res => { if(res.ok) updateCloudUI('online'); else updateCloudUI('error'); })
-                  .catch(e => updateCloudUI('error'));
+                }).catch(e => console.error("Error silencioso de Sync"));
             };
 
             if (instant) uploadTask();
@@ -400,7 +433,7 @@
                 const progressText = card.querySelector('.progress-text');
                 const progressFill = card.querySelector('.progress-bar-fill');
                 if(progressText) progressText.innerText = `Pendientes: ${pendingCount}`;
-                if(progressFill) progressFill.style.width = pendingCount > 0 ? '50%' : '100%'; // Simplificado visualmente
+                if(progressFill) progressFill.style.width = pendingCount > 0 ? '50%' : '100%'; 
             });
         }
 
@@ -428,10 +461,9 @@
             container.appendChild(card);
             const taskList = card.querySelector('.task-list');
             
-            // Mobile Scroll Fix en Tareas
             new Sortable(taskList, {
                 group: 'shared-tasks', animation: 250, handle: '.drag-handle',
-                delay: 150, delayOnTouchOnly: true, touchStartThreshold: 5, // FIX CELULAR
+                delay: 150, delayOnTouchOnly: true, touchStartThreshold: 5,
                 onEnd: function() { updateLogic(); saveDataLocalAndCloud(); }
             });
 
@@ -473,7 +505,7 @@
                     if(globalList.children.length === 0) container.style.display = 'none';
                 }
                 setTimeout(() => { taskItem.style.opacity = '1'; taskItem.style.transform = 'scale(1)'; }, 50);
-                updateLogic(); saveDataLocalAndCloud(true); // Guardado inmediato al marcar
+                updateLogic(); saveDataLocalAndCloud(true); 
             }, 250);
         }
 
@@ -499,11 +531,10 @@
                     text += `\n`; 
                 }
             });
-            if(text.trim() === '') return alert("Escribe tareas primero.");
-            navigator.clipboard.writeText(text.trim());
+            if(text.trim() === '') return showToast("Escribe tareas primero", false);
+            navigator.clipboard.writeText(text.trim()).then(() => showToast("Copiado para WhatsApp", true));
         }
         
-        // Registrar Service Worker para PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js'); });
         }
