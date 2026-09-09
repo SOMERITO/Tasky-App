@@ -5,17 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <!-- ==========================================
          TASKY - PRO EDITION 
-         Versión: 13.0
+         Versión: 14.0
          Actualizaciones: 
-         - Candado anti-borrado (Race Condition Fix) para evitar sobreescritura en recargas.
-         - UI Limpia: Eliminación de indicadores de nube invasivos. Sincronización silenciosa.
-         - Preparación para nuevo Icono Oficial.
+         - Sincronización Automática en Tiempo Real (Background Polling).
+         - Fix: Favicon/Icon Cache Buster (?v=14).
+         - UI Limpia: Sin botones de estado de nube.
+         - Fix: Candado Anti-Borrado (Race Condition Fix).
+         - Rescate de funciones: Analytics Panel, Línea azul y MultiDrag.
          ========================================== -->
     <title>Tasky</title>
     
-    <link rel="manifest" href="manifest.json">
+    <!-- Rompedores de caché para forzar la actualización del ícono -->
+    <link rel="icon" type="image/png" href="icon.png?v=14">
+    <link rel="apple-touch-icon" href="icon.png?v=14">
+    <link rel="manifest" href="manifest.json?v=14">
     <meta name="theme-color" content="#FFDFBA">
-    <link rel="apple-touch-icon" href="icon.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -42,7 +46,7 @@
 
         .container { width: 100%; max-width: 750px; }
 
-        /* Contenedor de Header y Botones Superiores */
+        /* Controles Superiores (Limpios) */
         .header-controls { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; position: relative; z-index: 100;}
         
         .btn-overdue {
@@ -67,7 +71,7 @@
         .empty-state svg { opacity: 0.4; margin-bottom: 20px; }
         .empty-state h3 { font-size: 1.5rem; margin-bottom: 10px; color: var(--text-main); font-weight: 700; }
 
-        /* Tarjetas */
+        /* ======== TARJETAS (FASES) ======== */
         .activity-card {
             background: var(--card-bg); border-radius: var(--radius-lg); padding: 24px 30px; margin-bottom: 24px;
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.8);
@@ -75,8 +79,9 @@
         }
         @keyframes slideUpFade { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
 
+        /* Físicas de Arrastre Profesionales */
         .sortable-ghost-card { opacity: 0.3; background: var(--system-gray); border-radius: var(--radius-lg); }
-        .sortable-ghost-task { height: 4px !important; padding: 0 !important; margin: 4px 0 !important; background-color: var(--system-blue) !important; border: none !important; border-radius: 4px !important; overflow: hidden !important; }
+        .sortable-ghost-task { height: 4px !important; padding: 0 !important; margin: 4px 0 !important; background-color: var(--system-blue) !important; border: none !important; border-radius: 4px !important; overflow: hidden !important; box-shadow: 0 0 10px var(--system-blue) !important;}
         .sortable-ghost-task * { display: none !important; } 
         .sortable-drag { cursor: grabbing !important; box-shadow: 0 15px 30px rgba(0,0,0,0.15) !important; opacity: 0.95; }
         .selected-task { background-color: rgba(0, 122, 255, 0.12) !important; border-color: var(--system-blue) !important; transform: scale(1.01); }
@@ -84,14 +89,31 @@
         .title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 15px; }
         .card-drag-handle { cursor: grab; color: var(--text-muted); padding: 5px; transition: var(--transition); flex-shrink: 0; }
         .activity-title { flex-grow: 1; font-size: 1.4rem; font-weight: 700; color: var(--text-main); border: none; background: transparent; outline: none; }
-        .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+        .header-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
 
         .progress-container { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid rgba(0,0,0,0.05); }
         .progress-bar-bg { flex-grow: 1; height: 6px; background: rgba(0,0,0,0.08); border-radius: 10px; overflow: hidden; }
         .progress-bar-fill { height: 100%; width: 0%; background: var(--system-blue); border-radius: 10px; transition: width 0.8s var(--bounce); }
         .progress-text { font-size: 0.85rem; font-weight: 600; color: var(--system-gray); }
 
-        /* Tareas */
+        /* Panel de Análisis Restablecido */
+        .stats-panel {
+            background: rgba(255, 255, 255, 0.5); border-radius: var(--radius-md);
+            max-height: 0; overflow: hidden; opacity: 0; margin-bottom: 0;
+            transition: max-height 0.4s var(--bounce), opacity 0.3s, margin 0.4s, padding 0.4s;
+            display: flex; flex-direction: column;
+        }
+        .stats-panel.open {
+            max-height: 180px; opacity: 1; padding: 15px; margin-bottom: 15px;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .stats-grid { display: flex; justify-content: space-between; text-align: center; margin-bottom: 12px; }
+        .stat-box { display: flex; flex-direction: column; width: 30%; }
+        .stat-value { font-size: 1.6rem; font-weight: 800; color: var(--system-blue); }
+        .stat-label { font-size: 0.75rem; font-weight: 600; color: var(--system-gray); text-transform: uppercase; letter-spacing: 0.5px;}
+        .stat-msg { font-size: 0.95rem; font-weight: 500; color: var(--text-main); text-align: center; background: rgba(0,0,0,0.05); padding: 10px; border-radius: 10px; }
+
+        /* ======== TAREAS ======== */
         .task-list { list-style: none; display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
         .task-item {
             display: flex; align-items: flex-start; background: rgba(255, 255, 255, 0.9); border-radius: var(--radius-md); padding: 12px 10px;
@@ -118,7 +140,7 @@
         @keyframes checkDraw { 0% { width: 0; height: 0; opacity: 0;} 100% { width: 5px; height: 11px; opacity: 1;} }
         .task-item.completed .btn-check::after { content: ''; position: absolute; left: 7px; top: 4px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); animation: checkDraw 0.4s var(--bounce) forwards; }
 
-        /* FAB */
+        /* ======== FAB ======== */
         .fab-wrapper { position: fixed; bottom: 40px; right: 40px; z-index: 1000; display: flex; flex-direction: column-reverse; align-items: center; gap: 15px; }
         .fab-btn { border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .fab-main { width: 68px; height: 68px; background: var(--system-blue); z-index: 2; }
@@ -127,9 +149,7 @@
         .fab-wrapper.active .fab-sub { opacity: 1; visibility: visible; transform: translateY(0) scale(1); transition: 0.3s var(--bounce); }
         .fab-wrapper.active .fab-sub:nth-child(2) { bottom: 85px; }
         .fab-wrapper.active .fab-sub:nth-child(3) { bottom: 150px; transition-delay: 0.05s; }
-        .fab-wrapper.active .fab-sub:nth-child(4) { bottom: 215px; transition-delay: 0.1s; }
         .bg-green { background: var(--system-green); }
-        .bg-gray { background: #333333; }
 
         /* Modal Atrasadas */
         .modal-overlay {
@@ -151,7 +171,7 @@
         .overdue-actions button { background: var(--system-blue); border: none; color: white; padding: 6px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; }
         .overdue-actions button.del { background: rgba(255,59,48,0.1); color: var(--system-red); margin-right: 5px; }
 
-        /* Toast Silencioso */
+        /* Toast de notificaciones */
         .toast {
             position: fixed; top: -80px; left: 50%; transform: translateX(-50%);
             background: rgba(28, 28, 30, 0.95); backdrop-filter: blur(20px);
@@ -211,9 +231,6 @@
             <button class="fab-btn fab-sub bg-green" onclick="copyToWhatsApp(); toggleFabMenu();" title="Copiar WhatsApp">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
             </button>
-            <button class="fab-btn fab-sub bg-gray" onclick="forceSync(); toggleFabMenu();" title="Sincronizar Manualmente">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
-            </button>
         </div>
     </div>
 
@@ -228,7 +245,7 @@
 
     <div id="toast" class="toast">
         <svg viewBox="0 0 24 24" fill="none" stroke="#34C759" width="20" height="20" stroke-width="2.5" id="toastIcon"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-        <span id="toastMsg">Guardado silencioso...</span>
+        <span id="toastMsg">Actualizado ☁️</span>
     </div>
 
     <script>
@@ -238,9 +255,15 @@
         
         let cloudSyncTimer; 
         let overdueTasksDB = [];
-        let isAppLoaded = false; // CANDADO DE SEGURIDAD ANTI-BORRADO
+        let isAppLoaded = false; // Candado de seguridad
+        let currentDataString = ""; // Para comparar cambios de red
+        let isUserTyping = false; // Evita actualizar la pantalla mientras escribes
 
         if (typeof Sortable !== 'undefined' && typeof Sortable.MultiDrag !== 'undefined') Sortable.mount(new Sortable.MultiDrag());
+
+        // Control de Escritura para la Auto-Sincronización
+        document.addEventListener('focusin', (e) => { if(e.target.classList.contains('task-input')) isUserTyping = true; });
+        document.addEventListener('focusout', (e) => { if(e.target.classList.contains('task-input')) isUserTyping = false; });
 
         document.addEventListener('input', (e) => {
             if(e.target.classList.contains('task-input')) { autoResizeTextarea(e.target); updateLogic(); }
@@ -249,11 +272,30 @@
 
         window.onload = () => { loadApp(); };
 
-        // PREVENCIÓN DE BORRADO EN RECARGA (F5 / Cerrar pestaña)
+        // PREVENCIÓN DE BORRADO EN F5
         window.addEventListener('beforeunload', () => {
             if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-            if (isAppLoaded) { saveDataLocalAndCloud(); } // Solo guarda si la app ya había descargado todo
+            if (isAppLoaded) { saveDataLocalAndCloud(true); } 
         });
+
+        // BACKGROUND POLLING (Sincronización Automática Silenciosa)
+        async function checkBackgroundUpdates() {
+            if (isUserTyping || !isAppLoaded) return; // No interrumpir si estás escribiendo
+            try {
+                const response = await fetch(`${API_URL}${JSONBIN_ID}`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+                if (response.ok) {
+                    const json = await response.json();
+                    const remoteDataStr = JSON.stringify(json.record);
+                    if (remoteDataStr !== currentDataString && remoteDataStr.length > 20) {
+                        currentDataString = remoteDataStr;
+                        localStorage.setItem('tasky_pro_v14', currentDataString);
+                        renderData(currentDataString);
+                        showToast("Sincronizado desde otro dispositivo ✨", true);
+                    }
+                }
+            } catch (e) { /* Error silencioso */ }
+        }
+        setInterval(checkBackgroundUpdates, 8000); // Revisa la nube cada 8 segundos
 
         function getTodayString() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
         function autoResizeTextarea(el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; }
@@ -270,7 +312,7 @@
                 icon.innerHTML = `<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>`;
                 icon.setAttribute('stroke', '#FF3B30');
             }
-            toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2500);
+            toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
         async function loadApp() {
@@ -280,20 +322,15 @@
                 if (response.ok) {
                     const json = await response.json();
                     dataStr = JSON.stringify(json.record);
-                    localStorage.setItem('tasky_pro_v13', dataStr);
+                    currentDataString = dataStr;
+                    localStorage.setItem('tasky_pro_v14', dataStr);
                 } else throw new Error('API Error');
             } catch (error) {
-                dataStr = localStorage.getItem('tasky_pro_v13') || localStorage.getItem('tasky_pro_v12'); 
+                dataStr = localStorage.getItem('tasky_pro_v14') || localStorage.getItem('tasky_pro_v13'); 
+                currentDataString = dataStr;
             }
             renderData(dataStr);
-            isAppLoaded = true; // Liberamos el candado. Ahora sí se puede guardar con seguridad.
-        }
-
-        function forceSync() { 
-            if(isAppLoaded) {
-                showToast("Sincronizando...", true);
-                saveDataLocalAndCloud(true); 
-            }
+            isAppLoaded = true; // Libera el candado anti-borrado
         }
 
         function renderData(dataStr) {
@@ -330,9 +367,19 @@
             
             new Sortable(document.getElementById('activities-container'), {
                 animation: 350, handle: '.card-drag-handle', forceFallback: true, 
-                delay: 150, delayOnTouchOnly: true, touchStartThreshold: 5, 
+                delay: 150, delayOnTouchOnly: true, touchStartThreshold: 5,
                 onEnd: function() { saveDataLocalAndCloud(); }
             });
+        }
+
+        function toggleStats(btn) {
+            const panel = btn.closest('.activity-card').querySelector('.stats-panel');
+            panel.classList.toggle('open');
+            if(panel.classList.contains('open')) {
+                btn.style.color = 'var(--system-blue)';
+            } else {
+                btn.style.color = 'var(--system-gray)';
+            }
         }
 
         function updateOverdueUI() {
@@ -390,7 +437,7 @@
         }
 
         function saveDataLocalAndCloud(instant = false) {
-            if (!isAppLoaded) return; // CANDADO ACTIVO: No guarda si la data real no ha llegado de internet
+            if (!isAppLoaded) return; 
 
             const data = { categories: [], completed: [] };
             document.querySelectorAll('.activity-card:not(.completed-card)').forEach(card => {
@@ -407,7 +454,8 @@
             });
             
             const dataStr = JSON.stringify(data);
-            localStorage.setItem('tasky_pro_v13', dataStr);
+            currentDataString = dataStr; 
+            localStorage.setItem('tasky_pro_v14', dataStr); 
 
             clearTimeout(cloudSyncTimer);
             const uploadTask = () => {
@@ -430,10 +478,30 @@
                 const tasks = card.querySelectorAll('.task-item:not(.completed)');
                 let pendingCount = 0;
                 tasks.forEach(t => { if(t.querySelector('.task-input').value.trim() !== '') pendingCount++; });
+                
+                const cardId = card.id;
+                const completedCount = document.querySelectorAll(`.task-item.completed[data-origin-id="${cardId}"]`).length;
+                const total = pendingCount + completedCount;
+
                 const progressText = card.querySelector('.progress-text');
                 const progressFill = card.querySelector('.progress-bar-fill');
-                if(progressText) progressText.innerText = `Pendientes: ${pendingCount}`;
-                if(progressFill) progressFill.style.width = pendingCount > 0 ? '50%' : '100%'; 
+                if(progressText) progressText.innerText = `${completedCount}/${total}`;
+                let percent = total === 0 ? 0 : Math.round((completedCount / total) * 100);
+                if(progressFill) progressFill.style.width = `${percent}%`;
+
+                const statsPanel = card.querySelector('.stats-panel');
+                if (statsPanel) {
+                    statsPanel.querySelector('.stat-total').innerText = total;
+                    statsPanel.querySelector('.stat-completed').innerText = completedCount;
+                    statsPanel.querySelector('.stat-percent').innerText = `${percent}%`;
+                    
+                    let msg = "Añade tareas para iniciar.";
+                    if(percent === 100 && total > 0) msg = "¡Fase completada! Excelente ritmo. 🚀";
+                    else if (percent >= 50) msg = "¡Ya pasaste la mitad, sigue así! 🔥";
+                    else if (percent > 0) msg = "Buen inicio, mantén el enfoque. 🎯";
+                    else if (total > 0) msg = "¡Es hora de empezar con esta fase! 💪";
+                    statsPanel.querySelector('.stat-msg').innerText = msg;
+                }
             });
         }
 
@@ -448,13 +516,23 @@
             card.innerHTML = `
                 <div class="activity-header">
                     <div class="title-row">
-                        <div class="card-drag-handle"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg></div>
+                        <div class="card-drag-handle" title="Mover Sección"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg></div>
                         <input type="text" class="activity-title" value="${title}" placeholder="Fase o Bloque...">
                         <div class="header-actions">
+                            <button class="btn-icon" onclick="toggleStats(this)" title="Ver Análisis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22" stroke-width="2.5"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></button>
                             <button class="btn-icon" onclick="this.closest('.activity-card').remove(); updateLogic(); saveDataLocalAndCloud(true);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
                         </div>
                     </div>
-                    <div class="progress-container"><div class="progress-bar-bg"><div class="progress-bar-fill"></div></div><span class="progress-text">0</span></div>
+                    <div class="progress-container"><div class="progress-bar-bg"><div class="progress-bar-fill"></div></div><span class="progress-text">0/0</span></div>
+                    
+                    <div class="stats-panel">
+                        <div class="stats-grid">
+                            <div class="stat-box"><span class="stat-value stat-total">0</span><span class="stat-label">Total</span></div>
+                            <div class="stat-box"><span class="stat-value stat-completed">0</span><span class="stat-label">Listas</span></div>
+                            <div class="stat-box"><span class="stat-value stat-percent">0%</span><span class="stat-label">Avance</span></div>
+                        </div>
+                        <div class="stat-msg"></div>
+                    </div>
                 </div>
                 <div class="task-list"></div>
             `;
@@ -463,6 +541,8 @@
             
             new Sortable(taskList, {
                 group: 'shared-tasks', animation: 250, handle: '.drag-handle',
+                ghostClass: 'sortable-ghost-task', dragClass: 'sortable-drag',
+                multiDrag: true, multiDragKey: 'CTRL', selectedClass: 'selected-task',
                 delay: 150, delayOnTouchOnly: true, touchStartThreshold: 5,
                 onEnd: function() { updateLogic(); saveDataLocalAndCloud(); }
             });
@@ -476,14 +556,38 @@
             const task = document.createElement('div');
             task.className = 'task-item'; task.dataset.date = dateStr || getTodayString();
             task.innerHTML = `
-                <div class="drag-handle"><svg width="18" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line></svg></div>
-                <button class="btn-priority" onclick="togglePriority(this)">🚩</button>
+                <div class="drag-handle" title="Mover (Ctrl+Clic para seleccionar varias)"><svg width="18" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line></svg></div>
+                <button class="btn-priority" onclick="togglePriority(this)" title="Marcar Urgente">🚩</button>
                 <div class="btn-check" onclick="toggleComplete(this)"></div>
-                <textarea class="task-input" rows="1" placeholder="Añadir tarea..." onkeydown="handleKeyDown(event, this)"></textarea>
+                <textarea class="task-input" rows="1" placeholder="Añadir tarea..." onkeydown="handleKeyDown(event, this)" onpaste="handlePaste(event, this)"></textarea>
                 <button class="btn-icon btn-remove-task" tabindex="-1" onclick="this.parentElement.remove(); updateLogic(); saveDataLocalAndCloud();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
             `;
             if (insertAfter) insertAfter.after(task); else listContainer.appendChild(task);
             return task.querySelector('.task-input');
+        }
+
+        function handlePaste(event, input) {
+            const text = (event.clipboardData || window.clipboardData).getData('text');
+            if (text.includes('\n')) {
+                event.preventDefault();
+                const lines = text.split('\n').map(l => l.trim()).filter(l => l !== '');
+                if (lines.length === 0) return;
+                input.value = lines[0]; autoResizeTextarea(input);
+                let currentItem = input.closest('.task-item');
+                const list = currentItem.parentElement;
+                
+                for (let i = 1; i < lines.length; i++) {
+                    setTimeout(() => {
+                        const newInput = createTaskElement(list, currentItem, getTodayString());
+                        newInput.value = lines[i]; autoResizeTextarea(newInput);
+                        currentItem = newInput.closest('.task-item');
+                        if (i === lines.length - 1) {
+                            currentItem.querySelector('.task-input').focus();
+                            updateLogic(); saveDataLocalAndCloud();
+                        }
+                    }, i * 30);
+                }
+            }
         }
 
         function toggleComplete(btn) {
@@ -497,6 +601,7 @@
                 if (!isCompleted) {
                     taskItem.classList.add('completed');
                     taskItem.dataset.originId = taskItem.closest('.activity-card').id; 
+                    taskItem.classList.remove('selected-task');
                     globalList.appendChild(taskItem); container.style.display = 'block'; 
                 } else {
                     taskItem.classList.remove('completed');
@@ -531,10 +636,11 @@
                     text += `\n`; 
                 }
             });
-            if(text.trim() === '') return showToast("Escribe tareas primero", false);
+            if(text.trim() === '') return showToast("Escribe tareas primero.", false);
             navigator.clipboard.writeText(text.trim()).then(() => showToast("Copiado para WhatsApp", true));
         }
         
+        // Registrar Service Worker para PWA (App Móvil)
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js'); });
         }
