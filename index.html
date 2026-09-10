@@ -5,20 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <!-- ==========================================
          TASKY - PRO EDITION 
-         Versión: 14.0
+         Versión: 15.0
          Actualizaciones: 
-         - Sincronización Automática en Tiempo Real (Background Polling).
-         - Fix: Favicon/Icon Cache Buster (?v=14).
-         - UI Limpia: Sin botones de estado de nube.
-         - Fix: Candado Anti-Borrado (Race Condition Fix).
-         - Rescate de funciones: Analytics Panel, Línea azul y MultiDrag.
+         - Fix: Arrastre en móvil restaurado (Drag Handle visible y optimizado).
+         - UI/UX: Pantalla de carga profesional estilo iOS (Blur + Spinner).
+         - Core: Motor de Sincronización Inteligente (casi tiempo real).
+         - Rendimiento: Aceleración por hardware (GPU) para animaciones fluidas.
          ========================================== -->
     <title>Tasky</title>
     
-    <!-- Rompedores de caché para forzar la actualización del ícono -->
-    <link rel="icon" type="image/png" href="icon.png?v=14">
-    <link rel="apple-touch-icon" href="icon.png?v=14">
-    <link rel="manifest" href="manifest.json?v=14">
+    <link rel="icon" type="image/png" href="icon.png?v=15">
+    <link rel="apple-touch-icon" href="icon.png?v=15">
+    <link rel="manifest" href="manifest.json?v=15">
     <meta name="theme-color" content="#FFDFBA">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
@@ -29,7 +27,7 @@
             --system-blue: #007AFF; --system-red: #FF3B30; --system-orange: #FF9500;
             --system-green: #34C759; --system-gray: #8E8E93; --card-bg: rgba(255, 255, 255, 0.85);
             --text-main: #1C1C1E; --text-muted: #8E8E93; --radius-lg: 24px; --radius-md: 16px;
-            --transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1); --bounce: cubic-bezier(0.34, 1.56, 0.64, 1); 
+            --transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1); --bounce: cubic-bezier(0.34, 1.56, 0.64, 1); 
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -44,25 +42,41 @@
 
         @keyframes moveBackground { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
+        /* ======== PANTALLA DE CARGA PROFESIONAL (iOS STYLE) ======== */
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999; transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+        .loading-overlay.hidden { opacity: 0; visibility: hidden; }
+        
+        .ios-spinner {
+            width: 44px; height: 44px; margin-bottom: 15px;
+            border: 4px solid rgba(0, 122, 255, 0.15); border-top-color: var(--system-blue);
+            border-radius: 50%; animation: iosSpin 1s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+        }
+        @keyframes iosSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-text { font-size: 1.1rem; font-weight: 600; color: var(--system-blue); letter-spacing: -0.5px; }
+
         .container { width: 100%; max-width: 750px; }
 
-        /* Controles Superiores (Limpios) */
         .header-controls { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; position: relative; z-index: 100;}
         
         .btn-overdue {
-            background: rgba(255, 255, 255, 0.7); padding: 8px 14px; border-radius: 20px;
-            font-size: 0.9rem; font-weight: 700; color: var(--system-red);
-            backdrop-filter: blur(10px); border: 1px solid rgba(0,0,0,0.05);
-            display: none; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            background: rgba(255, 255, 255, 0.8); padding: 8px 16px; border-radius: 20px;
+            font-size: 0.95rem; font-weight: 700; color: var(--system-red);
+            backdrop-filter: blur(15px); border: 1px solid rgba(255, 59, 48, 0.2);
+            display: none; align-items: center; gap: 6px; box-shadow: 0 8px 20px rgba(255, 59, 48, 0.15);
             cursor: pointer; transition: transform 0.2s var(--bounce);
         }
-        .btn-overdue:active { transform: scale(0.95); }
+        .btn-overdue:active { transform: scale(0.92); }
 
         h1 {
-            font-size: 3.8rem; font-weight: 800; text-align: center; margin-bottom: 30px;
+            font-size: 4rem; font-weight: 800; text-align: center; margin-bottom: 30px;
             background: linear-gradient(90deg, #007AFF, #5856D6, #FF2D55, #FF9500, #34C759, #007AFF);
             background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            animation: gradientTitle 6s linear infinite; letter-spacing: -1.5px;
+            animation: gradientTitle 6s linear infinite; letter-spacing: -2px;
         }
         @keyframes gradientTitle { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
 
@@ -71,69 +85,59 @@
         .empty-state svg { opacity: 0.4; margin-bottom: 20px; }
         .empty-state h3 { font-size: 1.5rem; margin-bottom: 10px; color: var(--text-main); font-weight: 700; }
 
-        /* ======== TARJETAS (FASES) ======== */
+        /* ======== TARJETAS ======== */
         .activity-card {
             background: var(--card-bg); border-radius: var(--radius-lg); padding: 24px 30px; margin-bottom: 24px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.8);
             animation: slideUpFade 0.6s var(--bounce) both;
+            transform: translate3d(0,0,0); /* Aceleración GPU */
         }
-        @keyframes slideUpFade { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUpFade { from { opacity: 0; transform: translate3d(0, 40px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
 
-        /* Físicas de Arrastre Profesionales */
-        .sortable-ghost-card { opacity: 0.3; background: var(--system-gray); border-radius: var(--radius-lg); }
-        .sortable-ghost-task { height: 4px !important; padding: 0 !important; margin: 4px 0 !important; background-color: var(--system-blue) !important; border: none !important; border-radius: 4px !important; overflow: hidden !important; box-shadow: 0 0 10px var(--system-blue) !important;}
+        .sortable-ghost-card { opacity: 0.4; background: var(--system-gray); border-radius: var(--radius-lg); transform: scale(0.98); }
+        .sortable-ghost-task { height: 4px !important; padding: 0 !important; margin: 4px 0 !important; background-color: var(--system-blue) !important; border: none !important; border-radius: 4px !important; overflow: hidden !important; box-shadow: 0 0 12px var(--system-blue) !important;}
         .sortable-ghost-task * { display: none !important; } 
-        .sortable-drag { cursor: grabbing !important; box-shadow: 0 15px 30px rgba(0,0,0,0.15) !important; opacity: 0.95; }
-        .selected-task { background-color: rgba(0, 122, 255, 0.12) !important; border-color: var(--system-blue) !important; transform: scale(1.01); }
+        .sortable-drag { cursor: grabbing !important; box-shadow: 0 20px 40px rgba(0,0,0,0.2) !important; opacity: 0.95; transform: scale(1.03) translate3d(0,0,0) !important; }
+        .selected-task { background-color: rgba(0, 122, 255, 0.12) !important; border-color: var(--system-blue) !important; transform: scale(1.02); }
 
         .title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 15px; }
         .card-drag-handle { cursor: grab; color: var(--text-muted); padding: 5px; transition: var(--transition); flex-shrink: 0; }
         .activity-title { flex-grow: 1; font-size: 1.4rem; font-weight: 700; color: var(--text-main); border: none; background: transparent; outline: none; }
-        .header-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+        .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
         .progress-container { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid rgba(0,0,0,0.05); }
         .progress-bar-bg { flex-grow: 1; height: 6px; background: rgba(0,0,0,0.08); border-radius: 10px; overflow: hidden; }
         .progress-bar-fill { height: 100%; width: 0%; background: var(--system-blue); border-radius: 10px; transition: width 0.8s var(--bounce); }
         .progress-text { font-size: 0.85rem; font-weight: 600; color: var(--system-gray); }
 
-        /* Panel de Análisis Restablecido */
-        .stats-panel {
-            background: rgba(255, 255, 255, 0.5); border-radius: var(--radius-md);
-            max-height: 0; overflow: hidden; opacity: 0; margin-bottom: 0;
-            transition: max-height 0.4s var(--bounce), opacity 0.3s, margin 0.4s, padding 0.4s;
-            display: flex; flex-direction: column;
-        }
-        .stats-panel.open {
-            max-height: 180px; opacity: 1; padding: 15px; margin-bottom: 15px;
-            border: 1px solid rgba(0,0,0,0.05);
-        }
-        .stats-grid { display: flex; justify-content: space-between; text-align: center; margin-bottom: 12px; }
-        .stat-box { display: flex; flex-direction: column; width: 30%; }
-        .stat-value { font-size: 1.6rem; font-weight: 800; color: var(--system-blue); }
-        .stat-label { font-size: 0.75rem; font-weight: 600; color: var(--system-gray); text-transform: uppercase; letter-spacing: 0.5px;}
-        .stat-msg { font-size: 0.95rem; font-weight: 500; color: var(--text-main); text-align: center; background: rgba(0,0,0,0.05); padding: 10px; border-radius: 10px; }
-
         /* ======== TAREAS ======== */
         .task-list { list-style: none; display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
         .task-item {
-            display: flex; align-items: flex-start; background: rgba(255, 255, 255, 0.9); border-radius: var(--radius-md); padding: 12px 10px;
-            border: 1px solid rgba(255, 255, 255, 0.5); transition: border 0.3s, transform 0.4s var(--bounce);
+            display: flex; align-items: flex-start; background: rgba(255, 255, 255, 0.95); border-radius: var(--radius-md); padding: 12px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.6); transition: border 0.3s, transform 0.3s var(--bounce), box-shadow 0.3s;
+            transform: translate3d(0,0,0);
         }
         .task-item.is-critical { background: rgba(255, 59, 48, 0.05); border: 1px solid rgba(255, 59, 48, 0.3); }
-        .task-item.is-critical .task-input { font-weight: 600; }
-        .task-item:focus-within:not(.selected-task) { background: #FFFFFF; box-shadow: 0 6px 15px rgba(0,0,0,0.08); transform: scale(1.02); z-index: 2; }
+        .task-item.is-critical .task-input { font-weight: 600; color: var(--system-red); }
+        .task-item:focus-within:not(.selected-task) { background: #FFFFFF; box-shadow: 0 8px 20px rgba(0,0,0,0.08); transform: scale(1.02); z-index: 2; border-color: var(--system-blue);}
 
-        .drag-handle { cursor: grab; color: #D1D5DB; padding: 4px; margin-top: 2px; flex-shrink: 0; }
-        .btn-priority { background: transparent; border: none; cursor: pointer; font-size: 1.2rem; color: #D1D5DB; margin-right: 6px; padding-top: 2px;}
-        .is-critical .btn-priority { color: var(--system-red); transform: scale(1.1); }
+        .drag-handle { cursor: grab; color: #D1D5DB; padding: 4px; margin-top: 2px; flex-shrink: 0; transition: color 0.2s; }
+        .drag-handle:active { cursor: grabbing; color: var(--system-blue); }
+        
+        .btn-priority { background: transparent; border: none; cursor: pointer; font-size: 1.2rem; color: #D1D5DB; margin-right: 6px; padding-top: 2px; transition: transform 0.3s var(--bounce);}
+        .is-critical .btn-priority { transform: scale(1.15); }
 
-        .btn-check { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #C7C7CC; background: transparent; cursor: pointer; margin-right: 12px; flex-shrink: 0; margin-top: 2px; }
-        .task-input { flex-grow: 1; border: none; padding: 4px; font-size: 1.05rem; color: var(--text-main); background: transparent; outline: none; resize: none; overflow: hidden; font-family: inherit; line-height: 1.4; }
-        .btn-icon { background: transparent; border: none; cursor: pointer; padding: 6px; color: var(--system-gray); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .btn-check { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #C7C7CC; background: transparent; cursor: pointer; margin-right: 12px; flex-shrink: 0; margin-top: 2px; transition: transform 0.2s var(--bounce), border-color 0.2s, background 0.2s; }
+        .btn-check:active { transform: scale(0.7); }
+        
+        .task-input { flex-grow: 1; border: none; padding: 4px; font-size: 1.05rem; color: var(--text-main); background: transparent; outline: none; resize: none; overflow: hidden; font-family: inherit; line-height: 1.4; transition: height 0.2s ease; }
+        .task-input::placeholder { color: #C7C7CC; }
+        .btn-icon { background: transparent; border: none; cursor: pointer; padding: 6px; color: var(--system-gray); border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: color 0.2s, background 0.2s; }
+        .btn-icon:hover { background: rgba(0,0,0,0.05); color: var(--system-red); }
 
         /* Completadas */
-        .completed-card { background: rgba(255,255,255,0.5); border: 1px dashed rgba(0,0,0,0.1); box-shadow: none; }
-        .task-item.completed { background: transparent; border: none; border-bottom: 1px solid rgba(0,0,0,0.05); border-radius: 0; }
+        .completed-card { background: rgba(255,255,255,0.4); border: 1px dashed rgba(0,0,0,0.15); box-shadow: none; }
+        .task-item.completed { background: transparent; border: none; border-bottom: 1px solid rgba(0,0,0,0.05); border-radius: 0; box-shadow: none; transform: none;}
         .task-item.completed .task-input { text-decoration: line-through; color: var(--system-gray); }
         .task-item.completed .drag-handle, .task-item.completed .btn-priority { display: none; }
         .task-item.completed .btn-check { background: var(--system-blue); border-color: var(--system-blue); position: relative; }
@@ -142,8 +146,9 @@
 
         /* ======== FAB ======== */
         .fab-wrapper { position: fixed; bottom: 40px; right: 40px; z-index: 1000; display: flex; flex-direction: column-reverse; align-items: center; gap: 15px; }
-        .fab-btn { border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .fab-btn { border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.2); transition: transform 0.3s var(--bounce); }
         .fab-main { width: 68px; height: 68px; background: var(--system-blue); z-index: 2; }
+        .fab-main:hover { transform: scale(1.08); }
         .fab-sub { width: 52px; height: 52px; opacity: 0; visibility: hidden; transform: translateY(20px) scale(0.5); z-index: 1; position: absolute; }
         .fab-wrapper.active .fab-main svg { transform: rotate(135deg); transition: 0.3s; } 
         .fab-wrapper.active .fab-sub { opacity: 1; visibility: visible; transform: translateY(0) scale(1); transition: 0.3s var(--bounce); }
@@ -154,29 +159,30 @@
         /* Modal Atrasadas */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.4); backdrop-filter: blur(5px);
+            background: rgba(0,0,0,0.4); backdrop-filter: blur(10px);
             display: flex; align-items: center; justify-content: center;
             opacity: 0; visibility: hidden; transition: var(--transition); z-index: 2000;
         }
         .modal-overlay.active { opacity: 1; visibility: visible; }
         .modal-content {
-            background: var(--card-bg); border-radius: var(--radius-lg); padding: 25px;
-            width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.2); transform: scale(0.9); transition: var(--transition);
+            background: var(--card-bg); border-radius: var(--radius-lg); padding: 30px;
+            width: 90%; max-width: 450px; max-height: 80vh; overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3); transform: scale(0.9); transition: transform 0.4s var(--bounce);
         }
         .modal-overlay.active .modal-content { transform: scale(1); }
-        .overdue-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255,255,255,0.8); border-radius: 12px; margin-bottom: 8px; border: 1px solid rgba(255,59,48,0.2); }
-        .overdue-text { flex-grow: 1; font-weight: 500; font-size: 1.05rem; margin-right: 10px;}
-        .overdue-date { font-size: 0.75rem; color: var(--system-red); display: block; margin-top: 4px; font-weight: 600;}
-        .overdue-actions button { background: var(--system-blue); border: none; color: white; padding: 6px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; }
-        .overdue-actions button.del { background: rgba(255,59,48,0.1); color: var(--system-red); margin-right: 5px; }
+        .overdue-item { display: flex; justify-content: space-between; align-items: center; padding: 14px; background: rgba(255,255,255,0.9); border-radius: 12px; margin-bottom: 10px; border: 1px solid rgba(255,59,48,0.3); }
+        .overdue-text { flex-grow: 1; font-weight: 600; font-size: 1.05rem; margin-right: 10px;}
+        .overdue-date { font-size: 0.8rem; color: var(--system-red); display: block; margin-top: 4px; font-weight: 500;}
+        .overdue-actions button { background: var(--system-blue); border: none; color: white; padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: transform 0.2s; }
+        .overdue-actions button:active { transform: scale(0.95); }
+        .overdue-actions button.del { background: rgba(255,59,48,0.1); color: var(--system-red); margin-right: 8px; }
 
-        /* Toast de notificaciones */
+        /* Toast de notificaciones silencioso */
         .toast {
             position: fixed; top: -80px; left: 50%; transform: translateX(-50%);
             background: rgba(28, 28, 30, 0.95); backdrop-filter: blur(20px);
-            color: white; padding: 14px 28px; border-radius: 30px; font-weight: 500;
-            transition: top 0.6s var(--bounce); z-index: 1001; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-size: 0.95rem;
+            color: white; padding: 12px 24px; border-radius: 30px; font-weight: 500;
+            transition: top 0.5s var(--bounce); z-index: 1001; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-size: 0.95rem;
         }
         .toast.show { top: 40px; }
 
@@ -185,11 +191,19 @@
             .activity-card { padding: 20px 15px; }
             .fab-wrapper { bottom: 25px; right: 25px; }
             .fab-main { width: 60px; height: 60px; }
-            .drag-handle { display: none; }
+            
+            /* FIX CELULAR: El drag handle AHORA SÍ es visible en celular */
+            .drag-handle { display: flex; padding: 10px 5px; margin-top: 0; }
         }
     </style>
 </head>
 <body>
+
+    <!-- Pantalla de Carga Apple-Style -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="ios-spinner"></div>
+        <div class="loading-text">Sincronizando Tasky...</div>
+    </div>
 
     <div class="container">
         <div class="header-controls">
@@ -199,12 +213,6 @@
         </div>
 
         <h1>Tasky</h1>
-        
-        <div id="activities-container">
-            <div id="loadingApp" style="text-align: center; color: var(--system-gray); margin-top: 50px;">
-                Cargando datos... ☁️🔄
-            </div>
-        </div>
 
         <div id="empty-state" class="empty-state" style="display: none;">
             <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -213,6 +221,8 @@
             <h3>Todo limpio por aquí ✨</h3>
             <p>Toca el botón azul inferior para crear tu primera fase.</p>
         </div>
+        
+        <div id="activities-container"></div>
 
         <div id="completed-container" class="activity-card completed-card" style="display: none;">
             <div class="activity-header">
@@ -237,15 +247,15 @@
     <!-- Modal Tareas Atrasadas -->
     <div class="modal-overlay" id="overdueModal">
         <div class="modal-content">
-            <h2 style="margin-bottom: 20px; color: var(--text-main);">⚠️ Tareas Atrasadas</h2>
+            <h2 style="margin-bottom: 20px; color: var(--text-main); font-weight: 800;">⚠️ Atrasadas</h2>
             <div id="overdueList"></div>
-            <button onclick="closeOverdueModal()" style="width:100%; padding: 12px; background:var(--system-gray); color:white; border:none; border-radius:12px; margin-top:15px; font-weight:bold; cursor:pointer;">Cerrar</button>
+            <button onclick="closeOverdueModal()" style="width:100%; padding: 14px; background:var(--system-gray); color:white; border:none; border-radius:12px; margin-top:15px; font-weight:700; cursor:pointer; font-size: 1.05rem;">Cerrar</button>
         </div>
     </div>
 
     <div id="toast" class="toast">
         <svg viewBox="0 0 24 24" fill="none" stroke="#34C759" width="20" height="20" stroke-width="2.5" id="toastIcon"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-        <span id="toastMsg">Actualizado ☁️</span>
+        <span id="toastMsg">Actualizado ✨</span>
     </div>
 
     <script>
@@ -255,47 +265,59 @@
         
         let cloudSyncTimer; 
         let overdueTasksDB = [];
-        let isAppLoaded = false; // Candado de seguridad
-        let currentDataString = ""; // Para comparar cambios de red
-        let isUserTyping = false; // Evita actualizar la pantalla mientras escribes
+        let isAppLoaded = false; // CANDADO DE SEGURIDAD ANTI-BORRADO
+        let currentDataString = ""; 
+        let isUserTyping = false; 
 
         if (typeof Sortable !== 'undefined' && typeof Sortable.MultiDrag !== 'undefined') Sortable.mount(new Sortable.MultiDrag());
 
-        // Control de Escritura para la Auto-Sincronización
         document.addEventListener('focusin', (e) => { if(e.target.classList.contains('task-input')) isUserTyping = true; });
-        document.addEventListener('focusout', (e) => { if(e.target.classList.contains('task-input')) isUserTyping = false; });
+        document.addEventListener('focusout', (e) => { if(e.target.classList.contains('task-input')) { isUserTyping = false; saveDataLocalAndCloud(); } });
 
         document.addEventListener('input', (e) => {
             if(e.target.classList.contains('task-input')) { autoResizeTextarea(e.target); updateLogic(); }
-            saveDataLocalAndCloud();
+            // Guardado instantáneo con ligero debounce al escribir
+            clearTimeout(cloudSyncTimer);
+            cloudSyncTimer = setTimeout(() => { saveDataLocalAndCloud(); }, 1000);
         });
 
         window.onload = () => { loadApp(); };
 
-        // PREVENCIÓN DE BORRADO EN F5
-        window.addEventListener('beforeunload', () => {
-            if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-            if (isAppLoaded) { saveDataLocalAndCloud(true); } 
+        // ==========================================
+        // SINCRONIZACIÓN CASI TIEMPO REAL (Smart Polling)
+        // ==========================================
+        
+        // 1. Gatillo de Enfoque: Se actualiza AL INSTANTE cuando abres o miras la app
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === 'visible' && isAppLoaded) {
+                checkBackgroundUpdates(true); // Forzar actualización visual silenciosa
+            }
         });
 
-        // BACKGROUND POLLING (Sincronización Automática Silenciosa)
-        async function checkBackgroundUpdates() {
-            if (isUserTyping || !isAppLoaded) return; // No interrumpir si estás escribiendo
+        // 2. Polling Silencioso de Fondo
+        async function checkBackgroundUpdates(force = false) {
+            if ((isUserTyping && !force) || !isAppLoaded) return; 
             try {
-                const response = await fetch(`${API_URL}${JSONBIN_ID}`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+                const response = await fetch(`${API_URL}${JSONBIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
                 if (response.ok) {
                     const json = await response.json();
                     const remoteDataStr = JSON.stringify(json.record);
                     if (remoteDataStr !== currentDataString && remoteDataStr.length > 20) {
                         currentDataString = remoteDataStr;
-                        localStorage.setItem('tasky_pro_v14', currentDataString);
+                        localStorage.setItem('tasky_pro_v15', currentDataString);
                         renderData(currentDataString);
-                        showToast("Sincronizado desde otro dispositivo ✨", true);
+                        if(!force) showToast("Actualizado desde otro dispositivo ✨", true);
                     }
                 }
-            } catch (e) { /* Error silencioso */ }
+            } catch (e) {}
         }
-        setInterval(checkBackgroundUpdates, 8000); // Revisa la nube cada 8 segundos
+        setInterval(checkBackgroundUpdates, 3500); // Revisa cada 3.5 segundos
+
+        // PREVENCIÓN DE BORRADO
+        window.addEventListener('beforeunload', () => {
+            if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+            if (isAppLoaded) { saveDataLocalAndCloud(true); } 
+        });
 
         function getTodayString() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
         function autoResizeTextarea(el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; }
@@ -304,33 +326,31 @@
         function showToast(msg, isSuccess = true) {
             const toast = document.getElementById('toast');
             document.getElementById('toastMsg').innerText = msg;
-            const icon = document.getElementById('toastIcon');
-            if(isSuccess) {
-                icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>`;
-                icon.setAttribute('stroke', '#34C759');
-            } else {
-                icon.innerHTML = `<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>`;
-                icon.setAttribute('stroke', '#FF3B30');
-            }
-            toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000);
+            toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2500);
         }
 
         async function loadApp() {
             let dataStr = null;
             try {
-                const response = await fetch(`${API_URL}${JSONBIN_ID}`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+                const response = await fetch(`${API_URL}${JSONBIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
                 if (response.ok) {
                     const json = await response.json();
                     dataStr = JSON.stringify(json.record);
                     currentDataString = dataStr;
-                    localStorage.setItem('tasky_pro_v14', dataStr);
+                    localStorage.setItem('tasky_pro_v15', dataStr);
                 } else throw new Error('API Error');
             } catch (error) {
-                dataStr = localStorage.getItem('tasky_pro_v14') || localStorage.getItem('tasky_pro_v13'); 
+                dataStr = localStorage.getItem('tasky_pro_v15') || localStorage.getItem('tasky_pro_v14'); 
                 currentDataString = dataStr;
             }
+            
             renderData(dataStr);
-            isAppLoaded = true; // Libera el candado anti-borrado
+            isAppLoaded = true; // SE ABRE EL CANDADO
+            
+            // Ocultar pantalla de carga suavemente
+            setTimeout(() => {
+                document.getElementById('loadingOverlay').classList.add('hidden');
+            }, 400);
         }
 
         function renderData(dataStr) {
@@ -367,19 +387,9 @@
             
             new Sortable(document.getElementById('activities-container'), {
                 animation: 350, handle: '.card-drag-handle', forceFallback: true, 
-                delay: 150, delayOnTouchOnly: true, touchStartThreshold: 5,
-                onEnd: function() { saveDataLocalAndCloud(); }
+                fallbackTolerance: 5, delay: 200, delayOnTouchOnly: true, 
+                onEnd: function() { saveDataLocalAndCloud(true); }
             });
-        }
-
-        function toggleStats(btn) {
-            const panel = btn.closest('.activity-card').querySelector('.stats-panel');
-            panel.classList.toggle('open');
-            if(panel.classList.contains('open')) {
-                btn.style.color = 'var(--system-blue)';
-            } else {
-                btn.style.color = 'var(--system-gray)';
-            }
         }
 
         function updateOverdueUI() {
@@ -401,7 +411,7 @@
                         <div class="overdue-text">${task.text} <span class="overdue-date">Creada: ${task.date}</span></div>
                         <div class="overdue-actions">
                             <button class="del" onclick="discardOverdue(${index})">✖</button>
-                            <button onclick="moveToToday(${index})">Mover a Hoy</button>
+                            <button onclick="moveToToday(${index})">A Hoy</button>
                         </div>
                     </div>
                 `;
@@ -455,17 +465,18 @@
             
             const dataStr = JSON.stringify(data);
             currentDataString = dataStr; 
-            localStorage.setItem('tasky_pro_v14', dataStr); 
+            localStorage.setItem('tasky_pro_v15', dataStr); 
 
-            clearTimeout(cloudSyncTimer);
             const uploadTask = () => {
                 fetch(`${API_URL}${JSONBIN_ID}`, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY }, body: dataStr
                 }).catch(e => console.error("Error silencioso de Sync"));
             };
 
-            if (instant) uploadTask();
-            else cloudSyncTimer = setTimeout(uploadTask, 2000);
+            if (instant) {
+                clearTimeout(cloudSyncTimer);
+                uploadTask();
+            }
         }
 
         function updateLogic() {
@@ -488,24 +499,10 @@
                 if(progressText) progressText.innerText = `${completedCount}/${total}`;
                 let percent = total === 0 ? 0 : Math.round((completedCount / total) * 100);
                 if(progressFill) progressFill.style.width = `${percent}%`;
-
-                const statsPanel = card.querySelector('.stats-panel');
-                if (statsPanel) {
-                    statsPanel.querySelector('.stat-total').innerText = total;
-                    statsPanel.querySelector('.stat-completed').innerText = completedCount;
-                    statsPanel.querySelector('.stat-percent').innerText = `${percent}%`;
-                    
-                    let msg = "Añade tareas para iniciar.";
-                    if(percent === 100 && total > 0) msg = "¡Fase completada! Excelente ritmo. 🚀";
-                    else if (percent >= 50) msg = "¡Ya pasaste la mitad, sigue así! 🔥";
-                    else if (percent > 0) msg = "Buen inicio, mantén el enfoque. 🎯";
-                    else if (total > 0) msg = "¡Es hora de empezar con esta fase! 💪";
-                    statsPanel.querySelector('.stat-msg').innerText = msg;
-                }
             });
         }
 
-        function togglePriority(btn) { const task = btn.closest('.task-item'); task.classList.toggle('is-critical'); saveDataLocalAndCloud(); }
+        function togglePriority(btn) { const task = btn.closest('.task-item'); task.classList.toggle('is-critical'); saveDataLocalAndCloud(true); }
 
         let activityCounter = 0;
         function addActivity(title = '', createEmptyTask = true, forceId = null) {
@@ -516,23 +513,13 @@
             card.innerHTML = `
                 <div class="activity-header">
                     <div class="title-row">
-                        <div class="card-drag-handle" title="Mover Sección"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg></div>
+                        <div class="card-drag-handle"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg></div>
                         <input type="text" class="activity-title" value="${title}" placeholder="Fase o Bloque...">
                         <div class="header-actions">
-                            <button class="btn-icon" onclick="toggleStats(this)" title="Ver Análisis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22" stroke-width="2.5"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></button>
                             <button class="btn-icon" onclick="this.closest('.activity-card').remove(); updateLogic(); saveDataLocalAndCloud(true);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
                         </div>
                     </div>
                     <div class="progress-container"><div class="progress-bar-bg"><div class="progress-bar-fill"></div></div><span class="progress-text">0/0</span></div>
-                    
-                    <div class="stats-panel">
-                        <div class="stats-grid">
-                            <div class="stat-box"><span class="stat-value stat-total">0</span><span class="stat-label">Total</span></div>
-                            <div class="stat-box"><span class="stat-value stat-completed">0</span><span class="stat-label">Listas</span></div>
-                            <div class="stat-box"><span class="stat-value stat-percent">0%</span><span class="stat-label">Avance</span></div>
-                        </div>
-                        <div class="stat-msg"></div>
-                    </div>
                 </div>
                 <div class="task-list"></div>
             `;
@@ -543,8 +530,8 @@
                 group: 'shared-tasks', animation: 250, handle: '.drag-handle',
                 ghostClass: 'sortable-ghost-task', dragClass: 'sortable-drag',
                 multiDrag: true, multiDragKey: 'CTRL', selectedClass: 'selected-task',
-                delay: 150, delayOnTouchOnly: true, touchStartThreshold: 5,
-                onEnd: function() { updateLogic(); saveDataLocalAndCloud(); }
+                fallbackTolerance: 5, delay: 200, delayOnTouchOnly: true, 
+                onEnd: function() { updateLogic(); saveDataLocalAndCloud(true); }
             });
 
             if(createEmptyTask) createTaskElement(taskList, null, getTodayString());
@@ -556,11 +543,11 @@
             const task = document.createElement('div');
             task.className = 'task-item'; task.dataset.date = dateStr || getTodayString();
             task.innerHTML = `
-                <div class="drag-handle" title="Mover (Ctrl+Clic para seleccionar varias)"><svg width="18" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line></svg></div>
-                <button class="btn-priority" onclick="togglePriority(this)" title="Marcar Urgente">🚩</button>
+                <div class="drag-handle" title="Mantén presionado para mover"><svg width="18" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line></svg></div>
+                <button class="btn-priority" onclick="togglePriority(this)">🚩</button>
                 <div class="btn-check" onclick="toggleComplete(this)"></div>
                 <textarea class="task-input" rows="1" placeholder="Añadir tarea..." onkeydown="handleKeyDown(event, this)" onpaste="handlePaste(event, this)"></textarea>
-                <button class="btn-icon btn-remove-task" tabindex="-1" onclick="this.parentElement.remove(); updateLogic(); saveDataLocalAndCloud();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
+                <button class="btn-icon btn-remove-task" tabindex="-1" onclick="this.parentElement.remove(); updateLogic(); saveDataLocalAndCloud(true);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
             `;
             if (insertAfter) insertAfter.after(task); else listContainer.appendChild(task);
             return task.querySelector('.task-input');
@@ -583,7 +570,7 @@
                         currentItem = newInput.closest('.task-item');
                         if (i === lines.length - 1) {
                             currentItem.querySelector('.task-input').focus();
-                            updateLogic(); saveDataLocalAndCloud();
+                            updateLogic(); saveDataLocalAndCloud(true);
                         }
                     }, i * 30);
                 }
@@ -609,7 +596,7 @@
                     if (originCard) originCard.querySelector('.task-list').appendChild(taskItem);
                     if(globalList.children.length === 0) container.style.display = 'none';
                 }
-                setTimeout(() => { taskItem.style.opacity = '1'; taskItem.style.transform = 'scale(1)'; }, 50);
+                setTimeout(() => { taskItem.style.opacity = '1'; taskItem.style.transform = 'translate3d(0,0,0)'; }, 50);
                 updateLogic(); saveDataLocalAndCloud(true); 
             }, 250);
         }
