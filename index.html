@@ -2,23 +2,21 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- ==========================================
          TASKY - PRO EDITION 
-         Versión: 21.0 (Arquitectura Empresarial - Sync Agresivo)
-         Actualizaciones: 
-         - Eliminación de bloqueos de input: Sincronización ininterrumpida.
-         - Optimizado para compilación Nativa (APK/iOS).
+         Versión: 22.0 (Auditoría de Seguridad y Estabilidad superada)
          ========================================== -->
     <title>Tasky</title>
     
-    <link rel="icon" type="image/png" href="icon.png?v=21">
-    <link rel="apple-touch-icon" href="icon.png?v=21">
+    <link rel="icon" type="image/png" href="icon.png?v=22">
+    <link rel="apple-touch-icon" href="icon.png?v=22">
+    <link rel="manifest" href="manifest.json?v=22">
     <meta name="theme-color" content="#1C1C1E">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
-    <!-- Librerías Externas -->
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- SortableJS fijado para evitar quiebres por actualizaciones -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
@@ -218,19 +216,19 @@
 
         <div id="completed-container" class="activity-card completed-card" style="display: none;">
             <div class="activity-header">
-                <div class="title-row"><h2 class="activity-title" readonly>✅ Completadas de Hoy</h2></div>
+                <div class="title-row"><h2 class="activity-title" style="pointer-events: none;">✅ Completadas de Hoy</h2></div>
             </div>
             <div class="task-list" id="global-completed-list"></div>
         </div>
         
         <div class="fab-wrapper" id="fabMenu">
-            <button class="fab-btn fab-main" onclick="toggleFabMenu()">
+            <button class="fab-btn fab-main" aria-label="Menú Principal" onclick="toggleFabMenu()">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             </button>
-            <button class="fab-btn fab-sub bg-blue" onclick="addActivity(); toggleFabMenu();" style="background: var(--system-blue);" title="Nueva Fase">
+            <button class="fab-btn fab-sub bg-blue" aria-label="Añadir Fase" onclick="addActivity(); toggleFabMenu();" style="background: var(--system-blue);" title="Nueva Fase">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             </button>
-            <button class="fab-btn fab-sub bg-green" onclick="copyToWhatsApp(); toggleFabMenu();" title="Copiar WhatsApp">
+            <button class="fab-btn fab-sub bg-green" aria-label="Copiar a WhatsApp" onclick="copyToWhatsApp(); toggleFabMenu();" title="Copiar WhatsApp">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
             </button>
         </div>
@@ -240,7 +238,7 @@
         <div class="modal-content">
             <h2 style="margin-bottom: 20px; color: var(--text-main); font-weight: 800;">⚠️ Atrasadas</h2>
             <div id="overdueList"></div>
-            <button onclick="closeOverdueModal()" style="width:100%; padding: 14px; background:var(--system-gray); color:white; border:none; border-radius:12px; margin-top:15px; font-weight:700; cursor:pointer; font-size: 1.05rem;">Cerrar</button>
+            <button aria-label="Cerrar Atrasadas" onclick="closeOverdueModal()" style="width:100%; padding: 14px; background:var(--system-gray); color:white; border:none; border-radius:12px; margin-top:15px; font-weight:700; cursor:pointer; font-size: 1.05rem;">Cerrar</button>
         </div>
     </div>
 
@@ -260,11 +258,35 @@
 
         let overdueTasksDB = [];
         let isAppLoaded = false; 
-        let isRendering = false; 
         let currentDataString = ""; 
         let cloudSyncTimer;
+        let isUserTyping = false;
+        let pendingRemoteUpdate = null;
 
         if (typeof Sortable !== 'undefined' && typeof Sortable.MultiDrag !== 'undefined') Sortable.mount(new Sortable.MultiDrag());
+
+        function esc(str) {
+            if (!str) return '';
+            return str.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function generateId() { return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 6); }
+
+        document.addEventListener('focusin', (e) => { 
+            if(e.target.classList.contains('task-input') || e.target.classList.contains('activity-title')) isUserTyping = true; 
+        });
+        
+        document.addEventListener('focusout', (e) => { 
+            if(e.target.classList.contains('task-input') || e.target.classList.contains('activity-title')) { 
+                isUserTyping = false; 
+                saveDataLocalAndCloud();
+                if (pendingRemoteUpdate) {
+                    currentDataString = pendingRemoteUpdate;
+                    renderData(pendingRemoteUpdate);
+                    pendingRemoteUpdate = null;
+                }
+            } 
+        });
 
         document.addEventListener('input', (e) => {
             if(e.target.classList.contains('task-input')) { autoResizeTextarea(e.target); updateLogic(); }
@@ -272,28 +294,26 @@
             cloudSyncTimer = setTimeout(() => { saveDataLocalAndCloud(); }, 800);
         });
 
-        // ==========================================
-        // MOTOR EN TIEMPO REAL (SIN BLOQUEOS)
-        // ==========================================
         taskyDoc.onSnapshot((doc) => {
             if (doc.exists) {
                 const dataStr = JSON.stringify(doc.data());
                 if (dataStr === currentDataString) {
-                    hideLoading();
-                    return; 
+                    hideLoading(); return; 
                 }
                 
-                // Actualiza incondicionalmente la pantalla para que sea 100% Real-Time
-                currentDataString = dataStr;
-                localStorage.setItem('tasky_pro_v21', dataStr);
-                renderData(dataStr);
-                
+                if (isUserTyping) {
+                    pendingRemoteUpdate = dataStr;
+                } else {
+                    currentDataString = dataStr;
+                    localStorage.setItem('tasky_pro_v22', dataStr);
+                    renderData(dataStr);
+                }
             } else {
-                taskyDoc.set({ categories: [], completed: [] });
+                taskyDoc.set({ categories: [], completed: [] }).catch(e => console.error(e));
             }
             hideLoading();
         }, (error) => {
-            const localData = localStorage.getItem('tasky_pro_v21');
+            const localData = localStorage.getItem('tasky_pro_v22');
             if (localData) renderData(localData);
             hideLoading();
         });
@@ -310,20 +330,22 @@
         function toggleFabMenu() { document.getElementById('fabMenu').classList.toggle('active'); }
 
         function renderData(dataStr) {
-            isRendering = true; 
             document.getElementById('activities-container').innerHTML = '';
+            const globalList = document.getElementById('global-completed-list');
+            globalList.innerHTML = '';
+            document.getElementById('completed-container').style.display = 'none';
             overdueTasksDB = [];
             const today = getTodayString();
 
-            if (dataStr && dataStr.length > 20) {
+            if (dataStr && dataStr.length > 35) {
                 const data = JSON.parse(dataStr);
-                if(data.categories) {
+                if(data.categories && data.categories.length > 0) {
                     data.categories.forEach((cat) => {
                         const card = addActivity(cat.title, false, cat.id);
                         const list = card.querySelector('.task-list');
                         
                         cat.tasks.forEach(task => {
-                            if (task.date < today && !task.critical) {
+                            if (task.date < today) {
                                 overdueTasksDB.push({ ...task, originCat: cat.id });
                             } else {
                                 const input = createTaskElement(list, null, task.date);
@@ -334,6 +356,24 @@
                         });
                         createTaskElement(list, null, today); 
                     });
+                } else {
+                    addActivity('☀️ Fase 1: Mañana');
+                }
+
+                if(data.completed && data.completed.length > 0) {
+                    data.completed.forEach(task => {
+                        const t = document.createElement('div');
+                        t.className = 'task-item completed';
+                        t.dataset.date = esc(task.date);
+                        t.dataset.originId = esc(task.originCat);
+                        t.innerHTML = `
+                            <div class="btn-check" aria-label="Restaurar" onclick="toggleComplete(this)"></div>
+                            <textarea class="task-input" rows="1" readonly>${esc(task.text)}</textarea>
+                            <button class="btn-icon btn-remove-task" aria-label="Eliminar Tarea" tabindex="-1" onclick="this.parentElement.remove(); updateLogic(); saveDataLocalAndCloud();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
+                        `;
+                        globalList.appendChild(t);
+                    });
+                    document.getElementById('completed-container').style.display = 'block';
                 }
             } else {
                 addActivity('☀️ Fase 1: Mañana');
@@ -346,8 +386,6 @@
                 animation: 350, handle: '.card-drag-handle', forceFallback: true, 
                 onEnd: function() { saveDataLocalAndCloud(); }
             });
-            
-            isRendering = false; 
         }
 
         function toggleStats(btn) {
@@ -371,10 +409,10 @@
             overdueTasksDB.forEach((task, index) => {
                 list.innerHTML += `
                     <div class="overdue-item">
-                        <div class="overdue-text">${task.text} <span class="overdue-date">Creada: ${task.date}</span></div>
+                        <div class="overdue-text">${esc(task.text)} <span class="overdue-date">Creada: ${esc(task.date)}</span></div>
                         <div class="overdue-actions">
-                            <button class="del" onclick="discardOverdue(${index})">✖</button>
-                            <button onclick="moveToToday(${index})">A Hoy</button>
+                            <button aria-label="Descartar" class="del" onclick="discardOverdue(${index})">✖</button>
+                            <button aria-label="Mover a Hoy" onclick="moveToToday(${index})">A Hoy</button>
                         </div>
                     </div>
                 `;
@@ -410,9 +448,10 @@
         }
 
         function saveDataLocalAndCloud() {
-            if (!isAppLoaded || isRendering) return; 
+            if (!isAppLoaded) return; 
 
             const dataObj = { categories: [], completed: [] };
+            
             document.querySelectorAll('.activity-card:not(.completed-card)').forEach(card => {
                 const title = card.querySelector('.activity-title').value;
                 const tasks = [];
@@ -425,14 +464,26 @@
                 const cardOverdue = overdueTasksDB.filter(o => o.originCat === card.id);
                 dataObj.categories.push({ id: card.id, title, tasks: [...tasks, ...cardOverdue] });
             });
+
+            document.querySelectorAll('#global-completed-list .task-item').forEach(t => {
+                dataObj.completed.push({
+                    text: t.querySelector('.task-input').value,
+                    originCat: t.dataset.originId,
+                    date: t.dataset.date,
+                    critical: t.classList.contains('is-critical')
+                });
+            });
             
             const dataStr = JSON.stringify(dataObj);
             if (dataStr === currentDataString) return; 
             
             currentDataString = dataStr; 
-            localStorage.setItem('tasky_pro_v21', dataStr); 
+            localStorage.setItem('tasky_pro_v22', dataStr); 
 
-            taskyDoc.set(dataObj).catch(e => console.error(e));
+            taskyDoc.set(dataObj).catch(e => {
+                console.error("Error guardando:", e);
+                alert("Error de conexión al guardar cambios.");
+            });
         }
 
         function updateLogic() {
@@ -478,20 +529,19 @@
             saveDataLocalAndCloud(); 
         }
 
-        let activityCounter = 0;
         function addActivity(title = '', createEmptyTask = true, forceId = null) {
-            activityCounter++;
             const container = document.getElementById('activities-container');
             const card = document.createElement('div');
-            card.className = 'activity-card'; card.id = forceId || 'activity-' + activityCounter;
+            card.className = 'activity-card'; 
+            card.id = forceId || generateId();
             card.innerHTML = `
                 <div class="activity-header">
                     <div class="title-row">
                         <div class="card-drag-handle" title="Mover Sección"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg></div>
-                        <input type="text" class="activity-title" value="${title}" placeholder="Fase o Bloque...">
+                        <input type="text" class="activity-title" value="${esc(title)}" placeholder="Fase o Bloque...">
                         <div class="header-actions">
-                            <button class="btn-icon" onclick="toggleStats(this)" title="Ver Análisis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22" stroke-width="2.5"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></button>
-                            <button class="btn-icon" onclick="this.closest('.activity-card').remove(); updateLogic(); saveDataLocalAndCloud();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
+                            <button aria-label="Ver Análisis" class="btn-icon" onclick="toggleStats(this)" title="Ver Análisis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22" stroke-width="2.5"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></button>
+                            <button aria-label="Eliminar Fase" class="btn-icon" onclick="this.closest('.activity-card').remove(); updateLogic(); saveDataLocalAndCloud();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
                         </div>
                     </div>
                     <div class="progress-container"><div class="progress-bar-bg"><div class="progress-bar-fill"></div></div><span class="progress-text">0/0</span></div>
@@ -533,10 +583,10 @@
             task.className = 'task-item'; task.dataset.date = dateStr || getTodayString();
             task.innerHTML = `
                 <div class="drag-handle" title="Mantener presionado para mover"><svg width="18" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line></svg></div>
-                <button class="btn-priority" onclick="togglePriority(this)" title="Marcar Urgente">🚩</button>
-                <div class="btn-check" onclick="toggleComplete(this)"></div>
+                <button aria-label="Marcar Urgente" class="btn-priority" onclick="togglePriority(this)" title="Marcar Urgente">🚩</button>
+                <div class="btn-check" aria-label="Completar" onclick="toggleComplete(this)"></div>
                 <textarea class="task-input" rows="1" placeholder="Añadir tarea..." onkeydown="handleKeyDown(event, this)" onpaste="handlePaste(event, this)"></textarea>
-                <button class="btn-icon btn-remove-task" tabindex="-1" onclick="this.parentElement.remove(); updateLogic(); saveDataLocalAndCloud();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
+                <button aria-label="Eliminar Tarea" class="btn-icon btn-remove-task" tabindex="-1" onclick="this.parentElement.remove(); updateLogic(); saveDataLocalAndCloud();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
             `;
             if (insertAfter) insertAfter.after(task); else listContainer.appendChild(task);
             return task.querySelector('.task-input');
@@ -580,9 +630,11 @@
                     taskItem.classList.add('completed');
                     taskItem.dataset.originId = taskItem.closest('.activity-card').id; 
                     taskItem.classList.remove('selected-task');
+                    taskItem.querySelector('.task-input').readOnly = true;
                     globalList.appendChild(taskItem); container.style.display = 'block'; 
                 } else {
                     taskItem.classList.remove('completed');
+                    taskItem.querySelector('.task-input').readOnly = false;
                     const originCard = document.getElementById(taskItem.dataset.originId) || document.querySelector('.activity-card:not(.completed-card)');
                     if (originCard) originCard.querySelector('.task-list').appendChild(taskItem);
                     if(globalList.children.length === 0) container.style.display = 'none';
@@ -615,7 +667,18 @@
                 }
             });
             if(text.trim() === '') return;
-            navigator.clipboard.writeText(text.trim());
+            navigator.clipboard.writeText(text.trim()).then(() => {
+                alert("Tareas copiadas al portapapeles ✅");
+            }).catch(() => alert("Error al copiar"));
+        }
+
+        // Eliminación del Service Worker (Elimina la trampa de caché PWA)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
+            });
         }
     </script>
 </body>
