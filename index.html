@@ -5,17 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <!-- ==========================================
          TASKY - PRO EDITION 
-         Versión: 16.0
+         Versión: 17.0
          Actualizaciones: 
-         - Sincronización fantasma en Tiempo Real (Cero mensajes invasivos).
-         - Fix: Arrastre móvil perfecto (touch-action: none en los handles).
-         - Cero delays: Tocar texto = Editar | Tocar ícono = Arrastrar instantáneo.
+         - Fix: Bloqueo de sobreescritura de estado (Race condition fix definitivo).
+         - UX: Long-press habilitado para arrastre de tareas enteras en móvil.
+         - UX: Filtro inteligente (permite escribir sin arrastrar por error).
+         - Pro Feature: Micro-interacciones hápticas (Vibración nativa).
          ========================================== -->
     <title>Tasky</title>
     
-    <link rel="icon" type="image/png" href="icon.png?v=16">
-    <link rel="apple-touch-icon" href="icon.png?v=16">
-    <link rel="manifest" href="manifest.json?v=16">
+    <link rel="icon" type="image/png" href="icon.png?v=17">
+    <link rel="apple-touch-icon" href="icon.png?v=17">
+    <link rel="manifest" href="manifest.json?v=17">
     <meta name="theme-color" content="#FFDFBA">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
@@ -41,7 +42,7 @@
 
         @keyframes moveBackground { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
-        /* Pantalla de Carga */
+        /* Pantalla de Carga iOS Style */
         .loading-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
@@ -79,7 +80,6 @@
         }
         @keyframes gradientTitle { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
 
-        /* Empty State */
         .empty-state { text-align: center; padding: 60px 20px; color: var(--system-gray); animation: slideUpFade 0.6s var(--bounce) both; }
         .empty-state svg { opacity: 0.4; margin-bottom: 20px; }
         .empty-state h3 { font-size: 1.5rem; margin-bottom: 10px; color: var(--text-main); font-weight: 700; }
@@ -99,7 +99,6 @@
         .selected-task { background-color: rgba(0, 122, 255, 0.12) !important; border-color: var(--system-blue) !important; transform: scale(1.02); }
 
         .title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 15px; }
-        /* touch-action: none; BLOQUEA EL SCROLL AL TOCAR EL ÍCONO, PERMITIENDO EL ARRASTRE INMEDIATO */
         .card-drag-handle { cursor: grab; color: var(--text-muted); padding: 5px; transition: var(--transition); flex-shrink: 0; touch-action: none; }
         .activity-title { flex-grow: 1; font-size: 1.4rem; font-weight: 700; color: var(--text-main); border: none; background: transparent; outline: none; }
         .header-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
@@ -109,7 +108,6 @@
         .progress-bar-fill { height: 100%; width: 0%; background: var(--system-blue); border-radius: 10px; transition: width 0.8s var(--bounce); }
         .progress-text { font-size: 0.85rem; font-weight: 600; color: var(--system-gray); }
 
-        /* Panel de Análisis */
         .stats-panel {
             background: rgba(255, 255, 255, 0.5); border-radius: var(--radius-md); max-height: 0; overflow: hidden; opacity: 0; margin-bottom: 0;
             transition: max-height 0.4s var(--bounce), opacity 0.3s, margin 0.4s, padding 0.4s; display: flex; flex-direction: column;
@@ -132,7 +130,6 @@
         .task-item.is-critical .task-input { font-weight: 600; color: var(--system-red); }
         .task-item:focus-within:not(.selected-task) { background: #FFFFFF; box-shadow: 0 8px 20px rgba(0,0,0,0.08); transform: scale(1.02); z-index: 2; border-color: var(--system-blue);}
 
-        /* touch-action: none; BLOQUEA EL SCROLL AL TOCAR EL ÍCONO */
         .drag-handle { cursor: grab; color: #D1D5DB; padding: 6px 8px; margin-top: 0px; flex-shrink: 0; transition: color 0.2s; touch-action: none; }
         .drag-handle:active { cursor: grabbing; color: var(--system-blue); }
         
@@ -194,15 +191,11 @@
             .activity-card { padding: 20px 15px; }
             .fab-wrapper { bottom: 25px; right: 25px; }
             .fab-main { width: 60px; height: 60px; }
-            
-            /* El drag handle ahora es más grande y con touch-action: none para arrastre móvil perfecto */
-            .drag-handle { display: flex; padding: 8px; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Pantalla de Carga Apple-Style -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="ios-spinner"></div>
         <div class="loading-text">Cargando Tasky...</div>
@@ -269,29 +262,23 @@
 
         if (typeof Sortable !== 'undefined' && typeof Sortable.MultiDrag !== 'undefined') Sortable.mount(new Sortable.MultiDrag());
 
-        // Control de Escritura para la Auto-Sincronización
+        // Control estricto de escritura
         document.addEventListener('focusin', (e) => { if(e.target.classList.contains('task-input')) isUserTyping = true; });
-        document.addEventListener('focusout', (e) => { if(e.target.classList.contains('task-input')) { isUserTyping = false; saveDataLocalAndCloud(); } });
+        document.addEventListener('focusout', (e) => { if(e.target.classList.contains('task-input')) isUserTyping = false; });
 
         document.addEventListener('input', (e) => {
             if(e.target.classList.contains('task-input')) { autoResizeTextarea(e.target); updateLogic(); }
             clearTimeout(cloudSyncTimer);
-            cloudSyncTimer = setTimeout(() => { saveDataLocalAndCloud(); }, 1000);
+            cloudSyncTimer = setTimeout(() => { saveDataLocalAndCloud(); }, 800);
         });
 
         window.onload = () => { loadApp(); };
 
-        // ==========================================
-        // SINCRONIZACIÓN FANTASMA EN TIEMPO REAL
-        // ==========================================
-        
         document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === 'visible' && isAppLoaded) {
-                checkBackgroundUpdates(); 
-            }
+            if (document.visibilityState === 'visible' && isAppLoaded) checkBackgroundUpdates(); 
         });
 
-        // Polling Silencioso de Fondo (Sin notificaciones intrusivas)
+        // Polling fantasma sin notificaciones
         async function checkBackgroundUpdates() {
             if (isUserTyping || !isAppLoaded) return; 
             try {
@@ -301,7 +288,7 @@
                     const remoteDataStr = JSON.stringify(json.record);
                     if (remoteDataStr !== currentDataString && remoteDataStr.length > 20) {
                         currentDataString = remoteDataStr;
-                        localStorage.setItem('tasky_pro_v16', currentDataString);
+                        localStorage.setItem('tasky_pro_v17', currentDataString);
                         renderData(currentDataString);
                     }
                 }
@@ -309,7 +296,6 @@
         }
         setInterval(checkBackgroundUpdates, 3500);
 
-        // PREVENCIÓN DE BORRADO
         window.addEventListener('beforeunload', () => {
             if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
             if (isAppLoaded) { saveDataLocalAndCloud(true); } 
@@ -327,16 +313,15 @@
                     const json = await response.json();
                     dataStr = JSON.stringify(json.record);
                     currentDataString = dataStr;
-                    localStorage.setItem('tasky_pro_v16', dataStr);
+                    localStorage.setItem('tasky_pro_v17', dataStr);
                 } else throw new Error('API Error');
             } catch (error) {
-                dataStr = localStorage.getItem('tasky_pro_v16') || localStorage.getItem('tasky_pro_v15'); 
+                dataStr = localStorage.getItem('tasky_pro_v17') || localStorage.getItem('tasky_pro_v16'); 
                 currentDataString = dataStr;
             }
             
             renderData(dataStr);
             isAppLoaded = true; 
-            
             setTimeout(() => { document.getElementById('loadingOverlay').classList.add('hidden'); }, 400);
         }
 
@@ -372,7 +357,6 @@
             updateOverdueUI();
             updateLogic();
             
-            // SORTABLEJS - SECCIONES (CERO DELAY + FORCE FALLBACK PARA MÓVIL)
             new Sortable(document.getElementById('activities-container'), {
                 animation: 350, handle: '.card-drag-handle', forceFallback: true, 
                 onEnd: function() { saveDataLocalAndCloud(true); }
@@ -382,11 +366,8 @@
         function toggleStats(btn) {
             const panel = btn.closest('.activity-card').querySelector('.stats-panel');
             panel.classList.toggle('open');
-            if(panel.classList.contains('open')) {
-                btn.style.color = 'var(--system-blue)';
-            } else {
-                btn.style.color = 'var(--system-gray)';
-            }
+            if(panel.classList.contains('open')) btn.style.color = 'var(--system-blue)';
+            else btn.style.color = 'var(--system-gray)';
         }
 
         function updateOverdueUI() {
@@ -394,9 +375,7 @@
             if (overdueTasksDB.length > 0) {
                 btn.style.display = 'flex';
                 document.getElementById('overdueCount').innerText = overdueTasksDB.length;
-            } else {
-                btn.style.display = 'none';
-            }
+            } else btn.style.display = 'none';
         }
 
         function openOverdueModal() {
@@ -461,8 +440,12 @@
             });
             
             const dataStr = JSON.stringify(data);
+            
+            // CANDADO: Evita sobreescritura si no hubo cambios locales reales
+            if (dataStr === currentDataString) return; 
+            
             currentDataString = dataStr; 
-            localStorage.setItem('tasky_pro_v16', dataStr); 
+            localStorage.setItem('tasky_pro_v17', dataStr); 
 
             const uploadTask = () => {
                 fetch(`${API_URL}${JSONBIN_ID}`, {
@@ -513,7 +496,11 @@
             });
         }
 
-        function togglePriority(btn) { const task = btn.closest('.task-item'); task.classList.toggle('is-critical'); saveDataLocalAndCloud(true); }
+        function togglePriority(btn) { 
+            const task = btn.closest('.task-item'); task.classList.toggle('is-critical'); 
+            if(navigator.vibrate) navigator.vibrate(30);
+            saveDataLocalAndCloud(true); 
+        }
 
         let activityCounter = 0;
         function addActivity(title = '', createEmptyTask = true, forceId = null) {
@@ -547,12 +534,16 @@
             container.appendChild(card);
             const taskList = card.querySelector('.task-list');
             
-            // SORTABLEJS - TAREAS (CERO DELAY + FORCE FALLBACK PARA MÓVIL)
+            // CONFIGURACIÓN DE ARRASTRE MÓVIL PROFESIONAL
             new Sortable(taskList, {
-                group: 'shared-tasks', animation: 250, handle: '.drag-handle',
+                group: 'shared-tasks', animation: 250, 
+                filter: '.task-input, .btn-check, .btn-priority, .btn-remove-task', // Bloquea el arrastre si tocas inputs o botones
+                preventOnFilter: false,
+                delay: 250, // 250ms de Long-Press para levantar la tarea
+                delayOnTouchOnly: true, // Solo requiere Long-Press en celulares
                 ghostClass: 'sortable-ghost-task', dragClass: 'sortable-drag',
                 multiDrag: true, multiDragKey: 'CTRL', selectedClass: 'selected-task',
-                forceFallback: true, 
+                onChoose: function() { if(navigator.vibrate) navigator.vibrate(40); }, // HAPTIC FEEDBACK
                 onEnd: function() { updateLogic(); saveDataLocalAndCloud(true); }
             });
 
@@ -565,7 +556,7 @@
             const task = document.createElement('div');
             task.className = 'task-item'; task.dataset.date = dateStr || getTodayString();
             task.innerHTML = `
-                <div class="drag-handle" title="Mover (Ctrl+Clic para seleccionar varias)"><svg width="18" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line></svg></div>
+                <div class="drag-handle" title="Mantener presionado para mover"><svg width="18" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line></svg></div>
                 <button class="btn-priority" onclick="togglePriority(this)" title="Marcar Urgente">🚩</button>
                 <div class="btn-check" onclick="toggleComplete(this)"></div>
                 <textarea class="task-input" rows="1" placeholder="Añadir tarea..." onkeydown="handleKeyDown(event, this)" onpaste="handlePaste(event, this)"></textarea>
@@ -604,6 +595,8 @@
             const isCompleted = taskItem.classList.contains('completed');
             const globalList = document.getElementById('global-completed-list');
             const container = document.getElementById('completed-container');
+
+            if(navigator.vibrate) navigator.vibrate(40); // HAPTIC FEEDBACK
 
             taskItem.style.opacity = '0'; taskItem.style.transform = 'scale(0.9)';
             setTimeout(() => {
