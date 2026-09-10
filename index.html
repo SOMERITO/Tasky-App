@@ -5,23 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <!-- ==========================================
          TASKY - PRO EDITION 
-         Versión: 19.0 (Arquitectura Empresarial)
+         Versión: 20.0 (Pure Firebase Architecture)
          Actualizaciones: 
-         - Backend: Migración a Firebase Firestore (WebSockets Real-Time).
-         - UX Móvil: Long-press (300ms) para arrastre perfecto, tap para editar.
-         - UI: Animaciones de carga y renderizado optimizadas por GPU.
+         - Eliminación total de JSONBin (Causa de la condición de carrera).
+         - Carga inicial gestionada 100% por WebSockets (0 delays).
+         - Bloqueo "isRendering" para evitar auto-borrados del DOM.
          ========================================== -->
     <title>Tasky</title>
     
-    <link rel="icon" type="image/png" href="icon.png?v=19">
-    <link rel="apple-touch-icon" href="icon.png?v=19">
-    <link rel="manifest" href="manifest.json?v=19">
+    <link rel="icon" type="image/png" href="icon.png?v=20">
+    <link rel="apple-touch-icon" href="icon.png?v=20">
+    <link rel="manifest" href="manifest.json?v=20">
     <meta name="theme-color" content="#1C1C1E">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
     <!-- Librerías Externas -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-    <!-- Firebase Compat SDKs para HTML directo -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
@@ -45,7 +44,6 @@
 
         @keyframes moveBackground { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
-        /* Pantalla de Carga iOS Style */
         .loading-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(255, 255, 255, 0.65); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
@@ -87,7 +85,6 @@
         .empty-state svg { opacity: 0.4; margin-bottom: 20px; }
         .empty-state h3 { font-size: 1.5rem; margin-bottom: 10px; color: var(--text-main); font-weight: 700; }
 
-        /* Tarjetas */
         .activity-card {
             background: var(--card-bg); border-radius: var(--radius-lg); padding: 24px 30px; margin-bottom: 24px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.8);
@@ -99,7 +96,6 @@
         .sortable-ghost-task { height: 4px !important; padding: 0 !important; margin: 4px 0 !important; background-color: var(--system-blue) !important; border: none !important; border-radius: 4px !important; overflow: hidden !important; box-shadow: 0 0 12px var(--system-blue) !important;}
         .sortable-ghost-task * { display: none !important; } 
         
-        /* Física de arrastre premium */
         .sortable-drag { cursor: grabbing !important; box-shadow: 0 25px 50px rgba(0,0,0,0.2) !important; opacity: 0.95; transform: scale(1.04) rotate(1deg) translate3d(0,0,0) !important; z-index: 999;}
         .selected-task { background-color: rgba(0, 122, 255, 0.12) !important; border-color: var(--system-blue) !important; transform: scale(1.02); }
 
@@ -124,7 +120,6 @@
         .stat-label { font-size: 0.75rem; font-weight: 600; color: var(--system-gray); text-transform: uppercase; letter-spacing: 0.5px;}
         .stat-msg { font-size: 0.95rem; font-weight: 500; color: var(--text-main); text-align: center; background: rgba(0,0,0,0.05); padding: 10px; border-radius: 10px; }
 
-        /* Tareas */
         .task-list { list-style: none; display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
         .task-item {
             display: flex; align-items: flex-start; background: rgba(255, 255, 255, 0.95); border-radius: var(--radius-md); padding: 12px 10px;
@@ -253,9 +248,7 @@
     </div>
 
     <script>
-        // ==========================================
-        // CONFIGURACIÓN FIREBASE (WebSockets Real-Time)
-        // ==========================================
+        // FIREBASE INITIALIZATION
         const firebaseConfig = {
             apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YrhvEcb8",
             authDomain: "tasky-7a30c.firebaseapp.com",
@@ -264,21 +257,21 @@
             messagingSenderId: "505071526437",
             appId: "1:505071526437:web:6c9eb46dbb4fef296655cc"
         };
-
-        // Inicializar Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const taskyDoc = db.collection('workspace').doc('main_board');
 
         let overdueTasksDB = [];
         let isAppLoaded = false; 
+        let isRendering = false; // CANDADO ACTIVO: Evita borrar la nube mientras carga
         let currentDataString = ""; 
         let isUserTyping = false; 
-        let pendingRemoteUpdate = null; // Guarda cambios de la nube si estás escribiendo
+        let pendingRemoteUpdate = null; 
+        let cloudSyncTimer;
 
         if (typeof Sortable !== 'undefined' && typeof Sortable.MultiDrag !== 'undefined') Sortable.mount(new Sortable.MultiDrag());
 
-        // GLOBAL FOCUS TRACKER
+        // FOCUS TRACKER
         document.addEventListener('focusin', (e) => { 
             if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') isUserTyping = true; 
         });
@@ -286,9 +279,7 @@
         document.addEventListener('focusout', (e) => { 
             if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') { 
                 isUserTyping = false; 
-                saveDataLocalAndCloud(); 
-                
-                // Si llegó una actualización mientras escribías, aplícala ahora que terminaste
+                // Aplicar actualización pendiente de la nube si llegó mientras escribíamos
                 if (pendingRemoteUpdate) {
                     currentDataString = pendingRemoteUpdate;
                     renderData(pendingRemoteUpdate);
@@ -299,39 +290,35 @@
 
         document.addEventListener('input', (e) => {
             if(e.target.classList.contains('task-input')) { autoResizeTextarea(e.target); updateLogic(); }
-            saveDataLocalAndCloud(); // Firebase maneja el throttling automáticamente
+            clearTimeout(cloudSyncTimer);
+            cloudSyncTimer = setTimeout(() => { saveDataLocalAndCloud(); }, 800);
         });
 
         // ==========================================
-        // EL MOTOR EN TIEMPO REAL (onSnapshot)
+        // MOTOR EN TIEMPO REAL (onSnapshot)
         // ==========================================
         taskyDoc.onSnapshot((doc) => {
             if (doc.exists) {
                 const dataStr = JSON.stringify(doc.data());
                 
-                // Si el cambio lo hicimos nosotros mismos, lo ignoramos para evitar parpadeos
                 if (dataStr === currentDataString) {
                     hideLoading();
                     return; 
                 }
                 
-                // Si estamos escribiendo, guardamos el cambio en cola para no interrumpir el teclado
                 if (isUserTyping) {
                     pendingRemoteUpdate = dataStr;
                 } else {
                     currentDataString = dataStr;
-                    localStorage.setItem('tasky_pro_v19', dataStr);
+                    localStorage.setItem('tasky_pro_v20', dataStr);
                     renderData(dataStr);
                 }
             } else {
-                // Si la base de datos está en blanco (primera vez), creamos la estructura
                 taskyDoc.set({ categories: [], completed: [] });
             }
             hideLoading();
         }, (error) => {
-            console.error("Error de conexión:", error);
-            // Modo Offline Fallback
-            const localData = localStorage.getItem('tasky_pro_v19');
+            const localData = localStorage.getItem('tasky_pro_v20');
             if (localData) renderData(localData);
             hideLoading();
         });
@@ -343,16 +330,12 @@
             }
         }
 
-        window.addEventListener('beforeunload', () => {
-            if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-            if (isAppLoaded) { saveDataLocalAndCloud(); } 
-        });
-
         function getTodayString() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
         function autoResizeTextarea(el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; }
         function toggleFabMenu() { document.getElementById('fabMenu').classList.toggle('active'); }
 
         function renderData(dataStr) {
+            isRendering = true; // ACTIVAR CANDADO
             document.getElementById('activities-container').innerHTML = '';
             overdueTasksDB = [];
             const today = getTodayString();
@@ -388,6 +371,8 @@
                 animation: 350, handle: '.card-drag-handle', forceFallback: true, 
                 onEnd: function() { saveDataLocalAndCloud(); }
             });
+            
+            isRendering = false; // LIBERAR CANDADO
         }
 
         function toggleStats(btn) {
@@ -450,7 +435,7 @@
         }
 
         function saveDataLocalAndCloud() {
-            if (!isAppLoaded) return; 
+            if (!isAppLoaded || isRendering) return; // PROHIBE GUARDAR MIENTRAS SE CONSTRUYE EL DOM
 
             const dataObj = { categories: [], completed: [] };
             document.querySelectorAll('.activity-card:not(.completed-card)').forEach(card => {
@@ -470,10 +455,9 @@
             if (dataStr === currentDataString) return; 
             
             currentDataString = dataStr; 
-            localStorage.setItem('tasky_pro_v19', dataStr); 
+            localStorage.setItem('tasky_pro_v20', dataStr); 
 
-            // Firebase Write (Instantáneo vía WebSockets)
-            taskyDoc.set(dataObj).catch(e => console.error("Error al guardar en Firebase:", e));
+            taskyDoc.set(dataObj).catch(e => console.error(e));
         }
 
         function updateLogic() {
@@ -551,21 +535,16 @@
             container.appendChild(card);
             const taskList = card.querySelector('.task-list');
             
-            // ==========================================
-            // FIX ARRASTRE MÓVIL (Long-Press Perfecto)
-            // ==========================================
             new Sortable(taskList, {
                 group: 'shared-tasks', 
                 animation: 250, 
-                // Filtra los inputs para que puedas tocar y escribir sin arrastrar por accidente
                 filter: '.task-input, .btn-check, .btn-priority, .btn-remove-task',
                 preventOnFilter: false,
-                delay: 300, // 300ms de Long-Press para levantar la tarea en móvil
-                delayOnTouchOnly: true, 
-                fallbackTolerance: 5, // Permite que el dedo tiemble un poco sin cancelar el arrastre
+                delay: 300, delayOnTouchOnly: true, 
+                fallbackTolerance: 5, 
                 ghostClass: 'sortable-ghost-task', dragClass: 'sortable-drag',
                 multiDrag: true, multiDragKey: 'CTRL', selectedClass: 'selected-task',
-                onChoose: function() { if(navigator.vibrate) navigator.vibrate(40); }, // Haptic Feedback
+                onChoose: function() { if(navigator.vibrate) navigator.vibrate(40); },
                 onEnd: function() { updateLogic(); saveDataLocalAndCloud(); }
             });
 
