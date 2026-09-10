@@ -5,17 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <!-- ==========================================
          TASKY - PRO EDITION 
-         Versión: 20.0 (Pure Firebase Architecture)
+         Versión: 21.0 (Arquitectura Empresarial - Sync Agresivo)
          Actualizaciones: 
-         - Eliminación total de JSONBin (Causa de la condición de carrera).
-         - Carga inicial gestionada 100% por WebSockets (0 delays).
-         - Bloqueo "isRendering" para evitar auto-borrados del DOM.
+         - Eliminación de bloqueos de input: Sincronización ininterrumpida.
+         - Optimizado para compilación Nativa (APK/iOS).
          ========================================== -->
     <title>Tasky</title>
     
-    <link rel="icon" type="image/png" href="icon.png?v=20">
-    <link rel="apple-touch-icon" href="icon.png?v=20">
-    <link rel="manifest" href="manifest.json?v=20">
+    <link rel="icon" type="image/png" href="icon.png?v=21">
+    <link rel="apple-touch-icon" href="icon.png?v=21">
     <meta name="theme-color" content="#1C1C1E">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
@@ -238,7 +236,6 @@
         </div>
     </div>
 
-    <!-- Modal Tareas Atrasadas -->
     <div class="modal-overlay" id="overdueModal">
         <div class="modal-content">
             <h2 style="margin-bottom: 20px; color: var(--text-main); font-weight: 800;">⚠️ Atrasadas</h2>
@@ -263,30 +260,11 @@
 
         let overdueTasksDB = [];
         let isAppLoaded = false; 
-        let isRendering = false; // CANDADO ACTIVO: Evita borrar la nube mientras carga
+        let isRendering = false; 
         let currentDataString = ""; 
-        let isUserTyping = false; 
-        let pendingRemoteUpdate = null; 
         let cloudSyncTimer;
 
         if (typeof Sortable !== 'undefined' && typeof Sortable.MultiDrag !== 'undefined') Sortable.mount(new Sortable.MultiDrag());
-
-        // FOCUS TRACKER
-        document.addEventListener('focusin', (e) => { 
-            if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') isUserTyping = true; 
-        });
-        
-        document.addEventListener('focusout', (e) => { 
-            if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') { 
-                isUserTyping = false; 
-                // Aplicar actualización pendiente de la nube si llegó mientras escribíamos
-                if (pendingRemoteUpdate) {
-                    currentDataString = pendingRemoteUpdate;
-                    renderData(pendingRemoteUpdate);
-                    pendingRemoteUpdate = null;
-                }
-            } 
-        });
 
         document.addEventListener('input', (e) => {
             if(e.target.classList.contains('task-input')) { autoResizeTextarea(e.target); updateLogic(); }
@@ -295,30 +273,27 @@
         });
 
         // ==========================================
-        // MOTOR EN TIEMPO REAL (onSnapshot)
+        // MOTOR EN TIEMPO REAL (SIN BLOQUEOS)
         // ==========================================
         taskyDoc.onSnapshot((doc) => {
             if (doc.exists) {
                 const dataStr = JSON.stringify(doc.data());
-                
                 if (dataStr === currentDataString) {
                     hideLoading();
                     return; 
                 }
                 
-                if (isUserTyping) {
-                    pendingRemoteUpdate = dataStr;
-                } else {
-                    currentDataString = dataStr;
-                    localStorage.setItem('tasky_pro_v20', dataStr);
-                    renderData(dataStr);
-                }
+                // Actualiza incondicionalmente la pantalla para que sea 100% Real-Time
+                currentDataString = dataStr;
+                localStorage.setItem('tasky_pro_v21', dataStr);
+                renderData(dataStr);
+                
             } else {
                 taskyDoc.set({ categories: [], completed: [] });
             }
             hideLoading();
         }, (error) => {
-            const localData = localStorage.getItem('tasky_pro_v20');
+            const localData = localStorage.getItem('tasky_pro_v21');
             if (localData) renderData(localData);
             hideLoading();
         });
@@ -335,7 +310,7 @@
         function toggleFabMenu() { document.getElementById('fabMenu').classList.toggle('active'); }
 
         function renderData(dataStr) {
-            isRendering = true; // ACTIVAR CANDADO
+            isRendering = true; 
             document.getElementById('activities-container').innerHTML = '';
             overdueTasksDB = [];
             const today = getTodayString();
@@ -372,7 +347,7 @@
                 onEnd: function() { saveDataLocalAndCloud(); }
             });
             
-            isRendering = false; // LIBERAR CANDADO
+            isRendering = false; 
         }
 
         function toggleStats(btn) {
@@ -435,7 +410,7 @@
         }
 
         function saveDataLocalAndCloud() {
-            if (!isAppLoaded || isRendering) return; // PROHIBE GUARDAR MIENTRAS SE CONSTRUYE EL DOM
+            if (!isAppLoaded || isRendering) return; 
 
             const dataObj = { categories: [], completed: [] };
             document.querySelectorAll('.activity-card:not(.completed-card)').forEach(card => {
@@ -455,7 +430,7 @@
             if (dataStr === currentDataString) return; 
             
             currentDataString = dataStr; 
-            localStorage.setItem('tasky_pro_v20', dataStr); 
+            localStorage.setItem('tasky_pro_v21', dataStr); 
 
             taskyDoc.set(dataObj).catch(e => console.error(e));
         }
@@ -641,10 +616,6 @@
             });
             if(text.trim() === '') return;
             navigator.clipboard.writeText(text.trim());
-        }
-        
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js'); });
         }
     </script>
 </body>
