@@ -5,20 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- ==========================================
          TASKY - PRO EDITION 
-         Versión: 22.0 (Auditoría de Seguridad y Estabilidad superada)
+         Versión: 24.0 (Refactorización de Arquitectura: Lucide Icons, Botón Global, Clean WhatsApp)
          ========================================== -->
     <title>Tasky</title>
     
-    <link rel="icon" type="image/png" href="icon.png?v=22">
-    <link rel="apple-touch-icon" href="icon.png?v=22">
-    <link rel="manifest" href="manifest.json?v=22">
+    <link rel="icon" type="image/png" href="icon.png?v=24">
+    <link rel="apple-touch-icon" href="icon.png?v=24">
+    <link rel="manifest" href="manifest.json?v=24">
     <meta name="theme-color" content="#1C1C1E">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
-    <!-- SortableJS fijado para evitar quiebres por actualizaciones -->
+    <!-- Core Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
         :root {
@@ -78,7 +79,6 @@
         @keyframes gradientTitle { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
 
         .empty-state { text-align: center; padding: 60px 20px; color: var(--system-gray); animation: slideUpFade 0.6s var(--bounce) both; }
-        .empty-state svg { opacity: 0.4; margin-bottom: 20px; }
         .empty-state h3 { font-size: 1.5rem; margin-bottom: 10px; color: var(--text-main); font-weight: 700; }
 
         .activity-card {
@@ -116,22 +116,17 @@
         .stat-label { font-size: 0.75rem; font-weight: 600; color: var(--system-gray); text-transform: uppercase; letter-spacing: 0.5px;}
         .stat-msg { font-size: 0.95rem; font-weight: 500; color: var(--text-main); text-align: center; background: rgba(0,0,0,0.05); padding: 10px; border-radius: 10px; }
 
-        .task-list { list-style: none; display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
+        .task-list { list-style: none; display: flex; flex-direction: column; gap: 8px; min-height: 5px; }
         .task-item {
             display: flex; align-items: flex-start; background: rgba(255, 255, 255, 0.95); border-radius: var(--radius-md); padding: 12px 10px;
             border: 1px solid rgba(255, 255, 255, 0.6); transition: border 0.3s, transform 0.3s var(--bounce), box-shadow 0.3s;
             transform: translate3d(0,0,0);
         }
-        .task-item.is-critical { background: rgba(255, 59, 48, 0.05); border: 1px solid rgba(255, 59, 48, 0.3); }
-        .task-item.is-critical .task-input { font-weight: 600; color: var(--system-red); }
         .task-item:focus-within:not(.selected-task) { background: #FFFFFF; box-shadow: 0 8px 20px rgba(0,0,0,0.08); transform: scale(1.02); z-index: 2; border-color: var(--system-blue);}
 
         .drag-handle { cursor: grab; color: #D1D5DB; padding: 6px 8px; margin-top: 0px; flex-shrink: 0; transition: color 0.2s; touch-action: none; }
         .drag-handle:active { cursor: grabbing; color: var(--system-blue); }
         
-        .btn-priority { background: transparent; border: none; cursor: pointer; font-size: 1.2rem; color: #D1D5DB; margin-right: 6px; padding-top: 2px; transition: transform 0.3s var(--bounce);}
-        .is-critical .btn-priority { transform: scale(1.15); }
-
         .btn-check { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #C7C7CC; background: transparent; cursor: pointer; margin-right: 12px; flex-shrink: 0; margin-top: 2px; transition: transform 0.2s var(--bounce), border-color 0.2s, background 0.2s; }
         .btn-check:active { transform: scale(0.7); }
         
@@ -143,17 +138,27 @@
         .completed-card { background: rgba(255,255,255,0.4); border: 1px dashed rgba(0,0,0,0.15); box-shadow: none; }
         .task-item.completed { background: transparent; border: none; border-bottom: 1px solid rgba(0,0,0,0.05); border-radius: 0; box-shadow: none; transform: none;}
         .task-item.completed .task-input { text-decoration: line-through; color: var(--system-gray); }
-        .task-item.completed .drag-handle, .task-item.completed .btn-priority { display: none; }
+        .task-item.completed .drag-handle { display: none; }
         .task-item.completed .btn-check { background: var(--system-blue); border-color: var(--system-blue); position: relative; }
         @keyframes checkDraw { 0% { width: 0; height: 0; opacity: 0;} 100% { width: 5px; height: 11px; opacity: 1;} }
         .task-item.completed .btn-check::after { content: ''; position: absolute; left: 7px; top: 4px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); animation: checkDraw 0.4s var(--bounce) forwards; }
+
+        /* NUEVO BOTÓN AÑADIR TAREA */
+        .add-task-btn {
+            width: 100%; padding: 12px; margin-top: 8px; background: transparent; 
+            border: 2px dashed rgba(0,0,0,0.1); border-radius: var(--radius-md);
+            color: var(--system-gray); font-size: 1rem; font-weight: 600; cursor: pointer; 
+            transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .add-task-btn:hover { background: rgba(0,0,0,0.03); color: var(--system-blue); border-color: rgba(0,122,255,0.3); }
+        .add-task-btn:active { transform: scale(0.98); }
 
         .fab-wrapper { position: fixed; bottom: 40px; right: 40px; z-index: 1000; display: flex; flex-direction: column-reverse; align-items: center; gap: 15px; }
         .fab-btn { border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.2); transition: transform 0.3s var(--bounce); }
         .fab-main { width: 68px; height: 68px; background: var(--system-blue); z-index: 2; }
         .fab-main:hover { transform: scale(1.08); }
         .fab-sub { width: 52px; height: 52px; opacity: 0; visibility: hidden; transform: translateY(20px) scale(0.5); z-index: 1; position: absolute; }
-        .fab-wrapper.active .fab-main svg { transform: rotate(135deg); transition: 0.3s; } 
+        .fab-wrapper.active .fab-main i { transform: rotate(135deg); transition: 0.3s; } 
         .fab-wrapper.active .fab-sub { opacity: 1; visibility: visible; transform: translateY(0) scale(1); transition: 0.3s var(--bounce); }
         .fab-wrapper.active .fab-sub:nth-child(2) { bottom: 85px; }
         .fab-wrapper.active .fab-sub:nth-child(3) { bottom: 150px; transition-delay: 0.05s; }
@@ -205,9 +210,7 @@
         <h1>Tasky</h1>
 
         <div id="empty-state" class="empty-state" style="display: none;">
-            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-            </svg>
+            <i data-lucide="check-square" style="width: 80px; height: 80px; opacity: 0.4; margin-bottom: 20px;" stroke-width="1.5"></i>
             <h3>Todo limpio por aquí ✨</h3>
             <p>Toca el botón azul inferior para crear tu primera fase.</p>
         </div>
@@ -223,13 +226,13 @@
         
         <div class="fab-wrapper" id="fabMenu">
             <button class="fab-btn fab-main" aria-label="Menú Principal" onclick="toggleFabMenu()">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <i data-lucide="plus" style="width: 32px; height: 32px;" stroke-width="2.5"></i>
             </button>
             <button class="fab-btn fab-sub bg-blue" aria-label="Añadir Fase" onclick="addActivity(); toggleFabMenu();" style="background: var(--system-blue);" title="Nueva Fase">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <i data-lucide="layers" style="width: 24px; height: 24px;" stroke-width="2.5"></i>
             </button>
             <button class="fab-btn fab-sub bg-green" aria-label="Copiar a WhatsApp" onclick="copyToWhatsApp(); toggleFabMenu();" title="Copiar WhatsApp">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                <i data-lucide="message-circle" style="width: 24px; height: 24px;" stroke-width="2.5"></i>
             </button>
         </div>
     </div>
@@ -264,6 +267,8 @@
         let pendingRemoteUpdate = null;
 
         if (typeof Sortable !== 'undefined' && typeof Sortable.MultiDrag !== 'undefined') Sortable.mount(new Sortable.MultiDrag());
+
+        function refreshIcons() { if(typeof lucide !== 'undefined') { lucide.createIcons(); } }
 
         function esc(str) {
             if (!str) return '';
@@ -300,12 +305,11 @@
                 if (dataStr === currentDataString) {
                     hideLoading(); return; 
                 }
-                
                 if (isUserTyping) {
                     pendingRemoteUpdate = dataStr;
                 } else {
                     currentDataString = dataStr;
-                    localStorage.setItem('tasky_pro_v22', dataStr);
+                    localStorage.setItem('tasky_pro_v24', dataStr);
                     renderData(dataStr);
                 }
             } else {
@@ -313,7 +317,7 @@
             }
             hideLoading();
         }, (error) => {
-            const localData = localStorage.getItem('tasky_pro_v22');
+            const localData = localStorage.getItem('tasky_pro_v24');
             if (localData) renderData(localData);
             hideLoading();
         });
@@ -343,18 +347,17 @@
                     data.categories.forEach((cat) => {
                         const card = addActivity(cat.title, false, cat.id);
                         const list = card.querySelector('.task-list');
-                        
-                        cat.tasks.forEach(task => {
-                            if (task.date < today) {
-                                overdueTasksDB.push({ ...task, originCat: cat.id });
-                            } else {
-                                const input = createTaskElement(list, null, task.date);
-                                input.value = task.text;
-                                if(task.critical) input.closest('.task-item').classList.add('is-critical');
-                                setTimeout(()=> autoResizeTextarea(input), 0);
-                            }
-                        });
-                        createTaskElement(list, null, today); 
+                        if(cat.tasks && cat.tasks.length > 0) {
+                            cat.tasks.forEach(task => {
+                                if (task.date < today) {
+                                    overdueTasksDB.push({ ...task, originCat: cat.id });
+                                } else {
+                                    const input = createTaskElement(list, null, task.date);
+                                    input.value = task.text;
+                                    setTimeout(()=> autoResizeTextarea(input), 0);
+                                }
+                            });
+                        }
                     });
                 } else {
                     addActivity('☀️ Fase 1: Mañana');
@@ -369,7 +372,9 @@
                         t.innerHTML = `
                             <div class="btn-check" aria-label="Restaurar" onclick="toggleComplete(this)"></div>
                             <textarea class="task-input" rows="1" readonly>${esc(task.text)}</textarea>
-                            <button class="btn-icon btn-remove-task" aria-label="Eliminar Tarea" tabindex="-1" onclick="this.parentElement.remove(); updateLogic(); saveDataLocalAndCloud();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
+                            <button class="btn-icon btn-remove-task" aria-label="Eliminar Tarea" tabindex="-1" onclick="this.parentElement.remove(); updateLogic(); saveDataLocalAndCloud();">
+                                <i data-lucide="x" style="width: 20px; height: 20px;" stroke-width="2.5"></i>
+                            </button>
                         `;
                         globalList.appendChild(t);
                     });
@@ -381,6 +386,7 @@
             
             updateOverdueUI();
             updateLogic();
+            refreshIcons();
             
             new Sortable(document.getElementById('activities-container'), {
                 animation: 350, handle: '.card-drag-handle', forceFallback: true, 
@@ -438,7 +444,6 @@
                 const list = targetCard.querySelector('.task-list');
                 const input = createTaskElement(list, null, getTodayString());
                 input.value = task.text;
-                if(task.critical) input.closest('.task-item').classList.add('is-critical');
                 setTimeout(()=> autoResizeTextarea(input), 0);
             }
             
@@ -458,7 +463,7 @@
                 card.querySelectorAll('.task-item:not(.completed)').forEach(t => {
                     const text = t.querySelector('.task-input').value;
                     if(text.trim() !== '') {
-                        tasks.push({ text, date: t.dataset.date, critical: t.classList.contains('is-critical') });
+                        tasks.push({ text, date: t.dataset.date });
                     }
                 });
                 const cardOverdue = overdueTasksDB.filter(o => o.originCat === card.id);
@@ -469,8 +474,7 @@
                 dataObj.completed.push({
                     text: t.querySelector('.task-input').value,
                     originCat: t.dataset.originId,
-                    date: t.dataset.date,
-                    critical: t.classList.contains('is-critical')
+                    date: t.dataset.date
                 });
             });
             
@@ -478,7 +482,7 @@
             if (dataStr === currentDataString) return; 
             
             currentDataString = dataStr; 
-            localStorage.setItem('tasky_pro_v22', dataStr); 
+            localStorage.setItem('tasky_pro_v24', dataStr); 
 
             taskyDoc.set(dataObj).catch(e => {
                 console.error("Error guardando:", e);
@@ -523,10 +527,12 @@
             });
         }
 
-        function togglePriority(btn) { 
-            const task = btn.closest('.task-item'); task.classList.toggle('is-critical'); 
-            if(navigator.vibrate) navigator.vibrate(30);
-            saveDataLocalAndCloud(); 
+        function addNewTaskToCard(btn) {
+            const list = btn.previousElementSibling;
+            const input = createTaskElement(list, null, getTodayString());
+            input.focus();
+            updateLogic();
+            saveDataLocalAndCloud();
         }
 
         function addActivity(title = '', createEmptyTask = true, forceId = null) {
@@ -537,15 +543,14 @@
             card.innerHTML = `
                 <div class="activity-header">
                     <div class="title-row">
-                        <div class="card-drag-handle" title="Mover Sección"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg></div>
+                        <div class="card-drag-handle" title="Mover Sección"><i data-lucide="grip-vertical" style="width: 22px; height: 22px;"></i></div>
                         <input type="text" class="activity-title" value="${esc(title)}" placeholder="Fase o Bloque...">
                         <div class="header-actions">
-                            <button aria-label="Ver Análisis" class="btn-icon" onclick="toggleStats(this)" title="Ver Análisis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22" stroke-width="2.5"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></button>
-                            <button aria-label="Eliminar Fase" class="btn-icon" onclick="this.closest('.activity-card').remove(); updateLogic(); saveDataLocalAndCloud();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
+                            <button aria-label="Ver Análisis" class="btn-icon" onclick="toggleStats(this)" title="Ver Análisis"><i data-lucide="bar-chart-2" style="width: 22px; height: 22px;" stroke-width="2.5"></i></button>
+                            <button aria-label="Eliminar Fase" class="btn-icon" onclick="this.closest('.activity-card').remove(); updateLogic(); saveDataLocalAndCloud();"><i data-lucide="x" style="width: 22px; height: 22px;" stroke-width="2.5"></i></button>
                         </div>
                     </div>
                     <div class="progress-container"><div class="progress-bar-bg"><div class="progress-bar-fill"></div></div><span class="progress-text">0/0</span></div>
-                    
                     <div class="stats-panel">
                         <div class="stats-grid">
                             <div class="stat-box"><span class="stat-value stat-total">0</span><span class="stat-label">Total</span></div>
@@ -556,6 +561,10 @@
                     </div>
                 </div>
                 <div class="task-list"></div>
+                <button class="add-task-btn" aria-label="Añadir nueva tarea" onclick="addNewTaskToCard(this)">
+                    <i data-lucide="plus-circle" style="width: 18px; height: 18px;" stroke-width="2.5"></i>
+                    Añadir tarea
+                </button>
             `;
             container.appendChild(card);
             const taskList = card.querySelector('.task-list');
@@ -563,7 +572,7 @@
             new Sortable(taskList, {
                 group: 'shared-tasks', 
                 animation: 250, 
-                filter: '.task-input, .btn-check, .btn-priority, .btn-remove-task',
+                filter: '.task-input, .btn-check, .btn-remove-task',
                 preventOnFilter: false,
                 delay: 300, delayOnTouchOnly: true, 
                 fallbackTolerance: 5, 
@@ -574,7 +583,8 @@
             });
 
             if(createEmptyTask) createTaskElement(taskList, null, getTodayString());
-            updateLogic(); saveDataLocalAndCloud(); 
+            updateLogic(); saveDataLocalAndCloud();
+            refreshIcons(); 
             return card;
         }
 
@@ -582,13 +592,13 @@
             const task = document.createElement('div');
             task.className = 'task-item'; task.dataset.date = dateStr || getTodayString();
             task.innerHTML = `
-                <div class="drag-handle" title="Mantener presionado para mover"><svg width="18" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line></svg></div>
-                <button aria-label="Marcar Urgente" class="btn-priority" onclick="togglePriority(this)" title="Marcar Urgente">🚩</button>
+                <div class="drag-handle" title="Mantener presionado para mover"><i data-lucide="grip-vertical" style="width: 18px; height: 20px;" stroke-width="2.5"></i></div>
                 <div class="btn-check" aria-label="Completar" onclick="toggleComplete(this)"></div>
                 <textarea class="task-input" rows="1" placeholder="Añadir tarea..." onkeydown="handleKeyDown(event, this)" onpaste="handlePaste(event, this)"></textarea>
-                <button aria-label="Eliminar Tarea" class="btn-icon btn-remove-task" tabindex="-1" onclick="this.parentElement.remove(); updateLogic(); saveDataLocalAndCloud();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
+                <button aria-label="Eliminar Tarea" class="btn-icon btn-remove-task" tabindex="-1" onclick="this.parentElement.remove(); updateLogic(); saveDataLocalAndCloud();"><i data-lucide="x" style="width: 20px; height: 20px;" stroke-width="2.5"></i></button>
             `;
             if (insertAfter) insertAfter.after(task); else listContainer.appendChild(task);
+            refreshIcons();
             return task.querySelector('.task-input');
         }
 
@@ -662,7 +672,7 @@
                 const validTasks = Array.from(card.querySelectorAll('.task-item:not(.completed)')).filter(t => t.querySelector('.task-input').value.trim() !== '');
                 if (title !== '' && validTasks.length > 0) {
                     text += `*${title}*\n`;
-                    validTasks.forEach((task, i) => text += `${i + 1}. ${task.classList.contains('is-critical') ? '🚨 *'+task.querySelector('.task-input').value.trim()+'*' : task.querySelector('.task-input').value.trim()}\n`);
+                    validTasks.forEach(task => text += `- ${task.querySelector('.task-input').value.trim()}\n`);
                     text += `\n`; 
                 }
             });
@@ -672,14 +682,14 @@
             }).catch(() => alert("Error al copiar"));
         }
 
-        // Eliminación del Service Worker (Elimina la trampa de caché PWA)
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for(let registration of registrations) {
-                    registration.unregister();
-                }
+                for(let registration of registrations) { registration.unregister(); }
             });
         }
+
+        // Carga inicial de íconos
+        window.onload = () => { refreshIcons(); };
     </script>
 </body>
 </html>
