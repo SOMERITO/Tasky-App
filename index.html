@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V42 -->
+  <!-- TASKY PRO · V43 -->
     <!-- Build estable base + V41 · Placeholder de fases optimizado + línea de inserción de tareas refinada -->
 
   <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
@@ -692,7 +692,7 @@
     }
 
     /* =========================================================
-       TASKY PRO V41 · Drag refinado + repetición semanal
+       TASKY PRO V43 · Seguridad de datos + drag estable + repetición semanal
        ========================================================= */
 
     .task-drop-line {
@@ -2470,6 +2470,7 @@
       </div>
 
       <div class="modal-list">
+        <div class="soft-btn" style="cursor:default;justify-content:flex-start;opacity:.9"><i data-lucide="shield-check"></i><span>Protección de datos activa · 20 respaldos locales</span></div>
         <button class="soft-btn" data-menu-action="export"><i data-lucide="download"></i> Exportar respaldo JSON</button>
         <label class="soft-btn" style="cursor:pointer">
           <i data-lucide="upload"></i>
@@ -2477,6 +2478,7 @@
           <input id="importInput" type="file" accept="application/json,.json" hidden>
         </label>
         <button class="soft-btn" data-menu-action="recover"><i data-lucide="shield-check"></i> Recuperar último respaldo seguro</button>
+        <button class="soft-btn" data-menu-action="export-safety"><i data-lucide="archive"></i> Exportar historial de respaldos</button>
         <button class="soft-btn" data-menu-action="reset"><i data-lucide="trash-2"></i> Vaciar tablero</button>
       </div>
     </div>
@@ -2503,7 +2505,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 42;
+    const APP_VERSION = 43;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -2748,7 +2750,9 @@
     }
 
 
-    const SAFETY_BACKUP_KEY = 'tasky_safety_backup_v42';
+    const SAFETY_BACKUP_KEY = 'tasky_safety_backup';
+    const SAFETY_HISTORY_KEY = 'tasky_safety_history_v43';
+    const SAFETY_HISTORY_LIMIT = 20;
 
     function stateStats(source = state) {
       const categories = Array.isArray(source?.categories) ? source.categories : [];
@@ -2762,16 +2766,43 @@
       };
     }
 
-    function saveSafetyBackup(reason = 'snapshot') {
+    function statePayload(source = state) {
+      return {
+        version: APP_VERSION,
+        categories: Array.isArray(source?.categories) ? source.categories : [],
+        completed: Array.isArray(source?.completed) ? source.completed : []
+      };
+    }
+
+    function createSafetyRecord(reason = 'snapshot', source = state) {
+      return {
+        app: 'Tasky',
+        version: APP_VERSION,
+        reason,
+        savedAt: new Date().toISOString(),
+        stats: stateStats(source),
+        data: cloneState(source)
+      };
+    }
+
+    function saveSafetyBackup(reason = 'snapshot', source = state) {
       try {
-        const backup = {
-          app: 'Tasky',
-          version: APP_VERSION,
-          reason,
-          savedAt: new Date().toISOString(),
-          data: cloneState(state)
-        };
-        localStorage.setItem(SAFETY_BACKUP_KEY, JSON.stringify(backup));
+        const record = createSafetyRecord(reason, source);
+        localStorage.setItem(SAFETY_BACKUP_KEY, JSON.stringify(record));
+
+        let history = [];
+        try {
+          history = JSON.parse(localStorage.getItem(SAFETY_HISTORY_KEY) || '[]');
+          if (!Array.isArray(history)) history = [];
+        } catch (_) {
+          history = [];
+        }
+
+        const signature = hash(record.data);
+        history = history.filter(item => hash(item?.data || {}) !== signature);
+        history.unshift(record);
+        history = history.slice(0, SAFETY_HISTORY_LIMIT);
+        localStorage.setItem(SAFETY_HISTORY_KEY, JSON.stringify(history));
       } catch (error) {
         console.warn('No se pudo crear respaldo de seguridad:', error);
       }
@@ -2789,14 +2820,59 @@
       }
     }
 
-    function looksLikeUnexpectedDataLoss(candidate) {
-      const knownGood = loadSafetyBackup();
-      if (!knownGood) return false;
-      const good = stateStats(knownGood);
+    function loadSafetyHistory() {
+      try {
+        const raw = localStorage.getItem(SAFETY_HISTORY_KEY);
+        const parsed = JSON.parse(raw || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        console.warn('Historial de respaldos inválido:', error);
+        return [];
+      }
+    }
+
+    function looksLikeUnexpectedDataLoss(candidate, reference = loadSafetyBackup()) {
+      if (!reference) return false;
+      const good = stateStats(reference);
       const incoming = stateStats(candidate);
-      if (good.total < 8) return false;
+      if (good.total < 4) return false;
       if (incoming.total >= good.total) return false;
-      return incoming.total <= Math.max(2, Math.floor(good.total * 0.5));
+      return incoming.total <= Math.max(2, Math.floor(good.total * 0.50));
+    }
+
+    function looksLikeUnexpectedShrink(candidate, baseline = state) {
+      const base = stateStats(baseline);
+      const incoming = stateStats(candidate);
+      if (base.total < 6) return false;
+      if (incoming.total >= base.total) return false;
+      return incoming.total <= Math.max(2, Math.floor(base.total * 0.50));
+    }
+
+    function getLatestBackupRecord() {
+      const history = loadSafetyHistory();
+      return history[0] || null;
+    }
+
+    function exportSafetyHistory() {
+      const latest = getLatestBackupRecord();
+      const history = loadSafetyHistory();
+      const payload = {
+        app: 'Tasky',
+        exportVersion: APP_VERSION,
+        exportedAt: new Date().toISOString(),
+        latest,
+        history
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'tasky-safety-history-' + today() + '.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast('Historial de respaldos exportado', 'archive');
     }
 
     function loadLocalState() {
@@ -4447,12 +4523,17 @@
         toast('No hay un respaldo de seguridad disponible.', 'info', 'error');
         return;
       }
-      if (!confirm('Se restaurará el último estado seguro guardado localmente. ¿Continuar?')) return;
-      state = backup;
+      const current = stateStats(state);
+      const safe = stateStats(backup);
+      if (!confirm(`Se restaurará el último estado seguro (${safe.total} elementos). Tu estado actual tiene ${current.total}. ¿Continuar?`)) return;
+
+      // Conserva el estado actual por si la restauración fue equivocada.
+      saveSafetyBackup('antes de restaurar respaldo seguro', state);
+      state = normalizeState(backup);
       persistLocal();
       localDirty = true;
       render();
-      scheduleSave('recuperar respaldo seguro');
+      scheduleSave('recuperar respaldo seguro', 0);
       toast('Respaldo seguro restaurado', 'shield-check');
       closeModal('menuModal');
     }
@@ -4460,6 +4541,7 @@
     function resetBoard() {
       if (!confirm("¿Seguro que quieres vaciar todo el tablero? Esta acción reemplaza las fases y las tareas actuales.")) return;
 
+      saveSafetyBackup('antes de vaciar tablero', state);
       state = defaultState();
       persistLocal();
       localDirty = true;
@@ -4481,54 +4563,122 @@
 
     async function saveCloud(reason) {
       if (!taskyDoc || !navigator.onLine) {
-        setSyncStatus("offline", "Guardado local");
+        setSyncStatus('offline', 'Guardado local');
         return;
       }
 
-      if (looksLikeUnexpectedDataLoss(state) && !/delete|eliminar|vaciar|reset|importar/i.test(reason || '')) {
-        const backup = loadSafetyBackup();
-        if (backup) {
-          console.error('Guardado bloqueado por seguridad: el estado actual parece truncado.', { reason, current: stateStats(state), backup: stateStats(backup) });
-          state = backup;
-          localDirty = false;
-          pendingRemoteState = null;
-          persistLocal();
-          render();
-          setSyncStatus('error', 'Guardado protegido');
-          toast('Protección activada: se evitó sobrescribir tus tareas.', 'shield-alert', 'error');
-          return;
-        }
+      const allowDestructive = /delete|eliminar|vaciar|reset|importar|recuperar/i.test(reason || '');
+      const currentStats = stateStats(state);
+      const safetyBackup = loadSafetyBackup();
+
+      // Nunca sobrescribir Firestore con un estado que haya sufrido una caída masiva
+      // de datos salvo que el usuario haya ejecutado deliberadamente una acción destructiva.
+      if (!allowDestructive && safetyBackup && looksLikeUnexpectedDataLoss(state, safetyBackup)) {
+        console.error('Guardado bloqueado: posible pérdida masiva de datos.', {
+          reason,
+          current: currentStats,
+          safety: stateStats(safetyBackup)
+        });
+        state = safetyBackup;
+        persistLocal();
+        localDirty = false;
+        pendingRemoteState = null;
+        render();
+        setSyncStatus('error', 'Guardado protegido');
+        toast('Protección activada: se evitó sobrescribir tus tareas.', 'shield-alert', 'error');
+        return;
       }
 
-      // Los borradores vacíos son intencionales: evitan que una nueva tarea
-      // desaparezca cuando Firestore confirme la escritura.
-      const payload = {
-        version: APP_VERSION,
-        categories: state.categories,
-        completed: state.completed,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedBy: deviceId
-      };
-
       const currentHash = hash({ categories: state.categories, completed: state.completed });
-
       if (currentHash === lastSavedHash) {
         localDirty = false;
         return;
       }
 
-      setSyncStatus("online", "Guardando…");
+      setSyncStatus('online', 'Verificando…');
 
       try {
+        // Comprueba si el documento cambió desde el último snapshot conocido.
+        // Si otro cliente lo modificó, no lo sobrescribimos silenciosamente.
+        const liveSnapshot = await taskyDoc.get();
+        if (liveSnapshot.exists) {
+          const liveData = liveSnapshot.data() || {};
+          const liveRemote = normalizeState({
+            version: liveData.version || APP_VERSION,
+            categories: liveData.categories || [],
+            completed: liveData.completed || []
+          });
+          const liveHash = hash({ categories: liveRemote.categories, completed: liveRemote.completed });
+
+          const knownRemoteHash = lastSavedHash || '';
+          const differsFromKnownRemote = knownRemoteHash && liveHash !== knownRemoteHash;
+          const isSameAsLocal = liveHash === currentHash;
+
+          if (isSameAsLocal) {
+            lastSavedHash = liveHash;
+            localDirty = false;
+            setSyncStatus('online', 'Sincronizado');
+            return;
+          }
+
+          if (differsFromKnownRemote && liveHash !== currentHash) {
+            pendingRemoteState = liveRemote;
+            localDirty = true;
+            saveSafetyBackup('conflicto detectado antes de guardar', state);
+            setSyncStatus('error', 'Conflicto protegido');
+            toast('Hay cambios remotos pendientes. No se sobrescribieron tus datos.', 'shield-alert', 'error');
+            return;
+          }
+
+          if (!allowDestructive && looksLikeUnexpectedShrink(liveRemote, state)) {
+            pendingRemoteState = liveRemote;
+            setSyncStatus('error', 'Cambio remoto protegido');
+            toast('Se rechazó un estado remoto que parece haber perdido datos.', 'shield-alert', 'error');
+            return;
+          }
+        }
+
+        // Snapshot ANTES de escribir para poder volver al último estado conocido bueno.
+        saveSafetyBackup('antes de guardar: ' + reason, state);
+
+        const payload = {
+          version: APP_VERSION,
+          categories: state.categories,
+          completed: state.completed,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedBy: deviceId
+        };
+
+        setSyncStatus('online', 'Guardando…');
         await taskyDoc.set(payload, { merge: false });
-        saveSafetyBackup('guardado confirmado');
+
+        // Verificación posterior: confirma que Firestore recibió el mismo estado.
+        const verifySnapshot = await taskyDoc.get();
+        const verifyData = verifySnapshot.exists ? (verifySnapshot.data() || {}) : {};
+        const verifyState = normalizeState({
+          version: verifyData.version || APP_VERSION,
+          categories: verifyData.categories || [],
+          completed: verifyData.completed || []
+        });
+        const verifyHash = hash({ categories: verifyState.categories, completed: verifyState.completed });
+
+        if (verifyHash !== currentHash) {
+          localDirty = true;
+          setSyncStatus('error', 'Verificación fallida');
+          toast('El guardado no coincidió con tu estado local. Tu respaldo seguro permanece disponible.', 'shield-alert', 'error');
+          return;
+        }
+
         lastSavedHash = currentHash;
         localDirty = false;
-        setSyncStatus("online", "Sincronizado");
+        pendingRemoteState = null;
+        // El estado verificado pasa a ser el nuevo último estado seguro.
+        saveSafetyBackup('guardado confirmado', state);
+        setSyncStatus('online', 'Sincronizado');
       } catch (error) {
-        console.error("Error guardando en Firestore:", error);
-        setSyncStatus("error", "Solo local");
-        toast("No se pudo sincronizar con la nube", "cloud-off", "error");
+        console.error('Error guardando en Firestore:', error);
+        setSyncStatus('error', 'Solo local');
+        toast('No se pudo sincronizar; tus cambios locales siguen protegidos.', 'cloud-off', 'error');
       }
     }
 
@@ -4629,10 +4779,10 @@
         return;
       }
 
-      if (looksLikeUnexpectedDataLoss(remote) && stateStats(state).total > stateStats(remote).total) {
-        setSyncStatus("error", "Cambio remoto protegido");
-        pendingRemoteState = null;
-        toast('Se evitó reemplazar tu tablero con un estado incompleto.', 'shield-alert', 'error');
+      if (looksLikeUnexpectedDataLoss(remote) || looksLikeUnexpectedShrink(remote, state)) {
+        setSyncStatus('error', 'Cambio remoto protegido');
+        pendingRemoteState = remote;
+        toast('Se evitó reemplazar tu tablero con un estado que parece haber perdido datos.', 'shield-alert', 'error');
         hideLoading();
         return;
       }
@@ -4828,6 +4978,7 @@
           closeModal("menuModal");
         }
         if (menuAction === "recover") recoverSafetyBackup();
+        if (menuAction === "export-safety") { exportSafetyHistory(); closeModal('menuModal'); }
         if (menuAction === "reset") resetBoard();
       });
 
@@ -4903,6 +5054,11 @@
         document.documentElement.classList.toggle('touch-device', isTouchDevice());
         const savedTheme = localStorage.getItem(THEME_KEY) || "system";
         applyTheme(savedTheme);
+
+        if (!getLatestBackupRecord()) {
+          const legacy = loadSafetyBackup();
+          if (legacy) saveSafetyBackup('migración de respaldo V42', legacy);
+        }
 
         const local = loadLocalState();
         if (local) {
