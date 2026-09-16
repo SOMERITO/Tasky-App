@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V36 -->
+  <!-- TASKY PRO · V37 -->
     <!-- Build estable: V35 · Drag fallback + mobile scroll -->
 
   <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
@@ -431,6 +431,50 @@
     .drag-card:hover { background: var(--line); }
     .drag-card:active { cursor: grabbing; }
 
+    /* V37: arrastre nativo por Pointer Events para secciones.
+       La tarjeta se convierte en una ficha compacta mientras se mueve. */
+    .drag-card {
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .activity-card.section-dragging {
+      opacity: .72;
+    }
+
+    .section-drag-floating {
+      position: fixed !important;
+      z-index: 10000 !important;
+      pointer-events: none !important;
+      transform: scale(.965) !important;
+      transform-origin: center center !important;
+      opacity: .98 !important;
+      margin: 0 !important;
+      transition: transform .12s var(--ease), box-shadow .12s ease !important;
+      box-shadow: 0 28px 70px rgba(15,23,42,.22) !important;
+      will-change: top, left, transform;
+    }
+
+    .category-drop-placeholder {
+      width: 100%;
+      min-height: 88px;
+      border: 2px dashed rgba(37,99,235,.42);
+      border-radius: var(--radius-xl);
+      background: linear-gradient(90deg, rgba(37,99,235,.07), rgba(124,58,237,.07));
+      box-shadow: inset 0 0 0 1px rgba(37,99,235,.06);
+      transition: height .12s var(--ease), margin .12s var(--ease), opacity .12s ease;
+    }
+
+    body.is-section-pointer-dragging {
+      cursor: grabbing !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+    }
+    body.is-section-pointer-dragging .activity-card:not(.section-drag-floating) {
+      transition: none !important;
+    }
+
     .section-order-controls {
       display: flex;
       align-items: center;
@@ -611,7 +655,7 @@
 
     .task-item {
       display: grid;
-      grid-template-columns: 28px 30px 1fr 34px;
+      grid-template-columns: 28px 30px minmax(0,1fr) auto;
       align-items: start;
       gap: 8px;
       min-width: 0;
@@ -713,8 +757,28 @@
     .task-item-actions {
       display: flex;
       align-items: center;
+      justify-content: flex-end;
       gap: 2px;
       align-self: start;
+      min-width: 68px;
+      flex: 0 0 auto;
+      overflow: visible;
+    }
+
+    .delete-task-btn,
+    .repeat-btn {
+      flex: 0 0 34px;
+    }
+
+    .delete-task-btn {
+      opacity: 1 !important;
+      visibility: visible !important;
+      color: var(--danger);
+    }
+
+    .delete-task-btn:hover {
+      background: rgba(239,68,68,.10);
+      color: var(--danger);
     }
 
     .add-task {
@@ -1035,7 +1099,7 @@
 
     /* ===== Arrastre V35: sin clon visual duplicado ni transformaciones pesadas ===== */
     /* =========================================================
-       TASKY PRO V36 · Drag de secciones más rápido y predecible
+       TASKY PRO V37 · Drag de secciones con pointer events + responsive actions
        ========================================================= */
     .sortable-ghost {
       opacity: .30 !important;
@@ -1468,6 +1532,12 @@
 
     @media (max-width: 760px) {
       .app-shell { padding-inline: 12px; }
+      .task-item { grid-template-columns: 24px 30px minmax(0,1fr) auto; gap: 6px; }
+      .task-item-actions { min-width: 64px; }
+      .delete-task-btn, .repeat-btn { width: 31px; height: 31px; flex-basis: 31px; }
+      .drag-card { width: 34px; height: 34px; }
+      .section-order-btn { width: 30px; height: 30px; }
+      .category-drop-placeholder { min-height: 76px; }
       .topbar { top: 8px; }
       .hero-row { flex-direction: column; align-items: stretch; }
       .day-progress { min-width: 0; }
@@ -1670,6 +1740,15 @@
 
     @media (max-width: 480px) {
       .brand-subtitle { display: none; }
+      .card-title-row { gap: 5px; }
+      .section-order-controls { gap: 0; }
+      .section-order-btn { width: 26px; height: 26px; }
+      .drag-card { width: 30px; height: 30px; }
+      .activity-title { font-size: 1.06rem; }
+      .task-item { grid-template-columns: 22px 28px minmax(0,1fr) auto; padding: 9px 8px; }
+      .task-item-actions { min-width: 62px; }
+      .delete-task-btn, .repeat-btn { width: 30px; height: 30px; flex-basis: 30px; }
+      .task-input { font-size: .95rem; }
       .top-actions .label-on-mobile { display: none; }
       .hero { padding-top: 18px; }
       .hero h1 { font-size: 2.45rem; }
@@ -1926,7 +2005,8 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 36;
+    const APP_VERSION = 37;
+    const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // TASKY PRO · V36 — Drag más fluido, placeholder visible, fases nuevas antes de completadas.
     const STORAGE_KEY = "tasky_pro_v26";
     const THEME_KEY = "tasky_theme";
@@ -2209,10 +2289,8 @@
     function render() {
       hydrating = true;
 
-      if (sortableCategories) {
-        sortableCategories.destroy();
-        sortableCategories = null;
-      }
+      // V37: las fases no dependen de una instancia SortableJS.
+      sortableCategories = null;
       for (const instance of sortableTasks.values()) instance.destroy();
       sortableTasks.clear();
 
@@ -2387,71 +2465,185 @@
       el.board.appendChild(card);
     }
 
-    function initSortables() {
-      if (typeof Sortable === "undefined") {
-        console.warn("SortableJS no está disponible.");
-        return;
+    let sectionPointerCleanup = null;
+
+    function initSectionPointerDrag() {
+      if (typeof sectionPointerCleanup === "function") sectionPointerCleanup();
+
+      const handles = document.querySelectorAll("#board .activity-card:not(.completed-card) .drag-card");
+      const listeners = [];
+
+      const bind = (handle) => {
+        const onPointerDown = (event) => {
+          if (event.button !== undefined && event.button !== 0) return;
+          const card = handle.closest(".activity-card:not(.completed-card)");
+          if (!card) return;
+          event.preventDefault();
+          event.stopPropagation();
+          startSectionPointerDrag(event, card, handle);
+        };
+        handle.addEventListener("pointerdown", onPointerDown, { passive: false });
+        listeners.push(() => handle.removeEventListener("pointerdown", onPointerDown));
+      };
+
+      handles.forEach(bind);
+      sectionPointerCleanup = () => { listeners.forEach(fn => fn()); sectionPointerCleanup = null; };
+    }
+
+    let activeSectionDrag = null;
+
+    function startSectionPointerDrag(event, card, handle) {
+      if (activeSectionDrag) return;
+
+      const rect = card.getBoundingClientRect();
+      const placeholder = document.createElement("div");
+      placeholder.className = "category-drop-placeholder";
+      placeholder.style.height = `${Math.max(rect.height, 88)}px`;
+      placeholder.dataset.categoryPlaceholder = "true";
+
+      card.parentElement.insertBefore(placeholder, card);
+
+      activeSectionDrag = {
+        card,
+        placeholder,
+        pointerId: event.pointerId,
+        offsetY: event.clientY - rect.top,
+        offsetX: event.clientX - rect.left,
+        width: rect.width,
+        height: rect.height,
+        startY: event.clientY,
+        moved: false,
+        raf: 0,
+        nextClientY: event.clientY
+      };
+
+      card.classList.add("section-drag-floating", "section-dragging");
+      card.style.width = `${rect.width}px`;
+      card.style.height = `${rect.height}px`;
+      card.style.left = `${rect.left}px`;
+      card.style.top = `${rect.top}px`;
+      document.body.appendChild(card);
+      document.body.classList.add("is-section-pointer-dragging");
+      handle.setPointerCapture?.(event.pointerId);
+      softHaptic(16);
+
+      document.addEventListener("pointermove", onSectionPointerMove, { passive: false });
+      document.addEventListener("pointerup", onSectionPointerUp, { passive: false });
+      document.addEventListener("pointercancel", onSectionPointerCancel, { passive: false });
+    }
+
+    function onSectionPointerMove(event) {
+      if (!activeSectionDrag || event.pointerId !== activeSectionDrag.pointerId) return;
+      event.preventDefault();
+      activeSectionDrag.nextClientY = event.clientY;
+      activeSectionDrag.moved = activeSectionDrag.moved || Math.abs(event.clientY - activeSectionDrag.startY) > 4;
+
+      if (!activeSectionDrag.raf) {
+        activeSectionDrag.raf = requestAnimationFrame(updateSectionDragFrame);
+      }
+    }
+
+    function updateSectionDragFrame() {
+      if (!activeSectionDrag) return;
+      const drag = activeSectionDrag;
+      drag.raf = 0;
+
+      let clientY = drag.nextClientY;
+      const topZone = 90;
+      const bottomZone = window.innerHeight - 90;
+      const step = 18;
+
+      if (clientY < topZone) window.scrollBy(0, -step);
+      else if (clientY > bottomZone) window.scrollBy(0, step);
+
+      let top = clientY - drag.offsetY;
+      drag.card.style.top = `${top}px`;
+
+      const target = findCategoryTargetAt(clientY, drag.card, drag.placeholder);
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        const insertAfter = clientY > rect.top + rect.height / 2;
+        if (insertAfter) target.parentElement.insertBefore(drag.placeholder, target.nextSibling);
+        else target.parentElement.insertBefore(drag.placeholder, target);
+      }
+    }
+
+    function findCategoryTargetAt(clientY, draggedCard, placeholder) {
+      const cards = [...document.querySelectorAll("#board .activity-card:not(.completed-card)")].filter(card => card !== draggedCard);
+      let closest = null;
+      let minDistance = Infinity;
+
+      for (const card of cards) {
+        const rect = card.getBoundingClientRect();
+        if (clientY >= rect.top && clientY <= rect.bottom) return card;
+        const distance = clientY < rect.top ? rect.top - clientY : clientY - rect.bottom;
+        if (distance < minDistance) { minDistance = distance; closest = card; }
       }
 
-      sortableCategories = new Sortable(el.board, {
-        animation: 0,
-        handle: ".drag-card",
-        filter: ".completed-card",
-        preventOnFilter: false,
-        direction: "vertical",
+      return closest;
+    }
 
-        /* V36: drag de secciones optimizado para web y WebView móvil.
-           Movimiento inmediato, ghost visible y auto-scroll rápido. */
-        forceFallback: true,
-        fallbackOnBody: true,
-        fallbackClass: "sortable-fallback",
-        removeCloneOnHide: true,
-        fallbackTolerance: 3,
+    function finishSectionPointerDrag(cancelled = false) {
+      if (!activeSectionDrag) return;
+      const drag = activeSectionDrag;
+      cancelAnimationFrame(drag.raf);
 
-        /* Scroll automático rápido al acercarse a los bordes. */
-        scroll: true,
-        forceAutoScrollFallback: true,
-        bubbleScroll: true,
-        scrollSensitivity: 34,
-        scrollSpeed: 28,
+      if (!cancelled && drag.placeholder.parentElement) {
+        drag.placeholder.parentElement.insertBefore(drag.card, drag.placeholder);
+      } else if (drag.placeholder.parentElement) {
+        // Cancelar: vuelve a su lugar original usando la posición lógica del estado.
+        const currentCatId = drag.card.dataset.categoryId;
+        const catIndex = state.categories.findIndex(c => c.id === currentCatId);
+        const siblings = [...drag.placeholder.parentElement.querySelectorAll(".activity-card:not(.completed-card)")];
+        const reference = siblings.find(s => state.categories.indexOf(state.categories.find(c => c.id === s.dataset.categoryId)) < catIndex);
+        if (reference) drag.placeholder.parentElement.insertBefore(drag.card, reference.nextSibling);
+        else drag.placeholder.parentElement.insertBefore(drag.card, siblings[0] || drag.placeholder);
+      }
 
-        delay: 0,
-        delayOnTouchOnly: false,
-        touchStartThreshold: 3,
+      if (drag.card.parentElement !== el.board) el.board.appendChild(drag.card);
+      drag.card.classList.remove("section-drag-floating", "section-dragging");
+      drag.card.style.width = "";
+      drag.card.style.height = "";
+      drag.card.style.left = "";
+      drag.card.style.top = "";
+      drag.placeholder.remove();
+      document.body.classList.remove("is-section-pointer-dragging");
 
-        swapThreshold: 0.22,
-        invertSwap: false,
+      document.removeEventListener("pointermove", onSectionPointerMove);
+      document.removeEventListener("pointerup", onSectionPointerUp);
+      document.removeEventListener("pointercancel", onSectionPointerCancel);
 
-        ghostClass: "sortable-ghost",
-        dragClass: "sortable-drag",
+      if (!cancelled) {
+        syncCategoryOrderFromDOM();
+        persistLocal();
+        localDirty = true;
+        scheduleSave("reordenar fases");
+        updateSummaryUI();
+        refreshSectionMoveControls();
+        softHaptic(20);
+      }
 
-        onStart(evt) {
-          document.body.classList.add("is-dragging");
-          evt.item.classList.add("section-dragging");
-          softHaptic(14);
-        },
+      activeSectionDrag = null;
+    }
 
-        onEnd(evt) {
-          document.body.classList.remove("is-dragging");
-          evt.item.classList.remove("section-dragging");
+    function onSectionPointerUp(event) {
+      if (!activeSectionDrag || event.pointerId !== activeSectionDrag.pointerId) return;
+      event.preventDefault();
+      finishSectionPointerDrag(false);
+    }
 
-          if (hydrating) return;
+    function onSectionPointerCancel() {
+      finishSectionPointerDrag(true);
+    }
 
-          syncCategoryOrderFromDOM();
-          scheduleSave("reordenar fases");
-          updateSummaryUI();
-          refreshSectionMoveControls();
-          softHaptic(20);
+    function initSortables() {
+      if (typeof Sortable === "undefined") {
+        console.warn("SortableJS no está disponible para tareas.");
+      }
 
-          /* Importante:
-             NO render().
-             Sortable ya hizo el movimiento físico. */
-        },
-
-        onCancel() {
-          document.body.classList.remove("is-dragging");
-        }
-      });
+      // V37: las fases ya NO usan SortableJS.
+      // Secciones: Pointer Events + placeholder = control directo y suave en WebView.
+      initSectionPointerDrag();
 
       document.querySelectorAll("#board .task-list[data-category-id]").forEach(list => {
         const categoryId = list.dataset.categoryId;
