@@ -9,7 +9,7 @@
   <meta name="description" content="Tasky — gestor personal de fases y tareas.">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V30 -->
+  <!-- TASKY PRO · V31 -->
 
   <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
   <link rel="icon" type="image/png" href="icon.png?v=27">
@@ -1300,20 +1300,21 @@
     "use strict";
 
     // =========================================================
-    // TASKY PRO V30
-    // Objetivo de esta versión: eliminar el pestañeo visual
-    // producido por animaciones de entrada durante re-render.
+    // TASKY PRO V31
+    // Objetivo de esta versión: mantener el borrador de una nueva tarea
+    // durante la sincronización para evitar que el campo desaparezca.
+    // También conserva el renderizado incremental introducido en V30.
     // =========================================================
 
     /* =========================================================
-       TASKY PRO v26
+       TASKY PRO v31
        Arquitectura:
        - State -> render -> interactions -> state
        - Firestore solo sincroniza el state
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 30;
+    const APP_VERSION = 31;
     const STORAGE_KEY = "tasky_pro_v26";
     const THEME_KEY = "tasky_theme";
     const DEVICE_KEY = "tasky_device_id";
@@ -1512,12 +1513,15 @@
 
         category.tasks = category.tasks
           .filter(Boolean)
-          .map(task => ({
-            id: String(task.id || uid("task")),
-            text: typeof task.text === "string" ? task.text : "",
-            date: /^\d{4}-\d{2}-\d{2}$/.test(task.date || "") ? task.date : today()
-          }))
-          .filter(task => task.text.trim() !== "");
+          .map(task => {
+            const text = typeof task.text === "string" ? task.text : "";
+            return {
+              id: String(task.id || uid("task")),
+              text,
+              date: /^\d{4}-\d{2}-\d{2}$/.test(task.date || "") ? task.date : today(),
+              draft: Boolean(task.draft) || text.trim() === ""
+            };
+          });
 
         return category;
       });
@@ -1938,7 +1942,7 @@
       const cat = state.categories.find(c => c.id === categoryId);
       if (!cat) return null;
 
-      const task = { id: uid("task"), text: "", date: today() };
+      const task = { id: uid("task"), text: "", date: today(), draft: true };
       cat.tasks.push(task);
 
       const list = document.querySelector(`.task-list[data-category-id="${cssEscapeSafe(categoryId)}"]`);
@@ -2069,13 +2073,14 @@
         target.tasks.push({
           id: task.id,
           text: task.text,
-          date: task.date || today()
+          date: task.date || today(),
+          draft: false
         });
       } else {
         state.categories.push({
           id: task.originCat || uid('cat'),
           title: 'Recuperadas',
-          tasks: [{ id: task.id, text: task.text, date: task.date || today() }]
+          tasks: [{ id: task.id, text: task.text, date: task.date || today(), draft: false }]
         });
       }
 
@@ -2121,6 +2126,7 @@
         const task = cat.tasks.find(t => t.id === taskId);
         if (!task) continue;
         task.text = text;
+        task.draft = text.trim() === "";
         localDirty = true;
         persistLocal();
         scheduleSave("editar tarea", 700);
@@ -2149,9 +2155,10 @@
 
       if (originalIndex === -1) return;
 
-      const inserted = lines.map(line => ({ id: uid("task"), text: line, date: today() }));
+      const inserted = lines.map(line => ({ id: uid("task"), text: line, date: today(), draft: false }));
       const current = cat.tasks[originalIndex];
       current.text = lines[0];
+      current.draft = false;
       cat.tasks.splice(originalIndex + 1, 0, ...inserted.slice(1));
 
       persistLocal();
@@ -2396,6 +2403,8 @@
         return;
       }
 
+      // Los borradores vacíos son intencionales: evitan que una nueva tarea
+      // desaparezca cuando Firestore confirme la escritura.
       const payload = {
         version: APP_VERSION,
         categories: state.categories,
