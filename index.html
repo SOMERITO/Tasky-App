@@ -7,9 +7,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="description" content="Tasky — gestor personal de fases y tareas.">
+  <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V31 -->
+  <!-- TASKY PRO · V32 -->
 
   <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
   <link rel="icon" type="image/png" href="icon.png?v=27">
@@ -1095,6 +1096,180 @@
       100% { background-position: 0% 50%; }
     }
 
+
+    /* =========================================================
+       TASKY PRO V32 · Mobile / Median UX
+       Optimizado para interacción táctil y WebView.
+       ========================================================= */
+    html, body {
+      overscroll-behavior-x: none;
+    }
+
+    body {
+      -webkit-text-size-adjust: 100%;
+      text-rendering: optimizeLegibility;
+    }
+
+    button,
+    .drag-card,
+    .drag-task,
+    .check-btn,
+    .mini-btn,
+    .soft-btn,
+    .fab-main,
+    .fab-action,
+    .add-task {
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .task-input,
+    .activity-title,
+    .search-box input {
+      -webkit-user-select: text;
+      user-select: text;
+      touch-action: manipulation;
+    }
+
+    .activity-card,
+    .task-item,
+    .metric,
+    .search-box,
+    .topbar {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .mini-btn,
+    .icon-btn {
+      min-width: 42px;
+      min-height: 42px;
+    }
+
+    .check-btn {
+      min-width: 34px;
+      min-height: 34px;
+    }
+
+    .task-input:focus-visible,
+    .activity-title:focus-visible,
+    .search-box:focus-within {
+      outline: 2px solid rgba(37,99,235,.32);
+      outline-offset: 2px;
+    }
+
+    .task-item,
+    .activity-card,
+    .metric,
+    .soft-btn,
+    .icon-btn,
+    .mini-btn,
+    .check-btn,
+    .add-task,
+    .fab-main,
+    .fab-action {
+      -webkit-user-drag: none;
+    }
+
+    .task-input,
+    .activity-title {
+      caret-color: var(--primary);
+    }
+
+    .task-item,
+    .activity-card {
+      contain: paint style;
+    }
+
+    .task-item:active {
+      transform: scale(.998);
+    }
+
+    .mini-btn:active,
+    .icon-btn:active,
+    .soft-btn:active,
+    .add-task:active,
+    .check-btn:active {
+      transform: scale(.96);
+    }
+
+    .task-input {
+      -webkit-overflow-scrolling: touch;
+    }
+
+    @media (pointer: coarse) {
+      .drag-card::after,
+      .drag-task::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+      }
+
+      .drag-card,
+      .drag-task {
+        position: relative;
+      }
+    }
+
+    @media (max-width: 760px) {
+      /* Backdrop-filter puede ser costoso dentro de WebViews móviles. */
+      .topbar,
+      .activity-card,
+      .metric,
+      .search-box,
+      .fab-action {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+      }
+
+      .topbar {
+        background: rgba(255,255,255,.92);
+      }
+
+      [data-theme="dark"] .topbar {
+        background: rgba(17,24,39,.94);
+      }
+
+      .activity-card,
+      .metric,
+      .search-box {
+        background: rgba(255,255,255,.94);
+      }
+
+      [data-theme="dark"] .activity-card,
+      [data-theme="dark"] .metric,
+      [data-theme="dark"] .search-box {
+        background: rgba(17,24,39,.94);
+      }
+
+      .app-shell {
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .task-list {
+        gap: 8px;
+      }
+
+      .task-item {
+        padding: 9px 8px;
+      }
+
+      .drag-task {
+        width: 30px;
+        min-width: 30px;
+      }
+
+      .task-input {
+        font-size: 1rem;
+        line-height: 1.45;
+      }
+
+      .fab-main {
+        width: 58px;
+        height: 58px;
+      }
+    }
+
     @media (max-width: 760px) {
       .app-shell { padding-inline: 12px; }
       .topbar { top: 8px; }
@@ -1105,6 +1280,180 @@
       .stats-strip { grid-template-columns: repeat(2, 1fr); }
       .task-item { grid-template-columns: 25px 30px 1fr 32px; }
       .fab { right: 15px; }
+    }
+
+
+    /* =========================================================
+       TASKY PRO V32 · Mobile / Median UX
+       Optimizado para interacción táctil y WebView.
+       ========================================================= */
+    html, body {
+      overscroll-behavior-x: none;
+    }
+
+    body {
+      -webkit-text-size-adjust: 100%;
+      text-rendering: optimizeLegibility;
+    }
+
+    button,
+    .drag-card,
+    .drag-task,
+    .check-btn,
+    .mini-btn,
+    .soft-btn,
+    .fab-main,
+    .fab-action,
+    .add-task {
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .task-input,
+    .activity-title,
+    .search-box input {
+      -webkit-user-select: text;
+      user-select: text;
+      touch-action: manipulation;
+    }
+
+    .activity-card,
+    .task-item,
+    .metric,
+    .search-box,
+    .topbar {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .mini-btn,
+    .icon-btn {
+      min-width: 42px;
+      min-height: 42px;
+    }
+
+    .check-btn {
+      min-width: 34px;
+      min-height: 34px;
+    }
+
+    .task-input:focus-visible,
+    .activity-title:focus-visible,
+    .search-box:focus-within {
+      outline: 2px solid rgba(37,99,235,.32);
+      outline-offset: 2px;
+    }
+
+    .task-item,
+    .activity-card,
+    .metric,
+    .soft-btn,
+    .icon-btn,
+    .mini-btn,
+    .check-btn,
+    .add-task,
+    .fab-main,
+    .fab-action {
+      -webkit-user-drag: none;
+    }
+
+    .task-input,
+    .activity-title {
+      caret-color: var(--primary);
+    }
+
+    .task-item,
+    .activity-card {
+      contain: paint style;
+    }
+
+    .task-item:active {
+      transform: scale(.998);
+    }
+
+    .mini-btn:active,
+    .icon-btn:active,
+    .soft-btn:active,
+    .add-task:active,
+    .check-btn:active {
+      transform: scale(.96);
+    }
+
+    .task-input {
+      -webkit-overflow-scrolling: touch;
+    }
+
+    @media (pointer: coarse) {
+      .drag-card::after,
+      .drag-task::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+      }
+
+      .drag-card,
+      .drag-task {
+        position: relative;
+      }
+    }
+
+    @media (max-width: 760px) {
+      /* Backdrop-filter puede ser costoso dentro de WebViews móviles. */
+      .topbar,
+      .activity-card,
+      .metric,
+      .search-box,
+      .fab-action {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+      }
+
+      .topbar {
+        background: rgba(255,255,255,.92);
+      }
+
+      [data-theme="dark"] .topbar {
+        background: rgba(17,24,39,.94);
+      }
+
+      .activity-card,
+      .metric,
+      .search-box {
+        background: rgba(255,255,255,.94);
+      }
+
+      [data-theme="dark"] .activity-card,
+      [data-theme="dark"] .metric,
+      [data-theme="dark"] .search-box {
+        background: rgba(17,24,39,.94);
+      }
+
+      .app-shell {
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .task-list {
+        gap: 8px;
+      }
+
+      .task-item {
+        padding: 9px 8px;
+      }
+
+      .drag-task {
+        width: 30px;
+        min-width: 30px;
+      }
+
+      .task-input {
+        font-size: 1rem;
+        line-height: 1.45;
+      }
+
+      .fab-main {
+        width: 58px;
+        height: 58px;
+      }
     }
 
     @media (max-width: 760px) {
@@ -1164,7 +1513,7 @@
   </style>
 </head>
 
-<body>
+<body data-tasky-version="V32">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -1314,7 +1663,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 31;
+    const APP_VERSION = 32;
     const STORAGE_KEY = "tasky_pro_v26";
     const THEME_KEY = "tasky_theme";
     const DEVICE_KEY = "tasky_device_id";
@@ -1784,7 +2133,7 @@
           delay: 120,
           delayOnTouchOnly: true,
           fallbackTolerance: 4,
-          onStart() { navigator.vibrate?.(25); },
+          onStart() { softHaptic(18); },
           onEnd() {
             if (hydrating) return;
             syncTasksFromDOM();
@@ -1915,7 +2264,7 @@
           delay: 120,
           delayOnTouchOnly: true,
           fallbackTolerance: 4,
-          onStart() { navigator.vibrate?.(25); },
+          onStart() { softHaptic(18); },
           onEnd() {
             if (hydrating) return;
             syncTasksFromDOM();
@@ -1964,8 +2313,12 @@
 
       requestAnimationFrame(() => {
         const node = document.querySelector(`[data-task-id="${cssEscapeSafe(task.id)}"] .task-input`);
-        node?.focus();
+        if (node) {
+          resizeSingleTextarea(node);
+          node.focus({ preventScroll: true });
+        }
       });
+      softHaptic(15);
 
       return task;
     }
@@ -2130,7 +2483,6 @@
         localDirty = true;
         persistLocal();
         scheduleSave("editar tarea", 700);
-        updateSummaryUI();
         return;
       }
     }
@@ -2236,11 +2588,29 @@
       }
     }
 
+
+    function isTouchDevice() {
+      return navigator.maxTouchPoints > 0 || window.matchMedia?.('(pointer: coarse)').matches;
+    }
+
+    function softHaptic(duration = 18) {
+      try {
+        if (isTouchDevice() && typeof navigator.vibrate === 'function') {
+          navigator.vibrate(duration);
+        }
+      } catch (_) {
+        // Haptics is optional; ignore unsupported WebViews/devices.
+      }
+    }
+
+    function resizeSingleTextarea(node) {
+      if (!node || !node.matches?.('.task-input')) return;
+      node.style.height = 'auto';
+      node.style.height = Math.max(node.scrollHeight, 30) + 'px';
+    }
+
     function updateTaskHeights() {
-      document.querySelectorAll(".task-input").forEach(node => {
-        node.style.height = "auto";
-        node.style.height = Math.max(node.scrollHeight, 30) + "px";
-      });
+      document.querySelectorAll('.task-input').forEach(resizeSingleTextarea);
     }
 
     function openModal(id) {
@@ -2548,7 +2918,7 @@
         const target = event.target;
 
         if (target.matches(".task-input")) {
-          updateTaskHeights();
+          resizeSingleTextarea(target);
           const item = target.closest(".task-item");
           updateTask(item?.dataset.taskId, target.value);
           return;
@@ -2749,6 +3119,7 @@
 
     function init() {
       try {
+        document.documentElement.classList.toggle('touch-device', isTouchDevice());
         const savedTheme = localStorage.getItem(THEME_KEY) || "system";
         applyTheme(savedTheme);
 
