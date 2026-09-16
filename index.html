@@ -1139,6 +1139,25 @@
       .card-meta, .card-progress { padding-left: 35px; }
     }
 
+    .task-enter {
+      animation: taskEnter .24s var(--ease) both;
+    }
+
+    .task-exit {
+      animation: taskExit .18s ease forwards;
+      pointer-events: none;
+    }
+
+    @keyframes taskEnter {
+      from { opacity: 0; transform: translateY(7px) scale(.985); }
+      to { opacity: 1; transform: none; }
+    }
+
+    @keyframes taskExit {
+      from { opacity: 1; transform: none; max-height: 100px; margin-top: 0; margin-bottom: 0; }
+      to { opacity: 0; transform: translateY(-4px) scale(.985); max-height: 0; margin-top: -4px; margin-bottom: -4px; padding-top: 0; padding-bottom: 0; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: .01ms !important;
@@ -1765,7 +1784,8 @@
             if (hydrating) return;
             syncTasksFromDOM();
             scheduleSave("mover tarea");
-            render();
+            updateSummaryUI();
+            for (const cat of state.categories) updateCategoryUI(cat.id);
           }
         });
         sortableTasks.set(categoryId, instance);
@@ -1806,6 +1826,64 @@
       }
     }
 
+    function updateCategoryUI(categoryId) {
+      const card = document.querySelector(`[data-category-id="${cssEscapeSafe(categoryId)}"]`);
+      if (!card) return;
+
+      const cat = state.categories.find(c => c.id === categoryId);
+      if (!cat) return;
+
+      const completedCount = state.completed.filter(t => t.originCat === categoryId).length;
+      const total = cat.tasks.length + completedCount;
+      const pct = total ? Math.round((completedCount / total) * 100) : 0;
+
+      const pendingPill = card.querySelector('.card-meta .pill:first-child');
+      const percentPill = card.querySelector('.card-meta .pill:nth-child(2)');
+      const fill = card.querySelector('.card-progress .progress-fill');
+      const fraction = card.querySelector('.card-progress-value');
+
+      if (pendingPill) pendingPill.textContent = `${cat.tasks.length} pendiente${cat.tasks.length === 1 ? '' : 's'}`;
+      if (percentPill) {
+        percentPill.textContent = `${pct}% completado`;
+        percentPill.className = `pill ${pct === 100 && total > 0 ? 'success' : 'primary'}`;
+      }
+      if (fill) fill.style.width = `${pct}%`;
+      if (fraction) fraction.textContent = `${completedCount}/${total}`;
+
+      card.classList.toggle('is-complete', total > 0 && pct === 100);
+    }
+
+    function updateCompletedCardUI() {
+      let card = document.querySelector('.completed-card');
+
+      if (!state.completed.length) {
+        if (card) card.remove();
+        updateSummaryUI();
+        return;
+      }
+
+      if (!card) {
+        buildCompletedCard(activeSearch.trim().toLowerCase());
+        refreshIcons();
+        return;
+      }
+
+      const countPill = card.querySelector('.pill.success');
+      if (countPill) countPill.textContent = state.completed.length;
+    }
+
+    function animateTaskRemoval(item, callback) {
+      if (!item) {
+        callback?.();
+        return;
+      }
+      item.classList.add('task-exit');
+      setTimeout(() => {
+        item.remove();
+        callback?.();
+      }, 180);
+    }
+
     function addCategory() {
       const category = {
         id: uid("cat"),
@@ -1831,16 +1909,29 @@
 
       const task = { id: uid("task"), text: "", date: today() };
       cat.tasks.push(task);
+
+      const list = document.querySelector(`.task-list[data-category-id="${cssEscapeSafe(categoryId)}"]`);
+      if (!list) {
+        render();
+      } else {
+        const item = buildTaskItem(task, activeSearch.trim().toLowerCase(), false);
+        item.classList.add('task-enter');
+        list.appendChild(item);
+        refreshIcons();
+        requestAnimationFrame(() => updateTaskHeights());
+      }
+
       persistLocal();
       localDirty = true;
-      render();
+      updateCategoryUI(categoryId);
+      updateSummaryUI();
+      scheduleSave("nueva tarea");
 
       requestAnimationFrame(() => {
         const node = document.querySelector(`[data-task-id="${cssEscapeSafe(task.id)}"] .task-input`);
         node?.focus();
       });
 
-      scheduleSave("nueva tarea");
       return task;
     }
 
@@ -1852,29 +1943,48 @@
 
       state.categories = state.categories.filter(c => c.id !== categoryId);
       state.completed = state.completed.filter(t => t.originCat !== categoryId);
+
+      const card = document.querySelector(`.activity-card[data-category-id="${cssEscapeSafe(categoryId)}"]`);
+      if (card) {
+        card.style.transition = 'opacity .18s ease, transform .18s ease, max-height .22s ease, margin .22s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(.985)';
+        setTimeout(() => card.remove(), 180);
+      }
+
       persistLocal();
       localDirty = true;
-      render();
+      updateCompletedCardUI();
+      updateSummaryUI();
       scheduleSave("eliminar fase");
       toast("Fase eliminada", "trash-2");
     }
 
     function deleteTask(taskId) {
       let changed = false;
+      let originCat = null;
+
       for (const cat of state.categories) {
         const before = cat.tasks.length;
+        if (cat.tasks.some(t => t.id === taskId)) originCat = cat.id;
         cat.tasks = cat.tasks.filter(t => t.id !== taskId);
         changed ||= before !== cat.tasks.length;
       }
+
       const beforeCompleted = state.completed.length;
       state.completed = state.completed.filter(t => t.id !== taskId);
       changed ||= beforeCompleted !== state.completed.length;
 
       if (!changed) return;
 
+      const item = document.querySelector(`.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`);
+      animateTaskRemoval(item);
+
       persistLocal();
       localDirty = true;
-      render();
+      if (originCat) updateCategoryUI(originCat);
+      updateCompletedCardUI();
+      updateSummaryUI();
       scheduleSave("eliminar tarea");
       toast("Tarea eliminada", "trash-2");
     }
@@ -1891,9 +2001,26 @@
           completedAt: Date.now()
         });
 
+        const item = document.querySelector(`.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`);
+        animateTaskRemoval(item, () => {
+          let completedCard = document.querySelector('.completed-card');
+          if (!completedCard) {
+            buildCompletedCard(activeSearch.trim().toLowerCase());
+          } else {
+            const list = completedCard.querySelector('[data-completed-list="true"]');
+            const completedItem = buildTaskItem(state.completed[0], activeSearch.trim().toLowerCase(), true);
+            completedItem.classList.add('task-enter');
+            list?.prepend(completedItem);
+          }
+          refreshIcons();
+          updateCompletedCardUI();
+          updateTaskHeights();
+        });
+
         persistLocal();
         localDirty = true;
-        render();
+        updateCategoryUI(cat.id);
+        updateSummaryUI();
         scheduleSave("completar tarea");
         toast("Tarea completada ✓", "circle-check");
         return;
@@ -1915,15 +2042,35 @@
         });
       } else {
         state.categories.push({
-          id: task.originCat || uid("cat"),
-          title: "Recuperadas",
+          id: task.originCat || uid('cat'),
+          title: 'Recuperadas',
           tasks: [{ id: task.id, text: task.text, date: task.date || today() }]
         });
       }
 
+      const completedItem = document.querySelector(`.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`);
+      animateTaskRemoval(completedItem, () => {
+        const targetList = target
+          ? document.querySelector(`.task-list[data-category-id="${cssEscapeSafe(target.id)}"]`)
+          : null;
+
+        if (targetList) {
+          const newItem = buildTaskItem({ id: task.id, text: task.text, date: task.date || today() }, activeSearch.trim().toLowerCase(), false);
+          newItem.classList.add('task-enter');
+          targetList.appendChild(newItem);
+          refreshIcons();
+        } else {
+          render();
+        }
+
+        updateCategoryUI(target?.id);
+        updateCompletedCardUI();
+        updateSummaryUI();
+        updateTaskHeights();
+      });
+
       persistLocal();
       localDirty = true;
-      render();
       scheduleSave("restaurar tarea");
       toast("Tarea restaurada", "rotate-ccw");
     }
@@ -2455,9 +2602,12 @@
               removed ||= before !== cat.tasks.length;
             }
             if (removed) {
+              const item = event.target.closest(".task-item");
+              animateTaskRemoval(item);
               persistLocal();
               localDirty = true;
-              render();
+              updateCategoryUI(taskId ? (item?.closest(".task-list")?.dataset.categoryId || "") : "");
+              updateSummaryUI();
               scheduleSave("eliminar tarea vacía");
             }
           } else {
