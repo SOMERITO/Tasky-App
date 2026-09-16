@@ -9,6 +9,7 @@
   <meta name="description" content="Tasky — gestor personal de fases y tareas.">
 
   <title>Tasky — Pro</title>
+  <!-- TASKY PRO · V29 -->
 
   <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
   <link rel="icon" type="image/png" href="icon.png?v=27">
@@ -1312,7 +1313,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 27;
+    const APP_VERSION = 29;
     const STORAGE_KEY = "tasky_pro_v26";
     const THEME_KEY = "tasky_theme";
     const DEVICE_KEY = "tasky_device_id";
@@ -1761,7 +1762,8 @@
           if (hydrating) return;
           syncCategoryOrderFromDOM();
           scheduleSave("reordenar fases");
-          render();
+          updateSummaryUI();
+          // No render(): Sortable ya movió físicamente la tarjeta.
         }
       });
 
@@ -1893,13 +1895,43 @@
       state.categories.push(category);
       persistLocal();
       localDirty = true;
-      render();
 
-      const card = document.querySelector(`[data-category-id="${cssEscapeSafe(category.id)}"]`);
-      const title = card?.querySelector(".activity-title");
-      title?.focus();
-      title?.select();
+      const card = buildCategoryCard(category, state.categories.length - 1, activeSearch.trim().toLowerCase());
+      card.classList.add("task-enter");
+      el.board.appendChild(card);
 
+      const list = card.querySelector(".task-list[data-category-id]");
+      if (list && typeof Sortable !== "undefined") {
+        const instance = new Sortable(list, {
+          group: "tasky-tasks",
+          animation: 180,
+          handle: ".drag-task",
+          draggable: ".task-item",
+          filter: ".task-input, button:not(.drag-task)",
+          preventOnFilter: false,
+          delay: 120,
+          delayOnTouchOnly: true,
+          fallbackTolerance: 4,
+          onStart() { navigator.vibrate?.(25); },
+          onEnd() {
+            if (hydrating) return;
+            syncTasksFromDOM();
+            scheduleSave("mover tarea");
+            updateSummaryUI();
+            for (const c of state.categories) updateCategoryUI(c.id);
+          }
+        });
+        sortableTasks.set(category.id, instance);
+      }
+
+      refreshIcons();
+      const title = card.querySelector(".activity-title");
+      requestAnimationFrame(() => {
+        title?.focus();
+        title?.select();
+      });
+
+      updateSummaryUI();
       scheduleSave("nueva fase");
     }
 
@@ -2145,6 +2177,59 @@
       }
     }
 
+    function applySearchFilter() {
+      const query = activeSearch.trim().toLowerCase();
+      const categoryCards = [...document.querySelectorAll("#board .activity-card:not(.completed-card)")];
+      let visibleCategories = 0;
+
+      categoryCards.forEach(card => {
+        const title = card.querySelector(".activity-title")?.value?.toLowerCase() || "";
+        const items = [...card.querySelectorAll(".task-item[data-task-id]")];
+        let categoryHasMatch = !query || title.includes(query);
+
+        items.forEach(item => {
+          const input = item.querySelector(".task-input");
+          const text = input?.value?.toLowerCase() || "";
+          const match = !query || title.includes(query) || text.includes(query);
+          item.classList.toggle("search-hidden", !match);
+          item.classList.toggle("search-match", !!query && match && text.includes(query));
+          if (match) categoryHasMatch = true;
+        });
+
+        card.style.display = categoryHasMatch ? "" : "none";
+        if (categoryHasMatch) visibleCategories++;
+      });
+
+      const completedCard = document.querySelector(".completed-card");
+      if (completedCard) {
+        const completedItems = [...completedCard.querySelectorAll(".task-item[data-task-id]")];
+        let completedVisible = 0;
+        completedItems.forEach(item => {
+          const text = item.querySelector(".task-input")?.value?.toLowerCase() || "";
+          const match = !query || text.includes(query);
+          item.classList.toggle("search-hidden", !match);
+          item.classList.toggle("search-match", !!query && match);
+          if (match) completedVisible++;
+        });
+        completedCard.style.display = completedVisible || !query ? "" : "none";
+      }
+
+      if (!state.categories.length) {
+        el.emptyState.style.display = "block";
+        return;
+      }
+
+      if (query && visibleCategories === 0 && !document.querySelector(".completed-card:not([style*='display: none']) .task-item:not(.search-hidden)")) {
+        el.emptyState.style.display = "block";
+        el.emptyState.querySelector("h2").textContent = "No encontramos coincidencias";
+        el.emptyState.querySelector("p").textContent = "Prueba con otra palabra o limpia el buscador.";
+      } else {
+        el.emptyState.style.display = "none";
+        el.emptyState.querySelector("h2").textContent = "Tu tablero está limpio ✨";
+        el.emptyState.querySelector("p").textContent = "Crea una fase para empezar. Puedes mover fases, reordenar tareas, pegar listas completas y copiar tu plan a WhatsApp.";
+      }
+    }
+
     function updateTaskHeights() {
       document.querySelectorAll(".task-input").forEach(node => {
         node.style.height = "auto";
@@ -2194,7 +2279,12 @@
           task.date = today();
           persistLocal();
           localDirty = true;
-          render();
+          const item = document.querySelector(`.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`);
+          item?.classList.remove("overdue");
+          const due = item?.querySelector(".task-due");
+          if (due) due.innerHTML = '<i data-lucide="calendar-days"></i>' + escapeHTML("Para hoy · " + formatDateLong(today()));
+          refreshIcons();
+          updateSummaryUI();
           renderOverdueModal();
           scheduleSave("mover atrasada a hoy");
           toast("Tarea movida a hoy", "calendar-check");
@@ -2624,10 +2714,7 @@
 
       el.searchInput.addEventListener("input", () => {
         activeSearch = el.searchInput.value;
-        const start = el.searchInput.selectionStart;
-        render();
-        el.searchInput.focus();
-        try { el.searchInput.setSelectionRange(start, start); } catch {}
+        applySearchFilter();
       });
 
       el.themeBtn.addEventListener("click", toggleTheme);
