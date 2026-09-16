@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V37 -->
+  <!-- TASKY PRO · V38 -->
     <!-- Build estable: V35 · Drag fallback + mobile scroll -->
 
   <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
@@ -451,19 +451,40 @@
       transform-origin: center center !important;
       opacity: .98 !important;
       margin: 0 !important;
-      transition: transform .12s var(--ease), box-shadow .12s ease !important;
+      transition: box-shadow .08s ease !important;
       box-shadow: 0 28px 70px rgba(15,23,42,.22) !important;
       will-change: top, left, transform;
     }
 
     .category-drop-placeholder {
       width: 100%;
-      min-height: 88px;
-      border: 2px dashed rgba(37,99,235,.42);
-      border-radius: var(--radius-xl);
-      background: linear-gradient(90deg, rgba(37,99,235,.07), rgba(124,58,237,.07));
-      box-shadow: inset 0 0 0 1px rgba(37,99,235,.06);
-      transition: height .12s var(--ease), margin .12s var(--ease), opacity .12s ease;
+      height: 10px;
+      min-height: 10px;
+      margin: 7px 0;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--primary), var(--primary-2));
+      box-shadow:
+        0 0 0 1px rgba(37,99,235,.14),
+        0 5px 18px rgba(37,99,235,.24);
+      transition: transform .08s linear, margin .08s linear, opacity .08s ease;
+      position: relative;
+    }
+
+    .category-drop-placeholder::before {
+      content: "Soltar aquí";
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 2px 8px;
+      border-radius: 999px;
+      color: #fff;
+      background: linear-gradient(90deg, var(--primary), var(--primary-2));
+      font-size: .68rem;
+      font-weight: 850;
+      letter-spacing: .02em;
+      box-shadow: 0 5px 16px rgba(37,99,235,.22);
     }
 
     body.is-section-pointer-dragging {
@@ -1051,6 +1072,189 @@
     .sync-dot.error { background: var(--danger); }
     .sync-label { font-size: .73rem; font-weight: 800; color: var(--muted); }
 
+    /* ===== Informe de fase V38 ===== */
+    .stats-report {
+      width: min(100%, 620px);
+    }
+
+    .report-hero {
+      position: relative;
+      display: grid;
+      grid-template-columns: 148px 1fr;
+      gap: 18px;
+      align-items: center;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background:
+        radial-gradient(circle at 18% 20%, rgba(37,99,235,.10), transparent 45%),
+        linear-gradient(135deg, rgba(37,99,235,.05), rgba(124,58,237,.06));
+      overflow: hidden;
+    }
+
+    .report-ring {
+      --report-pct: 0%;
+      width: 132px;
+      height: 132px;
+      display: grid;
+      place-items: center;
+      margin: 0 auto;
+      border-radius: 50%;
+      background:
+        conic-gradient(from -90deg, var(--primary) 0 var(--report-pct), rgba(37,99,235,.10) var(--report-pct) 100%);
+      box-shadow: 0 12px 34px rgba(37,99,235,.13);
+    }
+
+    .report-ring::after {
+      content: "";
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: var(--surface-solid);
+      box-shadow: inset 0 0 0 1px var(--line);
+      grid-area: 1 / 1;
+    }
+
+    .report-ring-value {
+      grid-area: 1 / 1;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    .report-ring-value strong {
+      font-size: 2rem;
+      letter-spacing: -.06em;
+    }
+
+    .report-ring-value span {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: .7rem;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .report-copy h3 {
+      margin: 0 0 7px;
+      font-size: 1.35rem;
+      letter-spacing: -.035em;
+    }
+
+    .report-copy p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: .92rem;
+    }
+
+    .report-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+      margin-top: 12px;
+    }
+
+    .report-stat {
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: var(--surface-muted);
+    }
+
+    .report-stat small {
+      display: block;
+      color: var(--muted);
+      font-size: .68rem;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .report-stat strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 1.35rem;
+      letter-spacing: -.04em;
+    }
+
+    .report-breakdown {
+      margin-top: 12px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: var(--surface-muted);
+    }
+
+    .report-breakdown-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: .74rem;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .report-bar {
+      height: 9px;
+      margin-top: 10px;
+      overflow: hidden;
+      display: flex;
+      border-radius: 999px;
+      background: var(--line);
+    }
+
+    .report-bar span {
+      display: block;
+      height: 100%;
+      transition: width .5s var(--ease);
+    }
+
+    .report-bar .bar-pending { background: linear-gradient(90deg, #f59e0b, #fb7185); }
+    .report-bar .bar-completed { background: linear-gradient(90deg, #16a34a, #22c55e); }
+
+    .report-message {
+      margin-top: 12px;
+      padding: 13px 14px;
+      border-radius: 15px;
+      color: var(--text);
+      background: linear-gradient(90deg, rgba(37,99,235,.07), rgba(124,58,237,.07));
+      font-weight: 750;
+      line-height: 1.45;
+      animation: successPop .34s var(--ease) both;
+    }
+
+    @media (max-width: 640px) {
+      .report-hero {
+        grid-template-columns: 112px 1fr;
+        gap: 13px;
+        padding: 14px;
+      }
+
+      .report-ring {
+        width: 104px;
+        height: 104px;
+      }
+
+      .report-ring::after {
+        width: 76px;
+        height: 76px;
+      }
+
+      .report-ring-value strong { font-size: 1.55rem; }
+      .report-copy h3 { font-size: 1.12rem; }
+      .report-copy p { font-size: .82rem; }
+      .report-grid { grid-template-columns: repeat(3,1fr); gap: 6px; }
+      .report-stat { padding: 10px; }
+      .report-stat strong { font-size: 1.12rem; }
+    }
+
     .loading-screen {
       position: fixed;
       inset: 0;
@@ -1099,7 +1303,7 @@
 
     /* ===== Arrastre V35: sin clon visual duplicado ni transformaciones pesadas ===== */
     /* =========================================================
-       TASKY PRO V37 · Drag de secciones con pointer events + responsive actions
+       TASKY PRO V38 · Drag rápido + preview de tareas + informes
        ========================================================= */
     .sortable-ghost {
       opacity: .30 !important;
@@ -1157,8 +1361,14 @@
     }
 
     .task-item-actions {
-      min-width: 72px;
+      min-width: 76px;
+      width: 76px;
+      flex: 0 0 76px;
+      display: flex;
+      align-items: center;
       justify-content: flex-end;
+      gap: 4px;
+      overflow: visible;
     }
 
     .sortable-ghost {
@@ -1334,14 +1544,14 @@
 
     body {
       background:
-        linear-gradient(-45deg, #eef6ff, #fff2f5, #effff5, #fff8ed, #f5efff, #eef7ff);
+        linear-gradient(-45deg, #dff0ff, #ffe1e8, #ddffe9, #ffedcf, #e9ddff, #d9efff);
       background-size: 420% 420%;
       animation: pageGradient 22s ease infinite;
     }
 
     [data-theme="dark"] body {
       background:
-        linear-gradient(-45deg, #070b13, #0d1020, #081412, #171108, #100a1b, #070b13);
+        linear-gradient(-45deg, #070d19, #17101c, #071912, #1b1409, #130c20, #07111b);
       background-size: 420% 420%;
     }
 
@@ -1746,7 +1956,7 @@
       .drag-card { width: 30px; height: 30px; }
       .activity-title { font-size: 1.06rem; }
       .task-item { grid-template-columns: 22px 28px minmax(0,1fr) auto; padding: 9px 8px; }
-      .task-item-actions { min-width: 62px; }
+      .task-item-actions { min-width: 66px; width: 66px; flex-basis: 66px; }
       .delete-task-btn, .repeat-btn { width: 30px; height: 30px; flex-basis: 30px; }
       .task-input { font-size: .95rem; }
       .top-actions .label-on-mobile { display: none; }
@@ -1952,6 +2162,19 @@
     </button>
   </div>
 
+  <div id="statsModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="statsModalTitle">
+    <div class="modal stats-report">
+      <div class="modal-head">
+        <h2 id="statsModalTitle">Informe de fase</h2>
+        <button class="icon-btn" type="button" data-close-modal="statsModal" aria-label="Cerrar informe">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div id="statsReportContent"></div>
+    </div>
+  </div>
+
   <div id="overdueModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="overdueTitle">
     <div class="modal">
       <div class="modal-head">
@@ -2005,7 +2228,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 37;
+    const APP_VERSION = 38;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // TASKY PRO · V36 — Drag más fluido, placeholder visible, fases nuevas antes de completadas.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -2032,6 +2255,7 @@
       overdueBtn: document.getElementById("overdueBtn"),
       overdueCount: document.getElementById("overdueCount"),
       overdueList: document.getElementById("overdueList"),
+      statsReportContent: document.getElementById("statsReportContent"),
       syncStatus: document.getElementById("syncStatus"),
       todayText: document.getElementById("todayText"),
       dayPercent: document.getElementById("dayPercent"),
@@ -2549,22 +2773,30 @@
       drag.raf = 0;
 
       let clientY = drag.nextClientY;
-      const topZone = 90;
-      const bottomZone = window.innerHeight - 90;
-      const step = 18;
+      const topZone = 110;
+      const bottomZone = window.innerHeight - 110;
+      const step = 26;
 
       if (clientY < topZone) window.scrollBy(0, -step);
       else if (clientY > bottomZone) window.scrollBy(0, step);
 
-      let top = clientY - drag.offsetY;
+      const top = clientY - drag.offsetY;
       drag.card.style.top = `${top}px`;
 
       const target = findCategoryTargetAt(clientY, drag.card, drag.placeholder);
-      if (target) {
-        const rect = target.getBoundingClientRect();
-        const insertAfter = clientY > rect.top + rect.height / 2;
-        if (insertAfter) target.parentElement.insertBefore(drag.placeholder, target.nextSibling);
-        else target.parentElement.insertBefore(drag.placeholder, target);
+      if (!target) return;
+
+      const rect = target.getBoundingClientRect();
+
+      // Al bajar un poco dentro de la siguiente fase, la previsualización
+      // pasa rápidamente a "después de esta fase".
+      const fastDropZone = Math.max(42, rect.height * 0.26);
+      const insertAfter = clientY >= rect.top + fastDropZone;
+
+      if (insertAfter) {
+        target.parentElement.insertBefore(drag.placeholder, target.nextSibling);
+      } else {
+        target.parentElement.insertBefore(drag.placeholder, target);
       }
     }
 
@@ -2661,7 +2893,7 @@
           removeCloneOnHide: true,
           fallbackTolerance: 4,
 
-          ghostClass: "sortable-ghost",
+          ghostClass: "sortable-ghost-task",
           dragClass: "sortable-drag",
 
           delay: 0,
@@ -2674,8 +2906,9 @@
           scrollSensitivity: 34,
           scrollSpeed: 24,
 
-          swapThreshold: 0.25,
+          swapThreshold: 0.18,
           invertSwap: false,
+          emptyInsertThreshold: 12,
 
           onStart() {
             document.body.classList.add("is-dragging");
@@ -2733,6 +2966,99 @@
       for (const cat of state.categories) {
         for (const task of cat.tasks) task.date = task.date || today();
       }
+    }
+
+    function openCategoryReport(categoryId) {
+      const cat = state.categories.find(c => c.id === categoryId);
+      if (!cat || !el.statsReportContent) return;
+
+      const completed = state.completed.filter(t => t.originCat === categoryId).length;
+      const pending = cat.tasks.length;
+      const total = pending + completed;
+      const pct = total ? Math.round((completed / total) * 100) : 0;
+      const overdue = cat.tasks.filter(t => t.date < today()).length;
+      const recurring = cat.tasks.filter(t => Boolean(t.repeat)).length;
+      const todayPending = cat.tasks.filter(t => t.date === today()).length;
+
+      let message = "Aún no hay tareas suficientes para medir el ritmo.";
+      if (total === 0) {
+        message = "Añade algunas tareas para comenzar a construir el progreso de esta fase.";
+      } else if (pct === 100) {
+        message = "Fase completada. Todo lo registrado en esta fase está listo. 🎉";
+      } else if (overdue > 0) {
+        message = `Tienes ${overdue} tarea${overdue === 1 ? "" : "s"} atrasada${overdue === 1 ? "" : "s"}. Puedes priorizar${overdue === 1 ? "la" : "las"} desde el tablero.`;
+      } else if (pct >= 70) {
+        message = "Vas bastante avanzado. Queda una parte pequeña del trabajo por cerrar. 🚀";
+      } else if (pct >= 40) {
+        message = "Buen avance. Mantén el ritmo y continúa con las pendientes de hoy.";
+      } else {
+        message = "Esta fase recién está comenzando. Enfócate en la siguiente tarea accionable.";
+      }
+
+      const pendingPct = total ? Math.round((pending / total) * 100) : 0;
+      const completedPct = total ? 100 - pendingPct : 0;
+
+      el.statsReportContent.innerHTML = `
+        <div class="report-hero">
+          <div class="report-ring" style="--report-pct:${pct}%">
+            <div class="report-ring-value">
+              <strong>${pct}%</strong>
+              <span>avance</span>
+            </div>
+          </div>
+
+          <div class="report-copy">
+            <h3>${escapeHTML(cat.title || "Fase sin nombre")}</h3>
+            <p>${total === 0 ? "No hay tareas registradas." : `${completed} de ${total} tarea${total === 1 ? "" : "s"} completada${completed === 1 ? "" : "s"}.`}</p>
+          </div>
+        </div>
+
+        <div class="report-grid">
+          <div class="report-stat">
+            <small>Pendientes</small>
+            <strong>${pending}</strong>
+          </div>
+          <div class="report-stat">
+            <small>Completadas</small>
+            <strong>${completed}</strong>
+          </div>
+          <div class="report-stat">
+            <small>Atrasadas</small>
+            <strong>${overdue}</strong>
+          </div>
+        </div>
+
+        <div class="report-breakdown">
+          <div class="report-breakdown-head">
+            <span>Distribución</span>
+            <span>${pendingPct}% pendientes · ${completedPct}% listas</span>
+          </div>
+          <div class="report-bar" aria-label="Distribución de tareas">
+            <span class="bar-pending" style="width:${pendingPct}%"></span>
+            <span class="bar-completed" style="width:${completedPct}%"></span>
+          </div>
+        </div>
+
+        <div class="report-grid">
+          <div class="report-stat">
+            <small>Para hoy</small>
+            <strong>${todayPending}</strong>
+          </div>
+          <div class="report-stat">
+            <small>Repetitivas</small>
+            <strong>${recurring}</strong>
+          </div>
+          <div class="report-stat">
+            <small>Total</small>
+            <strong>${total}</strong>
+          </div>
+        </div>
+
+        <div class="report-message">${escapeHTML(message)}</div>
+      `;
+
+      openModal("statsModal");
+      refreshIcons();
     }
 
     function updateCategoryUI(categoryId) {
@@ -3688,10 +4014,8 @@
 
         if (action === "stats") {
           const card = event.target.closest("[data-category-id]");
-          const cat = state.categories.find(c => c.id === card?.dataset.categoryId);
-          if (!cat) return;
-          const completed = state.completed.filter(t => t.originCat === cat.id).length;
-          toast(`${cat.title || "Fase"}: ${cat.tasks.length} pendientes · ${completed} completadas`, "bar-chart-3");
+          const categoryId = card?.dataset.categoryId;
+          if (categoryId) openCategoryReport(categoryId);
           return;
         }
 
