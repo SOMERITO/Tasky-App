@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V39 -->
+  <!-- TASKY PRO · V40 -->
     <!-- Build estable base + V39 · Drag de tareas por Pointer Events + repetición semanal -->
 
   <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
@@ -674,11 +674,141 @@
       padding: 0 13px 10px;
     }
 
-    /* ===== TASKY PRO V39 · Drag de tareas + repetición semanal ===== */\n    .task-drop-line {\n      height: 4px;\n      margin: 2px 6px;\n      border-radius: 999px;\n      background: linear-gradient(90deg, var(--primary), var(--primary-2));\n      box-shadow: 0 0 0 1px rgba(37,99,235,.10), 0 4px 14px rgba(37,99,235,.20);\n      position: relative;\n      z-index: 4;\n      pointer-events: none;\n    }\n    .task-drop-line::before,\n    .task-drop-line::after {\n      content: '';\n      position: absolute;\n      top: 50%;\n      width: 7px;\n      height: 7px;\n      border-radius: 50%;\n      background: var(--primary);\n      transform: translateY(-50%);\n      box-shadow: 0 0 0 4px rgba(37,99,235,.10);\n    }\n    .task-drop-line::before { left: -1px; }\n    .task-drop-line::after { right: -1px; }\n\n    .task-drag-floating {\n      position: fixed !important;\n      z-index: 100000 !important;\n      pointer-events: none !important;\n      margin: 0 !important;\n      width: min(620px, calc(100vw - 24px)) !important;\n      transform: rotate(.35deg) scale(1.01) !important;\n      transform-origin: center center !important;\n      box-shadow: 0 26px 70px rgba(15,23,42,.22) !important;\n      opacity: .98 !important;\n      will-change: top, left, transform !important;\n    }\n\n    .task-item.task-drag-source {\n      opacity: .32 !important;\n      outline: 2px dashed rgba(37,99,235,.24);\n      outline-offset: 2px;\n    }\n\n    body.task-drag-mode {\n      cursor: grabbing !important;\n      user-select: none !important;\n      -webkit-user-select: none !important;\n    }\n\n    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) {\n      min-height: 40px;\n      padding: 7px 10px;\n      grid-template-columns: 24px minmax(0,1fr) auto;\n      align-items: center;\n      box-shadow: none;\n      opacity: .72;\n      border-color: transparent;\n      background: var(--surface-muted);\n    }\n\n    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) > .drag-task,\n    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) > .check-btn,\n    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) > .task-due,\n    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) > .task-item-actions {\n      display: none !important;\n    }\n\n    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) .task-input {\n      grid-column: 1 / -1;\n      min-height: 26px;\n      white-space: nowrap;\n      overflow: hidden;\n      text-overflow: ellipsis;\n      pointer-events: none;\n      font-size: .9rem;\n      font-weight: 700;\n      color: var(--muted);\n    }\n\n    body.task-drag-mode .activity-card.task-drag-active {\n      box-shadow: 0 18px 45px rgba(37,99,235,.13);\n    }\n\n    .repeat-editor-days {\n      display: grid;\n      grid-template-columns: repeat(7, minmax(0,1fr));\n      gap: 7px;\n      margin-top: 12px;\n    }\n\n    .repeat-day-option {\n      position: relative;\n    }\n    .repeat-day-option input {\n      position: absolute;\n      opacity: 0;\n      pointer-events: none;\n    }\n    .repeat-day-option span {\n      min-height: 44px;\n      display: grid;\n      place-items: center;\n      border: 1px solid var(--line);\n      border-radius: 12px;\n      background: var(--surface-muted);\n      color: var(--muted);\n      font-size: .78rem;\n      font-weight: 850;\n      cursor: pointer;\n      transition: transform .15s ease, background .15s ease, border-color .15s ease, color .15s ease;\n    }\n    .repeat-day-option input:checked + span {\n      color: #fff;\n      border-color: transparent;\n      background: linear-gradient(135deg, var(--primary), var(--primary-2));\n      box-shadow: 0 8px 20px rgba(37,99,235,.20);\n    }\n    .repeat-day-option span:active { transform: scale(.95); }\n    .repeat-editor-summary {\n      margin-top: 12px;\n      color: var(--muted);\n      font-size: .82rem;\n      line-height: 1.4;\n    }\n\n    .task-item {
+    /* =========================================================
+       TASKY PRO V40 · Drag de tareas + repetición semanal
+       ========================================================= */
+
+    .task-drop-line {
+      height: 4px;
+      margin: 2px 8px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--primary), var(--primary-2));
+      box-shadow: 0 0 0 1px rgba(37,99,235,.10), 0 4px 14px rgba(37,99,235,.18);
+      position: relative;
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    .task-drop-line::before,
+    .task-drop-line::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--primary);
+      transform: translateY(-50%);
+      box-shadow: 0 0 0 4px rgba(37,99,235,.10);
+    }
+    .task-drop-line::before { left: -1px; }
+    .task-drop-line::after { right: -1px; }
+
+    .task-drag-floating {
+      position: fixed !important;
+      z-index: 100000 !important;
+      pointer-events: none !important;
+      margin: 0 !important;
+      width: min(620px, calc(100vw - 24px)) !important;
+      transform: none !important;
+      box-shadow: 0 24px 64px rgba(15,23,42,.20) !important;
+      opacity: .98 !important;
+      will-change: top, left !important;
+    }
+
+    .task-item.task-drag-source {
+      opacity: .34 !important;
+      outline: 2px dashed rgba(37,99,235,.22);
+      outline-offset: 2px;
+    }
+
+    body.task-drag-mode {
+      cursor: grabbing !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+    }
+
+    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) {
+      min-height: 42px;
+      padding: 8px 10px;
+      grid-template-columns: 1fr;
+      align-items: center;
+      box-shadow: none;
+      opacity: .72;
+      border-color: transparent;
+      background: var(--surface-muted);
+    }
+
+    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) > .drag-task,
+    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) > .check-btn,
+    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) > .task-due,
+    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) > .task-item-actions {
+      display: none !important;
+    }
+
+    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) .task-input {
+      grid-column: 1;
+      min-height: 26px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
+      font-size: .9rem;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    body.task-drag-mode .activity-card.task-drag-active {
+      box-shadow: 0 18px 45px rgba(37,99,235,.13);
+    }
+
+    .repeat-editor-days {
       display: grid;
-      grid-template-columns: 28px 30px minmax(0,1fr) auto;
+      grid-template-columns: repeat(7, minmax(0,1fr));
+      gap: 7px;
+      margin-top: 12px;
+    }
+
+    .repeat-day-option { position: relative; }
+    .repeat-day-option input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .repeat-day-option span {
+      min-height: 44px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface-muted);
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 850;
+      cursor: pointer;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease, color .15s ease;
+    }
+    .repeat-day-option input:checked + span {
+      color: #fff;
+      border-color: transparent;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      box-shadow: 0 8px 20px rgba(37,99,235,.20);
+    }
+    .repeat-day-option span:active { transform: scale(.95); }
+    .repeat-editor-summary {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: .82rem;
+      line-height: 1.4;
+    }
+
+    .task-item {
+      display: grid;
+      grid-template-columns: 28px 30px minmax(0,1fr) 76px;
+      grid-template-rows: auto auto;
       align-items: start;
-      gap: 8px;
+      column-gap: 8px;
+      row-gap: 3px;
       min-width: 0;
       padding: 10px;
       border: 1px solid transparent;
@@ -760,7 +890,7 @@
     .task-input::placeholder { color: #b9c1ce; }
 
     .task-due {
-      grid-column: 3 / -1;
+      grid-column: 3 / 4;
       display: inline-flex;
       justify-self: start;
       align-items: center;
@@ -1940,7 +2070,7 @@
         grid-template-columns: 32px minmax(0, 1fr) auto;
       }
       .completed-item .task-due {
-        grid-column: 2 / -1;
+        grid-column: 3 / 4;
         justify-self: start;
         margin-top: -4px;
       }
@@ -1958,8 +2088,8 @@
       .drag-card { width: 30px; height: 30px; }
       .activity-title { font-size: 1.06rem; }
       .task-item { grid-template-columns: 22px 28px minmax(0,1fr) auto; padding: 9px 8px; }
-      .task-item-actions { min-width: 66px; width: 66px; flex-basis: 66px; }
-      .delete-task-btn, .repeat-btn { width: 30px; height: 30px; flex-basis: 30px; }
+      .task-item-actions { min-width: 76px; width: 76px; flex-basis: 76px; }
+      .delete-task-btn, .repeat-btn { width: 34px; height: 34px; flex-basis: 34px; }
       .task-input { font-size: .95rem; }
       .top-actions .label-on-mobile { display: none; }
       .hero { padding-top: 18px; }
@@ -2216,7 +2346,7 @@
     "use strict";
 
     // =========================================================
-    // TASKY PRO V39
+    // TASKY PRO V40
     // Objetivo de esta versión: mantener el borrador de una nueva tarea
     // durante la sincronización para evitar que el campo desaparezca.
     // También conserva el renderizado incremental introducido en V30.
@@ -2230,7 +2360,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 39;
+    const APP_VERSION = 40;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
