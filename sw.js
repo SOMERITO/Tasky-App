@@ -34,9 +34,16 @@ self.addEventListener('fetch', (event) => {
 
   if (request.method !== 'GET') return;
 
+  const url = new URL(request.url);
+
+  // Solo gestionamos recursos del propio sitio.
+  if (url.origin !== self.location.origin) return;
+
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) return cachedResponse;
+      if (cachedResponse) {
+        return cachedResponse;
+      }
 
       return fetch(request)
         .then((networkResponse) => {
@@ -56,7 +63,9 @@ self.addEventListener('fetch', (event) => {
 
           return networkResponse;
         })
-        .catch(() => caches.match('./index.html'));
+        .catch(() => {
+          return caches.match('./index.html');
+        });
     })
   );
 });
