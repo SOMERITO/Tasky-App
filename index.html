@@ -10,8 +10,8 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V38 -->
-    <!-- Build estable: V35 · Drag fallback + mobile scroll -->
+  <!-- TASKY PRO · V39 -->
+    <!-- Build estable base + V39 · Drag de tareas por Pointer Events + repetición semanal -->
 
   <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
   <link rel="icon" type="image/png" href="icon.png?v=27">
@@ -674,7 +674,7 @@
       padding: 0 13px 10px;
     }
 
-    .task-item {
+    /* ===== TASKY PRO V39 · Drag de tareas + repetición semanal ===== */\n    .task-drop-line {\n      height: 4px;\n      margin: 2px 6px;\n      border-radius: 999px;\n      background: linear-gradient(90deg, var(--primary), var(--primary-2));\n      box-shadow: 0 0 0 1px rgba(37,99,235,.10), 0 4px 14px rgba(37,99,235,.20);\n      position: relative;\n      z-index: 4;\n      pointer-events: none;\n    }\n    .task-drop-line::before,\n    .task-drop-line::after {\n      content: '';\n      position: absolute;\n      top: 50%;\n      width: 7px;\n      height: 7px;\n      border-radius: 50%;\n      background: var(--primary);\n      transform: translateY(-50%);\n      box-shadow: 0 0 0 4px rgba(37,99,235,.10);\n    }\n    .task-drop-line::before { left: -1px; }\n    .task-drop-line::after { right: -1px; }\n\n    .task-drag-floating {\n      position: fixed !important;\n      z-index: 100000 !important;\n      pointer-events: none !important;\n      margin: 0 !important;\n      width: min(620px, calc(100vw - 24px)) !important;\n      transform: rotate(.35deg) scale(1.01) !important;\n      transform-origin: center center !important;\n      box-shadow: 0 26px 70px rgba(15,23,42,.22) !important;\n      opacity: .98 !important;\n      will-change: top, left, transform !important;\n    }\n\n    .task-item.task-drag-source {\n      opacity: .32 !important;\n      outline: 2px dashed rgba(37,99,235,.24);\n      outline-offset: 2px;\n    }\n\n    body.task-drag-mode {\n      cursor: grabbing !important;\n      user-select: none !important;\n      -webkit-user-select: none !important;\n    }\n\n    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) {\n      min-height: 40px;\n      padding: 7px 10px;\n      grid-template-columns: 24px minmax(0,1fr) auto;\n      align-items: center;\n      box-shadow: none;\n      opacity: .72;\n      border-color: transparent;\n      background: var(--surface-muted);\n    }\n\n    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) > .drag-task,\n    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) > .check-btn,\n    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) > .task-due,\n    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) > .task-item-actions {\n      display: none !important;\n    }\n\n    body.task-drag-mode .activity-card:not(.task-drag-active) .task-item:not(.task-drag-source) .task-input {\n      grid-column: 1 / -1;\n      min-height: 26px;\n      white-space: nowrap;\n      overflow: hidden;\n      text-overflow: ellipsis;\n      pointer-events: none;\n      font-size: .9rem;\n      font-weight: 700;\n      color: var(--muted);\n    }\n\n    body.task-drag-mode .activity-card.task-drag-active {\n      box-shadow: 0 18px 45px rgba(37,99,235,.13);\n    }\n\n    .repeat-editor-days {\n      display: grid;\n      grid-template-columns: repeat(7, minmax(0,1fr));\n      gap: 7px;\n      margin-top: 12px;\n    }\n\n    .repeat-day-option {\n      position: relative;\n    }\n    .repeat-day-option input {\n      position: absolute;\n      opacity: 0;\n      pointer-events: none;\n    }\n    .repeat-day-option span {\n      min-height: 44px;\n      display: grid;\n      place-items: center;\n      border: 1px solid var(--line);\n      border-radius: 12px;\n      background: var(--surface-muted);\n      color: var(--muted);\n      font-size: .78rem;\n      font-weight: 850;\n      cursor: pointer;\n      transition: transform .15s ease, background .15s ease, border-color .15s ease, color .15s ease;\n    }\n    .repeat-day-option input:checked + span {\n      color: #fff;\n      border-color: transparent;\n      background: linear-gradient(135deg, var(--primary), var(--primary-2));\n      box-shadow: 0 8px 20px rgba(37,99,235,.20);\n    }\n    .repeat-day-option span:active { transform: scale(.95); }\n    .repeat-editor-summary {\n      margin-top: 12px;\n      color: var(--muted);\n      font-size: .82rem;\n      line-height: 1.4;\n    }\n\n    .task-item {
       display: grid;
       grid-template-columns: 28px 30px minmax(0,1fr) auto;
       align-items: start;
@@ -714,6 +714,8 @@
       color: #b8c0cc;
       cursor: grab;
       touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
     }
 
     .drag-task:active { cursor: grabbing; color: var(--primary); }
@@ -2175,7 +2177,7 @@
     </div>
   </div>
 
-  <div id="overdueModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="overdueTitle">
+  <div id="repeatModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="repeatModalTitle">\n    <div class="modal">\n      <div class="modal-head">\n        <div>\n          <h2 id="repeatModalTitle">Repetir tarea</h2>\n          <div id="repeatTaskName" class="brand-subtitle" style="margin-top:4px"></div>\n        </div>\n        <button class="icon-btn" type="button" data-close-modal="repeatModal" aria-label="Cerrar">\n          <i data-lucide="x"></i>\n        </button>\n      </div>\n      <input id="repeatTaskId" type="hidden">\n      <div style="font-weight:800">¿Qué días quieres repetirla?</div>\n      <div class="repeat-editor-days">\n        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="1"><span>L</span></label>\n        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="2"><span>M</span></label>\n        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="3"><span>X</span></label>\n        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="4"><span>J</span></label>\n        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="5"><span>V</span></label>\n        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="6"><span>S</span></label>\n        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="7"><span>D</span></label>\n      </div>\n      <div id="repeatSummary" class="repeat-editor-summary"></div>\n      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">\n        <button class="soft-btn" type="button" data-close-modal="repeatModal">Cancelar</button>\n        <button class="soft-btn" type="button" id="saveRepeatBtn" style="background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;border-color:transparent"><i data-lucide="check"></i> Guardar</button>\n      </div>\n    </div>\n  </div>\n\n  <div id="overdueModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="overdueTitle">
     <div class="modal">
       <div class="modal-head">
         <h2 id="overdueTitle">Tareas atrasadas</h2>
@@ -2214,23 +2216,23 @@
     "use strict";
 
     // =========================================================
-    // TASKY PRO V31
+    // TASKY PRO V39
     // Objetivo de esta versión: mantener el borrador de una nueva tarea
     // durante la sincronización para evitar que el campo desaparezca.
     // También conserva el renderizado incremental introducido en V30.
     // =========================================================
 
     /* =========================================================
-       TASKY PRO v31
+       TASKY PRO v39
        Arquitectura:
        - State -> render -> interactions -> state
        - Firestore solo sincroniza el state
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 38;
+    const APP_VERSION = 39;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
-    // TASKY PRO · V36 — Drag más fluido, placeholder visible, fases nuevas antes de completadas.
+    // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
     const THEME_KEY = "tasky_theme";
     const DEVICE_KEY = "tasky_device_id";
@@ -2445,6 +2447,9 @@
               date: /^\d{4}-\d{2}-\d{2}$/.test(task.date || "") ? task.date : today(),
               draft: Boolean(task.draft) || text.trim() === "",
               repeat: Boolean(task.repeat),
+              repeatDays: Array.isArray(task.repeatDays) && task.repeatDays.length
+                ? [...new Set(task.repeatDays.map(Number).filter(n => n >= 1 && n <= 7))].sort((a,b) => a-b)
+                : (task.repeat ? [1,2,3,4,5,6,7] : []),
               repeatCount: Number.isFinite(Number(task.repeatCount)) ? Number(task.repeatCount) : 0,
               lastCompletedAt: task.lastCompletedAt || null
             };
@@ -2459,7 +2464,9 @@
             text: typeof task.text === "string" ? task.text : "",
             date: /^\d{4}-\d{2}-\d{2}$/.test(task.date || "") ? task.date : today(),
             originCat: String(task.originCat || ""),
-            completedAt: task.completedAt || Date.now()
+            completedAt: task.completedAt || Date.now(),
+            repeat: Boolean(task.repeat),
+            repeatDays: Array.isArray(task.repeatDays) ? [...new Set(task.repeatDays.map(Number).filter(n => n >= 1 && n <= 7))].sort((a,b) => a-b) : []
           })).filter(task => task.text.trim() !== "")
         : [];
 
@@ -2642,12 +2649,12 @@
           <button class="check-btn" type="button" data-action="complete-task" aria-label="Completar tarea"></button>
           <textarea class="task-input" rows="1" maxlength="500" placeholder="Añadir tarea…">${escapeHTML(task.text)}</textarea>
           <div class="task-item-actions">
-            <button class="repeat-btn${repeatActive ? " active" : ""}" type="button" data-action="toggle-repeat" title="${repeatActive ? "Desactivar repetición diaria" : "Repetir diariamente"}" aria-label="${repeatActive ? "Desactivar repetición diaria" : "Repetir diariamente"}">
+            <button class="repeat-btn${repeatActive ? " active" : ""}" type="button" data-action="toggle-repeat" title="${repeatActive ? "Editar repetición" : "Configurar repetición"}" aria-label="${repeatActive ? "Editar repetición" : "Configurar repetición"}">
               <i data-lucide="repeat-2"></i>
             </button>
             <button class="delete-task-btn remove-task" type="button" data-action="delete-task" title="Eliminar tarea" aria-label="Eliminar tarea"><i data-lucide="x"></i></button>
           </div>
-          <span class="task-due"><i data-lucide="${isOverdue ? "triangle-alert" : "calendar-days"}"></i>${escapeHTML(dueLabel)}${repeatActive ? '<span class="task-repeat-badge"><i data-lucide="repeat-2"></i> Diaria</span>' : ''}</span>
+          <span class="task-due"><i data-lucide="${isOverdue ? "triangle-alert" : "calendar-days"}"></i>${escapeHTML(dueLabel)}${repeatActive ? `<span class="task-repeat-badge"><i data-lucide="repeat-2"></i>${escapeHTML(repeatDaysToLabel(task.repeatDays))}</span>` : ''}</span>
         `;
       }
 
@@ -2868,70 +2875,273 @@
       finishSectionPointerDrag(true);
     }
 
+    let taskPointerCleanup = null;
+    let activeTaskDrag = null;
+
     function initSortables() {
-      if (typeof Sortable === "undefined") {
-        console.warn("SortableJS no está disponible para tareas.");
+      // V39: las fases siguen usando Pointer Events.
+      initSectionPointerDrag();
+      initTaskPointerDrag();
+    }
+
+    function initTaskPointerDrag() {
+      if (typeof taskPointerCleanup === 'function') taskPointerCleanup();
+      const cleanups = [];
+
+      document.querySelectorAll('#board .task-item[data-task-id]').forEach(item => {
+        if (item.classList.contains('completed-item')) return;
+
+        const handle = item.querySelector('.drag-task');
+        const onDown = (event) => {
+          if (event.button !== undefined && event.button !== 0) return;
+          if (activeTaskDrag) return;
+          if (event.target.closest('textarea, button:not(.drag-task)')) return;
+          event.preventDefault();
+          event.stopPropagation();
+          armTaskPointerDrag(event, item);
+        };
+
+        // El botón de agarre responde rápidamente; tocar el cuerpo mantiene un gesto largo.
+        (handle || item).addEventListener('pointerdown', onDown, { passive: false });
+        cleanups.push(() => (handle || item).removeEventListener('pointerdown', onDown));
+      });
+
+      taskPointerCleanup = () => {
+        cleanups.forEach(fn => fn());
+        taskPointerCleanup = null;
+      };
+    }
+
+    function armTaskPointerDrag(event, item) {
+      let timer = setTimeout(() => startTaskPointerDrag(event, item), event.target.closest('.drag-task') ? 95 : 220);
+      let started = false;
+      const pointerId = event.pointerId;
+      const startX = event.clientX;
+      const startY = event.clientY;
+
+      const onMove = (moveEvent) => {
+        if (moveEvent.pointerId !== pointerId) return;
+        const dx = moveEvent.clientX - startX;
+        const dy = moveEvent.clientY - startY;
+        if (!started && Math.hypot(dx, dy) > 8) {
+          clearTimeout(timer);
+          // Con botón de agarre, un movimiento claro comienza de inmediato.
+          if (event.target.closest('.drag-task')) {
+            started = true;
+            startTaskPointerDrag(event, item);
+          } else {
+            cleanupArm();
+          }
+        }
+      };
+
+      const onUp = () => cleanupArm();
+      const onCancel = () => cleanupArm();
+      const cleanupArm = () => {
+        clearTimeout(timer);
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        document.removeEventListener('pointercancel', onCancel);
+      };
+
+      document.addEventListener('pointermove', onMove, { passive: false });
+      document.addEventListener('pointerup', onUp, { passive: false });
+      document.addEventListener('pointercancel', onCancel, { passive: false });
+      item.setPointerCapture?.(pointerId);
+    }
+
+    function startTaskPointerDrag(event, item) {
+      if (activeTaskDrag) return;
+      const sourceList = item.closest('.task-list[data-category-id]');
+      if (!sourceList) return;
+
+      const sourceCatId = sourceList.dataset.categoryId;
+      const sourceCat = state.categories.find(c => c.id === sourceCatId);
+      const taskId = item.dataset.taskId;
+      const task = sourceCat?.tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      const rect = item.getBoundingClientRect();
+      const floating = item.cloneNode(true);
+      floating.classList.remove('task-drag-source', 'search-match', 'search-hidden');
+      floating.classList.add('task-drag-floating');
+      floating.style.height = `${rect.height}px`;
+      floating.style.left = `${rect.left}px`;
+      floating.style.top = `${rect.top}px`;
+      document.body.appendChild(floating);
+
+      const line = document.createElement('div');
+      line.className = 'task-drop-line';
+      line.setAttribute('aria-hidden', 'true');
+
+      item.classList.add('task-drag-source');
+      document.body.classList.add('task-drag-mode');
+      document.body.classList.add('is-dragging');
+      item.closest('.activity-card')?.classList.add('task-drag-active');
+
+      activeTaskDrag = {
+        item,
+        taskId,
+        sourceCatId,
+        sourceList,
+        floating,
+        line,
+        pointerId: event.pointerId,
+        offsetX: event.clientX - rect.left,
+        offsetY: event.clientY - rect.top,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        raf: 0,
+        hoverCard: item.closest('.activity-card'),
+        startedAt: performance.now()
+      };
+
+      softHaptic(18);
+      document.addEventListener('pointermove', onTaskPointerMove, { passive: false });
+      document.addEventListener('pointerup', onTaskPointerUp, { passive: false });
+      document.addEventListener('pointercancel', onTaskPointerCancel, { passive: false });
+      requestAnimationFrame(updateTaskDragFrame);
+    }
+
+    function onTaskPointerMove(event) {
+      if (!activeTaskDrag || event.pointerId !== activeTaskDrag.pointerId) return;
+      event.preventDefault();
+      activeTaskDrag.clientX = event.clientX;
+      activeTaskDrag.clientY = event.clientY;
+      if (!activeTaskDrag.raf) activeTaskDrag.raf = requestAnimationFrame(updateTaskDragFrame);
+    }
+
+    function updateTaskDragFrame() {
+      if (!activeTaskDrag) return;
+      const drag = activeTaskDrag;
+      drag.raf = 0;
+
+      const edge = 86;
+      const speed = 26;
+      if (drag.clientY < edge) window.scrollBy(0, -speed);
+      else if (drag.clientY > window.innerHeight - edge) window.scrollBy(0, speed);
+
+      drag.floating.style.left = `${drag.clientX - drag.offsetX}px`;
+      drag.floating.style.top = `${drag.clientY - drag.offsetY}px`;
+
+      const targetList = resolveTaskTargetList(drag.clientX, drag.clientY, drag.item);
+      if (!targetList) return;
+
+      const targetCard = targetList.closest('.activity-card');
+      if (drag.hoverCard && drag.hoverCard !== targetCard) drag.hoverCard.classList.remove('task-drag-active');
+      if (targetCard) targetCard.classList.add('task-drag-active');
+      drag.hoverCard = targetCard;
+
+      positionTaskDropLine(targetList, drag.clientY, drag.taskId, drag.line);
+    }
+
+    function resolveTaskTargetList(clientX, clientY, sourceItem) {
+      const element = document.elementFromPoint(clientX, clientY);
+      const card = element?.closest('.activity-card:not(.completed-card)');
+      if (!card) return null;
+      return card.querySelector('.task-list[data-category-id]');
+    }
+
+    function positionTaskDropLine(list, clientY, sourceTaskId, line) {
+      if (line.parentElement && line.parentElement !== list) line.remove();
+
+      const items = [...list.querySelectorAll('.task-item[data-task-id]:not(.task-drag-floating)')]
+        .filter(node => node.dataset.taskId !== sourceTaskId && !node.classList.contains('completed-item'));
+
+      let before = null;
+      let bestDistance = Infinity;
+      for (const item of items) {
+        const rect = item.getBoundingClientRect();
+        const center = rect.top + rect.height / 2;
+        const distance = Math.abs(clientY - center);
+        if (clientY <= center && distance < bestDistance) {
+          before = item;
+          bestDistance = distance;
+        }
       }
 
-      // V37: las fases ya NO usan SortableJS.
-      // Secciones: Pointer Events + placeholder = control directo y suave en WebView.
-      initSectionPointerDrag();
+      if (!line.parentElement) list.appendChild(line);
+      if (before) list.insertBefore(line, before);
+      else list.appendChild(line);
+    }
 
-      document.querySelectorAll("#board .task-list[data-category-id]").forEach(list => {
-        const categoryId = list.dataset.categoryId;
-        const instance = new Sortable(list, {
-          group: "tasky-tasks",
-          animation: 0,
-          handle: ".drag-task",
-          draggable: ".task-item",
-          filter: ".task-input, button:not(.drag-task)",
-          preventOnFilter: false,
+    function onTaskPointerUp(event) {
+      if (!activeTaskDrag || event.pointerId !== activeTaskDrag.pointerId) return;
+      event.preventDefault();
+      finishTaskPointerDrag(false);
+    }
 
-          forceFallback: true,
-          fallbackOnBody: true,
-          fallbackClass: "sortable-fallback",
-          removeCloneOnHide: true,
-          fallbackTolerance: 4,
+    function onTaskPointerCancel() {
+      finishTaskPointerDrag(true);
+    }
 
-          ghostClass: "sortable-ghost-task",
-          dragClass: "sortable-drag",
+    function finishTaskPointerDrag(cancelled = false) {
+      if (!activeTaskDrag) return;
+      const drag = activeTaskDrag;
+      cancelAnimationFrame(drag.raf);
 
-          delay: 0,
-          delayOnTouchOnly: false,
-          touchStartThreshold: 3,
+      let changed = false;
 
-          scroll: true,
-          forceAutoScrollFallback: true,
-          bubbleScroll: true,
-          scrollSensitivity: 34,
-          scrollSpeed: 24,
+      if (!cancelled && drag.line.parentElement) {
+        const targetList = drag.line.parentElement;
+        const targetCatId = targetList.dataset.categoryId;
+        const targetCat = state.categories.find(c => c.id === targetCatId);
+        const sourceCat = state.categories.find(c => c.id === drag.sourceCatId);
+        const taskIndex = sourceCat?.tasks.findIndex(t => t.id === drag.taskId) ?? -1;
+        const task = taskIndex >= 0 ? sourceCat.tasks[taskIndex] : null;
 
-          swapThreshold: 0.18,
-          invertSwap: false,
-          emptyInsertThreshold: 12,
-
-          onStart() {
-            document.body.classList.add("is-dragging");
-            softHaptic(14);
-          },
-
-          onEnd() {
-            document.body.classList.remove("is-dragging");
-
-            if (hydrating) return;
-
-            syncTasksFromDOM();
-            scheduleSave("mover tarea");
-            updateSummaryUI();
-            for (const cat of state.categories) updateCategoryUI(cat.id);
-          },
-
-          onCancel() {
-            document.body.classList.remove("is-dragging");
+        if (targetCat && sourceCat && task) {
+          const targetIds = [...targetList.querySelectorAll('.task-item[data-task-id]:not(.completed-item)')]
+            .filter(node => node !== drag.item && node.dataset.taskId !== drag.taskId)
+            .map(node => node.dataset.taskId);
+          let insertIndex = targetIds.length;
+          const beforeNode = drag.line.nextElementSibling?.matches?.('.task-item[data-task-id]') ? drag.line.nextElementSibling : null;
+          if (beforeNode) {
+            const found = targetIds.indexOf(beforeNode.dataset.taskId);
+            if (found >= 0) insertIndex = found;
           }
-        });
-        sortableTasks.set(categoryId, instance);
-      });
+
+          sourceCat.tasks.splice(taskIndex, 1);
+          if (sourceCat === targetCat && taskIndex < insertIndex) insertIndex--;
+          targetCat.tasks.splice(Math.max(0, Math.min(insertIndex, targetCat.tasks.length)), 0, task);
+          changed = true;
+        }
+      }
+
+      // Mover el nodo existente al lugar lógico sin renderizar todo el tablero.
+      if (changed) {
+        const targetList = document.querySelector(`.task-list[data-category-id="${cssEscapeSafe(state.categories.find(c => c.tasks.some(t => t.id === drag.taskId))?.id || drag.sourceCatId)}"]`);
+        if (targetList && drag.line.parentElement === targetList) {
+          targetList.insertBefore(drag.item, drag.line.nextSibling);
+        } else if (targetList) {
+          targetList.appendChild(drag.item);
+        }
+      } else if (!cancelled && drag.sourceList) {
+        drag.sourceList.appendChild(drag.item);
+      }
+
+      drag.line.remove();
+      drag.floating.remove();
+      drag.item.classList.remove('task-drag-source');
+      if (drag.hoverCard) drag.hoverCard.classList.remove('task-drag-active');
+      document.body.classList.remove('task-drag-mode', 'is-dragging');
+
+      document.removeEventListener('pointermove', onTaskPointerMove);
+      document.removeEventListener('pointerup', onTaskPointerUp);
+      document.removeEventListener('pointercancel', onTaskPointerCancel);
+
+      if (changed) {
+        persistLocal();
+        localDirty = true;
+        updateCategoryUI(drag.sourceCatId);
+        const targetId = state.categories.find(c => c.tasks.some(t => t.id === drag.taskId))?.id;
+        if (targetId) updateCategoryUI(targetId);
+        updateSummaryUI();
+        scheduleSave('mover tarea');
+        softHaptic(22);
+      }
+
+      activeTaskDrag = null;
     }
 
     function syncCategoryOrderFromDOM() {
@@ -3175,7 +3385,7 @@
       const cat = state.categories.find(c => c.id === categoryId);
       if (!cat) return null;
 
-      const task = { id: uid("task"), text: "", date: today(), draft: true, repeat: false, repeatCount: 0, lastCompletedAt: null };
+      const task = { id: uid("task"), text: "", date: today(), draft: true, repeat: false, repeatDays: [], repeatCount: 0, lastCompletedAt: null };
       cat.tasks.push(task);
 
       const list = document.querySelector(`.task-list[data-category-id="${cssEscapeSafe(categoryId)}"]`);
@@ -3312,37 +3522,99 @@
       toast("Tarea eliminada", "trash-2");
     }
 
-    function toggleRepeatTask(taskId) {
+    function getRepeatTask(taskId) {
       for (const cat of state.categories) {
         const task = cat.tasks.find(t => t.id === taskId);
-        if (!task) continue;
-
-        task.repeat = !Boolean(task.repeat);
-        task.repeatCount = Number(task.repeatCount || 0);
-
-        const item = document.querySelector(`.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`);
-        const button = item?.querySelector('[data-action="toggle-repeat"]');
-        if (button) {
-          button.classList.toggle('active', task.repeat);
-          const label = task.repeat ? 'Desactivar repetición diaria' : 'Repetir diariamente';
-          button.title = label;
-          button.setAttribute('aria-label', label);
-        }
-
-        const due = item?.querySelector('.task-due');
-        if (due) {
-          const isOverdue = task.date < today();
-          due.innerHTML = `<i data-lucide="${isOverdue ? 'triangle-alert' : 'calendar-days'}"></i>${escapeHTML(isOverdue ? 'Atrasada · ' + formatDateLong(task.date) : (task.date === today() ? 'Para hoy · ' + formatDateLong(task.date) : 'Para · ' + formatDateLong(task.date)))}${task.repeat ? '<span class="task-repeat-badge"><i data-lucide="repeat-2"></i> Diaria</span>' : ''}`;
-          refreshIcons();
-        }
-
-        persistLocal();
-        localDirty = true;
-        scheduleSave(task.repeat ? 'activar repetición diaria' : 'desactivar repetición diaria');
-        softHaptic(16);
-        toast(task.repeat ? 'La tarea se repetirá cada día' : 'Repetición diaria desactivada', task.repeat ? 'repeat-2' : 'repeat');
-        return;
+        if (task) return { task, cat };
       }
+      return null;
+    }
+
+    const REPEAT_DAY_LABELS = [
+      [1, 'L'], [2, 'M'], [3, 'X'], [4, 'J'], [5, 'V'], [6, 'S'], [7, 'D']
+    ];
+
+    function repeatDaysToLabel(days) {
+      const set = new Set((days || []).map(Number));
+      if ([1,2,3,4,5,6,7].every(d => set.has(d))) return 'Todos los días';
+      return REPEAT_DAY_LABELS.filter(([d]) => set.has(d)).map(([,label]) => label).join(' · ') || 'Sin días';
+    }
+
+    function nextRepeatDate(fromDateStr, days) {
+      const selected = new Set((days || []).map(Number));
+      if (!selected.size) return fromDateStr;
+      const parts = fromDateStr.split('-').map(Number);
+      const base = new Date(parts[0], parts[1]-1, parts[2]);
+      for (let i = 1; i <= 7; i++) {
+        const d = new Date(base);
+        d.setDate(base.getDate() + i);
+        const isoDay = d.getDay() === 0 ? 7 : d.getDay();
+        if (selected.has(isoDay)) {
+          return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+        }
+      }
+      return fromDateStr;
+    }
+
+    function openRepeatEditor(taskId) {
+      const found = getRepeatTask(taskId);
+      if (!found) return;
+      const task = found.task;
+      const modal = document.getElementById('repeatModal');
+      const title = document.getElementById('repeatTaskName');
+      const hiddenId = document.getElementById('repeatTaskId');
+      const summary = document.getElementById('repeatSummary');
+      if (!modal) return;
+
+      hiddenId.value = taskId;
+      title.textContent = task.text?.trim() || 'Tarea sin nombre';
+      const activeDays = task.repeatDays?.length ? task.repeatDays : [1,2,3,4,5,6,7];
+      modal.querySelectorAll('input[name="repeat-day"]').forEach(input => {
+        input.checked = activeDays.includes(Number(input.value));
+      });
+      summary.textContent = `Se repetirá: ${repeatDaysToLabel(activeDays)}.`;
+      openModal('repeatModal');
+    }
+
+    function saveRepeatSchedule() {
+      const modal = document.getElementById('repeatModal');
+      const taskId = document.getElementById('repeatTaskId')?.value;
+      const found = getRepeatTask(taskId);
+      if (!modal || !found) return;
+
+      const days = [...modal.querySelectorAll('input[name="repeat-day"]:checked')].map(input => Number(input.value)).sort((a,b) => a-b);
+      const task = found.task;
+      if (!days.length) {
+        task.repeat = false;
+        task.repeatDays = [];
+      } else {
+        task.repeat = true;
+        task.repeatDays = days;
+      }
+
+      const item = document.querySelector(`.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`);
+      const button = item?.querySelector('[data-action="toggle-repeat"]');
+      if (button) {
+        button.classList.toggle('active', task.repeat);
+        button.title = task.repeat ? 'Editar repetición' : 'Configurar repetición';
+        button.setAttribute('aria-label', button.title);
+      }
+      const due = item?.querySelector('.task-due');
+      if (due) {
+        const isOverdue = task.date < today();
+        due.innerHTML = `<i data-lucide="${isOverdue ? 'triangle-alert' : 'calendar-days'}"></i>${escapeHTML(isOverdue ? 'Atrasada · ' + formatDateLong(task.date) : (task.date === today() ? 'Para hoy · ' + formatDateLong(task.date) : 'Para · ' + formatDateLong(task.date)))}${task.repeat ? `<span class="task-repeat-badge"><i data-lucide="repeat-2"></i>${escapeHTML(repeatDaysToLabel(task.repeatDays))}</span>` : ''}`;
+      }
+      persistLocal();
+      localDirty = true;
+      scheduleSave(task.repeat ? 'configurar repetición' : 'desactivar repetición');
+      closeModal('repeatModal');
+      refreshIcons();
+      updateSummaryUI();
+      toast(task.repeat ? `Repetición: ${repeatDaysToLabel(task.repeatDays)}` : 'Repetición desactivada', task.repeat ? 'repeat-2' : 'repeat');
+    }
+
+    function toggleRepeatTask(taskId) {
+      openRepeatEditor(taskId);
     }
 
     function completeTask(taskId) {
@@ -3355,7 +3627,8 @@
         // Las tareas repetidas NO pasan al historial: se reprograman para mañana
         // y permanecen exactamente en la misma fase y posición.
         if (task.repeat) {
-          task.date = addDays(today(), 1);
+          if (!Array.isArray(task.repeatDays) || !task.repeatDays.length) task.repeatDays = [1,2,3,4,5,6,7];
+          task.date = nextRepeatDate(today(), task.repeatDays);
           task.lastCompletedAt = Date.now();
           task.repeatCount = Number(task.repeatCount || 0) + 1;
 
@@ -3367,7 +3640,7 @@
           }
 
           if (due) {
-            due.innerHTML = `<i data-lucide="calendar-days"></i>Para mañana · ${escapeHTML(formatDateLong(task.date))}<span class="task-repeat-badge"><i data-lucide="repeat-2"></i> Diaria</span>`;
+            due.innerHTML = `<i data-lucide="calendar-days"></i>Próxima · ${escapeHTML(formatDateLong(task.date))}<span class="task-repeat-badge"><i data-lucide="repeat-2"></i>${escapeHTML(repeatDaysToLabel(task.repeatDays))}</span>`;
           }
 
           persistLocal();
@@ -3377,7 +3650,7 @@
           scheduleSave("completar tarea repetida");
           refreshIcons();
           softHaptic(28);
-          toast("Completada. Se programó para mañana ↻", "repeat-2");
+          toast(`Completada. Próxima: ${formatDateLong(task.date)} ↻`, "repeat-2");
           setTimeout(() => item?.classList.remove('repeat-complete'), 450);
           return;
         }
@@ -3511,7 +3784,7 @@
 
       if (originalIndex === -1) return;
 
-      const inserted = lines.map(line => ({ id: uid("task"), text: line, date: today(), draft: false, repeat: false, repeatCount: 0, lastCompletedAt: null }));
+      const inserted = lines.map(line => ({ id: uid("task"), text: line, date: today(), draft: false, repeat: false, repeatDays: [], repeatCount: 0, lastCompletedAt: null }));
       const current = cat.tasks[originalIndex];
       current.text = lines[0];
       current.draft = false;
@@ -3959,6 +4232,15 @@
 
       document.addEventListener("paste", event => {
         if (event.target.matches(".task-input")) handlePaste(event, event.target);
+      });
+
+      document.getElementById('saveRepeatBtn')?.addEventListener('click', saveRepeatSchedule);
+
+      document.getElementById('repeatModal')?.addEventListener('change', (event) => {
+        if (!event.target.matches('input[name="repeat-day"]')) return;
+        const days = [...document.querySelectorAll('#repeatModal input[name="repeat-day"]:checked')].map(i => Number(i.value));
+        const summary = document.getElementById('repeatSummary');
+        if (summary) summary.textContent = `Se repetirá: ${repeatDaysToLabel(days)}.`;
       });
 
       document.addEventListener("click", event => {
