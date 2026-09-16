@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V33 -->
+  <!-- TASKY PRO · V34 -->
 
   <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
   <link rel="icon" type="image/png" href="icon.png?v=27">
@@ -430,6 +430,96 @@
     .drag-card:hover { background: var(--line); }
     .drag-card:active { cursor: grabbing; }
 
+    .section-order-controls {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex: 0 0 auto;
+    }
+
+    .section-order-btn {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+      transition: transform .15s ease, background .15s ease, color .15s ease, opacity .15s ease;
+      touch-action: manipulation;
+    }
+
+    .section-order-btn:hover {
+      background: var(--line);
+      color: var(--text);
+    }
+
+    .section-order-btn:active { transform: scale(.92); }
+    .section-order-btn:disabled { opacity: .25; cursor: default; }
+
+    .activity-card.section-moved {
+      animation: sectionMoved .24s var(--ease);
+    }
+
+    .activity-card.section-dragging {
+      will-change: transform;
+      z-index: 10;
+    }
+
+    @keyframes sectionMoved {
+      0% { transform: scale(1); }
+      45% { transform: scale(1.012); }
+      100% { transform: scale(1); }
+    }
+
+    .repeat-btn {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 10px;
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+      transition: transform .15s ease, background .15s ease, color .15s ease;
+    }
+
+    .repeat-btn:hover {
+      color: #15803d;
+      background: rgba(22,163,74,.08);
+    }
+
+    .repeat-btn.active {
+      color: #15803d;
+      background: rgba(22,163,74,.12);
+    }
+
+    .task-repeat-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 4px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      color: #15803d;
+      background: rgba(22,163,74,.10);
+      font-size: .66rem;
+      font-weight: 850;
+    }
+
+    .task-item.repeat-complete {
+      animation: repeatComplete .42s var(--ease);
+    }
+
+    @keyframes repeatComplete {
+      0% { transform: scale(1); }
+      45% { transform: scale(.985); background: rgba(22,163,74,.09); }
+      100% { transform: scale(1); }
+    }
+
     .activity-title {
       min-width: 0;
       flex: 1;
@@ -616,6 +706,13 @@
     .task-item.overdue .task-due { color: var(--danger); }
 
     .remove-task {
+      align-self: start;
+    }
+
+    .task-item-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
       align-self: start;
     }
 
@@ -1100,7 +1197,7 @@
 
 
     /* =========================================================
-       TASKY PRO V33 · Mobile Performance + Median UX
+       TASKY PRO V34 · Mobile Performance + Median UX
        Optimizado para interacción táctil y WebView.
        ========================================================= */
     html, body {
@@ -1205,6 +1302,7 @@
         content: '';
         position: absolute;
         inset: 0;
+        pointer-events: none;
       }
 
       .drag-card,
@@ -1214,6 +1312,10 @@
     }
 
     @media (max-width: 760px) {
+      .section-order-controls { gap: 0; }
+      .section-order-btn { width: 26px; height: 26px; }
+      .repeat-btn { width: 32px; height: 32px; }
+
       /* Backdrop-filter puede ser costoso dentro de WebViews móviles. */
       .topbar,
       .activity-card,
@@ -1286,7 +1388,7 @@
 
 
     /* =========================================================
-       TASKY PRO V33 · Mobile Performance + Median UX
+       TASKY PRO V34 · Mobile Performance + Median UX
        Optimizado para interacción táctil y WebView.
        ========================================================= */
     html, body {
@@ -1391,6 +1493,7 @@
         content: '';
         position: absolute;
         inset: 0;
+        pointer-events: none;
       }
 
       .drag-card,
@@ -1515,7 +1618,7 @@
   
 
     /* =========================================================
-       TASKY PRO V33 · PERFORMANCE PASS
+       TASKY PRO V34 · PERFORMANCE PASS
        Objetivo: scroll fluido y menor trabajo de pintura en WebView.
        Las animaciones de interacción se conservan; las decorativas
        continuas se reducen en pantallas táctiles.
@@ -1581,7 +1684,7 @@
   </style>
 </head>
 
-<body data-tasky-version="V32">
+<body data-tasky-version="V34">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -1731,7 +1834,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 33;
+    const APP_VERSION = 34;
     const STORAGE_KEY = "tasky_pro_v26";
     const THEME_KEY = "tasky_theme";
     const DEVICE_KEY = "tasky_device_id";
@@ -1815,6 +1918,13 @@
     function today() {
       const d = new Date();
       return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+    }
+
+    function addDays(dateStr, days = 1) {
+      const [y, m, d] = String(dateStr).split("-").map(Number);
+      const date = new Date(y, m - 1, d);
+      date.setDate(date.getDate() + days);
+      return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
     }
 
     function formatDateLong(dateStr) {
@@ -1936,7 +2046,10 @@
               id: String(task.id || uid("task")),
               text,
               date: /^\d{4}-\d{2}-\d{2}$/.test(task.date || "") ? task.date : today(),
-              draft: Boolean(task.draft) || text.trim() === ""
+              draft: Boolean(task.draft) || text.trim() === "",
+              repeat: Boolean(task.repeat),
+              repeatCount: Number.isFinite(Number(task.repeatCount)) ? Number(task.repeatCount) : 0,
+              lastCompletedAt: task.lastCompletedAt || null
             };
           });
 
@@ -2035,6 +2148,7 @@
       }
 
       initSortables();
+      refreshSectionMoveControls();
 
       hydrating = false;
       updateSummaryUI();
@@ -2054,9 +2168,17 @@
       card.innerHTML = `
         <div class="card-head">
           <div class="card-title-row">
-            <button class="drag-card" type="button" title="Mantener para mover fase" aria-label="Mover fase">
+            <button class="drag-card" type="button" title="Arrastrar para mover fase" aria-label="Arrastrar para mover fase">
               <i data-lucide="grip-vertical"></i>
             </button>
+            <div class="section-order-controls" aria-label="Cambiar posición de fase">
+              <button class="section-order-btn" type="button" data-action="move-category-up" title="Subir fase" aria-label="Subir fase">
+                <i data-lucide="chevron-up"></i>
+              </button>
+              <button class="section-order-btn" type="button" data-action="move-category-down" title="Bajar fase" aria-label="Bajar fase">
+                <i data-lucide="chevron-down"></i>
+              </button>
+            </div>
             <input class="activity-title" maxlength="80" value="${escapeHTML(cat.title)}" placeholder="Nombre de la fase…">
             <div class="card-actions">
               <button class="mini-btn" type="button" data-action="stats" title="Ver resumen" aria-label="Ver resumen">
@@ -2119,12 +2241,18 @@
         const dueLabel = isOverdue
           ? "Atrasada · " + formatDateLong(task.date)
           : "Para hoy · " + formatDateLong(task.date);
+        const repeatActive = Boolean(task.repeat);
         item.innerHTML = `
           <button class="drag-task" type="button" title="Mantener para mover" aria-label="Mover tarea"><i data-lucide="grip-vertical"></i></button>
           <button class="check-btn" type="button" data-action="complete-task" aria-label="Completar tarea"></button>
           <textarea class="task-input" rows="1" maxlength="500" placeholder="Añadir tarea…">${escapeHTML(task.text)}</textarea>
-          <button class="mini-btn danger remove-task" type="button" data-action="delete-task" title="Eliminar tarea" aria-label="Eliminar tarea"><i data-lucide="x"></i></button>
-          <span class="task-due"><i data-lucide="${isOverdue ? "triangle-alert" : "calendar-days"}"></i>${escapeHTML(dueLabel)}</span>
+          <div class="task-item-actions">
+            <button class="repeat-btn${repeatActive ? " active" : ""}" type="button" data-action="toggle-repeat" title="${repeatActive ? "Desactivar repetición diaria" : "Repetir diariamente"}" aria-label="${repeatActive ? "Desactivar repetición diaria" : "Repetir diariamente"}">
+              <i data-lucide="repeat-2"></i>
+            </button>
+            <button class="mini-btn danger remove-task" type="button" data-action="delete-task" title="Eliminar tarea" aria-label="Eliminar tarea"><i data-lucide="x"></i></button>
+          </div>
+          <span class="task-due"><i data-lucide="${isOverdue ? "triangle-alert" : "calendar-days"}"></i>${escapeHTML(dueLabel)}${repeatActive ? '<span class="task-repeat-badge"><i data-lucide="repeat-2"></i> Diaria</span>' : ''}</span>
         `;
       }
 
@@ -2173,16 +2301,36 @@
       }
 
       sortableCategories = new Sortable(el.board, {
-        animation: 220,
+        animation: 120,
+        easing: "cubic-bezier(.22,1,.36,1)",
         handle: ".drag-card",
         filter: ".completed-card",
+        preventOnFilter: false,
+        direction: "vertical",
+        delay: 130,
+        delayOnTouchOnly: true,
+        touchStartThreshold: 4,
+        fallbackTolerance: 3,
+        scroll: true,
+        bubbleScroll: true,
+        scrollSensitivity: 80,
+        scrollSpeed: 14,
+        swapThreshold: 0.62,
+        invertSwap: false,
         ghostClass: "sortable-ghost",
         dragClass: "sortable-drag",
-        onEnd() {
+        onStart(evt) {
+          evt.item.classList.add("section-dragging");
+          softHaptic(18);
+        },
+        onEnd(evt) {
+          evt.item.classList.remove("section-dragging");
           if (hydrating) return;
           syncCategoryOrderFromDOM();
           scheduleSave("reordenar fases");
           updateSummaryUI();
+          refreshSectionMoveControls();
+          softHaptic(24);
           // No render(): Sortable ya movió físicamente la tarjeta.
         }
       });
@@ -2191,7 +2339,8 @@
         const categoryId = list.dataset.categoryId;
         const instance = new Sortable(list, {
           group: "tasky-tasks",
-          animation: 180,
+          animation: 140,
+          easing: "cubic-bezier(.22,1,.36,1)",
           handle: ".drag-task",
           draggable: ".task-item",
           filter: ".task-input, button:not(.drag-task)",
@@ -2324,7 +2473,8 @@
       if (list && typeof Sortable !== "undefined") {
         const instance = new Sortable(list, {
           group: "tasky-tasks",
-          animation: 180,
+          animation: 140,
+          easing: "cubic-bezier(.22,1,.36,1)",
           handle: ".drag-task",
           draggable: ".task-item",
           filter: ".task-input, button:not(.drag-task)",
@@ -2345,6 +2495,7 @@
       }
 
       refreshIcons();
+      refreshSectionMoveControls();
       const title = card.querySelector(".activity-title");
       requestAnimationFrame(() => {
         title?.focus();
@@ -2359,7 +2510,7 @@
       const cat = state.categories.find(c => c.id === categoryId);
       if (!cat) return null;
 
-      const task = { id: uid("task"), text: "", date: today(), draft: true };
+      const task = { id: uid("task"), text: "", date: today(), draft: true, repeat: false, repeatCount: 0, lastCompletedAt: null };
       cat.tasks.push(task);
 
       const list = document.querySelector(`.task-list[data-category-id="${cssEscapeSafe(categoryId)}"]`);
@@ -2389,6 +2540,57 @@
       softHaptic(15);
 
       return task;
+    }
+
+    function moveCategoryBy(categoryId, delta) {
+      const index = state.categories.findIndex(cat => cat.id === categoryId);
+      if (index === -1) return;
+
+      const targetIndex = index + delta;
+      if (targetIndex < 0 || targetIndex >= state.categories.length) {
+        softHaptic(10);
+        return;
+      }
+
+      const [category] = state.categories.splice(index, 1);
+      state.categories.splice(targetIndex, 0, category);
+
+      const card = document.querySelector(`.activity-card[data-category-id="${cssEscapeSafe(categoryId)}"]`);
+      const cards = [...el.board.querySelectorAll('.activity-card:not(.completed-card)')];
+      const reference = cards[targetIndex];
+
+      if (card) {
+        if (delta < 0 && reference && reference !== card) {
+          el.board.insertBefore(card, reference);
+        } else if (delta > 0) {
+          const next = cards[targetIndex + 1];
+          if (next) el.board.insertBefore(card, next);
+          else {
+            const completedCard = el.board.querySelector('.completed-card');
+            if (completedCard) el.board.insertBefore(card, completedCard);
+            else el.board.appendChild(card);
+          }
+        }
+        card.classList.add('section-moved');
+        setTimeout(() => card.classList.remove('section-moved'), 240);
+      }
+
+      persistLocal();
+      localDirty = true;
+      updateSummaryUI();
+      refreshSectionMoveControls();
+      scheduleSave(delta < 0 ? 'subir fase' : 'bajar fase');
+      softHaptic(16);
+    }
+
+    function refreshSectionMoveControls() {
+      const cards = [...el.board.querySelectorAll('.activity-card:not(.completed-card)')];
+      cards.forEach((card, index) => {
+        const up = card.querySelector('[data-action="move-category-up"]');
+        const down = card.querySelector('[data-action="move-category-down"]');
+        if (up) up.disabled = index === 0;
+        if (down) down.disabled = index === cards.length - 1;
+      });
     }
 
     function deleteCategory(categoryId) {
@@ -2445,14 +2647,79 @@
       toast("Tarea eliminada", "trash-2");
     }
 
+    function toggleRepeatTask(taskId) {
+      for (const cat of state.categories) {
+        const task = cat.tasks.find(t => t.id === taskId);
+        if (!task) continue;
+
+        task.repeat = !Boolean(task.repeat);
+        task.repeatCount = Number(task.repeatCount || 0);
+
+        const item = document.querySelector(`.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`);
+        const button = item?.querySelector('[data-action="toggle-repeat"]');
+        if (button) {
+          button.classList.toggle('active', task.repeat);
+          const label = task.repeat ? 'Desactivar repetición diaria' : 'Repetir diariamente';
+          button.title = label;
+          button.setAttribute('aria-label', label);
+        }
+
+        const due = item?.querySelector('.task-due');
+        if (due) {
+          const isOverdue = task.date < today();
+          due.innerHTML = `<i data-lucide="${isOverdue ? 'triangle-alert' : 'calendar-days'}"></i>${escapeHTML(isOverdue ? 'Atrasada · ' + formatDateLong(task.date) : (task.date === today() ? 'Para hoy · ' + formatDateLong(task.date) : 'Para · ' + formatDateLong(task.date)))}${task.repeat ? '<span class="task-repeat-badge"><i data-lucide="repeat-2"></i> Diaria</span>' : ''}`;
+          refreshIcons();
+        }
+
+        persistLocal();
+        localDirty = true;
+        scheduleSave(task.repeat ? 'activar repetición diaria' : 'desactivar repetición diaria');
+        softHaptic(16);
+        toast(task.repeat ? 'La tarea se repetirá cada día' : 'Repetición diaria desactivada', task.repeat ? 'repeat-2' : 'repeat');
+        return;
+      }
+    }
+
     function completeTask(taskId) {
       for (const cat of state.categories) {
         const idx = cat.tasks.findIndex(t => t.id === taskId);
         if (idx === -1) continue;
 
-        const [task] = cat.tasks.splice(idx, 1);
+        const task = cat.tasks[idx];
+
+        // Las tareas repetidas NO pasan al historial: se reprograman para mañana
+        // y permanecen exactamente en la misma fase y posición.
+        if (task.repeat) {
+          task.date = addDays(today(), 1);
+          task.lastCompletedAt = Date.now();
+          task.repeatCount = Number(task.repeatCount || 0) + 1;
+
+          const item = document.querySelector(`.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`);
+          const due = item?.querySelector('.task-due');
+          if (item) {
+            item.classList.add('repeat-complete');
+            item.classList.remove('overdue');
+          }
+
+          if (due) {
+            due.innerHTML = `<i data-lucide="calendar-days"></i>Para mañana · ${escapeHTML(formatDateLong(task.date))}<span class="task-repeat-badge"><i data-lucide="repeat-2"></i> Diaria</span>`;
+          }
+
+          persistLocal();
+          localDirty = true;
+          updateCategoryUI(cat.id);
+          updateSummaryUI();
+          scheduleSave("completar tarea repetida");
+          refreshIcons();
+          softHaptic(28);
+          toast("Completada. Se programó para mañana ↻", "repeat-2");
+          setTimeout(() => item?.classList.remove('repeat-complete'), 450);
+          return;
+        }
+
+        const [completedTask] = cat.tasks.splice(idx, 1);
         state.completed.unshift({
-          ...task,
+          ...completedTask,
           originCat: cat.id,
           completedAt: Date.now()
         });
@@ -2478,6 +2745,7 @@
         updateCategoryUI(cat.id);
         updateSummaryUI();
         scheduleSave("completar tarea");
+        softHaptic(28);
         toast("Tarea completada ✓", "circle-check");
         return;
       }
@@ -2495,13 +2763,16 @@
           id: task.id,
           text: task.text,
           date: task.date || today(),
-          draft: false
+          draft: false,
+          repeat: Boolean(task.repeat),
+          repeatCount: Number(task.repeatCount || 0),
+          lastCompletedAt: task.lastCompletedAt || null
         });
       } else {
         state.categories.push({
           id: task.originCat || uid('cat'),
           title: 'Recuperadas',
-          tasks: [{ id: task.id, text: task.text, date: task.date || today(), draft: false }]
+          tasks: [{ id: task.id, text: task.text, date: task.date || today(), draft: false, repeat: Boolean(task.repeat), repeatCount: Number(task.repeatCount || 0), lastCompletedAt: task.lastCompletedAt || null }]
         });
       }
 
@@ -2575,7 +2846,7 @@
 
       if (originalIndex === -1) return;
 
-      const inserted = lines.map(line => ({ id: uid("task"), text: line, date: today(), draft: false }));
+      const inserted = lines.map(line => ({ id: uid("task"), text: line, date: today(), draft: false, repeat: false, repeatCount: 0, lastCompletedAt: null }));
       const current = cat.tasks[originalIndex];
       current.text = lines[0];
       current.draft = false;
@@ -3027,6 +3298,24 @@
 
       document.addEventListener("click", event => {
         const action = event.target.closest("[data-action]")?.dataset.action;
+
+        if (action === "move-category-up") {
+          const card = event.target.closest("[data-category-id]");
+          moveCategoryBy(card?.dataset.categoryId, -1);
+          return;
+        }
+
+        if (action === "move-category-down") {
+          const card = event.target.closest("[data-category-id]");
+          moveCategoryBy(card?.dataset.categoryId, 1);
+          return;
+        }
+
+        if (action === "toggle-repeat") {
+          const item = event.target.closest("[data-task-id]");
+          toggleRepeatTask(item?.dataset.taskId);
+          return;
+        }
 
         if (action === "add-task") {
           const card = event.target.closest("[data-category-id]");
