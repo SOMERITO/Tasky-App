@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V32 -->
+  <!-- TASKY PRO · V33 -->
 
   <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
   <link rel="icon" type="image/png" href="icon.png?v=27">
@@ -89,7 +89,7 @@
           #ffb3ba);
       background-size: 700% 700%;
       animation: moveBackground 26s ease-in-out infinite;
-      background-attachment: fixed;
+      background-attachment: scroll;
       overflow-x: hidden;
       transition: background .35s ease, color .25s ease;
     }
@@ -994,8 +994,10 @@
       pointer-events: none;
     }
 
-    .activity-card:hover {
-      animation: pulseSoft 2.8s ease-in-out infinite;
+    @media (hover: hover) and (pointer: fine) {
+      .activity-card:hover {
+        transform: translateY(-1px);
+      }
     }
 
     .completed-card {
@@ -1098,7 +1100,7 @@
 
 
     /* =========================================================
-       TASKY PRO V32 · Mobile / Median UX
+       TASKY PRO V33 · Mobile Performance + Median UX
        Optimizado para interacción táctil y WebView.
        ========================================================= */
     html, body {
@@ -1284,7 +1286,7 @@
 
 
     /* =========================================================
-       TASKY PRO V32 · Mobile / Median UX
+       TASKY PRO V33 · Mobile Performance + Median UX
        Optimizado para interacción táctil y WebView.
        ========================================================= */
     html, body {
@@ -1510,6 +1512,72 @@
         scroll-behavior: auto !important;
       }
     }
+  
+
+    /* =========================================================
+       TASKY PRO V33 · PERFORMANCE PASS
+       Objetivo: scroll fluido y menor trabajo de pintura en WebView.
+       Las animaciones de interacción se conservan; las decorativas
+       continuas se reducen en pantallas táctiles.
+       ========================================================= */
+
+    .activity-card {
+      content-visibility: auto;
+      contain-intrinsic-size: 360px;
+    }
+
+    @media (max-width: 760px) {
+      body {
+        background-attachment: scroll !important;
+        animation: none !important;
+      }
+
+      body::before,
+      body::after {
+        animation: none !important;
+        filter: none !important;
+        opacity: .32;
+      }
+
+      .hero h1 {
+        animation: none !important;
+      }
+
+      .activity-card {
+        box-shadow: 0 8px 22px rgba(15,23,42,.08);
+        content-visibility: auto;
+        contain-intrinsic-size: 330px;
+      }
+
+      .activity-card.is-complete {
+        box-shadow: 0 8px 22px rgba(22,163,74,.08);
+      }
+
+      .sync-dot.online {
+        animation: none !important;
+        box-shadow: 0 0 0 3px rgba(22,163,74,.09);
+      }
+
+      .topbar {
+        box-shadow: 0 5px 16px rgba(15,23,42,.08);
+      }
+
+      .task-item {
+        box-shadow: 0 1px 6px rgba(15,23,42,.035);
+      }
+
+      .task-item:hover {
+        transform: none;
+        box-shadow: 0 1px 6px rgba(15,23,42,.035);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      body, body::before, body::after, .hero h1, .sync-dot.online {
+        animation: none !important;
+      }
+    }
+
   </style>
 </head>
 
@@ -1663,7 +1731,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 32;
+    const APP_VERSION = 33;
     const STORAGE_KEY = "tasky_pro_v26";
     const THEME_KEY = "tasky_theme";
     const DEVICE_KEY = "tasky_device_id";
