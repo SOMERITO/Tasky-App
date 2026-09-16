@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V35 -->
+  <!-- TASKY PRO · V36 -->
     <!-- Build estable: V35 · Drag fallback + mobile scroll -->
 
   <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
@@ -1034,6 +1034,69 @@
     }
 
     /* ===== Arrastre V35: sin clon visual duplicado ni transformaciones pesadas ===== */
+    /* =========================================================
+       TASKY PRO V36 · Drag de secciones más rápido y predecible
+       ========================================================= */
+    .sortable-ghost {
+      opacity: .30 !important;
+      visibility: visible !important;
+      min-height: 88px;
+      border: 2px dashed rgba(37,99,235,.42) !important;
+      background: rgba(37,99,235,.075) !important;
+      box-shadow: inset 0 0 0 1px rgba(37,99,235,.08) !important;
+    }
+
+    .sortable-drag {
+      opacity: .98 !important;
+      transform: none !important;
+      box-shadow: 0 18px 42px rgba(15,23,42,.16) !important;
+      cursor: grabbing !important;
+    }
+
+    .sortable-fallback {
+      opacity: .98 !important;
+      transform: translateZ(0) !important;
+      box-shadow: 0 22px 50px rgba(15,23,42,.20) !important;
+      pointer-events: none !important;
+      max-width: min(92vw, var(--max));
+    }
+
+    body.is-dragging {
+      cursor: grabbing !important;
+    }
+
+    body.is-dragging .activity-card {
+      transition: none !important;
+    }
+
+    .delete-task-btn {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(239,68,68,.14);
+      border-radius: 10px;
+      color: var(--danger);
+      background: rgba(239,68,68,.055);
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease;
+    }
+
+    .delete-task-btn:hover {
+      background: rgba(239,68,68,.11);
+      border-color: rgba(239,68,68,.26);
+    }
+
+    .delete-task-btn:active {
+      transform: scale(.92);
+    }
+
+    .task-item-actions {
+      min-width: 72px;
+      justify-content: flex-end;
+    }
+
     .sortable-ghost {
       opacity: .24 !important;
       transform: none !important;
@@ -1863,7 +1926,8 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 35;
+    const APP_VERSION = 36;
+    // TASKY PRO · V36 — Drag más fluido, placeholder visible, fases nuevas antes de completadas.
     const STORAGE_KEY = "tasky_pro_v26";
     const THEME_KEY = "tasky_theme";
     const DEVICE_KEY = "tasky_device_id";
@@ -2262,7 +2326,7 @@
           </button>
           <div class="task-input" role="text" aria-label="Tarea completada">${escapeHTML(task.text)}</div>
           <span class="task-due"><i data-lucide="calendar-check"></i>${escapeHTML(dueLabel)}</span>
-          <button class="mini-btn danger remove-task" type="button" data-action="delete-task" title="Eliminar tarea" aria-label="Eliminar tarea">
+          <button class="delete-task-btn remove-task" type="button" data-action="delete-task" title="Eliminar tarea" aria-label="Eliminar tarea">
             <i data-lucide="x"></i>
           </button>
         `;
@@ -2279,7 +2343,7 @@
             <button class="repeat-btn${repeatActive ? " active" : ""}" type="button" data-action="toggle-repeat" title="${repeatActive ? "Desactivar repetición diaria" : "Repetir diariamente"}" aria-label="${repeatActive ? "Desactivar repetición diaria" : "Repetir diariamente"}">
               <i data-lucide="repeat-2"></i>
             </button>
-            <button class="mini-btn danger remove-task" type="button" data-action="delete-task" title="Eliminar tarea" aria-label="Eliminar tarea"><i data-lucide="x"></i></button>
+            <button class="delete-task-btn remove-task" type="button" data-action="delete-task" title="Eliminar tarea" aria-label="Eliminar tarea"><i data-lucide="x"></i></button>
           </div>
           <span class="task-due"><i data-lucide="${isOverdue ? "triangle-alert" : "calendar-days"}"></i>${escapeHTML(dueLabel)}${repeatActive ? '<span class="task-repeat-badge"><i data-lucide="repeat-2"></i> Diaria</span>' : ''}</span>
         `;
@@ -2330,35 +2394,33 @@
       }
 
       sortableCategories = new Sortable(el.board, {
-        animation: 70,
-        easing: "linear",
+        animation: 0,
         handle: ".drag-card",
         filter: ".completed-card",
         preventOnFilter: false,
         direction: "vertical",
 
-        /* V35: usamos el fallback de Sortable de forma explícita.
-           Esto evita el clon/transparencia extraño del drag nativo
-           dentro de navegadores y WebViews móviles. */
+        /* V36: drag de secciones optimizado para web y WebView móvil.
+           Movimiento inmediato, ghost visible y auto-scroll rápido. */
         forceFallback: true,
         fallbackOnBody: true,
         fallbackClass: "sortable-fallback",
         removeCloneOnHide: true,
-        fallbackTolerance: 8,
+        fallbackTolerance: 3,
 
-        /* Scroll automático más predecible al acercarse a los bordes. */
+        /* Scroll automático rápido al acercarse a los bordes. */
         scroll: true,
         forceAutoScrollFallback: true,
         bubbleScroll: true,
-        scrollSensitivity: 70,
-        scrollSpeed: 10,
+        scrollSensitivity: 34,
+        scrollSpeed: 28,
 
-        delay: 100,
-        delayOnTouchOnly: true,
-        touchStartThreshold: 5,
+        delay: 0,
+        delayOnTouchOnly: false,
+        touchStartThreshold: 3,
 
-        swapThreshold: 0.5,
-        invertSwap: true,
+        swapThreshold: 0.22,
+        invertSwap: false,
 
         ghostClass: "sortable-ghost",
         dragClass: "sortable-drag",
@@ -2395,8 +2457,7 @@
         const categoryId = list.dataset.categoryId;
         const instance = new Sortable(list, {
           group: "tasky-tasks",
-          animation: 70,
-          easing: "linear",
+          animation: 0,
           handle: ".drag-task",
           draggable: ".task-item",
           filter: ".task-input, button:not(.drag-task)",
@@ -2406,23 +2467,23 @@
           fallbackOnBody: true,
           fallbackClass: "sortable-fallback",
           removeCloneOnHide: true,
-          fallbackTolerance: 7,
+          fallbackTolerance: 4,
 
           ghostClass: "sortable-ghost",
           dragClass: "sortable-drag",
 
-          delay: 90,
-          delayOnTouchOnly: true,
-          touchStartThreshold: 5,
+          delay: 0,
+          delayOnTouchOnly: false,
+          touchStartThreshold: 3,
 
           scroll: true,
           forceAutoScrollFallback: true,
           bubbleScroll: true,
-          scrollSensitivity: 65,
-          scrollSpeed: 10,
+          scrollSensitivity: 34,
+          scrollSpeed: 24,
 
-          swapThreshold: 0.5,
-          invertSwap: true,
+          swapThreshold: 0.25,
+          invertSwap: false,
 
           onStart() {
             document.body.classList.add("is-dragging");
@@ -2552,21 +2613,22 @@
 
       const card = buildCategoryCard(category, state.categories.length - 1, activeSearch.trim().toLowerCase());
       card.classList.add("task-enter");
-      el.board.appendChild(card);
+      const completedCard = el.board.querySelector(".completed-card");
+      if (completedCard) el.board.insertBefore(card, completedCard);
+      else el.board.appendChild(card);
 
       const list = card.querySelector(".task-list[data-category-id]");
       if (list && typeof Sortable !== "undefined") {
         const instance = new Sortable(list, {
           group: "tasky-tasks",
-          animation: 140,
-          easing: "cubic-bezier(.22,1,.36,1)",
+          animation: 0,
           handle: ".drag-task",
           draggable: ".task-item",
           filter: ".task-input, button:not(.drag-task)",
           preventOnFilter: false,
-          delay: 120,
-          delayOnTouchOnly: true,
-          fallbackTolerance: 4,
+          delay: 0,
+          delayOnTouchOnly: false,
+          fallbackTolerance: 3,
           onStart() { softHaptic(18); },
           onEnd() {
             if (hydrating) return;
