@@ -10,13 +10,13 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V40 -->
-    <!-- Build estable base + V39 · Drag de tareas por Pointer Events + repetición semanal -->
+  <!-- TASKY PRO · V41 -->
+    <!-- Build estable base + V41 · Placeholder de fases optimizado + línea de inserción de tareas refinada -->
 
   <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
-  <link rel="icon" type="image/png" href="icon.png?v=27">
-  <link rel="apple-touch-icon" href="icon.png?v=27">
-  <link rel="manifest" href="manifest.json?v=27">
+  <link rel="icon" type="image/png" href="icon.png?v=41">
+  <link rel="apple-touch-icon" href="icon.png?v=41">
+  <link rel="manifest" href="manifest.json?v=41">
 
   <!-- Dependencias con versiones fijadas para evitar cambios inesperados. -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
@@ -431,8 +431,8 @@
     .drag-card:hover { background: var(--line); }
     .drag-card:active { cursor: grabbing; }
 
-    /* V37: arrastre nativo por Pointer Events para secciones.
-       La tarjeta se convierte en una ficha compacta mientras se mueve. */
+    /* V41: arrastre nativo por Pointer Events para secciones.
+       La tarjeta se convierte en una ficha compacta mientras se mueve, con hueco de destino visible. */
     .drag-card {
       touch-action: none;
       -webkit-user-select: none;
@@ -447,44 +447,57 @@
       position: fixed !important;
       z-index: 10000 !important;
       pointer-events: none !important;
-      transform: scale(.965) !important;
-      transform-origin: center center !important;
-      opacity: .98 !important;
       margin: 0 !important;
-      transition: box-shadow .08s ease !important;
-      box-shadow: 0 28px 70px rgba(15,23,42,.22) !important;
-      will-change: top, left, transform;
+      transform-origin: center center !important;
+      transform: scale(.985) rotate(-.35deg) !important;
+      opacity: .97 !important;
+      border-radius: var(--radius-xl) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      content-visibility: visible !important;
+      contain: none !important;
+      box-shadow: 0 24px 54px rgba(15,23,42,.16), 0 3px 10px rgba(15,23,42,.07) !important;
+      transition: none !important;
+      will-change: top, left;
     }
 
     .category-drop-placeholder {
       width: 100%;
-      height: 10px;
-      min-height: 10px;
+      min-height: 64px;
       margin: 7px 0;
-      border: 0;
-      border-radius: 999px;
-      background: linear-gradient(90deg, var(--primary), var(--primary-2));
-      box-shadow:
-        0 0 0 1px rgba(37,99,235,.14),
-        0 5px 18px rgba(37,99,235,.24);
-      transition: transform .08s linear, margin .08s linear, opacity .08s ease;
-      position: relative;
+      display: grid;
+      place-items: center;
+      border: 2px dashed rgba(37,99,235,.32);
+      border-radius: var(--radius-xl);
+      background: linear-gradient(180deg, rgba(37,99,235,.055), rgba(79,70,229,.035));
+      box-shadow: none;
+      overflow: hidden;
+      animation: slotIn .16s var(--ease) both;
+      transition: height .16s var(--ease), margin .16s var(--ease);
     }
 
     .category-drop-placeholder::before {
       content: "Soltar aquí";
-      position: absolute;
-      left: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      padding: 2px 8px;
+      position: static;
+      transform: none;
+      padding: 5px 11px;
+      border: 1px solid rgba(37,99,235,.16);
       border-radius: 999px;
-      color: #fff;
-      background: linear-gradient(90deg, var(--primary), var(--primary-2));
-      font-size: .68rem;
+      color: var(--primary);
+      background: rgba(37,99,235,.09);
+      box-shadow: none;
+      font-size: .72rem;
       font-weight: 850;
-      letter-spacing: .02em;
-      box-shadow: 0 5px 16px rgba(37,99,235,.22);
+    }
+
+    [data-theme="dark"] .category-drop-placeholder {
+      border-color: rgba(96,165,250,.34);
+      background: linear-gradient(180deg, rgba(96,165,250,.09), rgba(129,140,248,.06));
+    }
+
+    @keyframes slotIn {
+      from { opacity: 0; transform: scale(.99); }
+      to   { opacity: 1; transform: none; }
     }
 
     body.is-section-pointer-dragging {
@@ -494,6 +507,10 @@
     }
     body.is-section-pointer-dragging .activity-card:not(.section-drag-floating) {
       transition: none !important;
+    }
+
+    body.is-section-pointer-dragging #board .activity-card:not(.section-drag-floating) {
+      opacity: .62;
     }
 
     .section-order-controls {
@@ -675,34 +692,24 @@
     }
 
     /* =========================================================
-       TASKY PRO V40 · Drag de tareas + repetición semanal
+       TASKY PRO V41 · Drag refinado + repetición semanal
        ========================================================= */
 
     .task-drop-line {
-      height: 4px;
-      margin: 2px 8px;
+      height: 2px;
+      margin: 5px 12px;
       border-radius: 999px;
-      background: linear-gradient(90deg, var(--primary), var(--primary-2));
-      box-shadow: 0 0 0 1px rgba(37,99,235,.10), 0 4px 14px rgba(37,99,235,.18);
+      background: linear-gradient(90deg,
+        rgba(37,99,235,0), var(--primary) 14%, var(--primary-2) 86%, rgba(79,70,229,0));
+      box-shadow: none;
       position: relative;
       z-index: 4;
       pointer-events: none;
+      animation: slotIn .14s var(--ease) both;
     }
 
     .task-drop-line::before,
-    .task-drop-line::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--primary);
-      transform: translateY(-50%);
-      box-shadow: 0 0 0 4px rgba(37,99,235,.10);
-    }
-    .task-drop-line::before { left: -1px; }
-    .task-drop-line::after { right: -1px; }
+    .task-drop-line::after { display: none; }
 
     .task-drag-floating {
       position: fixed !important;
@@ -2346,21 +2353,22 @@
     "use strict";
 
     // =========================================================
-    // TASKY PRO V40
-    // Objetivo de esta versión: mantener el borrador de una nueva tarea
+    // TASKY PRO V41
+    // Objetivo de esta versión: placeholder de fases como hueco de destino y línea de inserción refinada.
+    // Se mantienen los cambios de sincronización y renderizado incremental.
     // durante la sincronización para evitar que el campo desaparezca.
     // También conserva el renderizado incremental introducido en V30.
     // =========================================================
 
     /* =========================================================
-       TASKY PRO v39
+       TASKY PRO v41
        Arquitectura:
        - State -> render -> interactions -> state
        - Firestore solo sincroniza el state
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 40;
+    const APP_VERSION = 41;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -2930,11 +2938,12 @@
       const fastDropZone = Math.max(42, rect.height * 0.26);
       const insertAfter = clientY >= rect.top + fastDropZone;
 
-      if (insertAfter) {
-        target.parentElement.insertBefore(drag.placeholder, target.nextSibling);
-      } else {
-        target.parentElement.insertBefore(drag.placeholder, target);
-      }
+      const reference = insertAfter ? target.nextSibling : target;
+      if (reference === drag.placeholder) return;
+      if (drag.placeholder.nextSibling === reference &&
+          drag.placeholder.parentElement === target.parentElement) return;
+
+      target.parentElement.insertBefore(drag.placeholder, reference);
     }
 
     function findCategoryTargetAt(clientY, draggedCard, placeholder) {
