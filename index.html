@@ -396,12 +396,6 @@
       backdrop-filter: blur(20px) saturate(140%);
       -webkit-backdrop-filter: blur(20px) saturate(140%);
       box-shadow: var(--shadow);
-      animation: cardIn .5s var(--ease) both;
-    }
-
-    @keyframes cardIn {
-      from { opacity: 0; transform: translateY(12px) scale(.988); }
-      to { opacity: 1; transform: none; }
     }
 
     .activity-card.is-complete {
@@ -1305,6 +1299,12 @@
   <script>
     "use strict";
 
+    // =========================================================
+    // TASKY PRO V30
+    // Objetivo de esta versión: eliminar el pestañeo visual
+    // producido por animaciones de entrada durante re-render.
+    // =========================================================
+
     /* =========================================================
        TASKY PRO v26
        Arquitectura:
@@ -1313,7 +1313,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 29;
+    const APP_VERSION = 30;
     const STORAGE_KEY = "tasky_pro_v26";
     const THEME_KEY = "tasky_theme";
     const DEVICE_KEY = "tasky_device_id";
@@ -1629,7 +1629,6 @@
       const card = document.createElement("article");
       card.className = "activity-card" + (total > 0 && pct === 100 ? " is-complete" : "");
       card.dataset.categoryId = cat.id;
-      card.style.animationDelay = Math.min(index * 45, 500) + "ms";
 
       card.innerHTML = `
         <div class="card-head">
