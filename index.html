@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -11,9 +11,9 @@
   <title>Tasky — Pro</title>
 
   <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
-  <link rel="icon" type="image/png" href="icon.png?v=25">
-  <link rel="apple-touch-icon" href="icon.png?v=25">
-  <link rel="manifest" href="manifest.json?v=25">
+  <link rel="icon" type="image/png" href="icon.png?v=27">
+  <link rel="apple-touch-icon" href="icon.png?v=27">
+  <link rel="manifest" href="manifest.json?v=27">
 
   <!-- Dependencias con versiones fijadas para evitar cambios inesperados. -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
@@ -77,10 +77,17 @@
       font-family: var(--font);
       color: var(--text);
       background:
-        radial-gradient(circle at 12% 10%, rgba(37,99,235,.12), transparent 28%),
-        radial-gradient(circle at 86% 18%, rgba(124,58,237,.12), transparent 26%),
-        radial-gradient(circle at 45% 100%, rgba(16,185,129,.08), transparent 30%),
-        linear-gradient(145deg, var(--bg), var(--bg-2));
+        linear-gradient(-45deg,
+          #ffb3ba,
+          #ffdfba,
+          #baffc9,
+          #bae1ff,
+          #e0c3fc,
+          #ffc3a0,
+          #ffb3ba);
+      background-size: 700% 700%;
+      animation: moveBackground 26s ease-in-out infinite;
+      background-attachment: fixed;
       overflow-x: hidden;
       transition: background .35s ease, color .25s ease;
     }
@@ -91,15 +98,23 @@
       inset: -20%;
       z-index: -1;
       background:
-        conic-gradient(from 210deg, rgba(59,130,246,.08), transparent 25%, rgba(139,92,246,.06), transparent 55%, rgba(16,185,129,.05), transparent 80%);
-      filter: blur(60px);
-      animation: ambient 20s ease-in-out infinite alternate;
+        radial-gradient(circle at 18% 18%, rgba(255,255,255,.42), transparent 24%),
+        radial-gradient(circle at 82% 25%, rgba(255,255,255,.28), transparent 25%),
+        radial-gradient(circle at 50% 85%, rgba(255,255,255,.18), transparent 28%);
+      filter: blur(48px);
+      animation: ambient 18s ease-in-out infinite alternate;
       pointer-events: none;
     }
 
+    @keyframes moveBackground {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
     @keyframes ambient {
-      from { transform: translate3d(-2%, -1%, 0) rotate(0deg) scale(1); }
-      to { transform: translate3d(3%, 2%, 0) rotate(8deg) scale(1.08); }
+      from { transform: translate3d(-2%, -1%, 0) scale(1); }
+      to { transform: translate3d(3%, 2%, 0) scale(1.08); }
     }
 
     button, input, textarea { font: inherit; }
@@ -231,10 +246,25 @@
       line-height: .98;
       letter-spacing: -.055em;
       font-weight: 900;
-      background: linear-gradient(120deg, var(--text), #4f46e5 50%, var(--primary));
+      background: linear-gradient(
+        90deg,
+        #007aff,
+        #5856d6,
+        #ff2d55,
+        #ff9500,
+        #34c759,
+        #007aff
+      );
+      background-size: 220% auto;
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
+      animation: gradientTitle 6s linear infinite;
+    }
+
+    @keyframes gradientTitle {
+      0% { background-position: 0% center; }
+      100% { background-position: 220% center; }
     }
 
     .hero p {
@@ -921,6 +951,155 @@
       box-shadow: var(--shadow-lg) !important;
     }
 
+
+    /* ===== Microinteracciones y animaciones profesionales ===== */
+    @keyframes ambientFloat {
+      0%, 100% { transform: translate3d(0,0,0); }
+      50% { transform: translate3d(10px,-8px,0); }
+    }
+
+    @keyframes pulseSoft {
+      0%, 100% { box-shadow: var(--shadow); }
+      50% { box-shadow: 0 22px 62px rgba(37,99,235,.14); }
+    }
+
+    @keyframes successPop {
+      0% { transform: scale(.92); opacity:.5; }
+      55% { transform: scale(1.035); opacity:1; }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes shakeError {
+      0%,100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      width: 360px;
+      height: 360px;
+      left: -160px;
+      bottom: 8vh;
+      z-index: -1;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(37,99,235,.10), transparent 68%);
+      filter: blur(8px);
+      animation: ambientFloat 12s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .activity-card:hover {
+      animation: pulseSoft 2.8s ease-in-out infinite;
+    }
+
+    .completed-card {
+      overflow: hidden;
+    }
+
+    .completed-card .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 0 13px 15px;
+    }
+
+    .completed-item {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 58px;
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      opacity: 1;
+      background: linear-gradient(90deg, rgba(22,163,74,.055), transparent 55%), var(--surface-solid);
+      box-shadow: 0 4px 16px rgba(15,23,42,.045);
+      animation: successPop .34s var(--ease) both;
+    }
+
+    .completed-item .task-input {
+      display: block;
+      min-width: 0;
+      width: 100%;
+      max-height: 72px;
+      overflow: auto;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      line-height: 1.4;
+      padding: 4px 0;
+      margin: 0;
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+
+    .completed-item .task-due {
+      grid-column: auto;
+      margin: 0;
+      white-space: nowrap;
+    }
+
+    .completed-item .remove-task {
+      justify-self: end;
+    }
+
+    .completed-item .check-btn {
+      margin: 0;
+    }
+
+    .btn-error-shake { animation: shakeError .42s ease both; }
+
+    .toast.error {
+      border-color: rgba(239,68,68,.22);
+      background: linear-gradient(90deg, rgba(239,68,68,.09), var(--surface-solid));
+    }
+
+    .toast.success {
+      border-color: rgba(22,163,74,.20);
+      background: linear-gradient(90deg, rgba(22,163,74,.08), var(--surface-solid));
+    }
+
+    .sync-dot.online { animation: syncPulse 2.2s ease-in-out infinite; }
+    @keyframes syncPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(22,163,74,.14); }
+      50% { box-shadow: 0 0 0 5px rgba(22,163,74,.06); }
+    }
+
+    .hero h1 {
+      background-image: linear-gradient(100deg, #007AFF, #5856D6, #FF2D55, #FF9500, #34C759, #007AFF);
+      background-size: 280% 280%;
+      animation: gradientShift 8s ease-in-out infinite;
+    }
+
+    body {
+      background:
+        linear-gradient(-45deg, #eef6ff, #fff2f5, #effff5, #fff8ed, #f5efff, #eef7ff);
+      background-size: 420% 420%;
+      animation: pageGradient 22s ease infinite;
+    }
+
+    [data-theme="dark"] body {
+      background:
+        linear-gradient(-45deg, #070b13, #0d1020, #081412, #171108, #100a1b, #070b13);
+      background-size: 420% 420%;
+    }
+
+    @keyframes pageGradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
     @media (max-width: 760px) {
       .app-shell { padding-inline: 12px; }
       .topbar { top: 8px; }
@@ -931,6 +1110,21 @@
       .stats-strip { grid-template-columns: repeat(2, 1fr); }
       .task-item { grid-template-columns: 25px 30px 1fr 32px; }
       .fab { right: 15px; }
+    }
+
+    @media (max-width: 760px) {
+      .completed-item {
+        grid-template-columns: 32px minmax(0, 1fr) auto;
+      }
+      .completed-item .task-due {
+        grid-column: 2 / -1;
+        justify-self: start;
+        margin-top: -4px;
+      }
+      .completed-item .remove-task {
+        grid-column: 3;
+        grid-row: 1;
+      }
     }
 
     @media (max-width: 480px) {
@@ -1092,15 +1286,15 @@
     "use strict";
 
     /* =========================================================
-       TASKY PRO v25
+       TASKY PRO v26
        Arquitectura:
        - State -> render -> interactions -> state
        - Firestore solo sincroniza el state
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 25;
-    const STORAGE_KEY = "tasky_pro_v25";
+    const APP_VERSION = 27;
+    const STORAGE_KEY = "tasky_pro_v26";
     const THEME_KEY = "tasky_theme";
     const DEVICE_KEY = "tasky_device_id";
 
@@ -1250,13 +1444,12 @@
       el.syncStatus.innerHTML = '<span class="sync-dot ' + escapeHTML(kind) + '"></span> ' + escapeHTML(label);
     }
 
-    function toast(message, icon = "check") {
+    function toast(message, icon = "check", type = "success") {
       const node = document.createElement("div");
-      node.className = "toast";
+      node.className = "toast " + (type || "");
       node.innerHTML = '<i data-lucide="' + escapeHTML(icon) + '"></i><span>' + escapeHTML(message) + '</span>';
       el.toastStack.appendChild(node);
       refreshIcons();
-
       setTimeout(() => node.remove(), 3600);
     }
 
@@ -1470,29 +1663,35 @@
       item.dataset.taskId = task.id;
       if (!completed) item.dataset.date = task.date;
 
-      const dueLabel = isOverdue
-        ? "Atrasada · " + formatDateLong(task.date)
-        : "Para hoy · " + formatDateLong(task.date);
-
-      item.innerHTML = `
-        ${completed
-          ? `<button class="check-btn" type="button" data-action="restore-task" aria-label="Restaurar tarea"><i data-lucide="check"></i></button>`
-          : `<button class="drag-task" type="button" title="Mantener para mover" aria-label="Mover tarea"><i data-lucide="grip-vertical"></i></button>
-             <button class="check-btn" type="button" data-action="complete-task" aria-label="Completar tarea"></button>`}
-        <textarea class="task-input" rows="1" maxlength="500" placeholder="Añadir tarea…" ${completed ? "readonly" : ""}>${escapeHTML(task.text)}</textarea>
-        <button class="mini-btn danger remove-task" type="button" data-action="delete-task" title="Eliminar tarea" aria-label="Eliminar tarea">
-          <i data-lucide="x"></i>
-        </button>
-        <span class="task-due"><i data-lucide="${isOverdue ? "triangle-alert" : "calendar-days"}"></i>${escapeHTML(dueLabel)}</span>
-      `;
+      if (completed) {
+        const dueLabel = task.date ? "Completada · " + formatDateLong(task.date) : "Completada";
+        item.innerHTML = `
+          <button class="check-btn" type="button" data-action="restore-task" aria-label="Restaurar tarea" title="Restaurar tarea">
+            <i data-lucide="check"></i>
+          </button>
+          <div class="task-input" role="text" aria-label="Tarea completada">${escapeHTML(task.text)}</div>
+          <span class="task-due"><i data-lucide="calendar-check"></i>${escapeHTML(dueLabel)}</span>
+          <button class="mini-btn danger remove-task" type="button" data-action="delete-task" title="Eliminar tarea" aria-label="Eliminar tarea">
+            <i data-lucide="x"></i>
+          </button>
+        `;
+      } else {
+        const dueLabel = isOverdue
+          ? "Atrasada · " + formatDateLong(task.date)
+          : "Para hoy · " + formatDateLong(task.date);
+        item.innerHTML = `
+          <button class="drag-task" type="button" title="Mantener para mover" aria-label="Mover tarea"><i data-lucide="grip-vertical"></i></button>
+          <button class="check-btn" type="button" data-action="complete-task" aria-label="Completar tarea"></button>
+          <textarea class="task-input" rows="1" maxlength="500" placeholder="Añadir tarea…">${escapeHTML(task.text)}</textarea>
+          <button class="mini-btn danger remove-task" type="button" data-action="delete-task" title="Eliminar tarea" aria-label="Eliminar tarea"><i data-lucide="x"></i></button>
+          <span class="task-due"><i data-lucide="${isOverdue ? "triangle-alert" : "calendar-days"}"></i>${escapeHTML(dueLabel)}</span>
+        `;
+      }
 
       if (query) {
         const haystack = task.text.toLowerCase();
-        if (!haystack.includes(query)) {
-          item.classList.add("search-hidden");
-        } else {
-          item.classList.add("search-match");
-        }
+        if (!haystack.includes(query)) item.classList.add("search-hidden");
+        else item.classList.add("search-match");
       }
 
       return item;
@@ -1515,7 +1714,7 @@
         <div class="card-head">
           <div class="card-title-row">
             <div style="width:30px"></div>
-            <div class="activity-title" style="display:flex;align-items:center;gap:8px;">Completadas <span class="pill success">${completed.length}</span></div>
+            <div class="activity-title" style="display:flex;align-items:center;gap:8px;">Completadas <span class="pill success">${completed.length}</span><span class="pill neutral">Historial</span></div>
           </div>
         </div>
         <div class="task-list" data-completed-list="true"></div>
@@ -1739,13 +1938,11 @@
     }
 
     function updateTask(taskId, text) {
+      if (!taskId) return;
       for (const cat of state.categories) {
         const task = cat.tasks.find(t => t.id === taskId);
         if (!task) continue;
         task.text = text;
-        if (!text.trim()) {
-          cat.tasks = cat.tasks.filter(t => t.id !== taskId);
-        }
         localDirty = true;
         persistLocal();
         scheduleSave("editar tarea", 700);
@@ -1928,7 +2125,7 @@
           toast("Respaldo importado", "upload");
         } catch (error) {
           console.error(error);
-          toast("El archivo no es un respaldo válido", "circle-alert");
+          toast("El archivo no es un respaldo válido", "circle-alert", "error");
         }
       };
 
@@ -1988,7 +2185,7 @@
       } catch (error) {
         console.error("Error guardando en Firestore:", error);
         setSyncStatus("error", "Solo local");
-        toast("No se pudo sincronizar con la nube", "cloud-off");
+        toast("No se pudo sincronizar con la nube", "cloud-off", "error");
       }
     }
 
@@ -2107,7 +2304,8 @@
 
         if (target.matches(".task-input")) {
           updateTaskHeights();
-          updateTask(target.dataset.taskId, target.value);
+          const item = target.closest(".task-item");
+          updateTask(item?.dataset.taskId, target.value);
           return;
         }
 
@@ -2246,18 +2444,40 @@
       });
 
       document.addEventListener("focusout", event => {
-        if (event.target.matches(".task-input, .activity-title")) {
+        if (event.target.matches(".task-input")) {
+          const item = event.target.closest(".task-item");
+          const taskId = item?.dataset.taskId;
+          if (!event.target.value.trim() && taskId) {
+            let removed = false;
+            for (const cat of state.categories) {
+              const before = cat.tasks.length;
+              cat.tasks = cat.tasks.filter(t => t.id !== taskId);
+              removed ||= before !== cat.tasks.length;
+            }
+            if (removed) {
+              persistLocal();
+              localDirty = true;
+              render();
+              scheduleSave("eliminar tarea vacía");
+            }
+          } else {
+            persistLocal();
+            saveCloud("blur");
+          }
+        } else if (event.target.matches(".activity-title")) {
           persistLocal();
           saveCloud("blur");
-          flushPendingRemote();
         }
+
+        flushPendingRemote();
       });
 
       el.searchInput.addEventListener("input", () => {
         activeSearch = el.searchInput.value;
+        const start = el.searchInput.selectionStart;
         render();
-        const focused = document.activeElement;
-        if (focused !== el.searchInput) el.searchInput.focus();
+        el.searchInput.focus();
+        try { el.searchInput.setSelectionRange(start, start); } catch {}
       });
 
       el.themeBtn.addEventListener("click", toggleTheme);
