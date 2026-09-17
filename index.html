@@ -10,7 +10,8 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V49 · Sincronización protegida + frases célebres con autor -->
+  <!-- TASKY PRO · V50 -->
+
   <!-- TASKY PRO · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
 
@@ -245,9 +246,9 @@
     }
 
     .hero h1 {
-      margin: 12px 0 7px;
+      margin: 12px 0 17px;
       font-size: clamp(2.15rem, 7vw, 4rem);
-      line-height: .98;
+      line-height: 1.02;
       letter-spacing: -.055em;
       font-weight: 900;
       background: linear-gradient(
@@ -2504,6 +2505,10 @@
     }
 
     .hero-quote {
+      padding-top: 1px;
+    }
+
+    .hero-quote {
       margin: 0 !important;
       min-height: 0 !important;
       color: var(--muted);
@@ -2541,124 +2546,35 @@
       color: var(--primary);
     }
 
-    .category-emoji-btn {
-      width: 34px;
-      height: 34px;
-      flex: 0 0 auto;
-      display: grid;
-      place-items: center;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      color: var(--muted);
-      background: transparent;
-      cursor: pointer;
-      transition: transform .16s var(--ease), background .16s ease, border-color .16s ease;
-      font-size: 1rem;
-      line-height: 1;
-    }
-
-    .category-emoji-btn:hover {
-      background: rgba(37,99,235,.06);
-      border-color: rgba(37,99,235,.20);
-    }
-
-    .category-emoji-btn:active { transform: scale(.94); }
-
-    .emoji-popover {
-      position: fixed;
-      z-index: 10050;
-      display: grid;
-      grid-template-columns: repeat(6, 40px);
-      gap: 6px;
-      padding: 9px;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: var(--surface-solid);
-      box-shadow: var(--shadow-lg);
-      opacity: 0;
-      visibility: hidden;
-      transform: translateY(6px) scale(.97);
-      transition: .15s var(--ease);
-      pointer-events: none;
-    }
-
-    .emoji-popover.open {
-      opacity: 1;
-      visibility: visible;
-      transform: none;
-      pointer-events: auto;
-    }
-
-    .emoji-option {
-      width: 40px;
-      height: 40px;
-      display: grid;
-      place-items: center;
-      border: 0;
-      border-radius: 11px;
-      background: transparent;
-      font-size: 1.35rem;
-      cursor: pointer;
-      transition: transform .12s ease, background .12s ease;
-    }
-
-    .emoji-option:hover {
-      background: var(--line);
-      transform: scale(1.08);
-    }
-
-    .emoji-option.clear-emoji {
-      color: var(--muted);
-      font-size: .9rem;
-    }
-
-    .emoji-option.clear-emoji:hover {
-      color: var(--danger);
-      background: rgba(239,68,68,.07);
-    }
-
+    /* V50: el FAB de escritorio vive en el espacio libre a la derecha del tablero. */
     .fab {
-      right: max(18px, calc((100vw - var(--max)) / 2 + 18px));
-      bottom: calc(24px + env(safe-area-inset-bottom));
+      right: 48px;
+      top: clamp(420px, 72vh, 720px);
+      bottom: auto;
     }
 
     .fab-main {
-      width: 56px;
-      height: 56px;
-      border-radius: 18px;
+      width: 62px;
+      height: 62px;
+      border-radius: 19px;
     }
 
     @media (max-width: 760px) {
       .fab {
         right: 18px;
+        top: auto;
         bottom: calc(18px + env(safe-area-inset-bottom));
       }
       .fab-main {
-        width: 56px;
-        height: 56px;
+        width: 58px;
+        height: 58px;
+        border-radius: 18px;
       }
     }
-
-    @media (max-width: 480px) {
-      .emoji-popover {
-        grid-template-columns: repeat(6, 36px);
-        gap: 5px;
-        padding: 8px;
-      }
-      .emoji-option {
-        width: 36px;
-        height: 36px;
-      }
-      .category-emoji-btn {
-        width: 32px;
-        height: 32px;
-      }
-    }
-
-  </style>
+</style>
 </head>
 
-<body data-tasky-version="V49">
+<body tabindex="-1" data-tasky-version="V50">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -2852,27 +2768,6 @@
       </div>
     </div>
   </div>
-
-  
-  <div id="emojiPopover" class="emoji-popover" role="dialog" aria-label="Seleccionar emoji">
-    <button class="emoji-option" type="button" data-emoji="🎯" aria-label="Objetivo">🎯</button>
-    <button class="emoji-option" type="button" data-emoji="💼" aria-label="Trabajo">💼</button>
-    <button class="emoji-option" type="button" data-emoji="🏠" aria-label="Casa">🏠</button>
-    <button class="emoji-option" type="button" data-emoji="📚" aria-label="Estudio">📚</button>
-    <button class="emoji-option" type="button" data-emoji="🔥" aria-label="Prioridad">🔥</button>
-    <button class="emoji-option" type="button" data-emoji="⭐" aria-label="Importante">⭐</button>
-    <button class="emoji-option" type="button" data-emoji="❤️" aria-label="Personal">❤️</button>
-    <button class="emoji-option" type="button" data-emoji="🏋️" aria-label="Ejercicio">🏋️</button>
-    <button class="emoji-option" type="button" data-emoji="💰" aria-label="Finanzas">💰</button>
-    <button class="emoji-option" type="button" data-emoji="🛒" aria-label="Compras">🛒</button>
-    <button class="emoji-option" type="button" data-emoji="🧹" aria-label="Hogar">🧹</button>
-    <button class="emoji-option" type="button" data-emoji="📅" aria-label="Agenda">📅</button>
-    <button class="emoji-option" type="button" data-emoji="🚀" aria-label="Proyecto">🚀</button>
-    <button class="emoji-option" type="button" data-emoji="🧠" aria-label="Enfoque">🧠</button>
-    <button class="emoji-option" type="button" data-emoji="✅" aria-label="Listo">✅</button>
-    <button class="emoji-option clear-emoji" type="button" data-emoji="" aria-label="Quitar emoji">✕</button>
-  </div>
-
 <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
   <script>
@@ -2915,7 +2810,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 49;
+    const APP_VERSION = 50;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -3410,7 +3305,6 @@
               </button>
             </div>
             <input class="activity-title" maxlength="80" value="${escapeHTML(cat.title)}" placeholder="Nombre de la fase…">
-            <button class="category-emoji-btn" type="button" data-action="choose-category-emoji" title="${cat.emoji ? "Cambiar emoji" : "Añadir emoji"}" aria-label="${cat.emoji ? "Cambiar emoji de la fase" : "Añadir emoji a la fase"}">${cat.emoji || '<i data-lucide="smile"></i>'}</button>
             <div class="card-actions">
               <button class="mini-btn" type="button" data-action="stats" title="Ver resumen" aria-label="Ver resumen">
                 <i data-lucide="bar-chart-3"></i>
@@ -4298,73 +4192,6 @@
       }, 180);
     }
 
-
-    const TASKY_EMOJIS = [
-      "🎯","💼","🏠","📚","🔥","⭐","❤️","🏋️",
-      "💰","🛒","🧹","📅","🚀","🧠","✅"
-    ];
-
-    let emojiTarget = null;
-
-    function closeEmojiPopover() {
-      const popover = document.getElementById("emojiPopover");
-      if (!popover) return;
-      popover.classList.remove("open");
-      emojiTarget = null;
-    }
-
-    function openEmojiPopover(target) {
-      const popover = document.getElementById("emojiPopover");
-      if (!popover || !target) return;
-
-      emojiTarget = target;
-
-      const rect = target.getBoundingClientRect();
-      const width = popover.offsetWidth || 276;
-      const left = Math.min(
-        Math.max(8, rect.left),
-        Math.max(8, window.innerWidth - width - 8)
-      );
-      const top = Math.min(
-        Math.max(8, rect.bottom + 8),
-        Math.max(8, window.innerHeight - (popover.offsetHeight || 160) - 8)
-      );
-
-      popover.style.left = left + "px";
-      popover.style.top = top + "px";
-      popover.classList.add("open");
-    }
-
-    function setCategoryEmoji(categoryId, emoji) {
-      const category = state.categories.find(c => c.id === categoryId);
-      if (!category) return;
-
-      category.emoji = String(emoji || "");
-      persistLocal();
-      localDirty = true;
-
-      const card = document.querySelector(
-        `[data-category-id="${cssEscapeSafe(categoryId)}"]`
-      );
-
-      const button = card?.querySelector(".category-emoji-btn");
-      if (button) {
-        button.innerHTML = category.emoji || '<i data-lucide="smile"></i>';
-        button.title = category.emoji ? "Cambiar emoji" : "Añadir emoji";
-        button.setAttribute(
-          "aria-label",
-          category.emoji ? "Cambiar emoji de la fase" : "Añadir emoji a la fase"
-        );
-      }
-
-      refreshIcons();
-      scheduleSave("editar emoji de fase");
-      closeEmojiPopover();
-      toast(
-        category.emoji ? `Emoji añadido a ${category.title}` : "Emoji quitado",
-        "smile"
-      );
-    }
 
     function addCategory() {
       const category = {
@@ -5491,6 +5318,13 @@
           el.searchInput.select();
         }
 
+        if (event.key === "Escape" && document.activeElement === el.searchInput) {
+          event.preventDefault();
+          el.searchInput.blur();
+          document.body.focus();
+          return;
+        }
+
         if (event.key === "/" && !/input|textarea/i.test(event.target.tagName)) {
           event.preventDefault();
           el.searchInput.focus();
@@ -5522,13 +5356,6 @@
         if (action === "move-category-down") {
           const card = event.target.closest("[data-category-id]");
           moveCategoryBy(card?.dataset.categoryId, 1);
-          return;
-        }
-
-        if (action === "choose-category-emoji") {
-          const card = event.target.closest("[data-category-id]");
-          if (card) openEmojiPopover(card.querySelector(".category-emoji-btn"));
-          if (card) emojiTarget = { type: "category", id: card.dataset.categoryId };
           return;
         }
 
@@ -5634,18 +5461,6 @@
       });
 
       document.addEventListener("click", event => {
-        const emojiButton = event.target.closest(".emoji-option");
-        if (emojiButton && emojiTarget?.type === "category") {
-          setCategoryEmoji(emojiTarget.id, emojiButton.dataset.emoji || "");
-          return;
-        }
-
-        if (event.target.closest("#emojiPopover") || event.target.closest(".category-emoji-btn")) {
-          return;
-        }
-
-        closeEmojiPopover();
-
         const insideFab = event.target.closest("#fab");
         if (!insideFab) {
           el.fab.classList.remove("open");
