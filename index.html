@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V52 -->
+  <!-- TASKY PRO · V53 -->
 
   <!-- TASKY PRO · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -819,6 +819,15 @@
     .task-drop-line::after {
       display: none !important;
       content: none !important;
+    }
+
+    .category-auto-moved {
+      animation: categoryAutoMoved .45s cubic-bezier(.22,1,.36,1);
+    }
+
+    @keyframes categoryAutoMoved {
+      0% { transform: translateY(-4px); opacity: .72; }
+      100% { transform: translateY(0); opacity: 1; }
     }
 
     .task-landed {
@@ -2763,83 +2772,100 @@ body.task-drag-mode .activity-card {
        TASKY PRO V51 · FAB + VOLVER ARRIBA
        Inspirado en la posición de Tipify Pro.
        ========================================================= */
+    /* =========================================================
+       TASKY PRO V53 · FAB + VOLVER ARRIBA
+       Mismo concepto de Tipify Pro: dos controles independientes,
+       alineados verticalmente y con separación real.
+       ========================================================= */
     .fab {
-      position: fixed;
-      right: 40px;
-      bottom: calc(40px + env(safe-area-inset-bottom));
-      top: auto;
-      z-index: 90;
+      position: fixed !important;
+      right: 40px !important;
+      bottom: calc(40px + env(safe-area-inset-bottom)) !important;
+      top: auto !important;
+      z-index: 9000 !important;
     }
 
     .fab-main {
-      width: 70px;
-      height: 70px;
-      border-radius: 50%;
+      width: 70px !important;
+      height: 70px !important;
+      border-radius: 50% !important;
+      display: grid;
+      place-items: center;
     }
 
     .fab-top {
-      position: fixed;
-      right: 40px;
-      bottom: calc(125px + env(safe-area-inset-bottom));
-      width: 70px;
-      height: 70px;
+      position: fixed !important;
+      right: 40px !important;
+      bottom: calc(126px + env(safe-area-inset-bottom)) !important;
+      top: auto !important;
+      width: 70px !important;
+      height: 70px !important;
       border: 0;
       border-radius: 50%;
       display: grid;
       place-items: center;
       color: #fff;
       background: var(--text);
-      box-shadow: 0 20px 40px rgba(15,23,42,.22);
+      box-shadow: 0 20px 40px rgba(15,23,42,.24);
       cursor: pointer;
-      z-index: 89;
+      z-index: 9001 !important;
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
-      transform: translateY(20px) scale(.82);
-      transition: opacity .22s var(--ease), visibility .22s var(--ease),
-                  transform .22s var(--ease), background .18s ease;
+      transform: translate3d(0, 16px, 0) scale(.84);
+      transition:
+        opacity .20s var(--ease),
+        visibility .20s var(--ease),
+        transform .20s var(--ease),
+        background .18s ease;
+      isolation: isolate;
     }
 
     .fab-top.visible {
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
-      transform: translateY(0) scale(1);
+      transform: translate3d(0, 0, 0) scale(1);
     }
 
     .fab-top:hover {
       background: var(--primary);
-      transform: translateY(-4px) scale(1.04);
+      transform: translate3d(0, -4px, 0) scale(1.04);
     }
 
     .fab-top:active {
       transform: scale(.94);
     }
 
+    .fab-top svg,
+    .fab-main svg {
+      pointer-events: none;
+    }
+
     @media (max-width: 760px) {
       .fab {
-        right: 18px;
-        bottom: calc(18px + env(safe-area-inset-bottom));
+        right: 18px !important;
+        bottom: calc(18px + env(safe-area-inset-bottom)) !important;
       }
 
       .fab-main {
-        width: 60px;
-        height: 60px;
-        border-radius: 18px;
+        width: 60px !important;
+        height: 60px !important;
+        border-radius: 18px !important;
       }
 
       .fab-top {
-        right: 18px;
-        bottom: calc(88px + env(safe-area-inset-bottom));
-        width: 60px;
-        height: 60px;
+        right: 18px !important;
+        bottom: calc(94px + env(safe-area-inset-bottom)) !important;
+        width: 60px !important;
+        height: 60px !important;
         border-radius: 18px;
       }
     }
 </style>
 </head>
 
-<body tabindex="-1" data-tasky-version="V52">
+<body tabindex="-1" data-tasky-version="V53">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -3085,7 +3111,7 @@ body.task-drag-mode .activity-card {
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 52;
+    const APP_VERSION = 53;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -4336,7 +4362,6 @@ body.task-drag-mode .activity-card {
       if (!el.dailyProductivityContent) return;
       const stats = todayTaskStats();
       const pct = stats.total ? Math.round((stats.completed / stats.total) * 100) : 0;
-      const recurring = state.categories.reduce((sum, cat) => sum + cat.tasks.filter(t => !t.draft && t.date === today() && t.repeat).length, 0);
       const activeCategories = state.categories.filter(cat =>
         cat.tasks.some(t => !t.draft && t.date === today()) ||
         state.completed.some(t => t.originCat === cat.id && completedDateFor(t) === today())
@@ -4360,7 +4385,6 @@ body.task-drag-mode .activity-card {
           <div class="daily-highlight-card"><small>Completadas hoy</small><strong>${stats.completed}</strong></div>
           <div class="daily-highlight-card"><small>Pendientes hoy</small><strong>${stats.pending}</strong></div>
           <div class="daily-highlight-card"><small>Atrasadas</small><strong>${stats.overdue}</strong></div>
-          <div class="daily-highlight-card"><small>Repetitivas de hoy</small><strong>${recurring}</strong></div>
         </div>
         <div class="report-grid">
           <div class="report-stat"><small>Fases activas</small><strong>${activeCategories}</strong></div>
@@ -4864,12 +4888,54 @@ body.task-drag-mode .activity-card {
         persistLocal();
         localDirty = true;
         updateCategoryUI(cat.id);
+
+        const movedToBottom = moveCompletedCategoryToBottom(cat.id);
         updateSummaryUI();
-        scheduleSave("completar tarea");
+        scheduleSave(movedToBottom ? "completar tarea y reordenar fase" : "completar tarea");
+
         softHaptic(28);
-        toast("Tarea completada ✓", "circle-check");
+        toast(
+          movedToBottom
+            ? "Tarea completada · Fase movida al final"
+            : "Tarea completada ✓",
+          movedToBottom ? "arrow-down-to-line" : "circle-check"
+        );
         return;
       }
+    }
+
+
+    function moveCompletedCategoryToBottom(categoryId) {
+      const index = state.categories.findIndex(cat => cat.id === categoryId);
+      if (index === -1 || index === state.categories.length - 1) return false;
+
+      const category = state.categories[index];
+      const remainingRealTasks = category.tasks.filter(
+        task => !task.draft && String(task.text || "").trim()
+      );
+
+      // Solo se mueve automáticamente cuando ya no queda ninguna
+      // tarea activa en esa fase.
+      if (remainingRealTasks.length > 0) return false;
+
+      state.categories.splice(index, 1);
+      state.categories.push(category);
+
+      const card = document.querySelector(
+        `.activity-card[data-category-id="${cssEscapeSafe(categoryId)}"]`
+      );
+      const completedCard = document.querySelector(".completed-card");
+
+      if (card) {
+        if (completedCard) el.board.insertBefore(card, completedCard);
+        else el.board.appendChild(card);
+
+        card.classList.add("category-auto-moved");
+        window.setTimeout(() => card.classList.remove("category-auto-moved"), 500);
+      }
+
+      refreshSectionMoveControls();
+      return true;
     }
 
     function restoreTask(taskId) {
@@ -5366,30 +5432,17 @@ body.task-drag-mode .activity-card {
         setSyncStatus('online', 'Guardando…');
         await taskyDoc.set(payload, { merge: false });
 
-        // Verificación posterior.
-        const verifySnapshot = await taskyDoc.get();
-        const verifyData = verifySnapshot.exists ? (verifySnapshot.data() || {}) : {};
-        const verifyState = normalizeState({
-          version: verifyData.version || APP_VERSION,
-          categories: verifyData.categories || [],
-          completed: verifyData.completed || []
-        });
-        const verifyHash = hash({ categories: verifyState.categories, completed: verifyState.completed });
-
-        if (verifyHash !== currentHash) {
-          localDirty = true;
-          setSyncStatus('error', 'Verificación fallida');
-          toast('El guardado no coincidió con tu estado local. Tu respaldo seguro permanece disponible.', 'shield-alert', 'error');
-          return;
-        }
-
+        // Firestore confirmó la escritura. No hacemos un GET inmediato:
+        // el listener onSnapshot será la fuente de confirmación y evitamos
+        // falsos errores por lecturas stale/caché del WebView.
         lastSavedHash = currentHash;
         lastConfirmedRemoteHash = currentHash;
-        lastConfirmedRemoteUpdatedBy = String(verifyData.updatedBy || deviceId);
+        lastConfirmedRemoteUpdatedBy = deviceId;
         localDirty = false;
         pendingRemoteState = null;
 
-        // El estado verificado pasa a ser el nuevo estado seguro.
+        // El servidor aceptó la escritura; la próxima instantánea de
+        // onSnapshot cerrará la confirmación definitiva.
         saveSafetyBackup('guardado confirmado', state);
         setSyncStatus('online', 'Sincronizado');
 
@@ -5529,17 +5582,19 @@ body.task-drag-mode .activity-card {
       }
 
       if (localDirty) {
-        // Otro dispositivo / cliente modificó el documento mientras nosotros
-        // teníamos cambios locales. Lo retenemos sin sobrescribir nada.
-        if (remoteUpdatedBy && remoteUpdatedBy !== deviceId) {
-          pendingRemoteState = remote;
-          setSyncStatus("online", "Cambios remotos pendientes");
+        // Si el snapshot pertenece a este mismo dispositivo, es nuestro
+        // propio ciclo de escritura (o una confirmación atrasada). No lo
+        // mostramos como conflicto y nunca sustituimos el estado local.
+        if (remoteUpdatedBy === deviceId) {
+          lastSavedHash = remoteHash;
+          lastConfirmedRemoteHash = remoteHash;
+          lastConfirmedRemoteUpdatedBy = deviceId;
           hideLoading();
           return;
         }
 
-        // Si no hay autor remoto fiable, tampoco sustituimos silenciosamente
-        // el estado local mientras haya cambios locales.
+        // Si realmente proviene de otro cliente, lo retenemos sin
+        // sobrescribir los cambios locales.
         pendingRemoteState = remote;
         setSyncStatus("online", "Cambios remotos pendientes");
         hideLoading();
@@ -5590,6 +5645,31 @@ body.task-drag-mode .activity-card {
       render();
     }
 
+
+    function scrollToTopTasky() {
+      const scroller = document.scrollingElement || document.documentElement || document.body;
+
+      try {
+        scroller.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (_) {
+        scroller.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      }
+
+      // Median / Android WebView: fallback seguro por si el smooth
+      // no es soportado o el documento no adopta el scroll inmediatamente.
+      window.setTimeout(() => {
+        if ((window.scrollY || scroller.scrollTop || 0) > 12) {
+          try {
+            scroller.scrollTo(0, 0);
+          } catch (_) {}
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        }
+      }, 420);
+    }
+
     function bindEvents() {
 
       if (el.fabTop) {
@@ -5610,6 +5690,12 @@ body.task-drag-mode .activity-card {
             fabTopTicking = false;
           });
         };
+
+        el.fabTop.addEventListener("click", event => {
+          event.preventDefault();
+          event.stopPropagation();
+          scrollToTopTasky();
+        });
 
         window.addEventListener("scroll", onScroll, { passive: true });
         updateFabTop();
@@ -5655,11 +5741,20 @@ body.task-drag-mode .activity-card {
           el.searchInput.select();
         }
 
-        if (event.key === "Escape" && document.activeElement === el.searchInput) {
-          event.preventDefault();
-          el.searchInput.blur();
-          document.body.focus();
-          return;
+        if (event.key === "Escape") {
+          const openModal = document.querySelector(".modal-backdrop.open");
+          if (openModal) {
+            event.preventDefault();
+            closeModal(openModal.id);
+            return;
+          }
+
+          if (document.activeElement === el.searchInput) {
+            event.preventDefault();
+            el.searchInput.blur();
+            document.body.focus();
+            return;
+          }
         }
 
         if (event.key === "/" && !/input|textarea/i.test(event.target.tagName)) {
