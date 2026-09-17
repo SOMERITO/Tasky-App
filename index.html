@@ -10,14 +10,14 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V45 · Preview-safe bootstrap -->
-  <!-- TASKY PRO · V45 -->
-    <!-- V44 · Progreso diario, atrasadas centralizadas, repetición corregida, recuperación de completadas y productividad global -->
+  <!-- TASKY PRO · V46 · Stability + data rendering + motivation refresh -->
+  <!-- TASKY PRO · V46 -->
+    <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
 
   <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
-  <link rel="icon" type="image/png" href="icon.png?v=44">
+  <link rel="icon" type="image/png" href="icon.png?v=46">
   <link rel="apple-touch-icon" href="icon.png?v=41">
-  <link rel="manifest" href="manifest.json?v=44">
+  <link rel="manifest" href="manifest.json?v=46">
 
   <!-- Dependencias con versiones fijadas para evitar cambios inesperados. -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
@@ -1395,8 +1395,18 @@
       .report-stat strong { font-size: 1.12rem; }
     }
 
-    /* ===== TASKY PRO V44 · Productividad diaria + frases + ajustes de tareas ===== */
+    /* ===== TASKY PRO V46 · Productividad diaria + frases + ajustes de tareas ===== */
     .hero-quote { min-height: 24px; animation: quoteIn .28s var(--ease) both; }
+    .hero-quote-author {
+      min-height: 18px;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 750;
+      font-style: italic;
+      opacity: .92;
+    }
+    .hero-quote-author:empty { display:none; }
     @keyframes quoteIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
     .toolbar-actions { flex-wrap: wrap; justify-content: flex-end; }
     .daily-report .report-hero {
@@ -2396,6 +2406,7 @@
           <span class="eyebrow"><i data-lucide="sparkles"></i> Organiza. Ejecuta. Avanza.</span>
           <h1 id="heroTitle">Tu día, tu orden</h1>
           <p id="heroSubtitle" class="hero-quote">Cada tarea que completas es una victoria pequeña que mueve tu día.</p>
+          <div id="heroQuoteAuthor" class="hero-quote-author" aria-live="polite"></div>
         </div>
 
         <div class="day-progress">
@@ -2556,22 +2567,22 @@
     "use strict";
 
     // =========================================================
-    // TASKY PRO · V45 · PREVIEW / STORAGE SAFETY
+    // TASKY PRO · V46 · PREVIEW / STORAGE SAFETY
     // Evita que un sandbox (como la vista previa de ChatGPT) que
     // bloquee localStorage impida que toda la aplicación arranque.
     // =========================================================
     const memoryStorage = new Map();
     const safeStorage = {
       getItem(key) {
-        try { return window.safeStorage.getItem(key); }
+        try { return window.localStorage.getItem(key); }
         catch (error) { return memoryStorage.has(key) ? memoryStorage.get(key) : null; }
       },
       setItem(key, value) {
-        try { window.safeStorage.setItem(key, value); }
+        try { window.localStorage.setItem(key, String(value)); }
         catch (error) { memoryStorage.set(key, String(value)); }
       },
       removeItem(key) {
-        try { window.safeStorage.removeItem(key); }
+        try { window.localStorage.removeItem(key); }
         catch (error) { memoryStorage.delete(key); }
       }
     };
@@ -2585,14 +2596,14 @@
     // =========================================================
 
     /* =========================================================
-       TASKY PRO v41
+       TASKY PRO v46
        Arquitectura:
        - State -> render -> interactions -> state
        - Firestore solo sincroniza el state
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 45;
+    const APP_VERSION = 46;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -3064,7 +3075,7 @@
       const pct = todayTotal ? Math.round((completedToday / todayTotal) * 100) : 0;
 
       const card = document.createElement("article");
-      card.className = "activity-card" + (total > 0 && pct === 100 ? " is-complete" : "");
+      card.className = "activity-card" + (todayTotal > 0 && pct === 100 ? " is-complete" : "");
       card.dataset.categoryId = cat.id;
 
       card.innerHTML = `
@@ -5204,121 +5215,206 @@
     }
 
     const MOTIVATIONAL_QUOTES = [
-      'Haz una cosa importante y deja que el resto siga su turno.',
-      'No necesitas correr: necesitas avanzar con intención.',
-      'Tu progreso crece cuando conviertes planes en acciones.',
-      'Una tarea terminada vale más que diez pendientes en la cabeza.',
-      'Empieza por lo que hará más fácil todo lo demás.',
-      'Hoy también cuenta cada pequeño paso.',
-      'Ordenar tu día es una forma de cuidar tu energía.',
-      'Tu atención es valiosa: úsala en lo que importa.',
-      'Menos ruido, más enfoque, más avance.',
-      'Lo que haces ahora construye tu resultado después.',
-      'No busques un día perfecto; busca un día con propósito.',
-      'Haz espacio mental completando la siguiente tarea.',
-      'Tu lista no es una presión: es una guía.',
-      'La constancia convierte pequeñas acciones en grandes cambios.',
-      'Un paso claro es mejor que mil vueltas.',
-      'Hoy puedes avanzar un poco más que ayer.',
-      'Celebra el avance y continúa con el siguiente paso.',
-      'Tu mejor herramienta hoy es el enfoque.',
-      'Haz primero lo que te acerca más a tu objetivo.',
-      'Organiza menos en tu cabeza y más en tu tablero.',
-      'Cada casilla completada libera espacio para lo que sigue.',
-      'No necesitas hacerlo todo ahora; necesitas empezar bien.',
-      'La claridad aparece cuando empiezas a actuar.',
-      'Una buena jornada se construye tarea por tarea.',
-      'Tu ritmo también es productividad.',
-      'Prioriza, ejecuta y deja que el progreso hable.',
-      'Lo importante no es cuánto queda, sino cuánto ya avanzaste.',
-      'Una decisión pequeña puede desbloquear una tarde entera.',
-      'Tu día mejora cuando tu siguiente acción está clara.',
-      'Hazlo simple, hazlo posible y hazlo hoy.',
-      'El enfoque convierte tiempo disponible en progreso real.',
-      'Cada tarea que resuelves fortalece tu impulso.',
-      'La disciplina también puede sentirse ligera cuando hay orden.',
-      'Tu tablero existe para ayudarte, no para perseguirte.',
-      'Cierra una tarea y abre espacio para una nueva victoria.',
-      'Tu energía merece prioridades claras.',
-      'La mejor forma de avanzar es empezar por lo siguiente.',
-      'No subestimes lo que puedes completar en una tarde enfocada.',
-      'Hoy es una oportunidad para poner orden en lo que importa.',
-      'Haz que tu próxima acción sea pequeña y concreta.',
-      'Tu progreso merece ser visible.',
-      'Cada avance suma, incluso cuando parece pequeño.',
-      'La productividad comienza cuando decides dónde poner tu atención.',
-      'Una tarea a la vez sigue siendo una estrategia poderosa.',
-      'Ordenar tu jornada también protege tu tranquilidad.',
-      'Lo que hoy terminas mañana pesa menos.',
-      'Empieza donde estés y mejora desde ahí.',
-      'Tu lista puede ser larga; tu siguiente paso puede ser pequeño.',
-      'No necesitas motivación perfecta para hacer algo valioso.',
-      'La acción clara vence a la indecisión.',
-      'Haz visible lo importante y deja que el resto espere.',
-      'La constancia es una suma de días normales bien usados.',
-      'Tu agenda no decide por ti: tú decides qué merece tu tiempo.',
-      'Una jornada enfocada deja resultados que se sienten.',
-      'Hoy puedes elegir progreso sobre perfección.',
-      'Haz una tarea difícil antes de que se vuelva más pesada.',
-      'Tu futuro agradece lo que organizas y completas hoy.',
-      'La mejor sensación es ver avanzar lo que antes estaba pendiente.',
-      'Un tablero ordenado puede convertirse en una mente más ligera.',
-      'Tu próxima victoria puede estar a unos minutos de distancia.',
-      'La tarea que evitas puede ser exactamente la que te libere.',
-      'Avanza con intención, no con prisa.',
-      'Tu día tiene espacio para una victoria más.',
-      'La claridad llega cuando el siguiente paso deja de ser difuso.',
-      'Terminar también es una habilidad.',
-      'Haz menos cosas a la vez y termina más de ellas.',
-      'Lo que priorizas hoy moldea el día que tendrás.',
-      'Una pequeña mejora repetida se convierte en un gran cambio.',
-      'Tu enfoque de hoy es la base de tu tranquilidad de mañana.',
-      'No todo merece atención inmediata.',
-      'Empieza por lo importante y gana impulso.',
-      'Cada tarea tiene un comienzo; elige cuál comienza ahora.',
-      'Avanzar también significa saber qué dejar para después.',
-      'Tu tiempo se siente distinto cuando tienes claridad.',
-      'Un día productivo no es un día lleno: es un día con dirección.',
-      'Organiza lo que puedes controlar y actúa sobre ello.',
-      'La próxima casilla puede cambiar el ritmo de tu jornada.',
-      'Tu esfuerzo se acumula incluso cuando nadie lo ve.',
-      'Hay poder en terminar lo que empezaste.',
-      'La mejor versión de tu día empieza con una decisión concreta.',
-      'Haz visible tu progreso y úsalo como impulso.',
-      'Tu orden de hoy facilita el trabajo de mañana.',
-      'Una tarea completada es una preocupación menos.',
-      'El progreso rara vez hace ruido; por eso conviene verlo.',
-      'Tu día puede ser exigente y aun así sentirse bajo control.',
-      'Haz que la siguiente acción sea tan clara que no necesite pensarlo dos veces.',
-      'Enfócate en avanzar, no en demostrar que puedes con todo.',
-      'El orden es una ventaja cuando el día se acelera.',
-      'Cada pendiente resuelto devuelve algo de espacio a tu mente.',
-      'Una meta grande también se construye con tareas pequeñas.',
-      'Hoy puedes convertir intención en evidencia.',
-      'Sigue la lista, pero escucha también tus prioridades.',
-      'Tu progreso de hoy merece una mirada antes de terminar el día.',
-      'Menos pendientes abiertos, más energía disponible.',
-      'La productividad se siente mejor cuando también hay tranquilidad.',
-      'Tu siguiente acción no tiene que ser enorme para ser importante.',
-      'Haz que hoy tenga un resultado del que te sientas orgulloso.'
+      { text: "Haz una cosa importante y deja que el resto siga su turno.", author: "" },
+      { text: "No necesitas correr: necesitas avanzar con intención.", author: "" },
+      { text: "Tu progreso crece cuando conviertes planes en acciones.", author: "" },
+      { text: "Una tarea terminada vale más que diez pendientes en la cabeza.", author: "" },
+      { text: "Empieza por lo que hará más fácil todo lo demás.", author: "" },
+      { text: "Hoy también cuenta cada pequeño paso.", author: "" },
+      { text: "Ordenar tu día es una forma de cuidar tu energía.", author: "" },
+      { text: "Tu atención es valiosa: úsala en lo que importa.", author: "" },
+      { text: "Menos ruido, más enfoque, más avance.", author: "" },
+      { text: "Lo que haces ahora construye tu resultado después.", author: "" },
+      { text: "No busques un día perfecto; busca un día con propósito.", author: "" },
+      { text: "Haz espacio mental completando la siguiente tarea.", author: "" },
+      { text: "Tu lista no es una presión: es una guía.", author: "" },
+      { text: "La constancia convierte pequeñas acciones en grandes cambios.", author: "" },
+      { text: "Un paso claro es mejor que mil vueltas.", author: "" },
+      { text: "Hoy puedes avanzar un poco más que ayer.", author: "" },
+      { text: "Celebra el avance y continúa con el siguiente paso.", author: "" },
+      { text: "Tu mejor herramienta hoy es el enfoque.", author: "" },
+      { text: "Haz primero lo que te acerca más a tu objetivo.", author: "" },
+      { text: "Organiza menos en tu cabeza y más en tu tablero.", author: "" },
+      { text: "Cada casilla completada libera espacio para lo que sigue.", author: "" },
+      { text: "No necesitas hacerlo todo ahora; necesitas empezar bien.", author: "" },
+      { text: "La claridad aparece cuando empiezas a actuar.", author: "" },
+      { text: "Una buena jornada se construye tarea por tarea.", author: "" },
+      { text: "Tu ritmo también es productividad.", author: "" },
+      { text: "Prioriza, ejecuta y deja que el progreso hable.", author: "" },
+      { text: "Lo importante no es cuánto queda, sino cuánto ya avanzaste.", author: "" },
+      { text: "Una decisión pequeña puede desbloquear una tarde entera.", author: "" },
+      { text: "Tu día mejora cuando tu siguiente acción está clara.", author: "" },
+      { text: "Hazlo simple, hazlo posible y hazlo hoy.", author: "" },
+      { text: "El enfoque convierte tiempo disponible en progreso real.", author: "" },
+      { text: "Cada tarea que resuelves fortalece tu impulso.", author: "" },
+      { text: "La disciplina también puede sentirse ligera cuando hay orden.", author: "" },
+      { text: "Tu tablero existe para ayudarte, no para perseguirte.", author: "" },
+      { text: "Cierra una tarea y abre espacio para una nueva victoria.", author: "" },
+      { text: "Tu energía merece prioridades claras.", author: "" },
+      { text: "La mejor forma de avanzar es empezar por lo siguiente.", author: "" },
+      { text: "No subestimes lo que puedes completar en una tarde enfocada.", author: "" },
+      { text: "Hoy es una oportunidad para poner orden en lo que importa.", author: "" },
+      { text: "Haz que tu próxima acción sea pequeña y concreta.", author: "" },
+      { text: "Tu progreso merece ser visible.", author: "" },
+      { text: "Cada avance suma, incluso cuando parece pequeño.", author: "" },
+      { text: "La productividad comienza cuando decides dónde poner tu atención.", author: "" },
+      { text: "Una tarea a la vez sigue siendo una estrategia poderosa.", author: "" },
+      { text: "Ordenar tu jornada también protege tu tranquilidad.", author: "" },
+      { text: "Lo que hoy terminas mañana pesa menos.", author: "" },
+      { text: "Empieza donde estés y mejora desde ahí.", author: "" },
+      { text: "Tu lista puede ser larga; tu siguiente paso puede ser pequeño.", author: "" },
+      { text: "No necesitas motivación perfecta para hacer algo valioso.", author: "" },
+      { text: "La acción clara vence a la indecisión.", author: "" },
+      { text: "Haz visible lo importante y deja que el resto espere.", author: "" },
+      { text: "La constancia es una suma de días normales bien usados.", author: "" },
+      { text: "Tu agenda no decide por ti: tú decides qué merece tu tiempo.", author: "" },
+      { text: "Una jornada enfocada deja resultados que se sienten.", author: "" },
+      { text: "Hoy puedes elegir progreso sobre perfección.", author: "" },
+      { text: "Haz una tarea difícil antes de que se vuelva más pesada.", author: "" },
+      { text: "Tu futuro agradece lo que organizas y completas hoy.", author: "" },
+      { text: "La mejor sensación es ver avanzar lo que antes estaba pendiente.", author: "" },
+      { text: "Un tablero ordenado puede convertirse en una mente más ligera.", author: "" },
+      { text: "Tu próxima victoria puede estar a unos minutos de distancia.", author: "" },
+      { text: "La tarea que evitas puede ser exactamente la que te libere.", author: "" },
+      { text: "Avanza con intención, no con prisa.", author: "" },
+      { text: "Tu día tiene espacio para una victoria más.", author: "" },
+      { text: "La claridad llega cuando el siguiente paso deja de ser difuso.", author: "" },
+      { text: "Terminar también es una habilidad.", author: "" },
+      { text: "Haz menos cosas a la vez y termina más de ellas.", author: "" },
+      { text: "Lo que priorizas hoy moldea el día que tendrás.", author: "" },
+      { text: "Una pequeña mejora repetida se convierte en un gran cambio.", author: "" },
+      { text: "Tu enfoque de hoy es la base de tu tranquilidad de mañana.", author: "" },
+      { text: "No todo merece atención inmediata.", author: "" },
+      { text: "Empieza por lo importante y gana impulso.", author: "" },
+      { text: "Cada tarea tiene un comienzo; elige cuál comienza ahora.", author: "" },
+      { text: "Avanzar también significa saber qué dejar para después.", author: "" },
+      { text: "Tu tiempo se siente distinto cuando tienes claridad.", author: "" },
+      { text: "Un día productivo no es un día lleno: es un día con dirección.", author: "" },
+      { text: "Organiza lo que puedes controlar y actúa sobre ello.", author: "" },
+      { text: "La próxima casilla puede cambiar el ritmo de tu jornada.", author: "" },
+      { text: "Tu esfuerzo se acumula incluso cuando nadie lo ve.", author: "" },
+      { text: "Hay poder en terminar lo que empezaste.", author: "" },
+      { text: "La mejor versión de tu día empieza con una decisión concreta.", author: "" },
+      { text: "Haz visible tu progreso y úsalo como impulso.", author: "" },
+      { text: "Tu orden de hoy facilita el trabajo de mañana.", author: "" },
+      { text: "Una tarea completada es una preocupación menos.", author: "" },
+      { text: "El progreso rara vez hace ruido; por eso conviene verlo.", author: "" },
+      { text: "Tu día puede ser exigente y aun así sentirse bajo control.", author: "" },
+      { text: "Haz que la siguiente acción sea tan clara que no necesite pensarlo dos veces.", author: "" },
+      { text: "Enfócate en avanzar, no en demostrar que puedes con todo.", author: "" },
+      { text: "El orden es una ventaja cuando el día se acelera.", author: "" },
+      { text: "Cada pendiente resuelto devuelve algo de espacio a tu mente.", author: "" },
+      { text: "Una meta grande también se construye con tareas pequeñas.", author: "" },
+      { text: "Hoy puedes convertir intención en evidencia.", author: "" },
+      { text: "Sigue la lista, pero escucha también tus prioridades.", author: "" },
+      { text: "Tu progreso de hoy merece una mirada antes de terminar el día.", author: "" },
+      { text: "Menos pendientes abiertos, más energía disponible.", author: "" },
+      { text: "La productividad se siente mejor cuando también hay tranquilidad.", author: "" },
+      { text: "Tu siguiente acción no tiene que ser enorme para ser importante.", author: "" },
+      { text: "Haz que hoy tenga un resultado del que te sientas orgulloso.", author: "" },
+      { text: "Empieza por una tarea y deja que el impulso haga el resto.", author: "" },
+      { text: "Lo que organizas hoy puede hacer más ligero tu mañana.", author: "" },
+      { text: "Un buen día no se improvisa: se construye con decisiones claras.", author: "" },
+      { text: "Pon tu energía donde también quieres ver resultados.", author: "" },
+      { text: "Cuando el siguiente paso está claro, avanzar se vuelve más fácil.", author: "" },
+      { text: "No necesitas terminar todo para sentir progreso.", author: "" },
+      { text: "Cada prioridad atendida es una inversión en tu tranquilidad.", author: "" },
+      { text: "La acción pequeña que haces ahora puede ahorrarte esfuerzo después.", author: "" },
+      { text: "Deja que tu tablero guarde lo que no necesitas cargar en la cabeza.", author: "" },
+      { text: "Cuando terminas algo importante, recuperas espacio para lo que sigue.", author: "" },
+      { text: "La productividad también es elegir qué no vas a hacer hoy.", author: "" },
+      { text: "Una tarde enfocada puede cambiar por completo el resultado del día.", author: "" },
+      { text: "Pon nombre a lo importante y dale un lugar en tu tiempo.", author: "" },
+      { text: "Un objetivo claro convierte una lista larga en pasos manejables.", author: "" },
+      { text: "La mejor tarea para empezar es la que desbloquea las demás.", author: "" },
+      { text: "No esperes a sentirte listo: haz que el primer paso sea pequeño.", author: "" },
+      { text: "Cada vez que completas algo, haces más visible tu propio progreso.", author: "" },
+      { text: "La disciplina funciona mejor cuando tus acciones están a la vista.", author: "" },
+      { text: "Hoy no necesitas correr; necesitas avanzar en la dirección correcta.", author: "" },
+      { text: "Que tu lista te ayude a decidir, no a preocuparte.", author: "" },
+      { text: "La consistencia convierte una buena intención en un resultado real.", author: "" },
+      { text: "Hay días para acelerar y días para sostener el ritmo. Ambos cuentan.", author: "" },
+      { text: "El progreso empieza cuando una intención se transforma en una acción.", author: "" },
+      { text: "Tu tiempo tiene más valor cuando tus prioridades también lo tienen.", author: "" },
+      { text: "No dejes que una tarea pequeña ocupe un espacio enorme en tu mente.", author: "" },
+      { text: "Completar una cosa con atención es mejor que empezar diez sin foco.", author: "" },
+      { text: "Una decisión concreta vale más que una preocupación repetida.", author: "" },
+      { text: "Organizar no es posponer: es preparar el camino para ejecutar.", author: "" },
+      { text: "Lo que hoy parece poco puede convertirse en hábito mañana.", author: "" },
+      { text: "Una lista clara puede convertir una tarde caótica en una tarde manejable.", author: "" },
+      { text: "El orden te devuelve energía que antes gastabas recordando pendientes.", author: "" },
+      { text: "No todo tiene que ser urgente para ser importante.", author: "" },
+      { text: "Haz primero aquello que te dará más libertad después.", author: "" },
+      { text: "El enfoque también consiste en volver cuando te distraes.", author: "" },
+      { text: "Una tarea terminada es evidencia de que sí estás avanzando.", author: "" },
+      { text: "El mejor momento para empezar una tarea pequeña suele ser ahora.", author: "" },
+      { text: "Tu jornada mejora cuando cada acción tiene un siguiente paso claro.", author: "" },
+      { text: "Usa tu energía para construir, no para recordar lo que falta.", author: "" },
+      { text: "La claridad no siempre llega antes de empezar; muchas veces aparece mientras avanzas.", author: "" },
+      { text: "Una buena rutina se construye con pasos que puedes repetir.", author: "" },
+      { text: "No conviertas una lista pendiente en una lista de preocupaciones.", author: "" },
+      { text: "Cada bloque de tiempo puede tener una intención.", author: "" },
+      { text: "Haz que una pequeña victoria te lleve a la siguiente.", author: "" },
+      { text: "Lo que completas hoy deja menos ruido para mañana.", author: "" },
+      { text: "La atención es un recurso limitado: inviértela con intención.", author: "" },
+      { text: "Una tarea difícil se vuelve más manejable cuando la divides.", author: "" },
+      { text: "Tu mejor sistema es el que te ayuda a actuar cuando no tienes ganas.", author: "" },
+      { text: "El progreso visible puede convertirse en impulso.", author: "" },
+      { text: "No necesitas más horas: a veces necesitas menos fricción.", author: "" },
+      { text: "Cuando sabes qué toca ahora, el resto puede esperar.", author: "" },
+      { text: "Una jornada productiva también deja espacio para respirar.", author: "" },
+      { text: "Cada pequeño cierre reduce una preocupación abierta.", author: "" },
+      { text: "Empieza sencillo, mantén el ritmo y ajusta sobre la marcha.", author: "" },
+      { text: "La manera de empezar es dejar de hablar y comenzar a hacer.", author: "Walt Disney" }
     ];
+
+    function quoteSeedFromDate(dateStr) {
+      let h = 2166136261;
+      for (let i = 0; i < dateStr.length; i++) {
+        h ^= dateStr.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return h >>> 0;
+    }
+
+    function shuffledQuoteIndexes() {
+      const indexes = MOTIVATIONAL_QUOTES.map((_, i) => i);
+      let seed = quoteSeedFromDate(today());
+      const rand = () => {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        return seed / 4294967296;
+      };
+      for (let i = indexes.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [indexes[i], indexes[j]] = [indexes[j], indexes[i]];
+      }
+      return indexes;
+    }
 
     function updateMotivationalQuote(force = false) {
       const node = document.getElementById('heroSubtitle');
-      if (!node) return;
+      const authorNode = document.getElementById('heroQuoteAuthor');
+      if (!node || !authorNode) return;
+
+      // Cambia cada 10 minutos. Hay 150 frases, por lo que las 144 ranuras
+      // de un día usan índices distintos y no repiten una frase dentro del día.
       const now = new Date();
-      const start = new Date(now.getFullYear(), 0, 1);
-      const dayOfYear = Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - start) / 86400000);
-      const quarter = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15);
-      const index = ((dayOfYear * 96) + quarter) % MOTIVATIONAL_QUOTES.length;
-      const next = MOTIVATIONAL_QUOTES[index];
-      if (!force && node.textContent === next) return;
+      const minutes = now.getHours() * 60 + now.getMinutes();
+      const slot = Math.floor(minutes / 10);
+      const order = shuffledQuoteIndexes();
+      const quote = MOTIVATIONAL_QUOTES[order[slot % order.length]];
+      const nextText = quote.text;
+      const nextAuthor = quote.author ? '— ' + quote.author : '';
+
+      if (!force && node.textContent === nextText && authorNode.textContent === nextAuthor) return;
       node.classList.remove('hero-quote');
+      authorNode.classList.remove('hero-quote');
       void node.offsetWidth;
       node.classList.add('hero-quote');
-      node.textContent = next;
+      authorNode.classList.add('hero-quote');
+      node.textContent = nextText;
+      authorNode.textContent = nextAuthor;
     }
-
     function init() {
       try {
         deviceId = getOrCreateDeviceId();
@@ -5341,7 +5437,7 @@
 
         bindEvents();
         updateMotivationalQuote(true);
-        setInterval(() => updateMotivationalQuote(false), 60 * 1000);
+        setInterval(() => updateMotivationalQuote(false), 20 * 1000);
         refreshIcons();
         hideLoading();
         startFirebase();
