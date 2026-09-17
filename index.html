@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V50 -->
+  <!-- TASKY PRO · V52 -->
 
   <!-- TASKY PRO · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -725,6 +725,128 @@
       will-change: top, left !important;
     }
 
+    /* V52: arrastre nativo de tareas, sin sacar la tarjeta original del DOM. */
+    .drag-task {
+      touch-action: none !important;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .task-drag-source {
+      opacity: .34 !important;
+      border-color: rgba(37,99,235,.18) !important;
+      box-shadow: none !important;
+      pointer-events: none !important;
+    }
+
+    body.task-pointer-dragging .task-item:not(.task-drag-source) {
+      transition: opacity .14s ease, transform .14s ease;
+    }
+
+    body.task-pointer-dragging .task-item:not(.task-drag-source) .check-btn,
+    body.task-pointer-dragging .task-item:not(.task-drag-source) .task-item-actions,
+    body.task-pointer-dragging .task-item:not(.task-drag-source) .task-repeat-badge {
+      opacity: .12 !important;
+      pointer-events: none !important;
+    }
+
+    .task-drag-chip {
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 100001;
+      width: min(620px, calc(100vw - 28px));
+      min-height: 56px;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 12px 15px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      color: var(--text);
+      background: var(--surface-solid);
+      box-shadow: 0 24px 54px rgba(15,23,42,.20), 0 3px 10px rgba(15,23,42,.07);
+      pointer-events: none;
+      opacity: 0;
+      transform: translate3d(0,0,0);
+      transition: opacity .12s ease;
+      will-change: transform;
+    }
+
+    .task-drag-chip.is-ready { opacity: .98; }
+
+    .task-drag-chip-grip {
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      color: var(--primary);
+    }
+
+    .task-drag-chip-text {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: .92rem;
+      font-weight: 800;
+    }
+
+    .task-drop-line {
+      height: 3px !important;
+      margin: 5px 10px !important;
+      border-radius: 999px;
+      background: linear-gradient(
+        90deg,
+        rgba(37,99,235,0),
+        var(--primary) 14%,
+        var(--primary-2) 86%,
+        rgba(79,70,229,0)
+      );
+      box-shadow: 0 0 12px rgba(37,99,235,.18);
+      position: relative;
+      z-index: 8;
+      pointer-events: none;
+      opacity: 0;
+      animation: none !important;
+      transition: opacity .12s ease;
+    }
+
+    .task-drop-line.is-visible { opacity: 1; }
+
+    .task-drop-line::before,
+    .task-drop-line::after {
+      display: none !important;
+      content: none !important;
+    }
+
+    .task-landed {
+      animation: taskLanded .34s cubic-bezier(.22,1,.36,1);
+    }
+
+    @keyframes taskLanded {
+      0% { box-shadow: 0 0 0 2px rgba(37,99,235,.18), var(--shadow-sm); }
+      100% { box-shadow: var(--shadow-sm); }
+    }
+
+    /* V51: el arrastre de tareas usa SortableJS con fallback táctil.
+       El resto del tablero se simplifica durante el gesto y la línea
+       permanece visible como marcador de inserción. */
+body.task-drag-mode .activity-card {
+      content-visibility: visible !important;
+      contain: none !important;
+    }
+
+    body.task-drag-mode .task-list {
+      min-height: 42px;
+    }
+
+    body.task-drag-mode .task-drop-line {
+      display: block !important;
+      min-height: 2px;
+    }
+
     .task-item.task-drag-source {
       opacity: .34 !important;
       outline: 2px dashed rgba(37,99,235,.22);
@@ -1020,32 +1142,41 @@
       line-height: 1.55;
     }
 
+    /* =========================================================
+       TASKY PRO V52 · Botones flotantes
+       Posición basada en Tipify Pro:
+       +: bottom 40px / right 40px
+       ↑: bottom 125px / right 40px
+       ========================================================= */
     .fab {
       position: fixed;
-      right: 22px;
-      bottom: calc(22px + env(safe-area-inset-bottom));
-      z-index: 80;
+      right: 40px;
+      bottom: calc(40px + env(safe-area-inset-bottom));
+      top: auto;
+      z-index: 90;
       display: flex;
       flex-direction: column-reverse;
       align-items: flex-end;
-      gap: 9px;
+      gap: 10px;
     }
 
     .fab-main {
-      width: 60px;
-      height: 60px;
+      width: 70px;
+      height: 70px;
       display: grid;
       place-items: center;
       border: 0;
-      border-radius: 20px;
+      border-radius: 50%;
       color: #fff;
       background: linear-gradient(135deg, var(--primary), var(--primary-2));
-      box-shadow: 0 18px 36px rgba(37,99,235,.32);
+      box-shadow: 0 20px 40px rgba(37,99,235,.28);
       cursor: pointer;
-      transition: transform .2s var(--ease);
+      transition: transform .2s var(--ease), box-shadow .2s ease;
     }
 
     .fab.open .fab-main { transform: rotate(45deg); }
+    .fab-main:hover { box-shadow: 0 22px 44px rgba(37,99,235,.36); }
+    .fab-main:active { transform: scale(.94); }
 
     .fab-actions {
       display: flex;
@@ -1064,6 +1195,87 @@
       visibility: visible;
       transform: none;
       pointer-events: auto;
+    }
+
+    .fab-action {
+      min-height: 42px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      background: var(--surface);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow-sm);
+      font-size: .82rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    /* Botón independiente: nunca comparte caja ni eventos con el +. */
+    .fab-top {
+      position: fixed;
+      right: 40px;
+      bottom: calc(125px + env(safe-area-inset-bottom));
+      width: 70px;
+      height: 70px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--text);
+      box-shadow: 0 20px 40px rgba(15,23,42,.24);
+      cursor: pointer;
+      z-index: 91;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateY(18px) scale(.84);
+      transition:
+        opacity .22s var(--ease),
+        visibility .22s var(--ease),
+        transform .22s var(--ease),
+        background .18s ease;
+    }
+
+    .fab-top.visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+
+    .fab-top:hover {
+      background: var(--primary);
+      transform: translateY(-4px) scale(1.04);
+    }
+
+    .fab-top:active {
+      transform: scale(.94);
+    }
+
+    @media (max-width: 760px) {
+      .fab {
+        right: 18px;
+        bottom: calc(18px + env(safe-area-inset-bottom));
+      }
+
+      .fab-main {
+        width: 60px;
+        height: 60px;
+        border-radius: 18px;
+      }
+
+      .fab-top {
+        right: 18px;
+        bottom: calc(94px + env(safe-area-inset-bottom));
+        width: 60px;
+        height: 60px;
+        border-radius: 18px;
+      }
     }
 
     .fab-action {
@@ -2547,34 +2759,87 @@
     }
 
     /* V50: el FAB de escritorio vive en el espacio libre a la derecha del tablero. */
+    /* =========================================================
+       TASKY PRO V51 · FAB + VOLVER ARRIBA
+       Inspirado en la posición de Tipify Pro.
+       ========================================================= */
     .fab {
-      right: 48px;
-      top: clamp(420px, 72vh, 720px);
-      bottom: auto;
+      position: fixed;
+      right: 40px;
+      bottom: calc(40px + env(safe-area-inset-bottom));
+      top: auto;
+      z-index: 90;
     }
 
     .fab-main {
-      width: 62px;
-      height: 62px;
-      border-radius: 19px;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+    }
+
+    .fab-top {
+      position: fixed;
+      right: 40px;
+      bottom: calc(125px + env(safe-area-inset-bottom));
+      width: 70px;
+      height: 70px;
+      border: 0;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: var(--text);
+      box-shadow: 0 20px 40px rgba(15,23,42,.22);
+      cursor: pointer;
+      z-index: 89;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateY(20px) scale(.82);
+      transition: opacity .22s var(--ease), visibility .22s var(--ease),
+                  transform .22s var(--ease), background .18s ease;
+    }
+
+    .fab-top.visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+
+    .fab-top:hover {
+      background: var(--primary);
+      transform: translateY(-4px) scale(1.04);
+    }
+
+    .fab-top:active {
+      transform: scale(.94);
     }
 
     @media (max-width: 760px) {
       .fab {
         right: 18px;
-        top: auto;
         bottom: calc(18px + env(safe-area-inset-bottom));
       }
+
       .fab-main {
-        width: 58px;
-        height: 58px;
+        width: 60px;
+        height: 60px;
+        border-radius: 18px;
+      }
+
+      .fab-top {
+        right: 18px;
+        bottom: calc(88px + env(safe-area-inset-bottom));
+        width: 60px;
+        height: 60px;
         border-radius: 18px;
       }
     }
 </style>
 </head>
 
-<body tabindex="-1" data-tasky-version="V50">
+<body tabindex="-1" data-tasky-version="V52">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -2666,6 +2931,16 @@
 
     <section id="board" class="board" aria-live="polite"></section>
   </main>
+
+  <button id="fabTop"
+          class="fab-top"
+          type="button"
+          aria-label="Volver arriba"
+          title="Volver arriba"
+          aria-hidden="true"
+          onclick="window.scrollTo({top:0, behavior:'smooth'})">
+    <i data-lucide="chevron-up"></i>
+  </button>
 
   <div id="fab" class="fab">
     <div class="fab-actions">
@@ -2810,7 +3085,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 50;
+    const APP_VERSION = 52;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -2852,6 +3127,7 @@
       metricOverdue: document.getElementById("metricOverdue"),
       fab: document.getElementById("fab"),
       fabMain: document.getElementById("fabMain"),
+      fabTop: document.getElementById("fabTop"),
       themeBtn: document.getElementById("themeBtn"),
       menuBtn: document.getElementById("menuBtn"),
       importInput: document.getElementById("importInput"),
@@ -3371,7 +3647,7 @@
           : "Para hoy · " + formatDateLong(task.date);
         const repeatActive = Boolean(task.repeat);
         item.innerHTML = `
-          <button class="drag-task" type="button" title="Mantener para mover" aria-label="Mover tarea"><i data-lucide="grip-vertical"></i></button>
+          <button class="drag-task" type="button" title="Mantén pulsado para mover" aria-label="Mover tarea"><i data-lucide="grip-vertical"></i></button>
           <button class="check-btn" type="button" data-action="complete-task" aria-label="Completar tarea"></button>
           <textarea class="task-input" rows="1" maxlength="500" placeholder="Añadir tarea…">${escapeHTML(task.text)}</textarea>
           <div class="task-item-actions">
@@ -3698,269 +3974,328 @@
     let activeTaskDrag = null;
 
     function initSortables() {
-      // V39: las fases siguen usando Pointer Events.
+      // Fases: Pointer Events. Tareas: Pointer Events sin reflow,
+      // para conservar la línea de inserción y permitir movimientos
+      // entre listas en Median/WebView.
       initSectionPointerDrag();
       initTaskPointerDrag();
     }
 
     function initTaskPointerDrag() {
-      if (typeof taskPointerCleanup === 'function') taskPointerCleanup();
-      const cleanups = [];
+      if (typeof taskPointerCleanup === "function") taskPointerCleanup();
 
-      document.querySelectorAll('#board .task-item[data-task-id]').forEach(item => {
-        if (item.classList.contains('completed-item')) return;
+      const listeners = [];
 
-        const handle = item.querySelector('.drag-task');
-        const onDown = (event) => {
-          if (event.button !== undefined && event.button !== 0) return;
-          if (activeTaskDrag) return;
-          if (event.target.closest('textarea, button:not(.drag-task)')) return;
-          event.preventDefault();
-          event.stopPropagation();
-          armTaskPointerDrag(event, item);
-        };
+      document
+        .querySelectorAll(".task-item:not(.completed-item) .drag-task")
+        .forEach(handle => {
+          const onPointerDown = event => {
+            if (activeTaskDrag) return;
+            if (event.button !== undefined && event.button !== 0) return;
 
-        // El botón de agarre responde rápidamente; tocar el cuerpo mantiene un gesto largo.
-        (handle || item).addEventListener('pointerdown', onDown, { passive: false });
-        cleanups.push(() => (handle || item).removeEventListener('pointerdown', onDown));
-      });
+            const item = handle.closest(".task-item:not(.completed-item)");
+            if (!item) return;
+
+            const taskId = item.dataset.taskId;
+            const sourceCategoryId =
+              item.closest(".task-list")?.dataset.categoryId || "";
+
+            if (!taskId || !sourceCategoryId) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            try {
+              handle.setPointerCapture?.(event.pointerId);
+            } catch (_) {}
+
+            startTaskPointerDrag(event, item, handle, taskId, sourceCategoryId);
+          };
+
+          const onContextMenu = event => event.preventDefault();
+
+          handle.addEventListener("pointerdown", onPointerDown, { passive: false });
+          handle.addEventListener("contextmenu", onContextMenu);
+
+          listeners.push(() => {
+            handle.removeEventListener("pointerdown", onPointerDown);
+            handle.removeEventListener("contextmenu", onContextMenu);
+          });
+        });
 
       taskPointerCleanup = () => {
-        cleanups.forEach(fn => fn());
+        listeners.forEach(cleanup => cleanup());
         taskPointerCleanup = null;
       };
     }
 
-    function armTaskPointerDrag(event, item) {
-      let timer = setTimeout(() => startTaskPointerDrag(event, item), event.target.closest('.drag-task') ? 95 : 220);
-      let started = false;
-      const pointerId = event.pointerId;
-      const startX = event.clientX;
-      const startY = event.clientY;
-
-      const onMove = (moveEvent) => {
-        if (moveEvent.pointerId !== pointerId) return;
-        const dx = moveEvent.clientX - startX;
-        const dy = moveEvent.clientY - startY;
-        if (!started && Math.hypot(dx, dy) > 8) {
-          clearTimeout(timer);
-          // Con botón de agarre, un movimiento claro comienza de inmediato.
-          if (event.target.closest('.drag-task')) {
-            started = true;
-            startTaskPointerDrag(event, item);
-          } else {
-            cleanupArm();
-          }
-        }
-      };
-
-      const onUp = () => cleanupArm();
-      const onCancel = () => cleanupArm();
-      const cleanupArm = () => {
-        clearTimeout(timer);
-        document.removeEventListener('pointermove', onMove);
-        document.removeEventListener('pointerup', onUp);
-        document.removeEventListener('pointercancel', onCancel);
-      };
-
-      document.addEventListener('pointermove', onMove, { passive: false });
-      document.addEventListener('pointerup', onUp, { passive: false });
-      document.addEventListener('pointercancel', onCancel, { passive: false });
-      item.setPointerCapture?.(pointerId);
-    }
-
-    function startTaskPointerDrag(event, item) {
-      if (activeTaskDrag) return;
-      const sourceList = item.closest('.task-list[data-category-id]');
-      if (!sourceList) return;
-
-      const sourceCatId = sourceList.dataset.categoryId;
-      const sourceCat = state.categories.find(c => c.id === sourceCatId);
-      const taskId = item.dataset.taskId;
-      const task = sourceCat?.tasks.find(t => t.id === taskId);
-      if (!task) return;
-
+    function startTaskPointerDrag(event, item, handle, taskId, sourceCategoryId) {
+      const text = item.querySelector(".task-input")?.value?.trim() || "Tarea sin nombre";
       const rect = item.getBoundingClientRect();
-      const floating = item.cloneNode(true);
-      floating.classList.remove('task-drag-source', 'search-match', 'search-hidden');
-      floating.classList.add('task-drag-floating');
-      floating.style.height = `${rect.height}px`;
-      floating.style.left = `${rect.left}px`;
-      floating.style.top = `${rect.top}px`;
-      document.body.appendChild(floating);
 
-      const line = document.createElement('div');
-      line.className = 'task-drop-line';
-      line.setAttribute('aria-hidden', 'true');
+      const chip = document.createElement("div");
+      chip.className = "task-drag-chip";
+      chip.innerHTML = `
+        <span class="task-drag-chip-grip">
+          <i data-lucide="grip-vertical"></i>
+        </span>
+        <span class="task-drag-chip-text">${escapeHTML(text)}</span>
+      `;
+      document.body.appendChild(chip);
+      refreshIcons();
 
-      item.classList.add('task-drag-source');
-      document.body.classList.add('task-drag-mode');
-      document.body.classList.add('is-dragging');
-      item.closest('.activity-card')?.classList.add('task-drag-active');
+      const line = document.createElement("div");
+      line.className = "task-drop-line";
+      line.setAttribute("aria-hidden", "true");
 
       activeTaskDrag = {
         item,
-        taskId,
-        sourceCatId,
-        sourceList,
-        floating,
+        handle,
+        chip,
         line,
+        taskId,
+        sourceCategoryId,
+        targetCategoryId: sourceCategoryId,
+        targetList: item.closest(".task-list"),
+        beforeTaskId: null,
         pointerId: event.pointerId,
-        offsetX: event.clientX - rect.left,
-        offsetY: event.clientY - rect.top,
         clientX: event.clientX,
         clientY: event.clientY,
-        raf: 0,
-        hoverCard: item.closest('.activity-card'),
-        startedAt: performance.now()
+        grabX: Math.min(rect.width * .32, 180),
+        grabY: Math.min(34, Math.max(20, rect.height / 2)),
+        startX: event.clientX,
+        startY: event.clientY,
+        moved: false,
+        raf: 0
       };
 
-      softHaptic(18);
-      document.addEventListener('pointermove', onTaskPointerMove, { passive: false });
-      document.addEventListener('pointerup', onTaskPointerUp, { passive: false });
-      document.addEventListener('pointercancel', onTaskPointerCancel, { passive: false });
-      requestAnimationFrame(updateTaskDragFrame);
+      item.classList.add("task-drag-source");
+      document.body.classList.add("task-pointer-dragging");
+
+      positionTaskChip();
+      requestAnimationFrame(() => {
+        chip.classList.add("is-ready");
+        updateTaskDropTarget();
+      });
+
+      document.addEventListener("pointermove", onTaskPointerMove, { passive: false });
+      document.addEventListener("pointerup", onTaskPointerUp, { passive: false });
+      document.addEventListener("pointercancel", onTaskPointerCancel, { passive: false });
+
+      activeTaskDrag.raf = requestAnimationFrame(taskDragLoop);
+      softHaptic(12);
+    }
+
+    function positionTaskChip() {
+      const drag = activeTaskDrag;
+      if (!drag) return;
+
+      const x = drag.clientX - drag.grabX;
+      const y = drag.clientY - drag.grabY;
+      drag.chip.style.transform =
+        `translate3d(${x}px, ${y}px, 0) rotate(-.45deg)`;
+    }
+
+    function findTaskDropList(clientX, clientY) {
+      const elements = document.elementsFromPoint?.(clientX, clientY) || [];
+      let list = elements.find(node => node?.matches?.(".task-list"));
+      if (list) return list;
+
+      const card = elements.find(node => node?.closest?.(".activity-card"));
+      if (card) return card.closest(".activity-card")?.querySelector(".task-list") || null;
+
+      // Fallback: nearest category card by vertical distance.
+      const cards = [...document.querySelectorAll(".activity-card:not(.completed-card)")];
+      let best = null;
+      let bestDistance = Infinity;
+
+      for (const cardNode of cards) {
+        const taskList = cardNode.querySelector(".task-list");
+        if (!taskList) continue;
+        const r = cardNode.getBoundingClientRect();
+        const distance = clientY < r.top
+          ? r.top - clientY
+          : clientY > r.bottom
+            ? clientY - r.bottom
+            : 0;
+
+        if (distance < bestDistance && distance < 170) {
+          bestDistance = distance;
+          best = taskList;
+        }
+      }
+
+      return best;
+    }
+
+    function updateTaskDropTarget() {
+      const drag = activeTaskDrag;
+      if (!drag) return;
+
+      const list = findTaskDropList(drag.clientX, drag.clientY);
+      if (!list) return;
+
+      drag.targetList = list;
+      drag.targetCategoryId = list.dataset.categoryId || drag.targetCategoryId;
+
+      const items = [...list.querySelectorAll(".task-item:not(.completed-item)")]
+        .filter(node => node !== drag.item && !node.classList.contains("search-hidden"));
+
+      let beforeNode = null;
+
+      for (const node of items) {
+        const r = node.getBoundingClientRect();
+        const middle = r.top + (r.height / 2);
+
+        if (drag.clientY < middle) {
+          beforeNode = node;
+          break;
+        }
+      }
+
+      if (beforeNode) {
+        list.insertBefore(drag.line, beforeNode);
+        drag.beforeTaskId = beforeNode.dataset.taskId || null;
+      } else {
+        list.appendChild(drag.line);
+        drag.beforeTaskId = null;
+      }
+
+      drag.line.classList.add("is-visible");
+
+      if (
+        drag.targetCategoryId !== drag.sourceCategoryId ||
+        drag.beforeTaskId !== drag.lastBeforeTaskId
+      ) {
+        softHaptic(7);
+        drag.lastBeforeTaskId = drag.beforeTaskId;
+      }
+    }
+
+    function autoScrollTaskPointer() {
+      const drag = activeTaskDrag;
+      if (!drag) return;
+
+      const edge = 86;
+      if (drag.clientY < edge) {
+        const amount = Math.max(-22, Math.round((drag.clientY - edge) / 3));
+        window.scrollBy(0, amount);
+      } else if (drag.clientY > window.innerHeight - edge) {
+        const amount = Math.min(22, Math.round((drag.clientY - (window.innerHeight - edge)) / 3));
+        window.scrollBy(0, amount);
+      }
+    }
+
+    function taskDragLoop() {
+      const drag = activeTaskDrag;
+      if (!drag) return;
+
+      drag.raf = requestAnimationFrame(taskDragLoop);
+      positionTaskChip();
+      autoScrollTaskPointer();
+
+      if (drag.moved) {
+        updateTaskDropTarget();
+      }
     }
 
     function onTaskPointerMove(event) {
-      if (!activeTaskDrag || event.pointerId !== activeTaskDrag.pointerId) return;
-      event.preventDefault();
-      activeTaskDrag.clientX = event.clientX;
-      activeTaskDrag.clientY = event.clientY;
-      if (!activeTaskDrag.raf) activeTaskDrag.raf = requestAnimationFrame(updateTaskDragFrame);
-    }
-
-    function updateTaskDragFrame() {
-      if (!activeTaskDrag) return;
       const drag = activeTaskDrag;
-      drag.raf = 0;
+      if (!drag || event.pointerId !== drag.pointerId) return;
 
-      const edge = 86;
-      const speed = 26;
-      if (drag.clientY < edge) window.scrollBy(0, -speed);
-      else if (drag.clientY > window.innerHeight - edge) window.scrollBy(0, speed);
+      event.preventDefault();
 
-      drag.floating.style.left = `${drag.clientX - drag.offsetX}px`;
-      drag.floating.style.top = `${drag.clientY - drag.offsetY}px`;
+      drag.clientX = event.clientX;
+      drag.clientY = event.clientY;
 
-      const targetList = resolveTaskTargetList(drag.clientX, drag.clientY, drag.item);
-      if (!targetList) return;
-
-      const targetCard = targetList.closest('.activity-card');
-      if (drag.hoverCard && drag.hoverCard !== targetCard) drag.hoverCard.classList.remove('task-drag-active');
-      if (targetCard) targetCard.classList.add('task-drag-active');
-      drag.hoverCard = targetCard;
-
-      positionTaskDropLine(targetList, drag.clientY, drag.taskId, drag.line);
+      if (
+        !drag.moved &&
+        (
+          Math.abs(event.clientX - drag.startX) > 4 ||
+          Math.abs(event.clientY - drag.startY) > 4
+        )
+      ) {
+        drag.moved = true;
+        updateTaskDropTarget();
+      }
     }
 
-    function resolveTaskTargetList(clientX, clientY, sourceItem) {
-      const element = document.elementFromPoint(clientX, clientY);
-      const card = element?.closest('.activity-card:not(.completed-card)');
-      if (!card) return null;
-      return card.querySelector('.task-list[data-category-id]');
-    }
+    function finishTaskPointerDrag(commit) {
+      const drag = activeTaskDrag;
+      if (!drag) return;
 
-    function positionTaskDropLine(list, clientY, sourceTaskId, line) {
-      if (line.parentElement && line.parentElement !== list) line.remove();
+      activeTaskDrag = null;
 
-      const items = [...list.querySelectorAll('.task-item[data-task-id]:not(.task-drag-floating)')]
-        .filter(node => node.dataset.taskId !== sourceTaskId && !node.classList.contains('completed-item'));
+      cancelAnimationFrame(drag.raf);
+      document.removeEventListener("pointermove", onTaskPointerMove);
+      document.removeEventListener("pointerup", onTaskPointerUp);
+      document.removeEventListener("pointercancel", onTaskPointerCancel);
 
-      let before = null;
-      let bestDistance = Infinity;
-      for (const item of items) {
-        const rect = item.getBoundingClientRect();
-        const center = rect.top + rect.height / 2;
-        const distance = Math.abs(clientY - center);
-        if (clientY <= center && distance < bestDistance) {
-          before = item;
-          bestDistance = distance;
-        }
+      drag.line.classList.remove("is-visible");
+      drag.line.remove();
+      drag.item.classList.remove("task-drag-source");
+      document.body.classList.remove("task-pointer-dragging");
+
+      const moved = commit && drag.moved && drag.targetList;
+      const targetCategoryId = drag.targetCategoryId;
+
+      if (!moved) {
+        drag.chip.classList.remove("is-ready");
+        drag.chip.remove();
+        return;
       }
 
-      if (!line.parentElement) list.appendChild(line);
-      if (before) list.insertBefore(line, before);
-      else list.appendChild(line);
+      const reference = drag.beforeTaskId
+        ? drag.targetList.querySelector(
+            `.task-item[data-task-id="${cssEscapeSafe(drag.beforeTaskId)}"]`
+          )
+        : null;
+
+      // Mover el nodo real: no hay render completo.
+      if (reference && reference !== drag.item) {
+        drag.targetList.insertBefore(drag.item, reference);
+      } else {
+        drag.targetList.appendChild(drag.item);
+      }
+
+      // La fuente se conserva en el DOM hasta que el movimiento termina.
+      syncTasksFromDOM();
+
+      persistLocal();
+      localDirty = true;
+
+      updateCategoryUI(drag.sourceCategoryId);
+      if (targetCategoryId && targetCategoryId !== drag.sourceCategoryId) {
+        updateCategoryUI(targetCategoryId);
+      }
+
+      updateSummaryUI();
+      scheduleSave("mover tarea");
+
+      drag.item.classList.add("task-landed");
+      setTimeout(() => drag.item.classList.remove("task-landed"), 340);
+
+      softHaptic(20);
+
+      setTimeout(() => {
+        if (drag.chip?.isConnected) drag.chip.remove();
+      }, 100);
     }
 
     function onTaskPointerUp(event) {
-      if (!activeTaskDrag || event.pointerId !== activeTaskDrag.pointerId) return;
+      const drag = activeTaskDrag;
+      if (!drag || event.pointerId !== drag.pointerId) return;
       event.preventDefault();
-      finishTaskPointerDrag(false);
-    }
-
-    function onTaskPointerCancel() {
       finishTaskPointerDrag(true);
     }
 
-    function finishTaskPointerDrag(cancelled = false) {
-      if (!activeTaskDrag) return;
+    function onTaskPointerCancel() {
       const drag = activeTaskDrag;
-      cancelAnimationFrame(drag.raf);
+      if (!drag) return;
 
-      let changed = false;
-
-      if (!cancelled && drag.line.parentElement) {
-        const targetList = drag.line.parentElement;
-        const targetCatId = targetList.dataset.categoryId;
-        const targetCat = state.categories.find(c => c.id === targetCatId);
-        const sourceCat = state.categories.find(c => c.id === drag.sourceCatId);
-        const taskIndex = sourceCat?.tasks.findIndex(t => t.id === drag.taskId) ?? -1;
-        const task = taskIndex >= 0 ? sourceCat.tasks[taskIndex] : null;
-
-        if (targetCat && sourceCat && task) {
-          const targetIds = [...targetList.querySelectorAll('.task-item[data-task-id]:not(.completed-item)')]
-            .filter(node => node !== drag.item && node.dataset.taskId !== drag.taskId)
-            .map(node => node.dataset.taskId);
-          let insertIndex = targetIds.length;
-          const beforeNode = drag.line.nextElementSibling?.matches?.('.task-item[data-task-id]') ? drag.line.nextElementSibling : null;
-          if (beforeNode) {
-            const found = targetIds.indexOf(beforeNode.dataset.taskId);
-            if (found >= 0) insertIndex = found;
-          }
-
-          sourceCat.tasks.splice(taskIndex, 1);
-          if (sourceCat === targetCat && taskIndex < insertIndex) insertIndex--;
-          targetCat.tasks.splice(Math.max(0, Math.min(insertIndex, targetCat.tasks.length)), 0, task);
-          changed = true;
-        }
-      }
-
-      // Mover el nodo existente al lugar lógico sin renderizar todo el tablero.
-      if (changed) {
-        const targetList = document.querySelector(`.task-list[data-category-id="${cssEscapeSafe(state.categories.find(c => c.tasks.some(t => t.id === drag.taskId))?.id || drag.sourceCatId)}"]`);
-        if (targetList && drag.line.parentElement === targetList) {
-          targetList.insertBefore(drag.item, drag.line.nextSibling);
-        } else if (targetList) {
-          targetList.appendChild(drag.item);
-        }
-      } else if (!cancelled && drag.sourceList) {
-        drag.sourceList.appendChild(drag.item);
-      }
-
-      drag.line.remove();
-      drag.floating.remove();
-      drag.item.classList.remove('task-drag-source');
-      if (drag.hoverCard) drag.hoverCard.classList.remove('task-drag-active');
-      document.body.classList.remove('task-drag-mode', 'is-dragging');
-
-      document.removeEventListener('pointermove', onTaskPointerMove);
-      document.removeEventListener('pointerup', onTaskPointerUp);
-      document.removeEventListener('pointercancel', onTaskPointerCancel);
-
-      if (changed) {
-        persistLocal();
-        localDirty = true;
-        updateCategoryUI(drag.sourceCatId);
-        const targetId = state.categories.find(c => c.tasks.some(t => t.id === drag.taskId))?.id;
-        if (targetId) updateCategoryUI(targetId);
-        updateSummaryUI();
-        scheduleSave('mover tarea');
-        softHaptic(22);
-      }
-
-      activeTaskDrag = null;
+      // Si Android/WebView cancela después de que ya existe un destino,
+      // lo tratamos como un drop válido para no perder el movimiento.
+      finishTaskPointerDrag(Boolean(drag.moved && drag.targetList));
     }
 
     function syncCategoryOrderFromDOM() {
@@ -4210,29 +4545,7 @@
       if (completedCard) el.board.insertBefore(card, completedCard);
       else el.board.appendChild(card);
 
-      const list = card.querySelector(".task-list[data-category-id]");
-      if (list && typeof Sortable !== "undefined") {
-        const instance = new Sortable(list, {
-          group: "tasky-tasks",
-          animation: 0,
-          handle: ".drag-task",
-          draggable: ".task-item",
-          filter: ".task-input, button:not(.drag-task)",
-          preventOnFilter: false,
-          delay: 0,
-          delayOnTouchOnly: false,
-          fallbackTolerance: 3,
-          onStart() { softHaptic(18); },
-          onEnd() {
-            if (hydrating) return;
-            syncTasksFromDOM();
-            scheduleSave("mover tarea");
-            updateSummaryUI();
-            for (const c of state.categories) updateCategoryUI(c.id);
-          }
-        });
-        sortableTasks.set(category.id, instance);
-      }
+      initTaskSortables();
 
       refreshIcons();
       refreshSectionMoveControls();
@@ -5278,6 +5591,30 @@
     }
 
     function bindEvents() {
+
+      if (el.fabTop) {
+        let fabTopTicking = false;
+
+        const updateFabTop = () => {
+          if (!el.fabTop) return;
+          const shouldShow = window.scrollY > 320;
+          el.fabTop.classList.toggle("visible", shouldShow);
+          el.fabTop.setAttribute("aria-hidden", String(!shouldShow));
+        };
+
+        const onScroll = () => {
+          if (fabTopTicking) return;
+          fabTopTicking = true;
+          requestAnimationFrame(() => {
+            updateFabTop();
+            fabTopTicking = false;
+          });
+        };
+
+        window.addEventListener("scroll", onScroll, { passive: true });
+        updateFabTop();
+      }
+
       document.addEventListener("input", event => {
         const target = event.target;
 
@@ -5554,22 +5891,22 @@
       { text: "La vida es como montar en bicicleta. Para mantener el equilibrio, debes seguir adelante.", author: "Albert Einstein" },
       { text: "La lógica te llevará de A a B. La imaginación te llevará a todas partes.", author: "Albert Einstein" },
       { text: "Hay una manera mejor de hacerlo: encuéntrala.", author: "Thomas A. Edison" },
-      { text: "No he fracasado; he encontrado maneras que no funcionan.", author: "Atribuida a Thomas A. Edison" },
-      { text: "Muchas de las oportunidades de la vida se pierden porque están disfrazadas de trabajo.", author: "Atribuida a Thomas A. Edison" },
+      { text: "No he fracasado; he encontrado maneras que no funcionan.", author: "Thomas A. Edison" },
+      { text: "Muchas de las oportunidades de la vida se pierden porque están disfrazadas de trabajo.", author: "Thomas A. Edison" },
       { text: "El valor consiste en comprender que puedes perder y aun así intentarlo.", author: "Thomas A. Edison" },
       { text: "Cuando has agotado todas las posibilidades, recuerda esto: no lo has hecho.", author: "Thomas A. Edison" },
-      { text: "Nuestra mayor debilidad está en rendirnos. La manera más segura de tener éxito es intentarlo una vez más.", author: "Atribuida a Thomas A. Edison" },
+      { text: "Nuestra mayor debilidad está en rendirnos. La manera más segura de tener éxito es intentarlo una vez más.", author: "Thomas A. Edison" },
       { text: "Quien no es lo bastante valiente para asumir riesgos no logrará nada en la vida.", author: "Muhammad Ali" },
-      { text: "El servicio a los demás es el alquiler que pagas por tu lugar aquí en la Tierra.", author: "Atribuida a Muhammad Ali" },
-      { text: "No cuentes los días; haz que los días cuenten.", author: "Atribuida a Muhammad Ali" },
-      { text: "Imposible es solo una gran palabra lanzada por hombres pequeños.", author: "Atribuida a Muhammad Ali" },
+      { text: "El servicio a los demás es el alquiler que pagas por tu lugar aquí en la Tierra.", author: "Muhammad Ali" },
+      { text: "No cuentes los días; haz que los días cuenten.", author: "Muhammad Ali" },
+      { text: "Imposible es solo una gran palabra lanzada por hombres pequeños.", author: "Muhammad Ali" },
       { text: "Es la repetición de afirmaciones lo que conduce a la creencia.", author: "Muhammad Ali" },
-      { text: "No es la montaña que tenemos delante la que nos desgasta; es el guijarro en el zapato.", author: "Atribuida a Muhammad Ali" },
+      { text: "No es la montaña que tenemos delante la que nos desgasta; es el guijarro en el zapato.", author: "Muhammad Ali" },
       { text: "Haz lo que puedas, con lo que tengas, donde estés.", author: "Theodore Roosevelt" },
       { text: "Mucho y lejos, el mejor premio que ofrece la vida es la oportunidad de trabajar duro en un trabajo que valga la pena.", author: "Theodore Roosevelt" },
       { text: "Ningún hombre vale la pena si no está dispuesto a arriesgarse.", author: "Theodore Roosevelt" },
-      { text: "Cree que puedes y ya estás a medio camino.", author: "Atribuida a Theodore Roosevelt" },
-      { text: "La comparación es el ladrón de la alegría.", author: "Atribuida a Theodore Roosevelt" },
+      { text: "Cree que puedes y ya estás a medio camino.", author: "Theodore Roosevelt" },
+      { text: "La comparación es el ladrón de la alegría.", author: "Theodore Roosevelt" },
       { text: "El único hombre que nunca comete un error es el hombre que nunca hace nada.", author: "Theodore Roosevelt" },
       { text: "Solos podemos hacer muy poco; juntos podemos hacer mucho.", author: "Helen Keller" },
       { text: "La vida es una aventura atrevida o no es nada.", author: "Helen Keller" },
@@ -5587,13 +5924,13 @@
       { text: "Haz lo mejor que puedas hasta que sepas más. Cuando sepas más, hazlo mejor.", author: "Maya Angelou" },
       { text: "Mi misión en la vida no es simplemente sobrevivir, sino prosperar.", author: "Maya Angelou" },
       { text: "Puedes encontrar muchas derrotas, pero no debes ser derrotado.", author: "Maya Angelou" },
-      { text: "Nada puede apagar la luz que brilla desde dentro.", author: "Atribuida a Maya Angelou" },
+      { text: "Nada puede apagar la luz que brilla desde dentro.", author: "Maya Angelou" },
       { text: "El coraje es la virtud más importante porque, sin coraje, no puedes practicar ninguna otra virtud consistentemente.", author: "Maya Angelou" },
       { text: "No hay nada en este mundo tan poderoso como una idea cuyo momento ha llegado.", author: "Victor Hugo" },
       { text: "La música expresa aquello que no puede ponerse en palabras y aquello que no puede permanecer en silencio.", author: "Victor Hugo" },
       { text: "El futuro tiene muchos nombres: para el débil es lo inalcanzable; para el temeroso, lo desconocido; para el valiente, la oportunidad.", author: "Victor Hugo" },
       { text: "La risa es el sol que ahuyenta el invierno del rostro humano.", author: "Victor Hugo" },
-      { text: "Incluso la noche más oscura terminará y saldrá el sol.", author: "Atribuida a Victor Hugo" },
+      { text: "Incluso la noche más oscura terminará y saldrá el sol.", author: "Victor Hugo" },
       { text: "Ser bueno es fácil; lo difícil es ser justo.", author: "Victor Hugo" },
       { text: "La felicidad de tu vida depende de la calidad de tus pensamientos.", author: "Marco Aurelio" },
       { text: "Tienes poder sobre tu mente, no sobre los acontecimientos externos.", author: "Marco Aurelio" },
@@ -5603,20 +5940,20 @@
       { text: "Lo que hacemos ahora resuena en la eternidad.", author: "Marco Aurelio" },
       { text: "No es que tengamos poco tiempo, sino que perdemos mucho.", author: "Séneca" },
       { text: "Sufrimos más en la imaginación que en la realidad.", author: "Séneca" },
-      { text: "La suerte es lo que sucede cuando la preparación se encuentra con la oportunidad.", author: "Atribuida a Séneca" },
+      { text: "La suerte es lo que sucede cuando la preparación se encuentra con la oportunidad.", author: "Séneca" },
       { text: "Mientras esperamos la vida, la vida pasa.", author: "Séneca" },
       { text: "Comienza de una vez a vivir y cuenta cada día como una vida separada.", author: "Séneca" },
-      { text: "La dificultad no es levantarse, sino mantenerse en pie.", author: "Atribuida a Séneca" },
+      { text: "La dificultad no es levantarse, sino mantenerse en pie.", author: "Séneca" },
       { text: "No importa lo lento que vayas, mientras no te detengas.", author: "Confucio" },
-      { text: "Nuestra mayor gloria no es no caer nunca, sino levantarnos cada vez que caemos.", author: "Atribuida a Confucio" },
+      { text: "Nuestra mayor gloria no es no caer nunca, sino levantarnos cada vez que caemos.", author: "Confucio" },
       { text: "El hombre que mueve una montaña comienza llevando pequeñas piedras.", author: "Confucio" },
       { text: "Cuando veas a una persona buena, piensa en llegar a ser como ella.", author: "Confucio" },
       { text: "Aprender sin pensar es inútil; pensar sin aprender es peligroso.", author: "Confucio" },
       { text: "Todo tiene belleza, pero no todos la ven.", author: "Confucio" },
-      { text: "La única manera de hacer un gran trabajo es amar lo que haces.", author: "Atribuida a Steve Jobs" },
+      { text: "La única manera de hacer un gran trabajo es amar lo que haces.", author: "Steve Jobs" },
       { text: "Tu tiempo es limitado, así que no lo desperdicies viviendo la vida de alguien más.", author: "Steve Jobs" },
       { text: "La innovación distingue a un líder de un seguidor.", author: "Steve Jobs" },
-      { text: "Estoy convencido de que cerca de la mitad de lo que separa a los emprendedores exitosos de los no exitosos es perseverancia.", author: "Atribuida a Steve Jobs" },
+      { text: "Estoy convencido de que cerca de la mitad de lo que separa a los emprendedores exitosos de los no exitosos es perseverancia.", author: "Steve Jobs" },
       { text: "Mantente hambriento. Mantente alocado.", author: "Steve Jobs" },
       { text: "Decidir qué no hacer es tan importante como decidir qué hacer.", author: "Steve Jobs" },
       { text: "La única persona en la que estás destinado a convertirte es la persona que decides ser.", author: "Ralph Waldo Emerson" },
@@ -5624,13 +5961,13 @@
       { text: "Haz siempre lo que temes hacer.", author: "Ralph Waldo Emerson" },
       { text: "La recompensa de una cosa bien hecha es haberla hecho.", author: "Ralph Waldo Emerson" },
       { text: "Nada grande fue jamás logrado sin entusiasmo.", author: "Ralph Waldo Emerson" },
-      { text: "La vida es un viaje, no un destino.", author: "Atribuida a Ralph Waldo Emerson" },
+      { text: "La vida es un viaje, no un destino.", author: "Ralph Waldo Emerson" },
       { text: "La felicidad de tu vida depende de la calidad de tus pensamientos.", author: "Marco Aurelio" },
       { text: "No es pobre el hombre que tiene poco, sino el que anhela mucho.", author: "Séneca" },
       { text: "La constancia vence lo que la dicha no alcanza.", author: "Miguel de Cervantes" },
       { text: "El que lee mucho y anda mucho, ve mucho y sabe mucho.", author: "Miguel de Cervantes" },
       { text: "El tiempo es el mejor autor: siempre encuentra un final perfecto.", author: "Charles Chaplin" },
-      { text: "Un día sin reír es un día perdido.", author: "Atribuida a Charles Chaplin" },
+      { text: "Un día sin reír es un día perdido.", author: "Charles Chaplin" },
       { text: "El secreto de una vida feliz y plena es tener un objetivo y realizarlo.", author: "James Allen" },
       { text: "Actúa como si lo que haces marcara la diferencia. La marca.", author: "William James" },
       { text: "El mayor descubrimiento de nuestra generación es que un ser humano puede alterar su vida alterando sus actitudes.", author: "William James" },
