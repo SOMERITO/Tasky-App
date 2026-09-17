@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V53 -->
+  <!-- TASKY PRO · V54 -->
 
   <!-- TASKY PRO · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -2843,9 +2843,133 @@ body.task-drag-mode .activity-card {
     }
 
     @media (max-width: 760px) {
+
+    /* =========================================================
+       TASKY PRO · V54 · BOTONES FLOTANTES
+       El menú oculto no ocupa espacio: #fab mide exactamente
+       lo mismo que el botón +.
+       ========================================================= */
+
+    .fab {
+      position: fixed !important;
+      right: 40px !important;
+      bottom: calc(40px + env(safe-area-inset-bottom)) !important;
+      top: auto !important;
+      width: 70px !important;
+      height: 70px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      display: block !important;
+      overflow: visible !important;
+      z-index: 9000 !important;
+    }
+
+    .fab-main {
+      position: relative !important;
+      width: 70px !important;
+      height: 70px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      display: grid !important;
+      place-items: center !important;
+      box-sizing: border-box;
+      border-radius: 50% !important;
+      z-index: 2;
+    }
+
+    .fab-actions {
+      position: absolute !important;
+      right: 0 !important;
+      bottom: calc(100% + 10px) !important;
+      width: max-content !important;
+      max-width: min(320px, calc(100vw - 24px)) !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: flex-end !important;
+      gap: 7px !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      transform: translateY(8px) scale(.96) !important;
+      transform-origin: bottom right !important;
+      transition: opacity .18s var(--ease),
+                  visibility .18s var(--ease),
+                  transform .18s var(--ease) !important;
+    }
+
+    .fab.open .fab-actions {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+      transform: translateY(0) scale(1) !important;
+    }
+
+    .fab-action {
+      min-height: 42px !important;
+      padding: 0 12px !important;
+      white-space: nowrap;
+      box-sizing: border-box;
+    }
+
+    .fab-top {
+      position: fixed !important;
+      right: 40px !important;
+      bottom: calc(126px + env(safe-area-inset-bottom)) !important;
+      top: auto !important;
+      width: 70px !important;
+      height: 70px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      display: grid !important;
+      place-items: center !important;
+      box-sizing: border-box;
+      border: 0 !important;
+      border-radius: 50% !important;
+      color: #fff !important;
+      background: var(--text) !important;
+      box-shadow: 0 20px 40px rgba(15,23,42,.24) !important;
+      cursor: pointer;
+      z-index: 9001 !important;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translate3d(0,16px,0) scale(.84);
+      transition: opacity .20s var(--ease),
+                  visibility .20s var(--ease),
+                  transform .20s var(--ease),
+                  background .18s ease !important;
+      isolation: isolate;
+    }
+
+    .fab-top.visible {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+      transform: translate3d(0,0,0) scale(1) !important;
+    }
+
+    .fab-top:hover {
+      background: var(--primary) !important;
+      transform: translate3d(0,-4px,0) scale(1.04) !important;
+    }
+
+    .fab-top:active {
+      transform: scale(.94) !important;
+    }
+
+    .fab-top svg,
+    .fab-main svg {
+      pointer-events: none;
+    }
+
+    @media (max-width: 760px) {
       .fab {
         right: 18px !important;
         bottom: calc(18px + env(safe-area-inset-bottom)) !important;
+        width: 60px !important;
+        height: 60px !important;
       }
 
       .fab-main {
@@ -2854,18 +2978,25 @@ body.task-drag-mode .activity-card {
         border-radius: 18px !important;
       }
 
+      .fab-actions {
+        right: 0 !important;
+        bottom: calc(100% + 9px) !important;
+        max-width: min(290px, calc(100vw - 24px)) !important;
+      }
+
       .fab-top {
         right: 18px !important;
-        bottom: calc(94px + env(safe-area-inset-bottom)) !important;
+        bottom: calc(88px + env(safe-area-inset-bottom)) !important;
         width: 60px !important;
         height: 60px !important;
-        border-radius: 18px;
+        border-radius: 18px !important;
       }
     }
+
 </style>
 </head>
 
-<body tabindex="-1" data-tasky-version="V53">
+<body tabindex="-1" data-tasky-version="V54">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -2963,8 +3094,7 @@ body.task-drag-mode .activity-card {
           type="button"
           aria-label="Volver arriba"
           title="Volver arriba"
-          aria-hidden="true"
-          onclick="window.scrollTo({top:0, behavior:'smooth'})">
+          aria-hidden="true">
     <i data-lucide="chevron-up"></i>
   </button>
 
@@ -3111,7 +3241,7 @@ body.task-drag-mode .activity-card {
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 53;
+    const APP_VERSION = 54;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -5647,27 +5777,29 @@ body.task-drag-mode .activity-card {
 
 
     function scrollToTopTasky() {
-      const scroller = document.scrollingElement || document.documentElement || document.body;
+      const root = document.scrollingElement || document.documentElement;
 
       try {
-        scroller.scrollTo({ top: 0, behavior: "smooth" });
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } catch (_) {
-        scroller.scrollTop = 0;
-        document.documentElement.scrollTop = 0;
-        document.body.scrollTop = 0;
+        try { window.scrollTo(0, 0); } catch (_) {}
       }
 
-      // Median / Android WebView: fallback seguro por si el smooth
-      // no es soportado o el documento no adopta el scroll inmediatamente.
       window.setTimeout(() => {
-        if ((window.scrollY || scroller.scrollTop || 0) > 12) {
-          try {
-            scroller.scrollTo(0, 0);
-          } catch (_) {}
-          document.documentElement.scrollTop = 0;
-          document.body.scrollTop = 0;
+        const top = Math.max(
+          window.scrollY || 0,
+          root?.scrollTop || 0,
+          document.documentElement?.scrollTop || 0,
+          document.body?.scrollTop || 0
+        );
+
+        if (top > 8) {
+          try { window.scrollTo(0, 0); } catch (_) {}
+          try { root.scrollTop = 0; } catch (_) {}
+          try { document.documentElement.scrollTop = 0; } catch (_) {}
+          try { document.body.scrollTop = 0; } catch (_) {}
         }
-      }, 420);
+      }, 300);
     }
 
     function bindEvents() {
@@ -5691,11 +5823,16 @@ body.task-drag-mode .activity-card {
           });
         };
 
-        el.fabTop.addEventListener("click", event => {
+        const goTop = event => {
           event.preventDefault();
           event.stopPropagation();
+          el.fab?.classList.remove("open");
+          el.fabMain?.setAttribute("aria-expanded", "false");
           scrollToTopTasky();
-        });
+        };
+
+        el.fabTop.addEventListener("pointerup", goTop, { passive: false });
+        el.fabTop.addEventListener("click", goTop);
 
         window.addEventListener("scroll", onScroll, { passive: true });
         updateFabTop();
