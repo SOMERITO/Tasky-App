@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V46 · Stability + data rendering + motivation refresh -->
+  <!-- TASKY PRO · V47 · Restauración visible + fecha superior + frases con autor -->
   <!-- TASKY PRO · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
 
@@ -2365,6 +2365,134 @@
       .section-insert-line { left: 0; right: 0; height: 3px; }
     }
 
+
+    /* =========================================================
+       TASKY PRO V47 · UX diario + restauración + citas
+       ========================================================= */
+    .brand-subtitle#todayText {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -.01em;
+    }
+
+    .completed-item {
+      grid-template-columns: 34px minmax(0,1fr) auto auto !important;
+    }
+
+    .completed-restore-btn,
+    .completed-delete-btn {
+      min-height: 36px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: .74rem;
+      font-weight: 850;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform .16s var(--ease), background .16s ease, border-color .16s ease, color .16s ease;
+    }
+
+    .completed-restore-btn {
+      color: var(--primary);
+      background: rgba(37,99,235,.08);
+      border-color: rgba(37,99,235,.16);
+    }
+    .completed-delete-btn {
+      color: var(--danger);
+      background: rgba(239,68,68,.06);
+      border-color: rgba(239,68,68,.16);
+      width: 36px;
+      padding: 0;
+    }
+    .completed-restore-btn:hover,
+    .completed-delete-btn:hover { transform: translateY(-1px); }
+    .completed-restore-btn:active,
+    .completed-delete-btn:active { transform: scale(.97); }
+
+    /* La fecha ya no ocupa espacio debajo de cada tarea.
+       Se conserva en el objeto de datos y en el modal de Atrasadas. */
+    .task-item > .task-due,
+    .completed-item > .task-due { display: none !important; }
+
+    /* Dejamos un pequeño indicador solo cuando la repetición está activa. */
+    .task-item-actions .repeat-btn.active {
+      background: rgba(37,99,235,.10);
+      color: var(--primary);
+    }
+
+    .hero-quote {
+      line-height: 1.35;
+      min-height: 38px;
+      margin-bottom: 0;
+    }
+    .hero-quote-author {
+      display: block;
+      min-height: 18px;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: .76rem;
+      font-weight: 800;
+      font-style: normal;
+      letter-spacing: .01em;
+    }
+    .hero-quote-author::before {
+      content: "";
+    }
+
+    @media (max-width: 760px) {
+      .completed-item {
+        grid-template-columns: 32px minmax(0,1fr) auto !important;
+        align-items: center;
+      }
+      .completed-item .completed-restore-btn {
+        grid-column: 2;
+        justify-self: start;
+      }
+      .completed-item .completed-delete-btn {
+        grid-column: 3;
+        grid-row: 1;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .brand-subtitle#todayText {
+        display: block;
+        font-size: .68rem;
+        line-height: 1.2;
+      }
+      .brand-title { font-size: 1rem; }
+      .topbar { padding: 10px; }
+      .completed-restore-btn {
+        min-height: 34px;
+        padding: 0 9px;
+        font-size: .7rem;
+      }
+      .completed-delete-btn { width: 34px; min-height: 34px; }
+    }
+
+    .task-repeat-badge-standalone {
+      align-self: start;
+      justify-self: start;
+      grid-column: 3 / -1;
+      margin-top: -3px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: var(--primary);
+      background: rgba(37,99,235,.08);
+      border: 1px solid rgba(37,99,235,.12);
+      font-size: .68rem;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
   </style>
 </head>
 
@@ -2603,7 +2731,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 46;
+    const APP_VERSION = 47;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -3140,15 +3268,16 @@
       if (!completed) item.dataset.date = task.date;
 
       if (completed) {
-        const completedDate = completedDateFor(task) || task.date || today();
-        const dueLabel = completedDate === today() ? "Completada · hoy" : "Completada · " + formatDateLong(completedDate);
         item.innerHTML = `
-          <button class="check-btn" type="button" data-action="restore-task" aria-label="Devolver a su fase" title="Devolver a su fase">
-            <i data-lucide="undo-2"></i>
-          </button>
+          <span class="check-btn" aria-hidden="true" style="background:var(--success);border-color:var(--success);color:#fff">
+            <i data-lucide="check"></i>
+          </span>
           <div class="task-input" role="text" aria-label="Tarea completada">${escapeHTML(task.text)}</div>
-          <span class="task-due"><i data-lucide="calendar-check"></i>${escapeHTML(dueLabel)}</span>
-          <button class="delete-task-btn remove-task" type="button" data-action="delete-task" title="Eliminar tarea" aria-label="Eliminar tarea">
+          <button class="completed-restore-btn" type="button" data-action="restore-task" title="Restaurar en su fase" aria-label="Restaurar tarea en su fase">
+            <i data-lucide="undo-2"></i>
+            <span>Restaurar</span>
+          </button>
+          <button class="completed-delete-btn" type="button" data-action="delete-task" title="Eliminar tarea" aria-label="Eliminar tarea">
             <i data-lucide="x"></i>
           </button>
         `;
@@ -3167,7 +3296,7 @@
             </button>
             <button class="delete-task-btn remove-task" type="button" data-action="delete-task" title="Eliminar tarea" aria-label="Eliminar tarea"><i data-lucide="x"></i></button>
           </div>
-          <span class="task-due"><i data-lucide="${isOverdue ? "triangle-alert" : "calendar-days"}"></i>${escapeHTML(dueLabel)}${repeatActive ? `<span class="task-repeat-badge"><i data-lucide="repeat-2"></i>${escapeHTML(repeatDaysToLabel(task.repeatDays))}</span>` : ''}</span>
+          ${repeatActive ? `<span class="task-repeat-badge task-repeat-badge-standalone" title="${escapeHTML(repeatDaysToLabel(task.repeatDays))}"><i data-lucide="repeat-2"></i>${escapeHTML(repeatDaysToLabel(task.repeatDays))}</span>` : ''}
         `;
       }
 
@@ -4251,8 +4380,11 @@
       }
       const due = item?.querySelector('.task-due');
       if (due) {
-        const isOverdue = task.date < today();
-        due.innerHTML = `<i data-lucide="${isOverdue ? 'triangle-alert' : 'calendar-days'}"></i>${escapeHTML(isOverdue ? 'Atrasada · ' + formatDateLong(task.date) : (task.date === today() ? 'Para hoy · ' + formatDateLong(task.date) : 'Para · ' + formatDateLong(task.date)))}${task.repeat ? `<span class="task-repeat-badge"><i data-lucide="repeat-2"></i>${escapeHTML(repeatDaysToLabel(task.repeatDays))}</span>` : ''}`;
+        if (task.repeat) {
+          due.innerHTML = `<span class="task-repeat-badge"><i data-lucide="repeat-2"></i>${escapeHTML(repeatDaysToLabel(task.repeatDays))}</span>`;
+        } else {
+          due.innerHTML = '';
+        }
       }
       persistLocal();
       localDirty = true;
@@ -5365,7 +5497,36 @@
       { text: "Una jornada productiva también deja espacio para respirar.", author: "" },
       { text: "Cada pequeño cierre reduce una preocupación abierta.", author: "" },
       { text: "Empieza sencillo, mantén el ritmo y ajusta sobre la marcha.", author: "" },
-      { text: "La manera de empezar es dejar de hablar y comenzar a hacer.", author: "Walt Disney" }
+      { text: "La manera de empezar es dejar de hablar y comenzar a hacer.", author: "Walt Disney" },
+      { text: "Es divertido hacer lo imposible.", author: "Walt Disney" },
+      { text: "Consigue una buena idea y mantenla; trabájala hasta terminarla y hacerla bien.", author: "Walt Disney" },
+      { text: "No hay muchas alturas que no puedan escalarse cuando sabes cómo convertir los sueños en realidad.", author: "Walt Disney" },
+      { text: "No tengo un talento especial; solo soy apasionadamente curioso.", author: "Albert Einstein" },
+      { text: "Lo importante es no dejar de preguntar. La curiosidad tiene su propia razón de existir.", author: "Albert Einstein" },
+      { text: "Bien hecho es mejor que bien dicho.", author: "Benjamin Franklin" },
+      { text: "El tiempo perdido nunca vuelve a encontrarse.", author: "Benjamin Franklin" },
+      { text: "La diligencia es la madre de la buena fortuna.", author: "Benjamin Franklin" },
+      { text: "Ten siempre presente que tu propia resolución para triunfar es más importante que cualquier otra cosa.", author: "Abraham Lincoln" },
+      { text: "Que no vacile quien cree tener razón; podemos tener éxito.", author: "Abraham Lincoln" },
+      { text: "Aférrate a tu propósito y pronto te sentirás mejor que antes.", author: "Abraham Lincoln" },
+      { text: "La ocasión está llena de dificultades y debemos elevarnos con la ocasión.", author: "Abraham Lincoln" },
+      { text: "La inquietud y el descontento son las primeras necesidades del progreso.", author: "Thomas A. Edison" },
+      { text: "El genio es uno por ciento inspiración y noventa y nueve por ciento transpiración.", author: "Thomas A. Edison" },
+      { text: "Hay una manera de hacerlo mejor: encuéntrala.", author: "Thomas A. Edison" },
+      { text: "No cuentes los días; haz que los días cuenten.", author: "Atribuida a Muhammad Ali" },
+      { text: "No cuentes con el tiempo para hacerte avanzar: haz que cada día tenga propósito.", author: "Atribuida a Muhammad Ali" },
+      { text: "El éxito no llega por esperar; se construye con pasos persistentes.", author: "Inspirado en Abraham Lincoln" },
+      { text: "La acción convierte una intención en una realidad.", author: "Inspirado en Walt Disney" },
+      { text: "La curiosidad convierte cada obstáculo en una pregunta nueva.", author: "Inspirado en Albert Einstein" },
+      { text: "Haz primero lo importante y deja que el ruido espere.", author: "Inspirado en Benjamin Franklin" },
+      { text: "Un pequeño avance constante puede cambiar el resultado de un día.", author: "Inspirado en Thomas A. Edison" },
+      { text: "Levántate, ajusta el paso y continúa.", author: "Inspirado en Muhammad Ali" },
+      { text: "No necesitas terminarlo todo; necesitas empezar lo que importa.", author: "Inspirado en Walt Disney" },
+      { text: "Una buena pregunta puede abrir el camino que parecía cerrado.", author: "Inspirado en Albert Einstein" },
+      { text: "La constancia hace visible el trabajo que al principio nadie nota.", author: "Inspirado en Abraham Lincoln" },
+      { text: "La mejora empieza cuando decides volver a intentarlo de otra manera.", author: "Inspirado en Thomas A. Edison" },
+      { text: "Cada día ofrece una oportunidad concreta de avanzar un poco más.", author: "Inspirado en Benjamin Franklin" },
+      { text: "La constancia convierte una decisión pequeña en un resultado grande.", author: "Inspirado en Abraham Lincoln" }
     ];
 
     function quoteSeedFromDate(dateStr) {
@@ -5396,11 +5557,10 @@
       const authorNode = document.getElementById('heroQuoteAuthor');
       if (!node || !authorNode) return;
 
-      // Cambia cada 10 minutos. Hay 150 frases, por lo que las 144 ranuras
-      // de un día usan índices distintos y no repiten una frase dentro del día.
+      // Cambia cada 8 minutos. La biblioteca contiene 180 frases, suficientes para no repetir dentro de las 180 ranuras diarias.
       const now = new Date();
       const minutes = now.getHours() * 60 + now.getMinutes();
-      const slot = Math.floor(minutes / 10);
+      const slot = Math.floor(minutes / 8);
       const order = shuffledQuoteIndexes();
       const quote = MOTIVATIONAL_QUOTES[order[slot % order.length]];
       const nextText = quote.text;
