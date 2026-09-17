@@ -10,14 +10,14 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V47 · Restauración visible + fecha superior + frases con autor -->
+  <!-- TASKY PRO · V48 · Sincronización protegida + frases célebres con autor -->
   <!-- TASKY PRO · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
 
   <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
-  <link rel="icon" type="image/png" href="icon.png?v=46">
+  <link rel="icon" type="image/png" href="icon.png?v=48">
   <link rel="apple-touch-icon" href="icon.png?v=41">
-  <link rel="manifest" href="manifest.json?v=46">
+  <link rel="manifest" href="manifest.json?v=48">
 
   <!-- Dependencias con versiones fijadas para evitar cambios inesperados. -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
@@ -2716,7 +2716,7 @@
     };
 
     // =========================================================
-    // TASKY PRO V41
+    // TASKY PRO V48
     // Objetivo de esta versión: placeholder de fases como hueco de destino y línea de inserción refinada.
     // Se mantienen los cambios de sincronización y renderizado incremental.
     // durante la sincronización para evitar que el campo desaparezca.
@@ -2731,7 +2731,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 47;
+    const APP_VERSION = 48;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -2791,8 +2791,12 @@
     let localDirty = false;
     let saveTimer = null;
     let lastSavedHash = "";
+    let lastConfirmedRemoteHash = "";
+    let lastConfirmedRemoteUpdatedBy = "";
     let pendingRemoteState = null;
     let activeSearch = "";
+    let saveInFlight = false;
+    let queuedSaveReason = null;
     let sortableCategories = null;
 
     const sortableTasks = new Map();
@@ -4850,10 +4854,20 @@
       localDirty = true;
       clearTimeout(saveTimer);
 
+      if (saveInFlight) {
+        queuedSaveReason = reason;
+        return;
+      }
+
       saveTimer = setTimeout(() => saveCloud(reason), delay);
     }
 
     async function saveCloud(reason) {
+      if (saveInFlight) {
+        queuedSaveReason = reason;
+        return;
+      }
+
       if (!taskyDoc || !navigator.onLine) {
         setSyncStatus('offline', 'Guardado local');
         return;
@@ -4863,8 +4877,6 @@
       const currentStats = stateStats(state);
       const safetyBackup = loadSafetyBackup();
 
-      // Nunca sobrescribir Firestore con un estado que haya sufrido una caída masiva
-      // de datos salvo que el usuario haya ejecutado deliberadamente una acción destructiva.
       if (!allowDestructive && safetyBackup && looksLikeUnexpectedDataLoss(state, safetyBackup)) {
         console.error('Guardado bloqueado: posible pérdida masiva de datos.', {
           reason,
@@ -4882,55 +4894,70 @@
       }
 
       const currentHash = hash({ categories: state.categories, completed: state.completed });
-      if (currentHash === lastSavedHash) {
-        localDirty = false;
+
+      // Si ya confirmamos este mismo estado desde Firestore, no hay nada que hacer.
+      if (!localDirty && currentHash === lastConfirmedRemoteHash) {
+        lastSavedHash = currentHash;
         return;
       }
 
-      setSyncStatus('online', 'Verificando…');
+      saveInFlight = true;
+      queuedSaveReason = null;
 
       try {
-        // Comprueba si el documento cambió desde el último snapshot conocido.
-        // Si otro cliente lo modificó, no lo sobrescribimos silenciosamente.
+        setSyncStatus('online', 'Verificando…');
+
         const liveSnapshot = await taskyDoc.get();
-        if (liveSnapshot.exists) {
-          const liveData = liveSnapshot.data() || {};
-          const liveRemote = normalizeState({
-            version: liveData.version || APP_VERSION,
-            categories: liveData.categories || [],
-            completed: liveData.completed || []
-          });
-          const liveHash = hash({ categories: liveRemote.categories, completed: liveRemote.completed });
+        const liveData = liveSnapshot.exists ? (liveSnapshot.data() || {}) : {};
+        const liveRemote = normalizeState({
+          version: liveData.version || APP_VERSION,
+          categories: liveData.categories || [],
+          completed: liveData.completed || []
+        });
+        const liveHash = hash({ categories: liveRemote.categories, completed: liveRemote.completed });
+        const liveUpdatedBy = String(liveData.updatedBy || '');
 
-          const knownRemoteHash = lastSavedHash || '';
-          const differsFromKnownRemote = knownRemoteHash && liveHash !== knownRemoteHash;
-          const isSameAsLocal = liveHash === currentHash;
-
-          if (isSameAsLocal) {
-            lastSavedHash = liveHash;
-            localDirty = false;
-            setSyncStatus('online', 'Sincronizado');
-            return;
-          }
-
-          if (differsFromKnownRemote && liveHash !== currentHash) {
-            pendingRemoteState = liveRemote;
-            localDirty = true;
-            saveSafetyBackup('conflicto detectado antes de guardar', state);
-            setSyncStatus('error', 'Conflicto protegido');
-            toast('Hay cambios remotos pendientes. No se sobrescribieron tus datos.', 'shield-alert', 'error');
-            return;
-          }
-
-          if (!allowDestructive && looksLikeUnexpectedShrink(liveRemote, state)) {
-            pendingRemoteState = liveRemote;
-            setSyncStatus('error', 'Cambio remoto protegido');
-            toast('Se rechazó un estado remoto que parece haber perdido datos.', 'shield-alert', 'error');
-            return;
-          }
+        // El listener de Firestore puede entregar una versión local pendiente.
+        // Si esa versión ya coincide con nuestro estado, no es un conflicto.
+        if (liveHash === currentHash) {
+          lastSavedHash = currentHash;
+          lastConfirmedRemoteHash = currentHash;
+          lastConfirmedRemoteUpdatedBy = liveUpdatedBy || deviceId;
+          localDirty = false;
+          pendingRemoteState = null;
+          setSyncStatus('online', 'Sincronizado');
+          saveSafetyBackup('estado confirmado', state);
+          return;
         }
 
-        // Snapshot ANTES de escribir para poder volver al último estado conocido bueno.
+        const baselineHash = lastConfirmedRemoteHash || lastSavedHash || liveHash;
+        const remoteChangedSinceBaseline =
+          Boolean(baselineHash) && liveHash !== baselineHash;
+
+        // Solo consideramos conflicto real cuando el estado remoto cambió
+        // y no proviene de este mismo dispositivo.
+        if (
+          remoteChangedSinceBaseline &&
+          liveHash !== currentHash &&
+          liveUpdatedBy &&
+          liveUpdatedBy !== deviceId
+        ) {
+          pendingRemoteState = liveRemote;
+          saveSafetyBackup('conflicto remoto detectado', state);
+          localDirty = true;
+          setSyncStatus('error', 'Conflicto protegido');
+          toast('Hay cambios remotos pendientes. Se conservaron tus cambios locales.', 'shield-alert', 'error');
+          return;
+        }
+
+        if (!allowDestructive && looksLikeUnexpectedShrink(liveRemote, state) && liveUpdatedBy !== deviceId) {
+          pendingRemoteState = liveRemote;
+          setSyncStatus('error', 'Cambio remoto protegido');
+          toast('Se rechazó un estado remoto que parece haber perdido datos.', 'shield-alert', 'error');
+          return;
+        }
+
+        // Snapshot ANTES de escribir para poder recuperar el último estado bueno.
         saveSafetyBackup('antes de guardar: ' + reason, state);
 
         const payload = {
@@ -4944,7 +4971,7 @@
         setSyncStatus('online', 'Guardando…');
         await taskyDoc.set(payload, { merge: false });
 
-        // Verificación posterior: confirma que Firestore recibió el mismo estado.
+        // Verificación posterior.
         const verifySnapshot = await taskyDoc.get();
         const verifyData = verifySnapshot.exists ? (verifySnapshot.data() || {}) : {};
         const verifyState = normalizeState({
@@ -4962,15 +4989,28 @@
         }
 
         lastSavedHash = currentHash;
+        lastConfirmedRemoteHash = currentHash;
+        lastConfirmedRemoteUpdatedBy = String(verifyData.updatedBy || deviceId);
         localDirty = false;
         pendingRemoteState = null;
-        // El estado verificado pasa a ser el nuevo último estado seguro.
+
+        // El estado verificado pasa a ser el nuevo estado seguro.
         saveSafetyBackup('guardado confirmado', state);
         setSyncStatus('online', 'Sincronizado');
+
       } catch (error) {
         console.error('Error guardando en Firestore:', error);
         setSyncStatus('error', 'Solo local');
         toast('No se pudo sincronizar; tus cambios locales siguen protegidos.', 'cloud-off', 'error');
+      } finally {
+        saveInFlight = false;
+
+        if (queuedSaveReason) {
+          const nextReason = queuedSaveReason;
+          queuedSaveReason = null;
+          clearTimeout(saveTimer);
+          saveTimer = setTimeout(() => saveCloud(nextReason), 0);
+        }
       }
     }
 
@@ -5050,10 +5090,25 @@
 
       const remoteHash = hash({ categories: remote.categories, completed: remote.completed });
       const localHash = hash({ categories: state.categories, completed: state.completed });
+      const hasPendingWrites = Boolean(snapshot.metadata?.hasPendingWrites);
+      const remoteUpdatedBy = String(data.updatedBy || '');
+
+      // Snapshot local pendiente de nuestra propia escritura:
+      // no debe producir un falso "cambio remoto".
+      if (hasPendingWrites && remoteUpdatedBy === deviceId) {
+        lastSavedHash = remoteHash;
+        lastConfirmedRemoteHash = remoteHash;
+        lastConfirmedRemoteUpdatedBy = deviceId;
+        hideLoading();
+        return;
+      }
 
       if (remoteHash === localHash) {
         lastSavedHash = remoteHash;
-        localDirty = false;
+        lastConfirmedRemoteHash = remoteHash;
+        lastConfirmedRemoteUpdatedBy = remoteUpdatedBy;
+        if (!hasPendingWrites) localDirty = false;
+        pendingRemoteState = null;
         setSyncStatus("online", "Sincronizado");
         hideLoading();
         return;
@@ -5071,6 +5126,31 @@
         return;
       }
 
+      // Si el remoto que llega sigue siendo exactamente nuestro último
+      // estado confirmado, no hay conflicto: simplemente ignoramos el snapshot.
+      if (lastConfirmedRemoteHash && remoteHash === lastConfirmedRemoteHash) {
+        hideLoading();
+        return;
+      }
+
+      if (localDirty) {
+        // Otro dispositivo / cliente modificó el documento mientras nosotros
+        // teníamos cambios locales. Lo retenemos sin sobrescribir nada.
+        if (remoteUpdatedBy && remoteUpdatedBy !== deviceId) {
+          pendingRemoteState = remote;
+          setSyncStatus("online", "Cambios remotos pendientes");
+          hideLoading();
+          return;
+        }
+
+        // Si no hay autor remoto fiable, tampoco sustituimos silenciosamente
+        // el estado local mientras haya cambios locales.
+        pendingRemoteState = remote;
+        setSyncStatus("online", "Cambios remotos pendientes");
+        hideLoading();
+        return;
+      }
+
       if (looksLikeUnexpectedDataLoss(remote) || looksLikeUnexpectedShrink(remote, state)) {
         setSyncStatus('error', 'Cambio remoto protegido');
         pendingRemoteState = remote;
@@ -5079,17 +5159,12 @@
         return;
       }
 
-      if (localDirty) {
-        pendingRemoteState = remote;
-        setSyncStatus("online", "Cambios locales pendientes");
-        hideLoading();
-        return;
-      }
-
       state = remote;
       persistLocal();
       saveSafetyBackup('sincronización remota aceptada');
       lastSavedHash = remoteHash;
+      lastConfirmedRemoteHash = remoteHash;
+      lastConfirmedRemoteUpdatedBy = remoteUpdatedBy;
       pendingRemoteState = null;
       render();
       setSyncStatus("online", "Sincronizado");
@@ -5098,15 +5173,25 @@
 
     function flushPendingRemote() {
       if (!pendingRemoteState || localDirty) return;
-      if (looksLikeUnexpectedDataLoss(pendingRemoteState) && stateStats(state).total > stateStats(pendingRemoteState).total) {
+
+      if (
+        looksLikeUnexpectedDataLoss(pendingRemoteState) &&
+        stateStats(state).total > stateStats(pendingRemoteState).total
+      ) {
         setSyncStatus('error', 'Cambio remoto protegido');
         pendingRemoteState = null;
         return;
       }
-      state = pendingRemoteState;
+
+      const remote = pendingRemoteState;
+      const remoteHash = hash({ categories: remote.categories, completed: remote.completed });
+
+      state = remote;
       pendingRemoteState = null;
       persistLocal();
       saveSafetyBackup('sincronización diferida aceptada');
+      lastSavedHash = remoteHash;
+      lastConfirmedRemoteHash = remoteHash;
       render();
     }
 
@@ -5347,186 +5432,38 @@
     }
 
     const MOTIVATIONAL_QUOTES = [
-      { text: "Haz una cosa importante y deja que el resto siga su turno.", author: "" },
-      { text: "No necesitas correr: necesitas avanzar con intención.", author: "" },
-      { text: "Tu progreso crece cuando conviertes planes en acciones.", author: "" },
-      { text: "Una tarea terminada vale más que diez pendientes en la cabeza.", author: "" },
-      { text: "Empieza por lo que hará más fácil todo lo demás.", author: "" },
-      { text: "Hoy también cuenta cada pequeño paso.", author: "" },
-      { text: "Ordenar tu día es una forma de cuidar tu energía.", author: "" },
-      { text: "Tu atención es valiosa: úsala en lo que importa.", author: "" },
-      { text: "Menos ruido, más enfoque, más avance.", author: "" },
-      { text: "Lo que haces ahora construye tu resultado después.", author: "" },
-      { text: "No busques un día perfecto; busca un día con propósito.", author: "" },
-      { text: "Haz espacio mental completando la siguiente tarea.", author: "" },
-      { text: "Tu lista no es una presión: es una guía.", author: "" },
-      { text: "La constancia convierte pequeñas acciones en grandes cambios.", author: "" },
-      { text: "Un paso claro es mejor que mil vueltas.", author: "" },
-      { text: "Hoy puedes avanzar un poco más que ayer.", author: "" },
-      { text: "Celebra el avance y continúa con el siguiente paso.", author: "" },
-      { text: "Tu mejor herramienta hoy es el enfoque.", author: "" },
-      { text: "Haz primero lo que te acerca más a tu objetivo.", author: "" },
-      { text: "Organiza menos en tu cabeza y más en tu tablero.", author: "" },
-      { text: "Cada casilla completada libera espacio para lo que sigue.", author: "" },
-      { text: "No necesitas hacerlo todo ahora; necesitas empezar bien.", author: "" },
-      { text: "La claridad aparece cuando empiezas a actuar.", author: "" },
-      { text: "Una buena jornada se construye tarea por tarea.", author: "" },
-      { text: "Tu ritmo también es productividad.", author: "" },
-      { text: "Prioriza, ejecuta y deja que el progreso hable.", author: "" },
-      { text: "Lo importante no es cuánto queda, sino cuánto ya avanzaste.", author: "" },
-      { text: "Una decisión pequeña puede desbloquear una tarde entera.", author: "" },
-      { text: "Tu día mejora cuando tu siguiente acción está clara.", author: "" },
-      { text: "Hazlo simple, hazlo posible y hazlo hoy.", author: "" },
-      { text: "El enfoque convierte tiempo disponible en progreso real.", author: "" },
-      { text: "Cada tarea que resuelves fortalece tu impulso.", author: "" },
-      { text: "La disciplina también puede sentirse ligera cuando hay orden.", author: "" },
-      { text: "Tu tablero existe para ayudarte, no para perseguirte.", author: "" },
-      { text: "Cierra una tarea y abre espacio para una nueva victoria.", author: "" },
-      { text: "Tu energía merece prioridades claras.", author: "" },
-      { text: "La mejor forma de avanzar es empezar por lo siguiente.", author: "" },
-      { text: "No subestimes lo que puedes completar en una tarde enfocada.", author: "" },
-      { text: "Hoy es una oportunidad para poner orden en lo que importa.", author: "" },
-      { text: "Haz que tu próxima acción sea pequeña y concreta.", author: "" },
-      { text: "Tu progreso merece ser visible.", author: "" },
-      { text: "Cada avance suma, incluso cuando parece pequeño.", author: "" },
-      { text: "La productividad comienza cuando decides dónde poner tu atención.", author: "" },
-      { text: "Una tarea a la vez sigue siendo una estrategia poderosa.", author: "" },
-      { text: "Ordenar tu jornada también protege tu tranquilidad.", author: "" },
-      { text: "Lo que hoy terminas mañana pesa menos.", author: "" },
-      { text: "Empieza donde estés y mejora desde ahí.", author: "" },
-      { text: "Tu lista puede ser larga; tu siguiente paso puede ser pequeño.", author: "" },
-      { text: "No necesitas motivación perfecta para hacer algo valioso.", author: "" },
-      { text: "La acción clara vence a la indecisión.", author: "" },
-      { text: "Haz visible lo importante y deja que el resto espere.", author: "" },
-      { text: "La constancia es una suma de días normales bien usados.", author: "" },
-      { text: "Tu agenda no decide por ti: tú decides qué merece tu tiempo.", author: "" },
-      { text: "Una jornada enfocada deja resultados que se sienten.", author: "" },
-      { text: "Hoy puedes elegir progreso sobre perfección.", author: "" },
-      { text: "Haz una tarea difícil antes de que se vuelva más pesada.", author: "" },
-      { text: "Tu futuro agradece lo que organizas y completas hoy.", author: "" },
-      { text: "La mejor sensación es ver avanzar lo que antes estaba pendiente.", author: "" },
-      { text: "Un tablero ordenado puede convertirse en una mente más ligera.", author: "" },
-      { text: "Tu próxima victoria puede estar a unos minutos de distancia.", author: "" },
-      { text: "La tarea que evitas puede ser exactamente la que te libere.", author: "" },
-      { text: "Avanza con intención, no con prisa.", author: "" },
-      { text: "Tu día tiene espacio para una victoria más.", author: "" },
-      { text: "La claridad llega cuando el siguiente paso deja de ser difuso.", author: "" },
-      { text: "Terminar también es una habilidad.", author: "" },
-      { text: "Haz menos cosas a la vez y termina más de ellas.", author: "" },
-      { text: "Lo que priorizas hoy moldea el día que tendrás.", author: "" },
-      { text: "Una pequeña mejora repetida se convierte en un gran cambio.", author: "" },
-      { text: "Tu enfoque de hoy es la base de tu tranquilidad de mañana.", author: "" },
-      { text: "No todo merece atención inmediata.", author: "" },
-      { text: "Empieza por lo importante y gana impulso.", author: "" },
-      { text: "Cada tarea tiene un comienzo; elige cuál comienza ahora.", author: "" },
-      { text: "Avanzar también significa saber qué dejar para después.", author: "" },
-      { text: "Tu tiempo se siente distinto cuando tienes claridad.", author: "" },
-      { text: "Un día productivo no es un día lleno: es un día con dirección.", author: "" },
-      { text: "Organiza lo que puedes controlar y actúa sobre ello.", author: "" },
-      { text: "La próxima casilla puede cambiar el ritmo de tu jornada.", author: "" },
-      { text: "Tu esfuerzo se acumula incluso cuando nadie lo ve.", author: "" },
-      { text: "Hay poder en terminar lo que empezaste.", author: "" },
-      { text: "La mejor versión de tu día empieza con una decisión concreta.", author: "" },
-      { text: "Haz visible tu progreso y úsalo como impulso.", author: "" },
-      { text: "Tu orden de hoy facilita el trabajo de mañana.", author: "" },
-      { text: "Una tarea completada es una preocupación menos.", author: "" },
-      { text: "El progreso rara vez hace ruido; por eso conviene verlo.", author: "" },
-      { text: "Tu día puede ser exigente y aun así sentirse bajo control.", author: "" },
-      { text: "Haz que la siguiente acción sea tan clara que no necesite pensarlo dos veces.", author: "" },
-      { text: "Enfócate en avanzar, no en demostrar que puedes con todo.", author: "" },
-      { text: "El orden es una ventaja cuando el día se acelera.", author: "" },
-      { text: "Cada pendiente resuelto devuelve algo de espacio a tu mente.", author: "" },
-      { text: "Una meta grande también se construye con tareas pequeñas.", author: "" },
-      { text: "Hoy puedes convertir intención en evidencia.", author: "" },
-      { text: "Sigue la lista, pero escucha también tus prioridades.", author: "" },
-      { text: "Tu progreso de hoy merece una mirada antes de terminar el día.", author: "" },
-      { text: "Menos pendientes abiertos, más energía disponible.", author: "" },
-      { text: "La productividad se siente mejor cuando también hay tranquilidad.", author: "" },
-      { text: "Tu siguiente acción no tiene que ser enorme para ser importante.", author: "" },
-      { text: "Haz que hoy tenga un resultado del que te sientas orgulloso.", author: "" },
-      { text: "Empieza por una tarea y deja que el impulso haga el resto.", author: "" },
-      { text: "Lo que organizas hoy puede hacer más ligero tu mañana.", author: "" },
-      { text: "Un buen día no se improvisa: se construye con decisiones claras.", author: "" },
-      { text: "Pon tu energía donde también quieres ver resultados.", author: "" },
-      { text: "Cuando el siguiente paso está claro, avanzar se vuelve más fácil.", author: "" },
-      { text: "No necesitas terminar todo para sentir progreso.", author: "" },
-      { text: "Cada prioridad atendida es una inversión en tu tranquilidad.", author: "" },
-      { text: "La acción pequeña que haces ahora puede ahorrarte esfuerzo después.", author: "" },
-      { text: "Deja que tu tablero guarde lo que no necesitas cargar en la cabeza.", author: "" },
-      { text: "Cuando terminas algo importante, recuperas espacio para lo que sigue.", author: "" },
-      { text: "La productividad también es elegir qué no vas a hacer hoy.", author: "" },
-      { text: "Una tarde enfocada puede cambiar por completo el resultado del día.", author: "" },
-      { text: "Pon nombre a lo importante y dale un lugar en tu tiempo.", author: "" },
-      { text: "Un objetivo claro convierte una lista larga en pasos manejables.", author: "" },
-      { text: "La mejor tarea para empezar es la que desbloquea las demás.", author: "" },
-      { text: "No esperes a sentirte listo: haz que el primer paso sea pequeño.", author: "" },
-      { text: "Cada vez que completas algo, haces más visible tu propio progreso.", author: "" },
-      { text: "La disciplina funciona mejor cuando tus acciones están a la vista.", author: "" },
-      { text: "Hoy no necesitas correr; necesitas avanzar en la dirección correcta.", author: "" },
-      { text: "Que tu lista te ayude a decidir, no a preocuparte.", author: "" },
-      { text: "La consistencia convierte una buena intención en un resultado real.", author: "" },
-      { text: "Hay días para acelerar y días para sostener el ritmo. Ambos cuentan.", author: "" },
-      { text: "El progreso empieza cuando una intención se transforma en una acción.", author: "" },
-      { text: "Tu tiempo tiene más valor cuando tus prioridades también lo tienen.", author: "" },
-      { text: "No dejes que una tarea pequeña ocupe un espacio enorme en tu mente.", author: "" },
-      { text: "Completar una cosa con atención es mejor que empezar diez sin foco.", author: "" },
-      { text: "Una decisión concreta vale más que una preocupación repetida.", author: "" },
-      { text: "Organizar no es posponer: es preparar el camino para ejecutar.", author: "" },
-      { text: "Lo que hoy parece poco puede convertirse en hábito mañana.", author: "" },
-      { text: "Una lista clara puede convertir una tarde caótica en una tarde manejable.", author: "" },
-      { text: "El orden te devuelve energía que antes gastabas recordando pendientes.", author: "" },
-      { text: "No todo tiene que ser urgente para ser importante.", author: "" },
-      { text: "Haz primero aquello que te dará más libertad después.", author: "" },
-      { text: "El enfoque también consiste en volver cuando te distraes.", author: "" },
-      { text: "Una tarea terminada es evidencia de que sí estás avanzando.", author: "" },
-      { text: "El mejor momento para empezar una tarea pequeña suele ser ahora.", author: "" },
-      { text: "Tu jornada mejora cuando cada acción tiene un siguiente paso claro.", author: "" },
-      { text: "Usa tu energía para construir, no para recordar lo que falta.", author: "" },
-      { text: "La claridad no siempre llega antes de empezar; muchas veces aparece mientras avanzas.", author: "" },
-      { text: "Una buena rutina se construye con pasos que puedes repetir.", author: "" },
-      { text: "No conviertas una lista pendiente en una lista de preocupaciones.", author: "" },
-      { text: "Cada bloque de tiempo puede tener una intención.", author: "" },
-      { text: "Haz que una pequeña victoria te lleve a la siguiente.", author: "" },
-      { text: "Lo que completas hoy deja menos ruido para mañana.", author: "" },
-      { text: "La atención es un recurso limitado: inviértela con intención.", author: "" },
-      { text: "Una tarea difícil se vuelve más manejable cuando la divides.", author: "" },
-      { text: "Tu mejor sistema es el que te ayuda a actuar cuando no tienes ganas.", author: "" },
-      { text: "El progreso visible puede convertirse en impulso.", author: "" },
-      { text: "No necesitas más horas: a veces necesitas menos fricción.", author: "" },
-      { text: "Cuando sabes qué toca ahora, el resto puede esperar.", author: "" },
-      { text: "Una jornada productiva también deja espacio para respirar.", author: "" },
-      { text: "Cada pequeño cierre reduce una preocupación abierta.", author: "" },
-      { text: "Empieza sencillo, mantén el ritmo y ajusta sobre la marcha.", author: "" },
       { text: "La manera de empezar es dejar de hablar y comenzar a hacer.", author: "Walt Disney" },
       { text: "Es divertido hacer lo imposible.", author: "Walt Disney" },
-      { text: "Consigue una buena idea y mantenla; trabájala hasta terminarla y hacerla bien.", author: "Walt Disney" },
-      { text: "No hay muchas alturas que no puedan escalarse cuando sabes cómo convertir los sueños en realidad.", author: "Walt Disney" },
-      { text: "No tengo un talento especial; solo soy apasionadamente curioso.", author: "Albert Einstein" },
-      { text: "Lo importante es no dejar de preguntar. La curiosidad tiene su propia razón de existir.", author: "Albert Einstein" },
+      { text: "Cuando eres curioso, encuentras muchas cosas interesantes que hacer.", author: "Walt Disney" },
+      { text: "Hay más tesoro en los libros que en todo el botín pirata de la isla del tesoro.", author: "Walt Disney" },
+      { text: "De alguna manera, no puedo creer que haya muchas alturas que no puedan escalarse cuando se conoce el secreto de hacer realidad los sueños.", author: "Walt Disney" },
       { text: "Bien hecho es mejor que bien dicho.", author: "Benjamin Franklin" },
-      { text: "El tiempo perdido nunca vuelve a encontrarse.", author: "Benjamin Franklin" },
-      { text: "La diligencia es la madre de la buena fortuna.", author: "Benjamin Franklin" },
-      { text: "Ten siempre presente que tu propia resolución para triunfar es más importante que cualquier otra cosa.", author: "Abraham Lincoln" },
-      { text: "Que no vacile quien cree tener razón; podemos tener éxito.", author: "Abraham Lincoln" },
-      { text: "Aférrate a tu propósito y pronto te sentirás mejor que antes.", author: "Abraham Lincoln" },
-      { text: "La ocasión está llena de dificultades y debemos elevarnos con la ocasión.", author: "Abraham Lincoln" },
-      { text: "La inquietud y el descontento son las primeras necesidades del progreso.", author: "Thomas A. Edison" },
+      { text: "La diligencia es la madre de la buena suerte.", author: "Benjamin Franklin" },
+      { text: "Un hoy vale por dos mañanas.", author: "Benjamin Franklin" },
+      { text: "No dejes para mañana lo que puedas hacer hoy.", author: "Benjamin Franklin" },
+      { text: "La diligencia vence las dificultades; la pereza las crea.", author: "Benjamin Franklin" },
+      { text: "Deja para hoy lo que pueda hacerse hoy, porque mañana puede traer obstáculos.", author: "Benjamin Franklin" },
+      { text: "La lucha de hoy no es solamente por hoy: también es por un vasto futuro.", author: "Abraham Lincoln" },
+      { text: "La ocasión está cargada de dificultades y debemos elevarnos con la ocasión.", author: "Abraham Lincoln" },
+      { text: "Debemos pensar de nuevo y actuar de nuevo.", author: "Abraham Lincoln" },
+      { text: "Deja para hoy aquello que puede hacerse hoy.", author: "Abraham Lincoln" },
+      { text: "La verdad es generalmente la mejor vindicación contra la calumnia.", author: "Abraham Lincoln" },
+      { text: "Cada hombre se enorgullece de lo que hace bien.", author: "Abraham Lincoln" },
+      { text: "Lo importante es no dejar de preguntar. La curiosidad tiene su propia razón de existir.", author: "Albert Einstein" },
+      { text: "Es importante para el bien común fomentar la individualidad.", author: "Albert Einstein" },
+      { text: "Uno no puede evitar quedar maravillado ante los misterios de la eternidad, de la vida y de la maravillosa estructura de la realidad.", author: "Albert Einstein" },
+      { text: "Intentar comprender un poco de este misterio cada día es suficiente.", author: "Albert Einstein" },
+      { text: "Mi interés por la ciencia estuvo esencialmente limitado al estudio de los principios.", author: "Albert Einstein" },
+      { text: "Hay una mejor manera de hacerlo: encuéntrala.", author: "Thomas A. Edison" },
       { text: "El genio es uno por ciento inspiración y noventa y nueve por ciento transpiración.", author: "Thomas A. Edison" },
-      { text: "Hay una manera de hacerlo mejor: encuéntrala.", author: "Thomas A. Edison" },
-      { text: "No cuentes los días; haz que los días cuenten.", author: "Atribuida a Muhammad Ali" },
-      { text: "No cuentes con el tiempo para hacerte avanzar: haz que cada día tenga propósito.", author: "Atribuida a Muhammad Ali" },
-      { text: "El éxito no llega por esperar; se construye con pasos persistentes.", author: "Inspirado en Abraham Lincoln" },
-      { text: "La acción convierte una intención en una realidad.", author: "Inspirado en Walt Disney" },
-      { text: "La curiosidad convierte cada obstáculo en una pregunta nueva.", author: "Inspirado en Albert Einstein" },
-      { text: "Haz primero lo importante y deja que el ruido espere.", author: "Inspirado en Benjamin Franklin" },
-      { text: "Un pequeño avance constante puede cambiar el resultado de un día.", author: "Inspirado en Thomas A. Edison" },
-      { text: "Levántate, ajusta el paso y continúa.", author: "Inspirado en Muhammad Ali" },
-      { text: "No necesitas terminarlo todo; necesitas empezar lo que importa.", author: "Inspirado en Walt Disney" },
-      { text: "Una buena pregunta puede abrir el camino que parecía cerrado.", author: "Inspirado en Albert Einstein" },
-      { text: "La constancia hace visible el trabajo que al principio nadie nota.", author: "Inspirado en Abraham Lincoln" },
-      { text: "La mejora empieza cuando decides volver a intentarlo de otra manera.", author: "Inspirado en Thomas A. Edison" },
-      { text: "Cada día ofrece una oportunidad concreta de avanzar un poco más.", author: "Inspirado en Benjamin Franklin" },
-      { text: "La constancia convierte una decisión pequeña en un resultado grande.", author: "Inspirado en Abraham Lincoln" }
+      { text: "No he fracasado. He encontrado 10 000 maneras que no funcionan.", author: "Thomas A. Edison" },
+      { text: "A menudo perdemos oportunidades porque están disfrazadas de overoles y parecen trabajo.", author: "Thomas A. Edison" },
+      { text: "Los tres grandes esenciales para lograr algo valioso son trabajo duro, perseverancia y sentido común.", author: "Thomas A. Edison" },
+      { text: "Lo que eres se mostrará en lo que haces.", author: "Thomas A. Edison" },
+      { text: "Quien no es lo bastante valiente para asumir riesgos no logrará nada en la vida.", author: "Muhammad Ali" },
+      { text: "El servicio a los demás es el alquiler que pagas por tu lugar aquí en la Tierra.", author: "Muhammad Ali" },
+      { text: "Es difícil ser humilde cuando eres tan grande como yo.", author: "Muhammad Ali" },
+      { text: "Nunca me hagas el desfavorecido y nunca hables de quién va a detenerme.", author: "Muhammad Ali" },
     ];
 
     function quoteSeedFromDate(dateStr) {
@@ -5557,10 +5494,10 @@
       const authorNode = document.getElementById('heroQuoteAuthor');
       if (!node || !authorNode) return;
 
-      // Cambia cada 8 minutos. La biblioteca contiene 180 frases, suficientes para no repetir dentro de las 180 ranuras diarias.
+      // Cambia cada 5 minutos. Todas las frases llevan un autor visible.
       const now = new Date();
       const minutes = now.getHours() * 60 + now.getMinutes();
-      const slot = Math.floor(minutes / 8);
+      const slot = Math.floor(minutes / 5);
       const order = shuffledQuoteIndexes();
       const quote = MOTIVATIONAL_QUOTES[order[slot % order.length]];
       const nextText = quote.text;
@@ -5597,7 +5534,7 @@
 
         bindEvents();
         updateMotivationalQuote(true);
-        setInterval(() => updateMotivationalQuote(false), 20 * 1000);
+        setInterval(() => updateMotivationalQuote(false), 30 * 1000);
         refreshIcons();
         hideLoading();
         startFirebase();
