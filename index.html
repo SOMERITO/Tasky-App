@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V48 · Sincronización protegida + frases célebres con autor -->
+  <!-- TASKY PRO · V49 · Sincronización protegida + frases célebres con autor -->
   <!-- TASKY PRO · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
 
@@ -2493,10 +2493,172 @@
       white-space: nowrap;
     }
 
+  
+    /* =========================================================
+       TASKY PRO V49 · UX visual
+       ========================================================= */
+
+    .hero-quote-wrap {
+      max-width: 700px;
+      padding-top: 2px;
+    }
+
+    .hero-quote {
+      margin: 0 !important;
+      min-height: 0 !important;
+      color: var(--muted);
+      line-height: 1.42;
+      font-size: clamp(.92rem, 1.5vw, 1.03rem);
+      font-weight: 600;
+      transition: opacity .22s ease, transform .22s ease;
+    }
+
+    .hero-quote.is-changing {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+
+    .hero-quote-author {
+      display: block;
+      min-height: 18px;
+      margin-top: 3px !important;
+      padding-left: 2px;
+      color: var(--text);
+      font-size: .78rem;
+      font-weight: 850;
+      line-height: 1.2;
+      opacity: .78;
+      transition: opacity .22s ease, transform .22s ease;
+    }
+
+    .hero-quote-author.is-changing {
+      opacity: 0;
+      transform: translateY(3px);
+    }
+
+    .hero-quote-author::before {
+      content: "— ";
+      color: var(--primary);
+    }
+
+    .category-emoji-btn {
+      width: 34px;
+      height: 34px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+      transition: transform .16s var(--ease), background .16s ease, border-color .16s ease;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .category-emoji-btn:hover {
+      background: rgba(37,99,235,.06);
+      border-color: rgba(37,99,235,.20);
+    }
+
+    .category-emoji-btn:active { transform: scale(.94); }
+
+    .emoji-popover {
+      position: fixed;
+      z-index: 10050;
+      display: grid;
+      grid-template-columns: repeat(6, 40px);
+      gap: 6px;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface-solid);
+      box-shadow: var(--shadow-lg);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(6px) scale(.97);
+      transition: .15s var(--ease);
+      pointer-events: none;
+    }
+
+    .emoji-popover.open {
+      opacity: 1;
+      visibility: visible;
+      transform: none;
+      pointer-events: auto;
+    }
+
+    .emoji-option {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 11px;
+      background: transparent;
+      font-size: 1.35rem;
+      cursor: pointer;
+      transition: transform .12s ease, background .12s ease;
+    }
+
+    .emoji-option:hover {
+      background: var(--line);
+      transform: scale(1.08);
+    }
+
+    .emoji-option.clear-emoji {
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .emoji-option.clear-emoji:hover {
+      color: var(--danger);
+      background: rgba(239,68,68,.07);
+    }
+
+    .fab {
+      right: max(18px, calc((100vw - var(--max)) / 2 + 18px));
+      bottom: calc(24px + env(safe-area-inset-bottom));
+    }
+
+    .fab-main {
+      width: 56px;
+      height: 56px;
+      border-radius: 18px;
+    }
+
+    @media (max-width: 760px) {
+      .fab {
+        right: 18px;
+        bottom: calc(18px + env(safe-area-inset-bottom));
+      }
+      .fab-main {
+        width: 56px;
+        height: 56px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .emoji-popover {
+        grid-template-columns: repeat(6, 36px);
+        gap: 5px;
+        padding: 8px;
+      }
+      .emoji-option {
+        width: 36px;
+        height: 36px;
+      }
+      .category-emoji-btn {
+        width: 32px;
+        height: 32px;
+      }
+    }
+
   </style>
 </head>
 
-<body data-tasky-version="V34">
+<body data-tasky-version="V49">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -2533,8 +2695,10 @@
         <div>
           <span class="eyebrow"><i data-lucide="sparkles"></i> Organiza. Ejecuta. Avanza.</span>
           <h1 id="heroTitle">Tu día, tu orden</h1>
-          <p id="heroSubtitle" class="hero-quote">Cada tarea que completas es una victoria pequeña que mueve tu día.</p>
-          <div id="heroQuoteAuthor" class="hero-quote-author" aria-live="polite"></div>
+          <div class="hero-quote-wrap">
+            <p id="heroSubtitle" class="hero-quote">Empieza por una tarea concreta y construye el ritmo.</p>
+            <div id="heroQuoteAuthor" class="hero-quote-author" aria-live="polite"></div>
+          </div>
         </div>
 
         <div class="day-progress">
@@ -2689,7 +2853,27 @@
     </div>
   </div>
 
-  <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+  
+  <div id="emojiPopover" class="emoji-popover" role="dialog" aria-label="Seleccionar emoji">
+    <button class="emoji-option" type="button" data-emoji="🎯" aria-label="Objetivo">🎯</button>
+    <button class="emoji-option" type="button" data-emoji="💼" aria-label="Trabajo">💼</button>
+    <button class="emoji-option" type="button" data-emoji="🏠" aria-label="Casa">🏠</button>
+    <button class="emoji-option" type="button" data-emoji="📚" aria-label="Estudio">📚</button>
+    <button class="emoji-option" type="button" data-emoji="🔥" aria-label="Prioridad">🔥</button>
+    <button class="emoji-option" type="button" data-emoji="⭐" aria-label="Importante">⭐</button>
+    <button class="emoji-option" type="button" data-emoji="❤️" aria-label="Personal">❤️</button>
+    <button class="emoji-option" type="button" data-emoji="🏋️" aria-label="Ejercicio">🏋️</button>
+    <button class="emoji-option" type="button" data-emoji="💰" aria-label="Finanzas">💰</button>
+    <button class="emoji-option" type="button" data-emoji="🛒" aria-label="Compras">🛒</button>
+    <button class="emoji-option" type="button" data-emoji="🧹" aria-label="Hogar">🧹</button>
+    <button class="emoji-option" type="button" data-emoji="📅" aria-label="Agenda">📅</button>
+    <button class="emoji-option" type="button" data-emoji="🚀" aria-label="Proyecto">🚀</button>
+    <button class="emoji-option" type="button" data-emoji="🧠" aria-label="Enfoque">🧠</button>
+    <button class="emoji-option" type="button" data-emoji="✅" aria-label="Listo">✅</button>
+    <button class="emoji-option clear-emoji" type="button" data-emoji="" aria-label="Quitar emoji">✕</button>
+  </div>
+
+<div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
   <script>
     "use strict";
@@ -2716,7 +2900,7 @@
     };
 
     // =========================================================
-    // TASKY PRO V48
+    // TASKY PRO V49
     // Objetivo de esta versión: placeholder de fases como hueco de destino y línea de inserción refinada.
     // Se mantienen los cambios de sincronización y renderizado incremental.
     // durante la sincronización para evitar que el campo desaparezca.
@@ -2731,7 +2915,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 48;
+    const APP_VERSION = 49;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -2947,6 +3131,7 @@
         const category = {
           id: String(cat.id || uid("cat")),
           title: typeof cat.title === "string" ? cat.title : ("Fase " + (index + 1)),
+          emoji: typeof cat.emoji === "string" ? cat.emoji.slice(0, 8) : "",
           tasks: Array.isArray(cat.tasks) ? cat.tasks : []
         };
 
@@ -3225,6 +3410,7 @@
               </button>
             </div>
             <input class="activity-title" maxlength="80" value="${escapeHTML(cat.title)}" placeholder="Nombre de la fase…">
+            <button class="category-emoji-btn" type="button" data-action="choose-category-emoji" title="${cat.emoji ? "Cambiar emoji" : "Añadir emoji"}" aria-label="${cat.emoji ? "Cambiar emoji de la fase" : "Añadir emoji a la fase"}">${cat.emoji || '<i data-lucide="smile"></i>'}</button>
             <div class="card-actions">
               <button class="mini-btn" type="button" data-action="stats" title="Ver resumen" aria-label="Ver resumen">
                 <i data-lucide="bar-chart-3"></i>
@@ -4112,10 +4298,79 @@
       }, 180);
     }
 
+
+    const TASKY_EMOJIS = [
+      "🎯","💼","🏠","📚","🔥","⭐","❤️","🏋️",
+      "💰","🛒","🧹","📅","🚀","🧠","✅"
+    ];
+
+    let emojiTarget = null;
+
+    function closeEmojiPopover() {
+      const popover = document.getElementById("emojiPopover");
+      if (!popover) return;
+      popover.classList.remove("open");
+      emojiTarget = null;
+    }
+
+    function openEmojiPopover(target) {
+      const popover = document.getElementById("emojiPopover");
+      if (!popover || !target) return;
+
+      emojiTarget = target;
+
+      const rect = target.getBoundingClientRect();
+      const width = popover.offsetWidth || 276;
+      const left = Math.min(
+        Math.max(8, rect.left),
+        Math.max(8, window.innerWidth - width - 8)
+      );
+      const top = Math.min(
+        Math.max(8, rect.bottom + 8),
+        Math.max(8, window.innerHeight - (popover.offsetHeight || 160) - 8)
+      );
+
+      popover.style.left = left + "px";
+      popover.style.top = top + "px";
+      popover.classList.add("open");
+    }
+
+    function setCategoryEmoji(categoryId, emoji) {
+      const category = state.categories.find(c => c.id === categoryId);
+      if (!category) return;
+
+      category.emoji = String(emoji || "");
+      persistLocal();
+      localDirty = true;
+
+      const card = document.querySelector(
+        `[data-category-id="${cssEscapeSafe(categoryId)}"]`
+      );
+
+      const button = card?.querySelector(".category-emoji-btn");
+      if (button) {
+        button.innerHTML = category.emoji || '<i data-lucide="smile"></i>';
+        button.title = category.emoji ? "Cambiar emoji" : "Añadir emoji";
+        button.setAttribute(
+          "aria-label",
+          category.emoji ? "Cambiar emoji de la fase" : "Añadir emoji a la fase"
+        );
+      }
+
+      refreshIcons();
+      scheduleSave("editar emoji de fase");
+      closeEmojiPopover();
+      toast(
+        category.emoji ? `Emoji añadido a ${category.title}` : "Emoji quitado",
+        "smile"
+      );
+    }
+
     function addCategory() {
       const category = {
         id: uid("cat"),
         title: "Nueva fase",
+        emoji: "",
         tasks: []
       };
       state.categories.push(category);
@@ -5223,6 +5478,13 @@
       document.addEventListener("keydown", event => {
         if (event.target.matches(".task-input")) handleTaskKeydown(event, event.target);
 
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
+          event.preventDefault();
+          el.searchInput.focus();
+          el.searchInput.select();
+          return;
+        }
+
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
           event.preventDefault();
           el.searchInput.focus();
@@ -5260,6 +5522,13 @@
         if (action === "move-category-down") {
           const card = event.target.closest("[data-category-id]");
           moveCategoryBy(card?.dataset.categoryId, 1);
+          return;
+        }
+
+        if (action === "choose-category-emoji") {
+          const card = event.target.closest("[data-category-id]");
+          if (card) openEmojiPopover(card.querySelector(".category-emoji-btn"));
+          if (card) emojiTarget = { type: "category", id: card.dataset.categoryId };
           return;
         }
 
@@ -5365,6 +5634,18 @@
       });
 
       document.addEventListener("click", event => {
+        const emojiButton = event.target.closest(".emoji-option");
+        if (emojiButton && emojiTarget?.type === "category") {
+          setCategoryEmoji(emojiTarget.id, emojiButton.dataset.emoji || "");
+          return;
+        }
+
+        if (event.target.closest("#emojiPopover") || event.target.closest(".category-emoji-btn")) {
+          return;
+        }
+
+        closeEmojiPopover();
+
         const insideFab = event.target.closest("#fab");
         if (!insideFab) {
           el.fab.classList.remove("open");
@@ -5431,89 +5712,176 @@
       });
     }
 
+
     const MOTIVATIONAL_QUOTES = [
       { text: "La manera de empezar es dejar de hablar y comenzar a hacer.", author: "Walt Disney" },
       { text: "Es divertido hacer lo imposible.", author: "Walt Disney" },
       { text: "Cuando eres curioso, encuentras muchas cosas interesantes que hacer.", author: "Walt Disney" },
-      { text: "Hay más tesoro en los libros que en todo el botín pirata de la isla del tesoro.", author: "Walt Disney" },
-      { text: "De alguna manera, no puedo creer que haya muchas alturas que no puedan escalarse cuando se conoce el secreto de hacer realidad los sueños.", author: "Walt Disney" },
+      { text: "Hay más tesoro en los libros que en todo el botín pirata de la Isla del Tesoro.", author: "Walt Disney" },
+      { text: "Los sueños pueden hacerse realidad si tenemos el valor de perseguirlos.", author: "Walt Disney" },
+      { text: "Todos nuestros sueños pueden hacerse realidad si tenemos el valor de perseguirlos.", author: "Walt Disney" },
       { text: "Bien hecho es mejor que bien dicho.", author: "Benjamin Franklin" },
-      { text: "La diligencia es la madre de la buena suerte.", author: "Benjamin Franklin" },
       { text: "Un hoy vale por dos mañanas.", author: "Benjamin Franklin" },
-      { text: "No dejes para mañana lo que puedas hacer hoy.", author: "Benjamin Franklin" },
-      { text: "La diligencia vence las dificultades; la pereza las crea.", author: "Benjamin Franklin" },
-      { text: "Deja para hoy lo que pueda hacerse hoy, porque mañana puede traer obstáculos.", author: "Benjamin Franklin" },
-      { text: "La lucha de hoy no es solamente por hoy: también es por un vasto futuro.", author: "Abraham Lincoln" },
-      { text: "La ocasión está cargada de dificultades y debemos elevarnos con la ocasión.", author: "Abraham Lincoln" },
-      { text: "Debemos pensar de nuevo y actuar de nuevo.", author: "Abraham Lincoln" },
-      { text: "Deja para hoy aquello que puede hacerse hoy.", author: "Abraham Lincoln" },
+      { text: "La diligencia es la madre de la buena suerte.", author: "Benjamin Franklin" },
+      { text: "El que puede tener paciencia puede tener lo que quiera.", author: "Benjamin Franklin" },
+      { text: "Quien tiene paciencia puede tener lo que quiera.", author: "Benjamin Franklin" },
+      { text: "Al no prepararse, te estás preparando para fracasar.", author: "Benjamin Franklin" },
+      { text: "La ocasión está cargada de dificultades, y debemos elevarnos con la ocasión.", author: "Abraham Lincoln" },
+      { text: "Como nuestro caso es nuevo, debemos pensar de nuevo y actuar de nuevo.", author: "Abraham Lincoln" },
       { text: "La verdad es generalmente la mejor vindicación contra la calumnia.", author: "Abraham Lincoln" },
-      { text: "Cada hombre se enorgullece de lo que hace bien.", author: "Abraham Lincoln" },
+      { text: "Los dogmas del pasado tranquilo son inadecuados para el presente tormentoso.", author: "Abraham Lincoln" },
+      { text: "Casi todos los hombres pueden soportar la adversidad, pero si quieres probar el carácter de un hombre, dale poder.", author: "Abraham Lincoln" },
+      { text: "Siempre recuerda que tu propia resolución de triunfar es más importante que cualquier otra.", author: "Abraham Lincoln" },
       { text: "Lo importante es no dejar de preguntar. La curiosidad tiene su propia razón de existir.", author: "Albert Einstein" },
-      { text: "Es importante para el bien común fomentar la individualidad.", author: "Albert Einstein" },
-      { text: "Uno no puede evitar quedar maravillado ante los misterios de la eternidad, de la vida y de la maravillosa estructura de la realidad.", author: "Albert Einstein" },
-      { text: "Intentar comprender un poco de este misterio cada día es suficiente.", author: "Albert Einstein" },
-      { text: "Mi interés por la ciencia estuvo esencialmente limitado al estudio de los principios.", author: "Albert Einstein" },
-      { text: "Hay una mejor manera de hacerlo: encuéntrala.", author: "Thomas A. Edison" },
-      { text: "El genio es uno por ciento inspiración y noventa y nueve por ciento transpiración.", author: "Thomas A. Edison" },
-      { text: "No he fracasado. He encontrado 10 000 maneras que no funcionan.", author: "Thomas A. Edison" },
-      { text: "A menudo perdemos oportunidades porque están disfrazadas de overoles y parecen trabajo.", author: "Thomas A. Edison" },
-      { text: "Los tres grandes esenciales para lograr algo valioso son trabajo duro, perseverancia y sentido común.", author: "Thomas A. Edison" },
-      { text: "Lo que eres se mostrará en lo que haces.", author: "Thomas A. Edison" },
+      { text: "La imaginación es más importante que el conocimiento.", author: "Albert Einstein" },
+      { text: "En medio de la dificultad yace la oportunidad.", author: "Albert Einstein" },
+      { text: "Quien nunca ha cometido un error nunca ha intentado nada nuevo.", author: "Albert Einstein" },
+      { text: "La vida es como montar en bicicleta. Para mantener el equilibrio, debes seguir adelante.", author: "Albert Einstein" },
+      { text: "La lógica te llevará de A a B. La imaginación te llevará a todas partes.", author: "Albert Einstein" },
+      { text: "Hay una manera mejor de hacerlo: encuéntrala.", author: "Thomas A. Edison" },
+      { text: "No he fracasado; he encontrado maneras que no funcionan.", author: "Atribuida a Thomas A. Edison" },
+      { text: "Muchas de las oportunidades de la vida se pierden porque están disfrazadas de trabajo.", author: "Atribuida a Thomas A. Edison" },
+      { text: "El valor consiste en comprender que puedes perder y aun así intentarlo.", author: "Thomas A. Edison" },
+      { text: "Cuando has agotado todas las posibilidades, recuerda esto: no lo has hecho.", author: "Thomas A. Edison" },
+      { text: "Nuestra mayor debilidad está en rendirnos. La manera más segura de tener éxito es intentarlo una vez más.", author: "Atribuida a Thomas A. Edison" },
       { text: "Quien no es lo bastante valiente para asumir riesgos no logrará nada en la vida.", author: "Muhammad Ali" },
-      { text: "El servicio a los demás es el alquiler que pagas por tu lugar aquí en la Tierra.", author: "Muhammad Ali" },
-      { text: "Es difícil ser humilde cuando eres tan grande como yo.", author: "Muhammad Ali" },
-      { text: "Nunca me hagas el desfavorecido y nunca hables de quién va a detenerme.", author: "Muhammad Ali" },
+      { text: "El servicio a los demás es el alquiler que pagas por tu lugar aquí en la Tierra.", author: "Atribuida a Muhammad Ali" },
+      { text: "No cuentes los días; haz que los días cuenten.", author: "Atribuida a Muhammad Ali" },
+      { text: "Imposible es solo una gran palabra lanzada por hombres pequeños.", author: "Atribuida a Muhammad Ali" },
+      { text: "Es la repetición de afirmaciones lo que conduce a la creencia.", author: "Muhammad Ali" },
+      { text: "No es la montaña que tenemos delante la que nos desgasta; es el guijarro en el zapato.", author: "Atribuida a Muhammad Ali" },
+      { text: "Haz lo que puedas, con lo que tengas, donde estés.", author: "Theodore Roosevelt" },
+      { text: "Mucho y lejos, el mejor premio que ofrece la vida es la oportunidad de trabajar duro en un trabajo que valga la pena.", author: "Theodore Roosevelt" },
+      { text: "Ningún hombre vale la pena si no está dispuesto a arriesgarse.", author: "Theodore Roosevelt" },
+      { text: "Cree que puedes y ya estás a medio camino.", author: "Atribuida a Theodore Roosevelt" },
+      { text: "La comparación es el ladrón de la alegría.", author: "Atribuida a Theodore Roosevelt" },
+      { text: "El único hombre que nunca comete un error es el hombre que nunca hace nada.", author: "Theodore Roosevelt" },
+      { text: "Solos podemos hacer muy poco; juntos podemos hacer mucho.", author: "Helen Keller" },
+      { text: "La vida es una aventura atrevida o no es nada.", author: "Helen Keller" },
+      { text: "Optimismo es la fe que conduce al logro. Nada puede hacerse sin esperanza y confianza.", author: "Helen Keller" },
+      { text: "Mantén tu rostro hacia el sol y no podrás ver la sombra.", author: "Helen Keller" },
+      { text: "Nunca se nos dará valor para ver qué tan lejos podemos llegar sin ser empujados.", author: "Helen Keller" },
+      { text: "La seguridad es principalmente una superstición. La vida es una aventura atrevida o nada.", author: "Helen Keller" },
+      { text: "Nada en la vida debe ser temido; solo debe ser comprendido.", author: "Marie Curie" },
+      { text: "Ahora es el momento de entender más, para que podamos temer menos.", author: "Marie Curie" },
+      { text: "Debemos creer que estamos dotados para algo y que debemos lograrlo.", author: "Marie Curie" },
+      { text: "La ciencia es la base de todos nuestros conocimientos.", author: "Marie Curie" },
+      { text: "No debemos temer a nada en la vida.", author: "Marie Curie" },
+      { text: "En ciencia debemos interesarnos por las cosas, no por las personas.", author: "Marie Curie" },
+      { text: "Nada funcionará a menos que tú lo hagas.", author: "Maya Angelou" },
+      { text: "Haz lo mejor que puedas hasta que sepas más. Cuando sepas más, hazlo mejor.", author: "Maya Angelou" },
+      { text: "Mi misión en la vida no es simplemente sobrevivir, sino prosperar.", author: "Maya Angelou" },
+      { text: "Puedes encontrar muchas derrotas, pero no debes ser derrotado.", author: "Maya Angelou" },
+      { text: "Nada puede apagar la luz que brilla desde dentro.", author: "Atribuida a Maya Angelou" },
+      { text: "El coraje es la virtud más importante porque, sin coraje, no puedes practicar ninguna otra virtud consistentemente.", author: "Maya Angelou" },
+      { text: "No hay nada en este mundo tan poderoso como una idea cuyo momento ha llegado.", author: "Victor Hugo" },
+      { text: "La música expresa aquello que no puede ponerse en palabras y aquello que no puede permanecer en silencio.", author: "Victor Hugo" },
+      { text: "El futuro tiene muchos nombres: para el débil es lo inalcanzable; para el temeroso, lo desconocido; para el valiente, la oportunidad.", author: "Victor Hugo" },
+      { text: "La risa es el sol que ahuyenta el invierno del rostro humano.", author: "Victor Hugo" },
+      { text: "Incluso la noche más oscura terminará y saldrá el sol.", author: "Atribuida a Victor Hugo" },
+      { text: "Ser bueno es fácil; lo difícil es ser justo.", author: "Victor Hugo" },
+      { text: "La felicidad de tu vida depende de la calidad de tus pensamientos.", author: "Marco Aurelio" },
+      { text: "Tienes poder sobre tu mente, no sobre los acontecimientos externos.", author: "Marco Aurelio" },
+      { text: "La pérdida no es más que cambio, y el cambio es el deleite de la naturaleza.", author: "Marco Aurelio" },
+      { text: "Haz cada acto de tu vida como si fuera el último.", author: "Marco Aurelio" },
+      { text: "El impedimento para la acción hace avanzar la acción. Lo que se interpone se convierte en el camino.", author: "Marco Aurelio" },
+      { text: "Lo que hacemos ahora resuena en la eternidad.", author: "Marco Aurelio" },
+      { text: "No es que tengamos poco tiempo, sino que perdemos mucho.", author: "Séneca" },
+      { text: "Sufrimos más en la imaginación que en la realidad.", author: "Séneca" },
+      { text: "La suerte es lo que sucede cuando la preparación se encuentra con la oportunidad.", author: "Atribuida a Séneca" },
+      { text: "Mientras esperamos la vida, la vida pasa.", author: "Séneca" },
+      { text: "Comienza de una vez a vivir y cuenta cada día como una vida separada.", author: "Séneca" },
+      { text: "La dificultad no es levantarse, sino mantenerse en pie.", author: "Atribuida a Séneca" },
+      { text: "No importa lo lento que vayas, mientras no te detengas.", author: "Confucio" },
+      { text: "Nuestra mayor gloria no es no caer nunca, sino levantarnos cada vez que caemos.", author: "Atribuida a Confucio" },
+      { text: "El hombre que mueve una montaña comienza llevando pequeñas piedras.", author: "Confucio" },
+      { text: "Cuando veas a una persona buena, piensa en llegar a ser como ella.", author: "Confucio" },
+      { text: "Aprender sin pensar es inútil; pensar sin aprender es peligroso.", author: "Confucio" },
+      { text: "Todo tiene belleza, pero no todos la ven.", author: "Confucio" },
+      { text: "La única manera de hacer un gran trabajo es amar lo que haces.", author: "Atribuida a Steve Jobs" },
+      { text: "Tu tiempo es limitado, así que no lo desperdicies viviendo la vida de alguien más.", author: "Steve Jobs" },
+      { text: "La innovación distingue a un líder de un seguidor.", author: "Steve Jobs" },
+      { text: "Estoy convencido de que cerca de la mitad de lo que separa a los emprendedores exitosos de los no exitosos es perseverancia.", author: "Atribuida a Steve Jobs" },
+      { text: "Mantente hambriento. Mantente alocado.", author: "Steve Jobs" },
+      { text: "Decidir qué no hacer es tan importante como decidir qué hacer.", author: "Steve Jobs" },
+      { text: "La única persona en la que estás destinado a convertirte es la persona que decides ser.", author: "Ralph Waldo Emerson" },
+      { text: "Escribe en tu corazón que cada día es el mejor día del año.", author: "Ralph Waldo Emerson" },
+      { text: "Haz siempre lo que temes hacer.", author: "Ralph Waldo Emerson" },
+      { text: "La recompensa de una cosa bien hecha es haberla hecho.", author: "Ralph Waldo Emerson" },
+      { text: "Nada grande fue jamás logrado sin entusiasmo.", author: "Ralph Waldo Emerson" },
+      { text: "La vida es un viaje, no un destino.", author: "Atribuida a Ralph Waldo Emerson" },
+      { text: "La felicidad de tu vida depende de la calidad de tus pensamientos.", author: "Marco Aurelio" },
+      { text: "No es pobre el hombre que tiene poco, sino el que anhela mucho.", author: "Séneca" },
+      { text: "La constancia vence lo que la dicha no alcanza.", author: "Miguel de Cervantes" },
+      { text: "El que lee mucho y anda mucho, ve mucho y sabe mucho.", author: "Miguel de Cervantes" },
+      { text: "El tiempo es el mejor autor: siempre encuentra un final perfecto.", author: "Charles Chaplin" },
+      { text: "Un día sin reír es un día perdido.", author: "Atribuida a Charles Chaplin" },
+      { text: "El secreto de una vida feliz y plena es tener un objetivo y realizarlo.", author: "James Allen" },
+      { text: "Actúa como si lo que haces marcara la diferencia. La marca.", author: "William James" },
+      { text: "El mayor descubrimiento de nuestra generación es que un ser humano puede alterar su vida alterando sus actitudes.", author: "William James" },
+      { text: "La acción puede no traer siempre felicidad, pero no hay felicidad sin acción.", author: "William James" },
     ];
 
-    function quoteSeedFromDate(dateStr) {
-      let h = 2166136261;
-      for (let i = 0; i < dateStr.length; i++) {
-        h ^= dateStr.charCodeAt(i);
-        h = Math.imul(h, 16777619);
+    const QUOTE_INTERVAL_MS = 90 * 1000;
+    let quoteRotationSeed = 0;
+    let quoteLastIndex = -1;
+
+    function createQuoteSeed() {
+      const base = Date.now() ^ Math.floor(performance.now() * 1000);
+      try {
+        const array = new Uint32Array(2);
+        crypto.getRandomValues(array);
+        return (array[0] ^ array[1] ^ base) >>> 0;
+      } catch (_) {
+        return (Math.random() * 0xFFFFFFFF) >>> 0;
       }
-      return h >>> 0;
     }
 
-    function shuffledQuoteIndexes() {
-      const indexes = MOTIVATIONAL_QUOTES.map((_, i) => i);
-      let seed = quoteSeedFromDate(today());
-      const rand = () => {
-        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-        return seed / 4294967296;
-      };
-      for (let i = indexes.length - 1; i > 0; i--) {
-        const j = Math.floor(rand() * (i + 1));
-        [indexes[i], indexes[j]] = [indexes[j], indexes[i]];
+    function quoteRandom() {
+      quoteRotationSeed = (Math.imul(quoteRotationSeed, 1664525) + 1013904223) >>> 0;
+      return quoteRotationSeed / 4294967296;
+    }
+
+    function pickNextQuoteIndex() {
+      if (!MOTIVATIONAL_QUOTES.length) return 0;
+      let index = Math.floor(quoteRandom() * MOTIVATIONAL_QUOTES.length);
+      if (MOTIVATIONAL_QUOTES.length > 1 && index === quoteLastIndex) {
+        index = (index + 1 + Math.floor(quoteRandom() * (MOTIVATIONAL_QUOTES.length - 1))) % MOTIVATIONAL_QUOTES.length;
       }
-      return indexes;
+      quoteLastIndex = index;
+      return index;
     }
 
     function updateMotivationalQuote(force = false) {
       const node = document.getElementById('heroSubtitle');
       const authorNode = document.getElementById('heroQuoteAuthor');
-      if (!node || !authorNode) return;
+      if (!node || !authorNode || !MOTIVATIONAL_QUOTES.length) return;
 
-      // Cambia cada 5 minutos. Todas las frases llevan un autor visible.
-      const now = new Date();
-      const minutes = now.getHours() * 60 + now.getMinutes();
-      const slot = Math.floor(minutes / 5);
-      const order = shuffledQuoteIndexes();
-      const quote = MOTIVATIONAL_QUOTES[order[slot % order.length]];
-      const nextText = quote.text;
-      const nextAuthor = quote.author ? '— ' + quote.author : '';
+      if (!quoteRotationSeed) quoteRotationSeed = createQuoteSeed();
+      const index = pickNextQuoteIndex();
+      const quote = MOTIVATIONAL_QUOTES[index];
 
-      if (!force && node.textContent === nextText && authorNode.textContent === nextAuthor) return;
-      node.classList.remove('hero-quote');
-      authorNode.classList.remove('hero-quote');
-      void node.offsetWidth;
-      node.classList.add('hero-quote');
-      authorNode.classList.add('hero-quote');
-      node.textContent = nextText;
-      authorNode.textContent = nextAuthor;
+      if (!force && node.textContent === quote.text && authorNode.textContent === quote.author) return;
+
+      node.classList.add('is-changing');
+      authorNode.classList.add('is-changing');
+
+      setTimeout(() => {
+        node.textContent = quote.text;
+        authorNode.textContent = quote.author;
+
+        requestAnimationFrame(() => {
+          node.classList.remove('is-changing');
+          authorNode.classList.remove('is-changing');
+        });
+      }, 140);
     }
+
     function init() {
       try {
+        quoteRotationSeed = createQuoteSeed();
+        updateMotivationalQuote(true);
+        setInterval(() => updateMotivationalQuote(false), QUOTE_INTERVAL_MS);
         deviceId = getOrCreateDeviceId();
         document.documentElement.classList.toggle('touch-device', isTouchDevice());
         const savedTheme = safeStorage.getItem(THEME_KEY) || "system";
