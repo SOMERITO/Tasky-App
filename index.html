@@ -10,13 +10,14 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V43 -->
-    <!-- Build estable base + V41 · Placeholder de fases optimizado + línea de inserción de tareas refinada -->
+  <!-- TASKY PRO · V45 · Preview-safe bootstrap -->
+  <!-- TASKY PRO · V45 -->
+    <!-- V44 · Progreso diario, atrasadas centralizadas, repetición corregida, recuperación de completadas y productividad global -->
 
   <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
-  <link rel="icon" type="image/png" href="icon.png?v=41">
+  <link rel="icon" type="image/png" href="icon.png?v=44">
   <link rel="apple-touch-icon" href="icon.png?v=41">
-  <link rel="manifest" href="manifest.json?v=41">
+  <link rel="manifest" href="manifest.json?v=44">
 
   <!-- Dependencias con versiones fijadas para evitar cambios inesperados. -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
@@ -1394,6 +1395,25 @@
       .report-stat strong { font-size: 1.12rem; }
     }
 
+    /* ===== TASKY PRO V44 · Productividad diaria + frases + ajustes de tareas ===== */
+    .hero-quote { min-height: 24px; animation: quoteIn .28s var(--ease) both; }
+    @keyframes quoteIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+    .toolbar-actions { flex-wrap: wrap; justify-content: flex-end; }
+    .daily-report .report-hero {
+      background: radial-gradient(circle at 16% 15%, rgba(22,163,74,.10), transparent 45%),
+                  linear-gradient(135deg, rgba(37,99,235,.05), rgba(22,163,74,.06));
+    }
+    .daily-highlight { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:12px; }
+    .daily-highlight-card { padding:14px; border:1px solid var(--line); border-radius:15px; background:var(--surface-muted); }
+    .daily-highlight-card small { display:block; color:var(--muted); font-size:.68rem; font-weight:850; text-transform:uppercase; letter-spacing:.05em; }
+    .daily-highlight-card strong { display:block; margin-top:5px; font-size:1.35rem; letter-spacing:-.04em; }
+    .daily-footer-note { margin-top:12px; color:var(--muted); font-size:.78rem; line-height:1.45; }
+    @media (max-width: 620px) {
+      .toolbar-actions .soft-btn span { display:none; }
+      .toolbar-actions .soft-btn { min-width:42px; padding:0 11px; }
+      .daily-highlight { grid-template-columns:1fr 1fr; }
+    }
+
     .loading-screen {
       position: fixed;
       inset: 0;
@@ -2374,8 +2394,8 @@
       <div class="hero-row">
         <div>
           <span class="eyebrow"><i data-lucide="sparkles"></i> Organiza. Ejecuta. Avanza.</span>
-          <h1 id="heroTitle">Tu día, en orden.</h1>
-          <p id="heroSubtitle">Convierte tus fases en acciones pequeñas y visibles. Menos fricción, más avance.</p>
+          <h1 id="heroTitle">Tu día, tu orden</h1>
+          <p id="heroSubtitle" class="hero-quote">Cada tarea que completas es una victoria pequeña que mueve tu día.</p>
         </div>
 
         <div class="day-progress">
@@ -2399,6 +2419,10 @@
       </label>
 
       <div class="toolbar-actions">
+        <button id="productivityBtn" class="soft-btn" type="button">
+          <i data-lucide="gauge"></i>
+          <span>Mi productividad</span>
+        </button>
         <button id="overdueBtn" class="soft-btn" type="button" hidden>
           <i data-lucide="triangle-alert"></i>
           <span>Atrasadas</span>
@@ -2435,6 +2459,18 @@
     </button>
   </div>
 
+  <div id="dailyProductivityModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="dailyProductivityTitle">
+    <div class="modal stats-report daily-report">
+      <div class="modal-head">
+        <h2 id="dailyProductivityTitle">Mi productividad de hoy</h2>
+        <button class="icon-btn" type="button" data-close-modal="dailyProductivityModal" aria-label="Cerrar productividad">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div id="dailyProductivityContent"></div>
+    </div>
+  </div>
+
   <div id="statsModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="statsModalTitle">
     <div class="modal stats-report">
       <div class="modal-head">
@@ -2448,7 +2484,37 @@
     </div>
   </div>
 
-  <div id="repeatModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="repeatModalTitle">\n    <div class="modal">\n      <div class="modal-head">\n        <div>\n          <h2 id="repeatModalTitle">Repetir tarea</h2>\n          <div id="repeatTaskName" class="brand-subtitle" style="margin-top:4px"></div>\n        </div>\n        <button class="icon-btn" type="button" data-close-modal="repeatModal" aria-label="Cerrar">\n          <i data-lucide="x"></i>\n        </button>\n      </div>\n      <input id="repeatTaskId" type="hidden">\n      <div style="font-weight:800">¿Qué días quieres repetirla?</div>\n      <div class="repeat-editor-days">\n        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="1"><span>L</span></label>\n        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="2"><span>M</span></label>\n        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="3"><span>X</span></label>\n        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="4"><span>J</span></label>\n        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="5"><span>V</span></label>\n        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="6"><span>S</span></label>\n        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="7"><span>D</span></label>\n      </div>\n      <div id="repeatSummary" class="repeat-editor-summary"></div>\n      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">\n        <button class="soft-btn" type="button" data-close-modal="repeatModal">Cancelar</button>\n        <button class="soft-btn" type="button" id="saveRepeatBtn" style="background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;border-color:transparent"><i data-lucide="check"></i> Guardar</button>\n      </div>\n    </div>\n  </div>\n\n  <div id="overdueModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="overdueTitle">
+  <div id="repeatModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="repeatModalTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h2 id="repeatModalTitle">Repetir tarea</h2>
+          <div id="repeatTaskName" class="brand-subtitle" style="margin-top:4px"></div>
+        </div>
+        <button class="icon-btn" type="button" data-close-modal="repeatModal" aria-label="Cerrar">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <input id="repeatTaskId" type="hidden">
+      <div style="font-weight:800">¿Qué días quieres repetirla?</div>
+      <div class="repeat-editor-days">
+        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="1"><span>L</span></label>
+        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="2"><span>M</span></label>
+        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="3"><span>X</span></label>
+        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="4"><span>J</span></label>
+        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="5"><span>V</span></label>
+        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="6"><span>S</span></label>
+        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="7"><span>D</span></label>
+      </div>
+      <div id="repeatSummary" class="repeat-editor-summary"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap">
+        <button class="soft-btn" type="button" data-close-modal="repeatModal">Cancelar</button>
+        <button class="soft-btn" type="button" id="saveRepeatBtn" style="background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;border-color:transparent"><i data-lucide="check"></i> Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="overdueModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="overdueTitle">
     <div class="modal">
       <div class="modal-head">
         <h2 id="overdueTitle">Tareas atrasadas</h2>
@@ -2490,6 +2556,27 @@
     "use strict";
 
     // =========================================================
+    // TASKY PRO · V45 · PREVIEW / STORAGE SAFETY
+    // Evita que un sandbox (como la vista previa de ChatGPT) que
+    // bloquee localStorage impida que toda la aplicación arranque.
+    // =========================================================
+    const memoryStorage = new Map();
+    const safeStorage = {
+      getItem(key) {
+        try { return window.safeStorage.getItem(key); }
+        catch (error) { return memoryStorage.has(key) ? memoryStorage.get(key) : null; }
+      },
+      setItem(key, value) {
+        try { window.safeStorage.setItem(key, value); }
+        catch (error) { memoryStorage.set(key, String(value)); }
+      },
+      removeItem(key) {
+        try { window.safeStorage.removeItem(key); }
+        catch (error) { memoryStorage.delete(key); }
+      }
+    };
+
+    // =========================================================
     // TASKY PRO V41
     // Objetivo de esta versión: placeholder de fases como hueco de destino y línea de inserción refinada.
     // Se mantienen los cambios de sincronización y renderizado incremental.
@@ -2505,7 +2592,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 43;
+    const APP_VERSION = 45;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -2532,6 +2619,8 @@
       overdueBtn: document.getElementById("overdueBtn"),
       overdueCount: document.getElementById("overdueCount"),
       overdueList: document.getElementById("overdueList"),
+      productivityBtn: document.getElementById("productivityBtn"),
+      dailyProductivityContent: document.getElementById("dailyProductivityContent"),
       statsReportContent: document.getElementById("statsReportContent"),
       syncStatus: document.getElementById("syncStatus"),
       todayText: document.getElementById("todayText"),
@@ -2551,7 +2640,7 @@
       toastStack: document.getElementById("toastStack")
     };
 
-    const deviceId = getOrCreateDeviceId();
+    let deviceId = "";
 
     let db = null;
     let taskyDoc = null;
@@ -2578,10 +2667,10 @@
     }
 
     function getOrCreateDeviceId() {
-      const existing = localStorage.getItem(DEVICE_KEY);
+      const existing = safeStorage.getItem(DEVICE_KEY);
       if (existing) return existing;
       const id = crypto?.randomUUID?.() || ("device-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,8));
-      localStorage.setItem(DEVICE_KEY, id);
+      safeStorage.setItem(DEVICE_KEY, id);
       return id;
     }
 
@@ -2644,22 +2733,28 @@
       const result = [];
       for (const cat of state.categories) {
         for (const task of cat.tasks) {
-          if (task.date && task.date < now) result.push({ ...task, originCat: cat.id, originTitle: cat.title });
+          if (!task.draft && task.text.trim() && task.date && task.date < now) {
+            result.push({ ...task, originCat: cat.id, originTitle: cat.title });
+          }
         }
       }
       return result;
     }
 
+    function completedDateFor(task) {
+      if (task?.completedDate && /^\d{4}-\d{2}-\d{2}$/.test(task.completedDate)) return task.completedDate;
+      if (task?.completedAt) {
+        try { return new Intl.DateTimeFormat("en-CA").format(new Date(task.completedAt)); } catch (_) {}
+      }
+      return task?.date || "";
+    }
+
     function todayTaskStats() {
       const now = today();
-      let completed = state.completed.filter(t => t.date === now).length;
-      let total = completed;
-
-      for (const cat of state.categories) {
-        total += cat.tasks.filter(t => t.date === now).length;
-      }
-
-      return { completed, total };
+      const completed = state.completed.filter(t => completedDateFor(t) === now).length;
+      const pending = state.categories.reduce((sum, cat) => sum + cat.tasks.filter(t => !t.draft && t.date === now).length, 0);
+      const total = completed + pending;
+      return { completed, pending, total, overdue: overdueTasks().length };
     }
 
     function setSyncStatus(kind, label) {
@@ -2692,7 +2787,7 @@
       document.documentElement.dataset.theme = resolved;
       el.themeBtn.innerHTML = '<i data-lucide="' + (resolved === "dark" ? "moon" : "sun") + '"></i>';
       refreshIcons();
-      localStorage.setItem(THEME_KEY, theme);
+      safeStorage.setItem(THEME_KEY, theme);
     }
 
     function toggleTheme() {
@@ -2740,6 +2835,8 @@
             date: /^\d{4}-\d{2}-\d{2}$/.test(task.date || "") ? task.date : today(),
             originCat: String(task.originCat || ""),
             completedAt: task.completedAt || Date.now(),
+            completedDate: /^\d{4}-\d{2}-\d{2}$/.test(task.completedDate || "") ? task.completedDate : completedDateFor(task),
+            originIndex: Number.isInteger(task.originIndex) ? task.originIndex : 999999,
             repeat: Boolean(task.repeat),
             repeatDays: Array.isArray(task.repeatDays) ? [...new Set(task.repeatDays.map(Number).filter(n => n >= 1 && n <= 7))].sort((a,b) => a-b) : []
           })).filter(task => task.text.trim() !== "")
@@ -2788,11 +2885,11 @@
     function saveSafetyBackup(reason = 'snapshot', source = state) {
       try {
         const record = createSafetyRecord(reason, source);
-        localStorage.setItem(SAFETY_BACKUP_KEY, JSON.stringify(record));
+        safeStorage.setItem(SAFETY_BACKUP_KEY, JSON.stringify(record));
 
         let history = [];
         try {
-          history = JSON.parse(localStorage.getItem(SAFETY_HISTORY_KEY) || '[]');
+          history = JSON.parse(safeStorage.getItem(SAFETY_HISTORY_KEY) || '[]');
           if (!Array.isArray(history)) history = [];
         } catch (_) {
           history = [];
@@ -2802,7 +2899,7 @@
         history = history.filter(item => hash(item?.data || {}) !== signature);
         history.unshift(record);
         history = history.slice(0, SAFETY_HISTORY_LIMIT);
-        localStorage.setItem(SAFETY_HISTORY_KEY, JSON.stringify(history));
+        safeStorage.setItem(SAFETY_HISTORY_KEY, JSON.stringify(history));
       } catch (error) {
         console.warn('No se pudo crear respaldo de seguridad:', error);
       }
@@ -2810,7 +2907,7 @@
 
     function loadSafetyBackup() {
       try {
-        const raw = localStorage.getItem(SAFETY_BACKUP_KEY);
+        const raw = safeStorage.getItem(SAFETY_BACKUP_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         return normalizeState(parsed.data || parsed);
@@ -2822,7 +2919,7 @@
 
     function loadSafetyHistory() {
       try {
-        const raw = localStorage.getItem(SAFETY_HISTORY_KEY);
+        const raw = safeStorage.getItem(SAFETY_HISTORY_KEY);
         const parsed = JSON.parse(raw || '[]');
         return Array.isArray(parsed) ? parsed : [];
       } catch (error) {
@@ -2877,7 +2974,7 @@
 
     function loadLocalState() {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw = safeStorage.getItem(STORAGE_KEY);
         if (!raw) return null;
         return normalizeState(JSON.parse(raw));
       } catch (error) {
@@ -2887,7 +2984,7 @@
     }
 
     function persistLocal() {
-      localStorage.setItem(STORAGE_KEY, serialize(state));
+      safeStorage.setItem(STORAGE_KEY, serialize(state));
     }
 
     function updateSummaryUI() {
@@ -2960,9 +3057,11 @@
     }
 
     function buildCategoryCard(cat, index, query) {
-      const total = cat.tasks.length + state.completed.filter(t => t.originCat === cat.id).length;
-      const completed = state.completed.filter(t => t.originCat === cat.id).length;
-      const pct = total ? Math.round((completed / total) * 100) : 0;
+      const visiblePending = cat.tasks.filter(t => !(!t.draft && t.text.trim() && t.date < today())).length;
+      const completedToday = state.completed.filter(t => t.originCat === cat.id && completedDateFor(t) === today()).length;
+      const todayPending = cat.tasks.filter(t => !t.draft && t.text.trim() && t.date === today()).length;
+      const todayTotal = completedToday + todayPending;
+      const pct = todayTotal ? Math.round((completedToday / todayTotal) * 100) : 0;
 
       const card = document.createElement("article");
       card.className = "activity-card" + (total > 0 && pct === 100 ? " is-complete" : "");
@@ -2994,13 +3093,13 @@
           </div>
 
           <div class="card-meta">
-            <span class="pill neutral">${cat.tasks.length} pendiente${cat.tasks.length === 1 ? "" : "s"}</span>
-            <span class="pill ${pct === 100 && total > 0 ? "success" : "primary"}">${pct}% completado</span>
+            <span class="pill neutral">${visiblePending} pendiente${visiblePending === 1 ? "" : "s"}</span>
+            <span class="pill ${todayTotal > 0 && pct === 100 ? "success" : "primary"}">${todayTotal > 0 ? `${pct}% hoy` : "Sin tareas hoy"}</span>
           </div>
 
           <div class="card-progress">
             <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
-            <span class="card-progress-value">${completed}/${total}</span>
+            <span class="card-progress-value">${todayTotal > 0 ? `${completedToday}/${todayTotal} hoy` : '—'}</span>
           </div>
         </div>
 
@@ -3014,6 +3113,7 @@
       const list = card.querySelector(".task-list");
 
       for (const task of cat.tasks) {
+        if (!task.draft && task.text.trim() && task.date < today()) continue;
         const item = buildTaskItem(task, query, false);
         list.appendChild(item);
       }
@@ -3029,10 +3129,11 @@
       if (!completed) item.dataset.date = task.date;
 
       if (completed) {
-        const dueLabel = task.date ? "Completada · " + formatDateLong(task.date) : "Completada";
+        const completedDate = completedDateFor(task) || task.date || today();
+        const dueLabel = completedDate === today() ? "Completada · hoy" : "Completada · " + formatDateLong(completedDate);
         item.innerHTML = `
-          <button class="check-btn" type="button" data-action="restore-task" aria-label="Restaurar tarea" title="Restaurar tarea">
-            <i data-lucide="check"></i>
+          <button class="check-btn" type="button" data-action="restore-task" aria-label="Devolver a su fase" title="Devolver a su fase">
+            <i data-lucide="undo-2"></i>
           </button>
           <div class="task-input" role="text" aria-label="Tarea completada">${escapeHTML(task.text)}</div>
           <span class="task-due"><i data-lucide="calendar-check"></i>${escapeHTML(dueLabel)}</span>
@@ -3672,17 +3773,59 @@
       }
     }
 
+    function openDailyProductivityReport() {
+      if (!el.dailyProductivityContent) return;
+      const stats = todayTaskStats();
+      const pct = stats.total ? Math.round((stats.completed / stats.total) * 100) : 0;
+      const recurring = state.categories.reduce((sum, cat) => sum + cat.tasks.filter(t => !t.draft && t.date === today() && t.repeat).length, 0);
+      const activeCategories = state.categories.filter(cat =>
+        cat.tasks.some(t => !t.draft && t.date === today()) ||
+        state.completed.some(t => t.originCat === cat.id && completedDateFor(t) === today())
+      ).length;
+
+      let message = 'Empieza por una tarea concreta y construye el ritmo.';
+      if (stats.total === 0) message = 'Tu agenda de hoy está limpia. Puedes dedicar el tiempo a lo que quieras priorizar.';
+      else if (pct === 100) message = '¡Día completado! Todo lo programado para hoy está listo. ✨';
+      else if (pct >= 75) message = '¡Gran ritmo! Ya cerraste la mayor parte de lo que te propusiste hoy.';
+      else if (pct >= 50) message = 'Vas por la mitad o más. Mantén el foco en la siguiente tarea.';
+      else if (stats.overdue > 0) message = 'Tienes algunas tareas pendientes de días anteriores. Atiende primero la más importante.';
+
+      el.dailyProductivityContent.innerHTML = `
+        <div class="report-hero">
+          <div class="report-ring" style="--report-pct:${pct}%">
+            <div class="report-ring-value"><strong>${pct}%</strong><span>cumplimiento</span></div>
+          </div>
+          <div class="report-copy"><h3>Así va tu día</h3><p>${stats.completed} completadas de ${stats.total} tareas programadas para hoy.</p></div>
+        </div>
+        <div class="daily-highlight">
+          <div class="daily-highlight-card"><small>Completadas hoy</small><strong>${stats.completed}</strong></div>
+          <div class="daily-highlight-card"><small>Pendientes hoy</small><strong>${stats.pending}</strong></div>
+          <div class="daily-highlight-card"><small>Atrasadas</small><strong>${stats.overdue}</strong></div>
+          <div class="daily-highlight-card"><small>Repetitivas de hoy</small><strong>${recurring}</strong></div>
+        </div>
+        <div class="report-grid">
+          <div class="report-stat"><small>Fases activas</small><strong>${activeCategories}</strong></div>
+          <div class="report-stat"><small>Total programado</small><strong>${stats.total}</strong></div>
+          <div class="report-stat"><small>Ritmo</small><strong>${pct >= 75 ? 'Alto' : pct >= 50 ? 'Medio' : 'En marcha'}</strong></div>
+        </div>
+        <div class="report-message">${escapeHTML(message)}</div>
+        <div class="daily-footer-note">Las tareas completadas de días anteriores no cuentan como completadas de hoy. Tu progreso diario refleja únicamente lo que has cerrado durante esta jornada.</div>
+      `;
+      openModal('dailyProductivityModal');
+      refreshIcons();
+    }
+
     function openCategoryReport(categoryId) {
       const cat = state.categories.find(c => c.id === categoryId);
       if (!cat || !el.statsReportContent) return;
 
-      const completed = state.completed.filter(t => t.originCat === categoryId).length;
-      const pending = cat.tasks.length;
+      const completed = state.completed.filter(t => t.originCat === categoryId && completedDateFor(t) === today()).length;
+      const pending = cat.tasks.filter(t => !t.draft && t.text.trim() && t.date === today()).length;
       const total = pending + completed;
       const pct = total ? Math.round((completed / total) * 100) : 0;
-      const overdue = cat.tasks.filter(t => t.date < today()).length;
-      const recurring = cat.tasks.filter(t => Boolean(t.repeat)).length;
-      const todayPending = cat.tasks.filter(t => t.date === today()).length;
+      const overdue = cat.tasks.filter(t => !t.draft && t.text.trim() && t.date < today()).length;
+      const recurring = cat.tasks.filter(t => Boolean(t.repeat) && !t.draft).length;
+      const todayPending = pending;
 
       let message = "Aún no hay tareas suficientes para medir el ritmo.";
       if (total === 0) {
@@ -3690,7 +3833,7 @@
       } else if (pct === 100) {
         message = "Fase completada. Todo lo registrado en esta fase está listo. 🎉";
       } else if (overdue > 0) {
-        message = `Tienes ${overdue} tarea${overdue === 1 ? "" : "s"} atrasada${overdue === 1 ? "" : "s"}. Puedes priorizar${overdue === 1 ? "la" : "las"} desde el tablero.`;
+        message = `Tienes ${overdue} tarea${overdue === 1 ? "" : "s"} atrasada${overdue === 1 ? "" : "s"}. Puedes revisarlas desde el botón Atrasadas.`;
       } else if (pct >= 70) {
         message = "Vas bastante avanzado. Queda una parte pequeña del trabajo por cerrar. 🚀";
       } else if (pct >= 40) {
@@ -3772,24 +3915,26 @@
       const cat = state.categories.find(c => c.id === categoryId);
       if (!cat) return;
 
-      const completedCount = state.completed.filter(t => t.originCat === categoryId).length;
-      const total = cat.tasks.length + completedCount;
-      const pct = total ? Math.round((completedCount / total) * 100) : 0;
+      const visiblePending = cat.tasks.filter(t => !(!t.draft && t.text.trim() && t.date < today())).length;
+      const completedToday = state.completed.filter(t => t.originCat === categoryId && completedDateFor(t) === today()).length;
+      const todayPending = cat.tasks.filter(t => !t.draft && t.text.trim() && t.date === today()).length;
+      const todayTotal = completedToday + todayPending;
+      const pct = todayTotal ? Math.round((completedToday / todayTotal) * 100) : 0;
 
       const pendingPill = card.querySelector('.card-meta .pill:first-child');
       const percentPill = card.querySelector('.card-meta .pill:nth-child(2)');
       const fill = card.querySelector('.card-progress .progress-fill');
       const fraction = card.querySelector('.card-progress-value');
 
-      if (pendingPill) pendingPill.textContent = `${cat.tasks.length} pendiente${cat.tasks.length === 1 ? '' : 's'}`;
+      if (pendingPill) pendingPill.textContent = `${visiblePending} pendiente${visiblePending === 1 ? '' : 's'}`;
       if (percentPill) {
-        percentPill.textContent = `${pct}% completado`;
-        percentPill.className = `pill ${pct === 100 && total > 0 ? 'success' : 'primary'}`;
+        percentPill.textContent = `${pct}% hoy`;
+        percentPill.className = `pill ${pct === 100 && todayTotal > 0 ? 'success' : 'primary'}`;
       }
       if (fill) fill.style.width = `${pct}%`;
-      if (fraction) fraction.textContent = `${completedCount}/${total}`;
+      if (fraction) fraction.textContent = todayTotal > 0 ? `${completedToday}/${todayTotal} hoy` : '—';
 
-      card.classList.toggle('is-complete', total > 0 && pct === 100);
+      card.classList.toggle('is-complete', todayTotal > 0 && pct === 100);
     }
 
     function updateCompletedCardUI() {
@@ -4153,7 +4298,9 @@
         state.completed.unshift({
           ...completedTask,
           originCat: cat.id,
-          completedAt: Date.now()
+          originIndex: idx,
+          completedAt: Date.now(),
+          completedDate: today()
         });
 
         const item = document.querySelector(`.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`);
@@ -4190,21 +4337,27 @@
       const [task] = state.completed.splice(idx, 1);
       const target = state.categories.find(c => c.id === task.originCat) || state.categories[0];
 
+      const restoredTask = {
+        id: task.id,
+        text: task.text,
+        date: task.date || today(),
+        draft: false,
+        repeat: Boolean(task.repeat),
+        repeatDays: Array.isArray(task.repeatDays) ? [...task.repeatDays] : [],
+        repeatCount: Number(task.repeatCount || 0),
+        lastCompletedAt: task.lastCompletedAt || null
+      };
+
       if (target) {
-        target.tasks.push({
-          id: task.id,
-          text: task.text,
-          date: task.date || today(),
-          draft: false,
-          repeat: Boolean(task.repeat),
-          repeatCount: Number(task.repeatCount || 0),
-          lastCompletedAt: task.lastCompletedAt || null
-        });
+        const insertAt = Number.isInteger(task.originIndex) && task.originIndex >= 0
+          ? Math.min(task.originIndex, target.tasks.length)
+          : target.tasks.length;
+        target.tasks.splice(insertAt, 0, restoredTask);
       } else {
         state.categories.push({
           id: task.originCat || uid('cat'),
           title: 'Recuperadas',
-          tasks: [{ id: task.id, text: task.text, date: task.date || today(), draft: false, repeat: Boolean(task.repeat), repeatCount: Number(task.repeatCount || 0), lastCompletedAt: task.lastCompletedAt || null }]
+          tasks: [restoredTask]
         });
       }
 
@@ -4215,7 +4368,7 @@
           : null;
 
         if (targetList) {
-          const newItem = buildTaskItem({ id: task.id, text: task.text, date: task.date || today() }, activeSearch.trim().toLowerCase(), false);
+          const newItem = buildTaskItem({ id: task.id, text: task.text, date: task.date || today(), draft: false, repeat: Boolean(task.repeat), repeatDays: Array.isArray(task.repeatDays) ? task.repeatDays : [], repeatCount: Number(task.repeatCount || 0), lastCompletedAt: task.lastCompletedAt || null }, activeSearch.trim().toLowerCase(), false);
           newItem.classList.add('task-enter');
           targetList.appendChild(newItem);
           refreshIcons();
@@ -4426,11 +4579,7 @@
           task.date = today();
           persistLocal();
           localDirty = true;
-          const item = document.querySelector(`.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`);
-          item?.classList.remove("overdue");
-          const due = item?.querySelector(".task-due");
-          if (due) due.innerHTML = '<i data-lucide="calendar-days"></i>' + escapeHTML("Para hoy · " + formatDateLong(today()));
-          refreshIcons();
+          render();
           updateSummaryUI();
           renderOverdueModal();
           scheduleSave("mover atrasada a hoy");
@@ -4934,6 +5083,11 @@
           return;
         }
 
+        if (event.target.closest("#productivityBtn")) {
+          openDailyProductivityReport();
+          return;
+        }
+
         if (event.target.closest("#overdueBtn")) {
           renderOverdueModal();
           openModal("overdueModal");
@@ -5049,10 +5203,127 @@
       });
     }
 
+    const MOTIVATIONAL_QUOTES = [
+      'Haz una cosa importante y deja que el resto siga su turno.',
+      'No necesitas correr: necesitas avanzar con intención.',
+      'Tu progreso crece cuando conviertes planes en acciones.',
+      'Una tarea terminada vale más que diez pendientes en la cabeza.',
+      'Empieza por lo que hará más fácil todo lo demás.',
+      'Hoy también cuenta cada pequeño paso.',
+      'Ordenar tu día es una forma de cuidar tu energía.',
+      'Tu atención es valiosa: úsala en lo que importa.',
+      'Menos ruido, más enfoque, más avance.',
+      'Lo que haces ahora construye tu resultado después.',
+      'No busques un día perfecto; busca un día con propósito.',
+      'Haz espacio mental completando la siguiente tarea.',
+      'Tu lista no es una presión: es una guía.',
+      'La constancia convierte pequeñas acciones en grandes cambios.',
+      'Un paso claro es mejor que mil vueltas.',
+      'Hoy puedes avanzar un poco más que ayer.',
+      'Celebra el avance y continúa con el siguiente paso.',
+      'Tu mejor herramienta hoy es el enfoque.',
+      'Haz primero lo que te acerca más a tu objetivo.',
+      'Organiza menos en tu cabeza y más en tu tablero.',
+      'Cada casilla completada libera espacio para lo que sigue.',
+      'No necesitas hacerlo todo ahora; necesitas empezar bien.',
+      'La claridad aparece cuando empiezas a actuar.',
+      'Una buena jornada se construye tarea por tarea.',
+      'Tu ritmo también es productividad.',
+      'Prioriza, ejecuta y deja que el progreso hable.',
+      'Lo importante no es cuánto queda, sino cuánto ya avanzaste.',
+      'Una decisión pequeña puede desbloquear una tarde entera.',
+      'Tu día mejora cuando tu siguiente acción está clara.',
+      'Hazlo simple, hazlo posible y hazlo hoy.',
+      'El enfoque convierte tiempo disponible en progreso real.',
+      'Cada tarea que resuelves fortalece tu impulso.',
+      'La disciplina también puede sentirse ligera cuando hay orden.',
+      'Tu tablero existe para ayudarte, no para perseguirte.',
+      'Cierra una tarea y abre espacio para una nueva victoria.',
+      'Tu energía merece prioridades claras.',
+      'La mejor forma de avanzar es empezar por lo siguiente.',
+      'No subestimes lo que puedes completar en una tarde enfocada.',
+      'Hoy es una oportunidad para poner orden en lo que importa.',
+      'Haz que tu próxima acción sea pequeña y concreta.',
+      'Tu progreso merece ser visible.',
+      'Cada avance suma, incluso cuando parece pequeño.',
+      'La productividad comienza cuando decides dónde poner tu atención.',
+      'Una tarea a la vez sigue siendo una estrategia poderosa.',
+      'Ordenar tu jornada también protege tu tranquilidad.',
+      'Lo que hoy terminas mañana pesa menos.',
+      'Empieza donde estés y mejora desde ahí.',
+      'Tu lista puede ser larga; tu siguiente paso puede ser pequeño.',
+      'No necesitas motivación perfecta para hacer algo valioso.',
+      'La acción clara vence a la indecisión.',
+      'Haz visible lo importante y deja que el resto espere.',
+      'La constancia es una suma de días normales bien usados.',
+      'Tu agenda no decide por ti: tú decides qué merece tu tiempo.',
+      'Una jornada enfocada deja resultados que se sienten.',
+      'Hoy puedes elegir progreso sobre perfección.',
+      'Haz una tarea difícil antes de que se vuelva más pesada.',
+      'Tu futuro agradece lo que organizas y completas hoy.',
+      'La mejor sensación es ver avanzar lo que antes estaba pendiente.',
+      'Un tablero ordenado puede convertirse en una mente más ligera.',
+      'Tu próxima victoria puede estar a unos minutos de distancia.',
+      'La tarea que evitas puede ser exactamente la que te libere.',
+      'Avanza con intención, no con prisa.',
+      'Tu día tiene espacio para una victoria más.',
+      'La claridad llega cuando el siguiente paso deja de ser difuso.',
+      'Terminar también es una habilidad.',
+      'Haz menos cosas a la vez y termina más de ellas.',
+      'Lo que priorizas hoy moldea el día que tendrás.',
+      'Una pequeña mejora repetida se convierte en un gran cambio.',
+      'Tu enfoque de hoy es la base de tu tranquilidad de mañana.',
+      'No todo merece atención inmediata.',
+      'Empieza por lo importante y gana impulso.',
+      'Cada tarea tiene un comienzo; elige cuál comienza ahora.',
+      'Avanzar también significa saber qué dejar para después.',
+      'Tu tiempo se siente distinto cuando tienes claridad.',
+      'Un día productivo no es un día lleno: es un día con dirección.',
+      'Organiza lo que puedes controlar y actúa sobre ello.',
+      'La próxima casilla puede cambiar el ritmo de tu jornada.',
+      'Tu esfuerzo se acumula incluso cuando nadie lo ve.',
+      'Hay poder en terminar lo que empezaste.',
+      'La mejor versión de tu día empieza con una decisión concreta.',
+      'Haz visible tu progreso y úsalo como impulso.',
+      'Tu orden de hoy facilita el trabajo de mañana.',
+      'Una tarea completada es una preocupación menos.',
+      'El progreso rara vez hace ruido; por eso conviene verlo.',
+      'Tu día puede ser exigente y aun así sentirse bajo control.',
+      'Haz que la siguiente acción sea tan clara que no necesite pensarlo dos veces.',
+      'Enfócate en avanzar, no en demostrar que puedes con todo.',
+      'El orden es una ventaja cuando el día se acelera.',
+      'Cada pendiente resuelto devuelve algo de espacio a tu mente.',
+      'Una meta grande también se construye con tareas pequeñas.',
+      'Hoy puedes convertir intención en evidencia.',
+      'Sigue la lista, pero escucha también tus prioridades.',
+      'Tu progreso de hoy merece una mirada antes de terminar el día.',
+      'Menos pendientes abiertos, más energía disponible.',
+      'La productividad se siente mejor cuando también hay tranquilidad.',
+      'Tu siguiente acción no tiene que ser enorme para ser importante.',
+      'Haz que hoy tenga un resultado del que te sientas orgulloso.'
+    ];
+
+    function updateMotivationalQuote(force = false) {
+      const node = document.getElementById('heroSubtitle');
+      if (!node) return;
+      const now = new Date();
+      const start = new Date(now.getFullYear(), 0, 1);
+      const dayOfYear = Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - start) / 86400000);
+      const quarter = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15);
+      const index = ((dayOfYear * 96) + quarter) % MOTIVATIONAL_QUOTES.length;
+      const next = MOTIVATIONAL_QUOTES[index];
+      if (!force && node.textContent === next) return;
+      node.classList.remove('hero-quote');
+      void node.offsetWidth;
+      node.classList.add('hero-quote');
+      node.textContent = next;
+    }
+
     function init() {
       try {
+        deviceId = getOrCreateDeviceId();
         document.documentElement.classList.toggle('touch-device', isTouchDevice());
-        const savedTheme = localStorage.getItem(THEME_KEY) || "system";
+        const savedTheme = safeStorage.getItem(THEME_KEY) || "system";
         applyTheme(savedTheme);
 
         if (!getLatestBackupRecord()) {
@@ -5069,6 +5340,8 @@
         }
 
         bindEvents();
+        updateMotivationalQuote(true);
+        setInterval(() => updateMotivationalQuote(false), 60 * 1000);
         refreshIcons();
         hideLoading();
         startFirebase();
