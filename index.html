@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="tasky-booting">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V59 -->
+  <!-- TASKY PRO · V60 -->
 
   <!-- TASKY PRO · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -21,10 +21,6 @@
   <link rel="manifest" href="manifest.json?v=48">
 
   <!-- Dependencias con versiones fijadas para evitar cambios inesperados. -->
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
 
   <style>
     :root {
@@ -3259,10 +3255,30 @@ body.task-drag-mode .activity-card {
       color: var(--success);
     }
 
+  
+    /* V60: arranque robusto para navegador + Median WebView. */
+    html.tasky-booting body {
+      overflow: hidden;
+    }
+
+    #loadingScreen {
+      transition: opacity .22s ease, visibility .22s ease;
+    }
+
+    #loadingScreen.boot-fallback {
+      backdrop-filter: blur(6px);
+    }
+
+    .sync-recovery-note {
+      font-size: .75rem;
+      line-height: 1.4;
+      color: var(--muted);
+    }
+
   </style>
 </head>
 
-<body tabindex="-1" data-tasky-version="V59">
+<body tabindex="-1" data-tasky-version="V60">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -3507,7 +3523,7 @@ body.task-drag-mode .activity-card {
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 59;
+    const APP_VERSION = 60;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -3731,13 +3747,109 @@ body.task-drag-mode .activity-card {
       setTimeout(() => node.remove(), 3600);
     }
 
+
+    /* =========================================================
+       V60 · Carga no bloqueante de dependencias
+       ========================================================= */
+    const DEPENDENCY_TIMEOUT_MS = 8000;
+
+    function loadExternalScript(src, timeout = DEPENDENCY_TIMEOUT_MS) {
+      return new Promise((resolve, reject) => {
+        const existing = document.querySelector(`script[data-tasky-src="${src}"]`);
+        if (existing) {
+          if (existing.dataset.loaded === "true") {
+            resolve();
+            return;
+          }
+        }
+
+        const script = existing || document.createElement("script");
+        let settled = false;
+
+        const finish = (fn, value) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          script.onload = null;
+          script.onerror = null;
+          fn(value);
+        };
+
+        const timer = window.setTimeout(() => {
+          finish(reject, new Error(`Timeout cargando ${src}`));
+        }, timeout);
+
+        script.dataset.taskySrc = src;
+        script.async = false;
+        script.onload = () => {
+          script.dataset.loaded = "true";
+          finish(resolve);
+        };
+        script.onerror = () => {
+          finish(reject, new Error(`No se pudo cargar ${src}`));
+        };
+
+        if (!existing) {
+          script.src = src;
+          document.head.appendChild(script);
+        }
+      });
+    }
+
+    async function loadOptionalIcons() {
+      if (window.lucide?.createIcons) {
+        refreshIcons();
+        return true;
+      }
+
+      try {
+        await loadExternalScript("https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js", 5000);
+        refreshIcons();
+        return true;
+      } catch (error) {
+        console.warn("Lucide no disponible; Tasky continúa sin iconos externos.", error);
+        return false;
+      }
+    }
+
+    async function ensureFirebaseLoaded() {
+      if (window.firebase?.firestore) return true;
+
+      try {
+        await loadExternalScript(
+          "https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js",
+          DEPENDENCY_TIMEOUT_MS
+        );
+
+        await loadExternalScript(
+          "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js",
+          DEPENDENCY_TIMEOUT_MS
+        );
+
+        return Boolean(window.firebase?.firestore);
+      } catch (error) {
+        console.warn("Firebase no pudo cargarse; se mantiene Modo local.", error);
+        return false;
+      }
+    }
+
     function refreshIcons() {
-      if (window.lucide?.createIcons) lucide.createIcons();
+      try {
+        if (window.lucide?.createIcons) {
+          lucide.createIcons();
+        }
+      } catch (error) {
+        console.warn("No se pudieron actualizar los iconos:", error);
+      }
     }
 
     function hideLoading() {
       el.loadingScreen.classList.add("hidden");
+      document.documentElement.classList.remove("tasky-booting");
       initialized = true;
+      if (typeof TASKY_BOOT_WATCHDOG !== "undefined") {
+        clearTimeout(TASKY_BOOT_WATCHDOG);
+      }
     }
 
     function applyTheme(theme) {
@@ -6113,17 +6225,32 @@ body.task-drag-mode .activity-card {
       }
     }
 
-    function startFirebase() {
+    async function startFirebase() {
       try {
-        firebase.initializeApp(firebaseConfig);
+        const loaded = await ensureFirebaseLoaded();
+
+        if (!loaded || !window.firebase?.firestore) {
+          setSyncStatus("offline", "Modo local");
+          return;
+        }
+
+        if (!firebase.apps?.length) {
+          firebase.initializeApp(firebaseConfig);
+        }
+
         db = firebase.firestore();
         taskyDoc = db.collection("workspace").doc("main_board");
 
-        db.enablePersistence({ synchronizeTabs: true }).catch(error => {
-          if (error.code !== "failed-precondition" && error.code !== "unimplemented") {
+        try {
+          await db.enablePersistence({ synchronizeTabs: true });
+        } catch (error) {
+          if (
+            error.code !== "failed-precondition" &&
+            error.code !== "unimplemented"
+          ) {
             console.warn("Persistencia Firestore:", error);
           }
-        });
+        }
 
         unsubscribe = taskyDoc.onSnapshot(
           snapshot => handleCloudSnapshot(snapshot),
@@ -6131,13 +6258,14 @@ body.task-drag-mode .activity-card {
             console.error("Snapshot Firestore:", error);
             setSyncStatus("error", "Sin conexión a nube");
 
-            if (!state.categories.length && !state.completed.length) {
-              const local = loadLocalState();
-              if (local) {
-                state = local;
-                render();
-              }
+            // No destruimos el estado local solo porque falle Firestore.
+            const local = loadLocalState();
+            if (local && (!state.categories.length && !state.completed.length)) {
+              state = local;
+              render();
+              refreshIcons();
             }
+
             hideLoading();
           }
         );
@@ -6151,12 +6279,23 @@ body.task-drag-mode .activity-card {
           setSyncStatus("offline", "Modo local");
         });
 
+        // Si hay cambios locales esperando, intenta sincronizar una vez
+        // Firestore haya quedado disponible.
+        if (localDirty) {
+          window.setTimeout(() => saveCloud("sincronización inicial"), 180);
+        }
+
       } catch (error) {
         console.error("Firebase no pudo inicializarse:", error);
         setSyncStatus("error", "Modo local");
+
         const local = loadLocalState();
-        if (local) state = local;
-        render();
+        if (local) {
+          state = local;
+          render();
+          refreshIcons();
+        }
+
         hideLoading();
       }
     }
@@ -7092,7 +7231,12 @@ body.task-drag-mode .activity-card {
         clearInterval(quoteTimer);
         quoteTimer = setInterval(() => updateMotivationalQuote(false), QUOTE_INTERVAL_MS);
         refreshIcons();
+
+        // La interfaz NO espera a Firebase.
         hideLoading();
+
+        // Dependencias externas se cargan en segundo plano.
+        loadOptionalIcons();
         startFirebase();
       } catch (error) {
         console.error("Error de inicialización:", error);
@@ -7101,6 +7245,33 @@ body.task-drag-mode .activity-card {
         hideLoading();
       }
     }
+
+    // V60: nunca dejamos una pantalla de carga permanente.
+    const TASKY_BOOT_WATCHDOG = window.setTimeout(() => {
+      const loading = document.getElementById("loadingScreen");
+
+      if (
+        loading &&
+        !loading.classList.contains("hidden")
+      ) {
+        console.warn("Watchdog de arranque: se fuerza Modo local.");
+        loading.classList.add("boot-fallback", "hidden");
+        document.documentElement.classList.remove("tasky-booting");
+        initialized = true;
+
+        try {
+          setSyncStatus("offline", "Modo local");
+          const local = loadLocalState();
+          if (local) {
+            state = local;
+            render();
+          }
+          refreshIcons();
+        } catch (error) {
+          console.error("Watchdog de arranque:", error);
+        }
+      }
+    }, 3500);
 
     init();
   </script>
