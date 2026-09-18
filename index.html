@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V56 -->
+  <!-- TASKY PRO · V58 -->
 
   <!-- TASKY PRO · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -3143,10 +3143,126 @@ body.task-drag-mode .activity-card {
       font-weight: 750;
     }
 
-</style>
+
+    /* =========================================================
+       TASKY PRO V57 · MENÚ DEL +
+       El menú sale hacia la izquierda del +.
+       De esta forma no puede quedar debajo del botón ↑.
+       ========================================================= */
+    #fab {
+      position: fixed !important;
+      width: 70px !important;
+      height: 70px !important;
+      right: 40px !important;
+      bottom: calc(40px + env(safe-area-inset-bottom)) !important;
+      top: auto !important;
+      display: block !important;
+      overflow: visible !important;
+      z-index: 9000 !important;
+    }
+
+    #fab .fab-main {
+      position: relative !important;
+      width: 70px !important;
+      height: 70px !important;
+      margin: 0 !important;
+      z-index: 2 !important;
+    }
+
+    #fab .fab-actions {
+      position: absolute !important;
+      right: calc(100% + 14px) !important;
+      bottom: 0 !important;
+      top: auto !important;
+
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: flex-end !important;
+      justify-content: flex-end !important;
+      gap: 8px !important;
+
+      width: max-content !important;
+      max-width: min(330px, calc(100vw - 24px)) !important;
+      margin: 0 !important;
+      padding: 0 !important;
+
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      transform: translateX(8px) scale(.97) !important;
+      transform-origin: bottom right !important;
+
+      transition:
+        opacity .18s var(--ease),
+        visibility .18s var(--ease),
+        transform .18s var(--ease) !important;
+    }
+
+    #fab.open .fab-actions {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+      transform: translateX(0) scale(1) !important;
+    }
+
+    #fab .fab-action {
+      min-height: 42px !important;
+      white-space: nowrap;
+    }
+
+    #fabTop {
+      position: fixed !important;
+      right: 40px !important;
+      bottom: calc(126px + env(safe-area-inset-bottom)) !important;
+      top: auto !important;
+      width: 70px !important;
+      height: 70px !important;
+      z-index: 9001 !important;
+    }
+
+    @media (max-width: 760px) {
+      #fab {
+        width: 60px !important;
+        height: 60px !important;
+        right: 18px !important;
+        bottom: calc(18px + env(safe-area-inset-bottom)) !important;
+      }
+
+      #fab .fab-main {
+        width: 60px !important;
+        height: 60px !important;
+        border-radius: 18px !important;
+      }
+
+      #fab .fab-actions {
+        right: calc(100% + 10px) !important;
+        bottom: 0 !important;
+        max-width: min(290px, calc(100vw - 18px)) !important;
+      }
+
+      #fabTop {
+        right: 18px !important;
+        bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+        width: 60px !important;
+        height: 60px !important;
+        border-radius: 18px !important;
+      }
+    }
+
+  
+    .completed-repeat-note {
+      display: block;
+      margin-top: 3px;
+      font-size: .68rem;
+      font-weight: 800;
+      text-decoration: none;
+      color: var(--success);
+    }
+
+  </style>
 </head>
 
-<body tabindex="-1" data-tasky-version="V56">
+<body tabindex="-1" data-tasky-version="V58">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -3391,7 +3507,7 @@ body.task-drag-mode .activity-card {
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 56;
+    const APP_VERSION = 58;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -3990,7 +4106,10 @@ body.task-drag-mode .activity-card {
           <span class="check-btn" aria-hidden="true" style="background:var(--success);border-color:var(--success);color:#fff">
             <i data-lucide="check"></i>
           </span>
-          <div class="task-input" role="text" aria-label="Tarea completada">${escapeHTML(task.text)}</div>
+          <div class="task-input" role="text" aria-label="Tarea completada">
+            ${escapeHTML(task.text)}
+            ${task.recurringOccurrence ? '<span class="completed-repeat-note">Repetitiva · completada hoy</span>' : ''}
+          </div>
           <button class="completed-restore-btn" type="button" data-action="restore-task" title="Restaurar en su fase" aria-label="Restaurar tarea en su fase">
             <i data-lucide="undo-2"></i>
             <span>Restaurar</span>
@@ -4748,8 +4867,22 @@ body.task-drag-mode .activity-card {
       const cat = state.categories.find(c => c.id === categoryId);
       if (!cat || !el.statsReportContent) return;
 
-      const completed = state.completed.filter(t => t.originCat === categoryId && completedDateFor(t) === today()).length;
-      const pending = cat.tasks.filter(t => !t.draft && t.text.trim() && t.date === today()).length;
+      const completedHistorical = state.completed.filter(
+        t => t.originCat === categoryId && completedDateFor(t) === today()
+      ).length;
+
+      const completedRecurringLive = cat.tasks.filter(
+        t => !t.draft && isRepeatCompletedToday(t)
+      ).length;
+
+      const completed = completedHistorical + completedRecurringLive;
+
+      const pending = cat.tasks.filter(
+        t => !t.draft &&
+             t.text.trim() &&
+             t.date === today() &&
+             !isRepeatCompletedToday(t)
+      ).length;
       const total = pending + completed;
       const pct = total ? Math.round((completed / total) * 100) : 0;
       const overdue = cat.tasks.filter(t => !t.draft && t.text.trim() && t.date < today()).length;
@@ -4883,14 +5016,51 @@ body.task-drag-mode .activity-card {
         return;
       }
 
+      const query = activeSearch.trim().toLowerCase();
+
       if (!card) {
-        buildCompletedCard(activeSearch.trim().toLowerCase());
+        buildCompletedCard(query);
         refreshIcons();
+        updateSummaryUI();
         return;
       }
 
+      const list = card.querySelector('[data-completed-list="true"]');
+      if (!list) {
+        card.remove();
+        buildCompletedCard(query);
+        refreshIcons();
+        updateSummaryUI();
+        return;
+      }
+
+      const visibleIds = new Set();
+
+      for (const task of state.completed) {
+        if (query && !String(task.text || "").toLowerCase().includes(query)) continue;
+        visibleIds.add(task.id);
+
+        let item = list.querySelector(
+          `.task-item[data-task-id="${cssEscapeSafe(task.id)}"]`
+        );
+
+        if (!item) {
+          item = buildTaskItem(task, query, true);
+          item.classList.add('task-enter');
+          list.prepend(item);
+        }
+      }
+
+      // Elimina del DOM únicamente los elementos que ya no existen en el estado.
+      list.querySelectorAll('.task-item[data-task-id]').forEach(item => {
+        if (!visibleIds.has(item.dataset.taskId)) item.remove();
+      });
+
       const countPill = card.querySelector('.pill.success');
       if (countPill) countPill.textContent = state.completed.length;
+
+      refreshIcons();
+      updateTaskHeights();
     }
 
     function animateTaskRemoval(item, callback) {
@@ -4928,10 +5098,14 @@ body.task-drag-mode .activity-card {
       refreshIcons();
       refreshSectionMoveControls();
       const title = card.querySelector(".activity-title");
-      requestAnimationFrame(() => {
-        title?.focus();
-        title?.select();
-      });
+      const focusNewCategoryTitle = () => {
+        if (!title) return;
+        try { title.focus({ preventScroll: true }); } catch (_) { title.focus(); }
+        title.select();
+      };
+
+      requestAnimationFrame(focusNewCategoryTitle);
+      window.setTimeout(focusNewCategoryTitle, 60);
 
       updateSummaryUI();
       scheduleSave("nueva fase");
@@ -5183,64 +5357,85 @@ body.task-drag-mode .activity-card {
 
         const task = cat.tasks[idx];
 
-        // Las tareas repetidas NO pasan al historial: se reprograman para mañana
-        // y permanecen exactamente en la misma fase y posición.
+        // Las tareas repetitivas generan una OCURRENCIA completada
+        // en el historial y mantienen su tarea-serie en la misma fase,
+        // programada para la siguiente fecha.
         if (task.repeat) {
           if (!Array.isArray(task.repeatDays) || !task.repeatDays.length) {
             task.repeatDays = [1,2,3,4,5,6,7];
           }
 
-          const completedToday = today();
-          task.lastCompletedAt = Date.now();
-          task.lastCompletedDate = completedToday;
+          const completedOn = today();
+          const nextDate = nextRepeatDate(completedOn, task.repeatDays);
+          const completedAt = Date.now();
+          const originalIndex = idx;
+          const sourceTaskId = task.id;
+
+          // La ocurrencia histórica es independiente de la tarea-serie.
+          state.completed.unshift({
+            ...JSON.parse(JSON.stringify(task)),
+            id: uid("completed"),
+            repeatSourceId: sourceTaskId,
+            recurringOccurrence: true,
+            originCat: cat.id,
+            originIndex: originalIndex,
+            completedAt,
+            completedDate: completedOn,
+            completedForDate: completedOn,
+            nextOccurrenceDate: nextDate
+          });
+
+          // La tarea-serie permanece en la fase y apunta a su próxima
+          // fecha. Se limpian los campos de "completada hoy" para que
+          // mañana vuelva a estar disponible normalmente.
           task.repeatCount = Number(task.repeatCount || 0) + 1;
-          task.date = nextRepeatDate(completedToday, task.repeatDays);
+          task.lastCompletedAt = null;
+          task.lastCompletedDate = null;
+          task.date = nextDate;
 
           const item = document.querySelector(
-            `.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`
+            `.task-item[data-task-id="${cssEscapeSafe(sourceTaskId)}"]`
           );
 
           if (item) {
-            item.classList.add('repeat-complete', 'repeat-done-today');
-            item.classList.remove('overdue');
+            item.classList.remove("repeat-done-today", "repeat-complete", "overdue");
 
-            const check = item.querySelector('.check-btn');
+            const check = item.querySelector(".check-btn");
             if (check) {
-              check.disabled = true;
-              check.classList.add('repeat-done-today');
-              check.innerHTML = '<i data-lucide="check"></i>';
-              check.setAttribute('aria-label', 'Completada hoy');
+              check.disabled = false;
+              check.classList.remove("repeat-done-today");
+              check.innerHTML = "";
+              check.setAttribute("aria-label", "Completar tarea");
             }
 
-            const due = item.querySelector('.task-due');
-            if (due) {
-              due.innerHTML =
-                `<span class="task-due-repeat-status"><i data-lucide="circle-check"></i>` +
-                `Completada hoy<span class="next-date">· Próxima ${escapeHTML(formatDateLong(task.date))}</span></span>`;
+            const repeatStatus = item.querySelector(".task-due-repeat-status");
+            if (repeatStatus) {
+              repeatStatus.outerHTML =
+                `<span class="task-repeat-badge task-repeat-badge-standalone" title="${escapeHTML(repeatDaysToLabel(task.repeatDays))}">` +
+                `<i data-lucide="repeat-2"></i>${escapeHTML(repeatDaysToLabel(task.repeatDays))}</span>`;
             }
 
-            const badge = item.querySelector('.task-repeat-badge-standalone');
-            if (badge) {
-              badge.outerHTML =
-                `<span class="task-due-repeat-status"><i data-lucide="circle-check"></i>` +
-                `Completada hoy<span class="next-date">· Próxima ${escapeHTML(formatDateLong(task.date))}</span></span>`;
-            }
+            // Si la siguiente fecha ya no es hoy (lo normal), la tarjeta
+            // queda como próxima ocurrencia, no como completada.
+            item.dataset.date = task.date;
+            item.classList.toggle("overdue", task.date < today());
           }
 
           persistLocal();
           localDirty = true;
+
           updateCategoryUI(cat.id);
+          updateCompletedCardUI();
           updateSummaryUI();
+          updateTaskHeights();
           scheduleSave("completar tarea repetida");
           refreshIcons();
           softHaptic(28);
 
           toast(
-            `Completada hoy · Próxima ${formatDateLong(task.date)} ↻`,
+            `Completada hoy ✓ · Próxima ${formatDateLong(nextDate)} ↻`,
             "repeat-2"
           );
-
-          setTimeout(() => item?.classList.remove('repeat-complete'), 450);
           return;
         }
 
@@ -5294,13 +5489,17 @@ body.task-drag-mode .activity-card {
       if (index === -1 || index === state.categories.length - 1) return false;
 
       const category = state.categories[index];
-      const remainingRealTasks = category.tasks.filter(
-        task => !task.draft && String(task.text || "").trim()
+      const hasWorkForToday = category.tasks.some(task =>
+        !task.draft &&
+        String(task.text || "").trim() &&
+        task.date &&
+        task.date <= today() &&
+        !isRepeatCompletedToday(task)
       );
 
-      // Solo se mueve automáticamente cuando ya no queda ninguna
-      // tarea activa en esa fase.
-      if (remainingRealTasks.length > 0) return false;
+      // Se mueve cuando la fase ya no tiene trabajo que resolver hoy.
+      // Puede conservar tareas programadas para días futuros.
+      if (hasWorkForToday) return false;
 
       state.categories.splice(index, 1);
       state.categories.push(category);
@@ -5327,6 +5526,39 @@ body.task-drag-mode .activity-card {
       if (idx === -1) return;
 
       const [task] = state.completed.splice(idx, 1);
+
+      // Ocurrencia de una tarea repetitiva:
+      // recuperamos la misma tarea-serie y la dejamos pendiente hoy.
+      if (task.recurringOccurrence && task.repeatSourceId) {
+        const targetCat = state.categories.find(c => c.id === task.originCat);
+        const seriesTask = targetCat?.tasks.find(t => t.id === task.repeatSourceId);
+
+        if (seriesTask) {
+          seriesTask.date = today();
+          seriesTask.lastCompletedAt = null;
+          seriesTask.lastCompletedDate = null;
+          seriesTask.repeat = true;
+          seriesTask.repeatDays = Array.isArray(task.repeatDays) ? [...task.repeatDays] : [...(seriesTask.repeatDays || [])];
+        }
+
+        const completedItem = document.querySelector(
+          `.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`
+        );
+
+        animateTaskRemoval(completedItem, () => {
+          render();
+          refreshIcons();
+          updateSummaryUI();
+          updateTaskHeights();
+        });
+
+        persistLocal();
+        localDirty = true;
+        scheduleSave("restaurar ocurrencia repetitiva");
+        toast("Tarea repetitiva restaurada para hoy", "rotate-ccw");
+        return;
+      }
+
       const target = state.categories.find(c => c.id === task.originCat) || state.categories[0];
 
       const restoredTask = {
@@ -5337,7 +5569,8 @@ body.task-drag-mode .activity-card {
         repeat: Boolean(task.repeat),
         repeatDays: Array.isArray(task.repeatDays) ? [...task.repeatDays] : [],
         repeatCount: Number(task.repeatCount || 0),
-        lastCompletedAt: task.lastCompletedAt || null
+        lastCompletedAt: task.lastCompletedAt || null,
+        lastCompletedDate: task.lastCompletedDate || null
       };
 
       if (target) {
@@ -5353,14 +5586,17 @@ body.task-drag-mode .activity-card {
         });
       }
 
-      const completedItem = document.querySelector(`.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`);
+      const completedItem = document.querySelector(
+        `.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`
+      );
+
       animateTaskRemoval(completedItem, () => {
         const targetList = target
           ? document.querySelector(`.task-list[data-category-id="${cssEscapeSafe(target.id)}"]`)
           : null;
 
         if (targetList) {
-          const newItem = buildTaskItem({ id: task.id, text: task.text, date: task.date || today(), draft: false, repeat: Boolean(task.repeat), repeatDays: Array.isArray(task.repeatDays) ? task.repeatDays : [], repeatCount: Number(task.repeatCount || 0), lastCompletedAt: task.lastCompletedAt || null }, activeSearch.trim().toLowerCase(), false);
+          const newItem = buildTaskItem(restoredTask, activeSearch.trim().toLowerCase(), false);
           newItem.classList.add('task-enter');
           targetList.appendChild(newItem);
           refreshIcons();
