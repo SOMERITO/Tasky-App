@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V61 -->
+  <!-- TASKY PRO · V63 -->
 
   <!-- TASKY PRO · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -21,6 +21,12 @@
   <link rel="manifest" href="manifest.json?v=48">
 
   <!-- Dependencias con versiones fijadas para evitar cambios inesperados. -->
+  <!-- V62: dependencias diferidas. No bloquean el primer render. -->
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
 
   <style>
     :root {
@@ -3315,10 +3321,21 @@ body.task-drag-mode .activity-card {
       }
     }
 
+  
+    .tasky-icon-fallback {
+      display: inline-grid;
+      place-items: center;
+      width: 1.15em;
+      height: 1.15em;
+      line-height: 1;
+      font-weight: 900;
+      font-style: normal;
+    }
+
   </style>
 </head>
 
-<body tabindex="-1" data-tasky-version="V61">
+<body tabindex="-1" data-tasky-version="V63">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -3339,7 +3356,7 @@ body.task-drag-mode .activity-card {
 
       <div class="top-actions">
         <div id="syncStatus" class="sync-label" title="Estado de sincronización">
-          <span class="sync-dot"></span> Local
+          <span class="sync-dot"></span> Preparando…
         </div>
         <button id="themeBtn" class="icon-btn" type="button" aria-label="Cambiar tema" title="Cambiar tema">
           <i data-lucide="sun"></i>
@@ -3563,7 +3580,7 @@ body.task-drag-mode .activity-card {
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 61;
+    const APP_VERSION = 63;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -3700,7 +3717,17 @@ body.task-drag-mode .activity-card {
     }
 
     function taskCountPending() {
-      return state.categories.reduce((sum, cat) => sum + cat.tasks.length, 0);
+      const now = today();
+
+      return state.categories.reduce((sum, cat) => {
+        return sum + cat.tasks.filter(task =>
+          !task.draft &&
+          String(task.text || "").trim() &&
+          task.date &&
+          task.date <= now &&
+          !isRepeatCompletedToday(task)
+        ).length;
+      }, 0);
     }
 
     function taskCountCompleted() {
@@ -3770,7 +3797,7 @@ body.task-drag-mode .activity-card {
         total,
         overdue: overdueTasks().length,
         completedRegular,
-        completedRecurring
+        completedRecurring: 0
       };
     }
 
@@ -3793,46 +3820,28 @@ body.task-drag-mode .activity-card {
        ========================================================= */
     const DEPENDENCY_TIMEOUT_MS = 8000;
 
-    function loadExternalScript(src, timeout = DEPENDENCY_TIMEOUT_MS) {
-      return new Promise((resolve, reject) => {
-        const existing = document.querySelector(`script[data-tasky-src="${src}"]`);
-        if (existing) {
-          if (existing.dataset.loaded === "true") {
-            resolve();
+    function waitForGlobal(predicate, timeout = DEPENDENCY_TIMEOUT_MS, interval = 40) {
+      return new Promise(resolve => {
+        const startedAt = Date.now();
+
+        const check = () => {
+          let ready = false;
+          try { ready = Boolean(predicate()); } catch (_) { ready = false; }
+
+          if (ready) {
+            resolve(true);
             return;
           }
-        }
 
-        const script = existing || document.createElement("script");
-        let settled = false;
+          if (Date.now() - startedAt >= timeout) {
+            resolve(false);
+            return;
+          }
 
-        const finish = (fn, value) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          script.onload = null;
-          script.onerror = null;
-          fn(value);
+          setTimeout(check, interval);
         };
 
-        const timer = window.setTimeout(() => {
-          finish(reject, new Error(`Timeout cargando ${src}`));
-        }, timeout);
-
-        script.dataset.taskySrc = src;
-        script.async = false;
-        script.onload = () => {
-          script.dataset.loaded = "true";
-          finish(resolve);
-        };
-        script.onerror = () => {
-          finish(reject, new Error(`No se pudo cargar ${src}`));
-        };
-
-        if (!existing) {
-          script.src = src;
-          document.head.appendChild(script);
-        }
+        check();
       });
     }
 
@@ -3842,45 +3851,88 @@ body.task-drag-mode .activity-card {
         return true;
       }
 
-      try {
-        await loadExternalScript("https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js", 5000);
+      const ready = await waitForGlobal(() => window.lucide?.createIcons, 6500, 40);
+
+      if (ready) {
         refreshIcons();
         return true;
-      } catch (error) {
-        console.warn("Lucide no disponible; Tasky continúa sin iconos externos.", error);
-        return false;
       }
+
+      console.warn("Lucide no está disponible; se muestran iconos de respaldo.");
+      refreshIcons();
+      return false;
     }
 
     async function ensureFirebaseLoaded() {
       if (window.firebase?.firestore) return true;
 
-      try {
-        await loadExternalScript(
-          "https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js",
-          DEPENDENCY_TIMEOUT_MS
-        );
+      const ready = await waitForGlobal(() => window.firebase?.firestore, 7500, 50);
 
-        await loadExternalScript(
-          "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js",
-          DEPENDENCY_TIMEOUT_MS
-        );
-
-        return Boolean(window.firebase?.firestore);
-      } catch (error) {
-        console.warn("Firebase no pudo cargarse; se mantiene Modo local.", error);
+      if (!ready) {
+        console.warn("Firebase no pudo inicializarse; Tasky continúa en modo local.");
         return false;
       }
+
+      return true;
+    }
+
+    const FALLBACK_ICONS = {
+      "check-check": "✓",
+      "sun": "☼",
+      "moon": "☾",
+      "ellipsis": "⋯",
+      "sparkles": "✦",
+      "search": "⌕",
+      "gauge": "◔",
+      "triangle-alert": "⚠",
+      "layout-list": "☷",
+      "plus": "+",
+      "chevron-up": "↑",
+      "chevron-down": "↓",
+      "message-circle": "◌",
+      "download": "⇩",
+      "layers-3": "▱",
+      "x": "×",
+      "shield-check": "◇",
+      "upload": "⇧",
+      "archive": "▣",
+      "trash-2": "⌫",
+      "grip-vertical": "⋮",
+      "bar-chart-3": "▥",
+      "undo-2": "↶",
+      "repeat-2": "↻",
+      "circle-check": "✓",
+      "rotate-ccw": "↶",
+      "cloud-off": "□",
+      "arrow-down-to-line": "↓",
+      "shield-alert": "!"
+    };
+
+    function renderFallbackIcons() {
+      document.querySelectorAll("i[data-lucide]").forEach(icon => {
+        if (icon.dataset.taskyFallback === "true") return;
+
+        const name = icon.getAttribute("data-lucide") || "";
+        icon.textContent = FALLBACK_ICONS[name] || "•";
+        icon.classList.add("tasky-icon-fallback");
+        icon.dataset.taskyFallback = "true";
+        icon.setAttribute("aria-hidden", "true");
+      });
     }
 
     function refreshIcons() {
       try {
         if (window.lucide?.createIcons) {
+          // If a fallback character was inserted, Lucide still sees the
+          // original data-lucide element and replaces it with SVG.
           lucide.createIcons();
+          return;
         }
       } catch (error) {
         console.warn("No se pudieron actualizar los iconos:", error);
       }
+
+      renderFallbackIcons();
     }
 
     function hideLoading() {
@@ -5270,7 +5322,7 @@ body.task-drag-mode .activity-card {
       if (completedCard) el.board.insertBefore(card, completedCard);
       else el.board.appendChild(card);
 
-      initTaskSortables();
+      initSortables();
 
       refreshIcons();
       refreshSectionMoveControls();
@@ -7276,6 +7328,19 @@ body.task-drag-mode .activity-card {
 
         // Los iconos y Firebase son secundarios y van en segundo plano.
         refreshIcons();
+
+        // Un segundo frame asegura que las métricas y alturas queden
+        // sincronizadas incluso cuando el WebView pinta durante una
+        // transición de arranque.
+        requestAnimationFrame(() => {
+          try {
+            updateSummaryUI();
+            updateTaskHeights();
+          } catch (error) {
+            console.warn("Refresco inicial:", error);
+          }
+        });
+
         loadOptionalIcons();
         startFirebase();
       } catch (error) {
