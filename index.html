@@ -7,11 +7,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="description" content="Tasky — gestor personal de fases y tareas.">
-  <link rel="preload" href="./quotes.json?v=64" as="fetch" crossorigin="anonymous">
+  <link rel="prefetch" href="./quotes.json?v=65" as="fetch" crossorigin="anonymous">
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V64 -->
+  <!-- TASKY PRO · V65 -->
 
   <!-- TASKY PRO · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -3345,10 +3345,46 @@ body.task-drag-mode .activity-card {
       }
     }
 
+  
+    /* =========================================================
+       V65 · Frases externas
+       ========================================================= */
+    .hero-quote-wrap {
+      min-height: 48px;
+    }
+
+    .hero-quote.is-loading {
+      opacity: .58;
+    }
+
+    .hero-quote.is-error {
+      color: var(--muted);
+      font-size: .84rem;
+    }
+
+    .hero-quote-author {
+      min-height: 18px;
+      margin-top: 5px !important;
+      color: var(--text);
+      font-size: .78rem;
+      font-weight: 800;
+      font-style: normal;
+      opacity: .82;
+    }
+
+    .hero-quote-author:empty {
+      display: none;
+    }
+
+    .hero-quote-author::before {
+      content: "— ";
+      color: var(--primary);
+    }
+
   </style>
 </head>
 
-<body tabindex="-1" data-tasky-version="V64">
+<body tabindex="-1" data-tasky-version="V65">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -3592,7 +3628,7 @@ body.task-drag-mode .activity-card {
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 64;
+    const APP_VERSION = 65;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -6964,22 +7000,32 @@ body.task-drag-mode .activity-card {
 
 
     /* =========================================================
-       TASKY PRO V64 · Frases externas
-       Las frases viven en quotes.json, no en index.html.
+       TASKY PRO V65 · Frases externas
+       Biblioteca: /quotes.json
        ========================================================= */
     let MOTIVATIONAL_QUOTES = [];
-    const QUOTE_SOURCE = "./quotes.json";
-    const QUOTE_CACHE_KEY = "tasky_quotes_cache_v64";
-    const QUOTE_INTERVAL_MS = 60 * 1000; // 1 minuto.
-    const QUOTE_HISTORY_KEY = "tasky_quote_history_v64";
+
+    const QUOTE_SOURCE = "quotes.json";
+    const QUOTE_CACHE_KEY = "tasky_quotes_cache_v65";
+    const QUOTE_HISTORY_KEY = "tasky_quote_history_v65";
+    const QUOTE_INTERVAL_MS = 60 * 1000;
     const QUOTE_HISTORY_DAYS = 2;
 
     let quoteRotationSeed = 0;
     let quoteCurrentIndex = -1;
     let quoteTimer = null;
 
+    function getQuotesURL() {
+      try {
+        return new URL(QUOTE_SOURCE, document.baseURI).href;
+      } catch (_) {
+        return `${location.origin}/quotes.json`;
+      }
+    }
+
     function createQuoteSeed() {
       const base = Date.now() ^ Math.floor(performance.now() * 1000);
+
       try {
         const array = new Uint32Array(2);
         crypto.getRandomValues(array);
@@ -6990,12 +7036,16 @@ body.task-drag-mode .activity-card {
     }
 
     function quoteRandom() {
-      quoteRotationSeed = (Math.imul(quoteRotationSeed, 1664525) + 1013904223) >>> 0;
+      quoteRotationSeed = (
+        Math.imul(quoteRotationSeed, 1664525) + 1013904223
+      ) >>> 0;
+
       return quoteRotationSeed / 4294967296;
     }
 
     function normalizeQuoteList(input) {
       const source = Array.isArray(input) ? input : input?.quotes;
+
       if (!Array.isArray(source)) return [];
 
       const unique = [];
@@ -7008,81 +7058,181 @@ body.task-drag-mode .activity-card {
         if (!text || !author) continue;
 
         const key = `${text}\u0000${author}`;
+
         if (seen.has(key)) continue;
 
         seen.add(key);
-        unique.push({ text, author });
+        unique.push({
+          text,
+          author
+        });
       }
 
       return unique;
     }
 
-    async function loadQuotesLibrary() {
-      let library = [];
-
+    function saveQuotesCache(quotes) {
       try {
-        const response = await fetch(`${QUOTE_SOURCE}?v=${APP_VERSION}`, {
-          method: "GET",
-          cache: "no-cache",
-          credentials: "same-origin"
-        });
+        safeStorage.setItem(
+          QUOTE_CACHE_KEY,
+          JSON.stringify({
+            savedAt: Date.now(),
+            quotes
+          })
+        );
+      } catch (_) {}
+    }
+
+    function loadQuotesCache() {
+      try {
+        const raw = safeStorage.getItem(QUOTE_CACHE_KEY);
+        if (!raw) return [];
+
+        const cached = JSON.parse(raw);
+
+        return normalizeQuoteList(cached?.quotes);
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function setQuoteMessage(text, author = "", mode = "") {
+      const node = document.getElementById("heroSubtitle");
+      const authorNode = document.getElementById("heroQuoteAuthor");
+
+      if (!node || !authorNode) return;
+
+      node.textContent = text;
+      authorNode.textContent = author;
+
+      node.classList.remove("is-loading", "is-error");
+
+      if (mode) {
+        node.classList.add(mode);
+      }
+    }
+
+    async function fetchQuotesFromNetwork() {
+      const url = getQuotesURL();
+
+      // Primero intentamos la versión cacheable normal.
+      try {
+        const response = await fetch(
+          `${url}?v=${APP_VERSION}`,
+          {
+            method: "GET",
+            cache: "no-cache",
+            credentials: "same-origin"
+          }
+        );
 
         if (!response.ok) {
-          throw new Error(`quotes.json respondió ${response.status}`);
+          throw new Error(`HTTP ${response.status}`);
         }
 
         const payload = await response.json();
-        library = normalizeQuoteList(payload);
+        const quotes = normalizeQuoteList(payload);
 
-        if (!library.length) {
-          throw new Error("quotes.json no contiene frases válidas.");
+        if (!quotes.length) {
+          throw new Error("La biblioteca no contiene frases válidas.");
         }
 
+        return quotes;
+      } catch (firstError) {
+        // Segundo intento con una URL limpia, útil para SW/CDN.
         try {
-          safeStorage.setItem(
-            QUOTE_CACHE_KEY,
-            JSON.stringify({
-              savedAt: Date.now(),
-              quotes: library
-            })
-          );
-        } catch (_) {}
+          const cleanResponse = await fetch(url, {
+            method: "GET",
+            cache: "reload",
+            credentials: "same-origin"
+          });
 
-      } catch (error) {
-        console.warn("No se pudo cargar quotes.json; intentando caché local.", error);
-
-        try {
-          const cachedRaw = safeStorage.getItem(QUOTE_CACHE_KEY);
-          const cached = cachedRaw ? JSON.parse(cachedRaw) : null;
-
-          if (
-            cached &&
-            Array.isArray(cached.quotes) &&
-            cached.quotes.length
-          ) {
-            library = normalizeQuoteList(cached.quotes);
+          if (!cleanResponse.ok) {
+            throw new Error(`HTTP ${cleanResponse.status}`);
           }
-        } catch (_) {}
+
+          const payload = await cleanResponse.json();
+          const quotes = normalizeQuoteList(payload);
+
+          if (!quotes.length) {
+            throw new Error("La biblioteca no contiene frases válidas.");
+          }
+
+          return quotes;
+        } catch (secondError) {
+          console.warn(
+            "No se pudo obtener quotes.json:",
+            firstError,
+            secondError
+          );
+
+          return [];
+        }
+      }
+    }
+
+    async function loadQuotesLibrary() {
+      const node = document.getElementById("heroSubtitle");
+      const authorNode = document.getElementById("heroQuoteAuthor");
+
+      if (node) node.classList.add("is-loading");
+      if (authorNode) authorNode.textContent = "";
+
+      // Primero cache: permite mostrar inmediatamente una frase + autor
+      // aunque la red todavía esté resolviendo quotes.json.
+      const cached = loadQuotesCache();
+
+      if (cached.length) {
+        MOTIVATIONAL_QUOTES = cached;
+
+        quoteRotationSeed = createQuoteSeed();
+        quoteCurrentIndex = -1;
+
+        updateMotivationalQuote(true);
+
+        clearInterval(quoteTimer);
+        quoteTimer = setInterval(
+          () => updateMotivationalQuote(false),
+          QUOTE_INTERVAL_MS
+        );
       }
 
-      MOTIVATIONAL_QUOTES = library;
+      // Después red: actualiza la biblioteca si existe una versión nueva.
+      const networkQuotes = await fetchQuotesFromNetwork();
 
-      if (!MOTIVATIONAL_QUOTES.length) {
-        const node = document.getElementById("heroSubtitle");
-        const authorNode = document.getElementById("heroQuoteAuthor");
-        if (node) node.textContent = "Tu siguiente acción empieza ahora.";
-        if (authorNode) authorNode.textContent = "";
-        return false;
+      if (networkQuotes.length) {
+        MOTIVATIONAL_QUOTES = networkQuotes;
+        saveQuotesCache(networkQuotes);
+
+        // Elegimos una nueva frase después de una carga real para que
+        // actualizar la página también produzca una nueva selección.
+        quoteRotationSeed = createQuoteSeed();
+        quoteCurrentIndex = -1;
+
+        updateMotivationalQuote(true);
+
+        clearInterval(quoteTimer);
+        quoteTimer = setInterval(
+          () => updateMotivationalQuote(false),
+          QUOTE_INTERVAL_MS
+        );
+
+        return true;
       }
 
-      quoteRotationSeed = createQuoteSeed();
-      quoteCurrentIndex = -1;
-      updateMotivationalQuote(true);
+      if (cached.length) {
+        // La caché ya se mostró; no cambiamos nada.
+        return true;
+      }
 
-      clearInterval(quoteTimer);
-      quoteTimer = setInterval(() => updateMotivationalQuote(false), QUOTE_INTERVAL_MS);
+      // Estado visible para diagnóstico, no una frase genérica silenciosa.
+      setQuoteMessage(
+        "No se pudo cargar la biblioteca de frases.",
+        "quotes.json",
+        "is-error"
+      );
 
-      return true;
+      return false;
     }
 
     function loadQuoteHistory() {
@@ -7094,27 +7244,43 @@ body.task-drag-mode .activity-card {
           !parsed ||
           !Array.isArray(parsed.items) ||
           !Number.isFinite(parsed.startedAt) ||
-          (Date.now() - parsed.startedAt) >= QUOTE_HISTORY_DAYS * 24 * 60 * 60 * 1000
+          (Date.now() - parsed.startedAt) >=
+            QUOTE_HISTORY_DAYS * 24 * 60 * 60 * 1000
         ) {
-          return { startedAt: Date.now(), items: [] };
+          return {
+            startedAt: Date.now(),
+            items: []
+          };
         }
 
         return {
           startedAt: parsed.startedAt,
-          items: [...new Set(
-            parsed.items
-              .map(Number)
-              .filter(n => n >= 0 && n < MOTIVATIONAL_QUOTES.length)
-          )]
+          items: [
+            ...new Set(
+              parsed.items
+                .map(Number)
+                .filter(
+                  n =>
+                    n >= 0 &&
+                    n < MOTIVATIONAL_QUOTES.length
+                )
+            )
+          ]
         };
       } catch (_) {
-        return { startedAt: Date.now(), items: [] };
+        return {
+          startedAt: Date.now(),
+          items: []
+        };
       }
     }
 
     function saveQuoteHistory(history) {
       try {
-        safeStorage.setItem(QUOTE_HISTORY_KEY, JSON.stringify(history));
+        safeStorage.setItem(
+          QUOTE_HISTORY_KEY,
+          JSON.stringify(history)
+        );
       } catch (_) {}
     }
 
@@ -7131,44 +7297,84 @@ body.task-drag-mode .activity-card {
       }
 
       const available = [];
-      for (let i = 0; i < MOTIVATIONAL_QUOTES.length; i++) {
-        if (!used.has(i) && i !== quoteCurrentIndex) available.push(i);
+
+      for (
+        let i = 0;
+        i < MOTIVATIONAL_QUOTES.length;
+        i++
+      ) {
+        if (
+          !used.has(i) &&
+          i !== quoteCurrentIndex
+        ) {
+          available.push(i);
+        }
       }
 
-      if (!available.length) return quoteCurrentIndex >= 0 ? quoteCurrentIndex : 0;
+      if (!available.length) {
+        return quoteCurrentIndex >= 0
+          ? quoteCurrentIndex
+          : 0;
+      }
 
-      const index = available[Math.floor(quoteRandom() * available.length)];
+      const index =
+        available[
+          Math.floor(
+            quoteRandom() * available.length
+          )
+        ];
+
       history.items.push(index);
       saveQuoteHistory(history);
 
       quoteCurrentIndex = index;
+
       return index;
     }
 
     function updateMotivationalQuote(force = false) {
       const node = document.getElementById("heroSubtitle");
-      const authorNode = document.getElementById("heroQuoteAuthor");
-      if (!node || !authorNode || !MOTIVATIONAL_QUOTES.length) return;
+      const authorNode =
+        document.getElementById("heroQuoteAuthor");
 
-      if (!quoteRotationSeed) quoteRotationSeed = createQuoteSeed();
+      if (
+        !node ||
+        !authorNode ||
+        !MOTIVATIONAL_QUOTES.length
+      ) {
+        return;
+      }
+
+      if (!quoteRotationSeed) {
+        quoteRotationSeed = createQuoteSeed();
+      }
 
       const index = pickNextQuoteIndex();
+
       if (index < 0) return;
 
-      const quote = MOTIVATIONAL_QUOTES[index];
+      const quote =
+        MOTIVATIONAL_QUOTES[index];
 
       if (
         !force &&
         node.textContent === quote.text &&
         authorNode.textContent === quote.author
-      ) return;
+      ) {
+        return;
+      }
 
       node.classList.add("is-changing");
       authorNode.classList.add("is-changing");
 
-      setTimeout(() => {
+      window.setTimeout(() => {
         node.textContent = quote.text;
         authorNode.textContent = quote.author;
+
+        node.classList.remove(
+          "is-loading",
+          "is-error"
+        );
 
         requestAnimationFrame(() => {
           node.classList.remove("is-changing");
@@ -7198,8 +7404,7 @@ body.task-drag-mode .activity-card {
         }
 
         bindEvents();
-        // La biblioteca de frases se carga desde quotes.json en segundo plano.
-        // Tasky no espera a que llegue para mostrarse.
+        // V65: la biblioteca se carga en segundo plano; la UI no espera.
         loadQuotesLibrary();
 
         // Primer render terminado: Tasky queda interactiva YA.
