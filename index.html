@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V55 -->
+  <!-- TASKY PRO · V56 -->
 
   <!-- TASKY PRO · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -2844,6 +2844,8 @@ body.task-drag-mode .activity-card {
 
     @media (max-width: 760px) {
 
+        }
+
     /* =========================================================
        TASKY PRO · V54 · BOTONES FLOTANTES
        El menú oculto no ocupa espacio: #fab mide exactamente
@@ -2993,10 +2995,158 @@ body.task-drag-mode .activity-card {
       }
     }
 
+
+    /* =========================================================
+       TASKY PRO · V56 · AUTORIDAD VISUAL
+       Este bloque final corrige cualquier override histórico
+       de V50-V55 sin eliminar funcionalidades.
+       ========================================================= */
+
+    /* Quote spacing */
+    .hero-quote-wrap {
+      max-width: 720px !important;
+      padding-top: 2px !important;
+    }
+
+    .hero-quote {
+      margin: 0 !important;
+      padding: 0 !important;
+      min-height: 0 !important;
+      line-height: 1.45 !important;
+    }
+
+    .hero-quote-author {
+      margin-top: 5px !important;
+      line-height: 1.25 !important;
+      font-weight: 850 !important;
+    }
+
+    /* FAB desktop: same proportions as Tipify Pro */
+    .fab {
+      position: fixed !important;
+      right: 40px !important;
+      bottom: calc(40px + env(safe-area-inset-bottom)) !important;
+      top: auto !important;
+      width: 70px !important;
+      height: 70px !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      display: block !important;
+      overflow: visible !important;
+      z-index: 9000 !important;
+    }
+
+    .fab-main {
+      width: 70px !important;
+      height: 70px !important;
+      margin: 0 !important;
+      border-radius: 50% !important;
+    }
+
+    /* Most important: hidden actions do not participate in layout. */
+    .fab-actions {
+      position: absolute !important;
+      right: 0 !important;
+      bottom: calc(100% + 10px) !important;
+      width: max-content !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: flex-end !important;
+      gap: 7px !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      transform: translateY(8px) scale(.96) !important;
+      transform-origin: bottom right !important;
+    }
+
+    .fab.open .fab-actions {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+      transform: none !important;
+    }
+
+    /* Top button: independently fixed, 16px above the +. */
+    .fab-top {
+      position: fixed !important;
+      right: 40px !important;
+      bottom: calc(126px + env(safe-area-inset-bottom)) !important;
+      top: auto !important;
+      width: 70px !important;
+      height: 70px !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      display: grid !important;
+      place-items: center !important;
+      box-sizing: border-box !important;
+      border-radius: 50% !important;
+      z-index: 9002 !important;
+    }
+
+    .fab-top.visible {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+      transform: translate3d(0,0,0) scale(1) !important;
+    }
+
+    @media (max-width: 760px) {
+      .fab {
+        right: 18px !important;
+        bottom: calc(18px + env(safe-area-inset-bottom)) !important;
+        width: 60px !important;
+        height: 60px !important;
+      }
+
+      .fab-main {
+        width: 60px !important;
+        height: 60px !important;
+        border-radius: 18px !important;
+      }
+
+      .fab-top {
+        right: 18px !important;
+        bottom: calc(94px + env(safe-area-inset-bottom)) !important;
+        width: 60px !important;
+        height: 60px !important;
+        border-radius: 18px !important;
+      }
+    }
+
+    /* Repeating task completed today */
+    .check-btn.repeat-done-today {
+      background: var(--success) !important;
+      border-color: var(--success) !important;
+      color: #fff !important;
+      box-shadow: 0 5px 14px rgba(16,185,129,.20);
+    }
+
+    .task-item.repeat-done-today {
+      border-color: rgba(16,185,129,.20) !important;
+      background: linear-gradient(90deg, rgba(16,185,129,.045), transparent 65%), var(--surface-solid);
+    }
+
+    .task-due-repeat-status {
+      grid-column: 3 / 4;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--success);
+      font-weight: 800;
+      font-size: .74rem;
+      line-height: 1.25;
+    }
+
+    .task-due-repeat-status .next-date {
+      color: var(--muted);
+      font-weight: 750;
+    }
+
 </style>
 </head>
 
-<body tabindex="-1" data-tasky-version="V55">
+<body tabindex="-1" data-tasky-version="V56">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -3241,7 +3391,7 @@ body.task-drag-mode .activity-card {
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 55;
+    const APP_VERSION = 56;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -3406,12 +3556,52 @@ body.task-drag-mode .activity-card {
       return task?.date || "";
     }
 
+    function isRepeatCompletedToday(task) {
+      return Boolean(
+        task?.repeat &&
+        (
+          task.lastCompletedDate === today() ||
+          (
+            task.lastCompletedAt &&
+            completedDateFor({ completedAt: task.lastCompletedAt }) === today()
+          )
+        )
+      );
+    }
+
+    function recurringCompletedTodayForCategory(categoryId) {
+      const cat = state.categories.find(c => c.id === categoryId);
+      if (!cat) return 0;
+      return cat.tasks.filter(task => !task.draft && isRepeatCompletedToday(task)).length;
+    }
+
     function todayTaskStats() {
       const now = today();
-      const completed = state.completed.filter(t => completedDateFor(t) === now).length;
-      const pending = state.categories.reduce((sum, cat) => sum + cat.tasks.filter(t => !t.draft && t.date === now).length, 0);
+      const completedRegular = state.completed.filter(t => completedDateFor(t) === now).length;
+      const completedRecurring = state.categories.reduce(
+        (sum, cat) => sum + cat.tasks.filter(t => isRepeatCompletedToday(t)).length,
+        0
+      );
+      const completed = completedRegular + completedRecurring;
+
+      const pending = state.categories.reduce(
+        (sum, cat) => sum + cat.tasks.filter(
+          t => !t.draft &&
+               t.date === now &&
+               !isRepeatCompletedToday(t)
+        ).length,
+        0
+      );
+
       const total = completed + pending;
-      return { completed, pending, total, overdue: overdueTasks().length };
+      return {
+        completed,
+        pending,
+        total,
+        overdue: overdueTasks().length,
+        completedRegular,
+        completedRecurring
+      };
     }
 
     function setSyncStatus(kind, label) {
@@ -3479,7 +3669,8 @@ body.task-drag-mode .activity-card {
                 ? [...new Set(task.repeatDays.map(Number).filter(n => n >= 1 && n <= 7))].sort((a,b) => a-b)
                 : (task.repeat ? [1,2,3,4,5,6,7] : []),
               repeatCount: Number.isFinite(Number(task.repeatCount)) ? Number(task.repeatCount) : 0,
-              lastCompletedAt: task.lastCompletedAt || null
+              lastCompletedAt: task.lastCompletedAt || null,
+              lastCompletedDate: /^\d{4}-\d{2}-\d{2}$/.test(task.lastCompletedDate || "") ? task.lastCompletedDate : null
             };
           });
 
@@ -3716,8 +3907,16 @@ body.task-drag-mode .activity-card {
 
     function buildCategoryCard(cat, index, query) {
       const visiblePending = cat.tasks.filter(t => !(!t.draft && t.text.trim() && t.date < today())).length;
-      const completedToday = state.completed.filter(t => t.originCat === cat.id && completedDateFor(t) === today()).length;
-      const todayPending = cat.tasks.filter(t => !t.draft && t.text.trim() && t.date === today()).length;
+      const completedToday =
+        state.completed.filter(t => t.originCat === cat.id && completedDateFor(t) === today()).length
+        + recurringCompletedTodayForCategory(cat.id);
+
+      const todayPending = cat.tasks.filter(
+        t => !t.draft &&
+             t.text.trim() &&
+             t.date === today() &&
+             !isRepeatCompletedToday(t)
+      ).length;
       const todayTotal = completedToday + todayPending;
       const pct = todayTotal ? Math.round((completedToday / todayTotal) * 100) : 0;
 
@@ -3805,9 +4004,19 @@ body.task-drag-mode .activity-card {
           ? "Atrasada · " + formatDateLong(task.date)
           : "Para hoy · " + formatDateLong(task.date);
         const repeatActive = Boolean(task.repeat);
+        const repeatDoneToday = isRepeatCompletedToday(task);
+
+        item.classList.toggle("repeat-done-today", repeatDoneToday);
+
         item.innerHTML = `
           <button class="drag-task" type="button" title="Mantén pulsado para mover" aria-label="Mover tarea"><i data-lucide="grip-vertical"></i></button>
-          <button class="check-btn" type="button" data-action="complete-task" aria-label="Completar tarea"></button>
+          <button
+            class="check-btn${repeatDoneToday ? " repeat-done-today" : ""}"
+            type="button"
+            data-action="complete-task"
+            aria-label="${repeatDoneToday ? "Completada hoy" : "Completar tarea"}"
+            ${repeatDoneToday ? "disabled" : ""}
+          >${repeatDoneToday ? '<i data-lucide="check"></i>' : ""}</button>
           <textarea class="task-input" rows="1" maxlength="500" placeholder="Añadir tarea…">${escapeHTML(task.text)}</textarea>
           <div class="task-item-actions">
             <button class="repeat-btn${repeatActive ? " active" : ""}" type="button" data-action="toggle-repeat" title="${repeatActive ? "Editar repetición" : "Configurar repetición"}" aria-label="${repeatActive ? "Editar repetición" : "Configurar repetición"}">
@@ -3815,7 +4024,11 @@ body.task-drag-mode .activity-card {
             </button>
             <button class="delete-task-btn remove-task" type="button" data-action="delete-task" title="Eliminar tarea" aria-label="Eliminar tarea"><i data-lucide="x"></i></button>
           </div>
-          ${repeatActive ? `<span class="task-repeat-badge task-repeat-badge-standalone" title="${escapeHTML(repeatDaysToLabel(task.repeatDays))}"><i data-lucide="repeat-2"></i>${escapeHTML(repeatDaysToLabel(task.repeatDays))}</span>` : ''}
+          ${repeatActive && repeatDoneToday
+            ? `<span class="task-due-repeat-status"><i data-lucide="circle-check"></i>Completada hoy<span class="next-date">· Próxima ${escapeHTML(formatDateLong(task.date))}</span></span>`
+            : (repeatActive
+              ? `<span class="task-repeat-badge task-repeat-badge-standalone" title="${escapeHTML(repeatDaysToLabel(task.repeatDays))}"><i data-lucide="repeat-2"></i>${escapeHTML(repeatDaysToLabel(task.repeatDays))}</span>`
+              : '')}
         `;
       }
 
@@ -4632,8 +4845,16 @@ body.task-drag-mode .activity-card {
       if (!cat) return;
 
       const visiblePending = cat.tasks.filter(t => !(!t.draft && t.text.trim() && t.date < today())).length;
-      const completedToday = state.completed.filter(t => t.originCat === categoryId && completedDateFor(t) === today()).length;
-      const todayPending = cat.tasks.filter(t => !t.draft && t.text.trim() && t.date === today()).length;
+      const completedToday =
+        state.completed.filter(t => t.originCat === categoryId && completedDateFor(t) === today()).length
+        + recurringCompletedTodayForCategory(categoryId);
+
+      const todayPending = cat.tasks.filter(
+        t => !t.draft &&
+             t.text.trim() &&
+             t.date === today() &&
+             !isRepeatCompletedToday(t)
+      ).length;
       const todayTotal = completedToday + todayPending;
       const pct = todayTotal ? Math.round((completedToday / todayTotal) * 100) : 0;
 
@@ -4965,20 +5186,45 @@ body.task-drag-mode .activity-card {
         // Las tareas repetidas NO pasan al historial: se reprograman para mañana
         // y permanecen exactamente en la misma fase y posición.
         if (task.repeat) {
-          if (!Array.isArray(task.repeatDays) || !task.repeatDays.length) task.repeatDays = [1,2,3,4,5,6,7];
-          task.date = nextRepeatDate(today(), task.repeatDays);
-          task.lastCompletedAt = Date.now();
-          task.repeatCount = Number(task.repeatCount || 0) + 1;
-
-          const item = document.querySelector(`.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`);
-          const due = item?.querySelector('.task-due');
-          if (item) {
-            item.classList.add('repeat-complete');
-            item.classList.remove('overdue');
+          if (!Array.isArray(task.repeatDays) || !task.repeatDays.length) {
+            task.repeatDays = [1,2,3,4,5,6,7];
           }
 
-          if (due) {
-            due.innerHTML = `<i data-lucide="calendar-days"></i>Próxima · ${escapeHTML(formatDateLong(task.date))}<span class="task-repeat-badge"><i data-lucide="repeat-2"></i>${escapeHTML(repeatDaysToLabel(task.repeatDays))}</span>`;
+          const completedToday = today();
+          task.lastCompletedAt = Date.now();
+          task.lastCompletedDate = completedToday;
+          task.repeatCount = Number(task.repeatCount || 0) + 1;
+          task.date = nextRepeatDate(completedToday, task.repeatDays);
+
+          const item = document.querySelector(
+            `.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`
+          );
+
+          if (item) {
+            item.classList.add('repeat-complete', 'repeat-done-today');
+            item.classList.remove('overdue');
+
+            const check = item.querySelector('.check-btn');
+            if (check) {
+              check.disabled = true;
+              check.classList.add('repeat-done-today');
+              check.innerHTML = '<i data-lucide="check"></i>';
+              check.setAttribute('aria-label', 'Completada hoy');
+            }
+
+            const due = item.querySelector('.task-due');
+            if (due) {
+              due.innerHTML =
+                `<span class="task-due-repeat-status"><i data-lucide="circle-check"></i>` +
+                `Completada hoy<span class="next-date">· Próxima ${escapeHTML(formatDateLong(task.date))}</span></span>`;
+            }
+
+            const badge = item.querySelector('.task-repeat-badge-standalone');
+            if (badge) {
+              badge.outerHTML =
+                `<span class="task-due-repeat-status"><i data-lucide="circle-check"></i>` +
+                `Completada hoy<span class="next-date">· Próxima ${escapeHTML(formatDateLong(task.date))}</span></span>`;
+            }
           }
 
           persistLocal();
@@ -4988,7 +5234,12 @@ body.task-drag-mode .activity-card {
           scheduleSave("completar tarea repetida");
           refreshIcons();
           softHaptic(28);
-          toast(`Completada. Próxima: ${formatDateLong(task.date)} ↻`, "repeat-2");
+
+          toast(
+            `Completada hoy · Próxima ${formatDateLong(task.date)} ↻`,
+            "repeat-2"
+          );
+
           setTimeout(() => item?.classList.remove('repeat-complete'), 450);
           return;
         }
@@ -5172,7 +5423,7 @@ body.task-drag-mode .activity-card {
 
       if (originalIndex === -1) return;
 
-      const inserted = lines.map(line => ({ id: uid("task"), text: line, date: today(), draft: false, repeat: false, repeatDays: [], repeatCount: 0, lastCompletedAt: null }));
+      const inserted = lines.map(line => ({ id: uid("task"), text: line, date: today(), draft: false, repeat: false, repeatDays: [], repeatCount: 0, lastCompletedAt: null, lastCompletedDate: null }));
       const current = cat.tasks[originalIndex];
       current.text = lines[0];
       current.draft = false;
@@ -5860,7 +6111,13 @@ body.task-drag-mode .activity-card {
 
         const updateFabTop = () => {
           if (!el.fabTop) return;
-          const shouldShow = window.scrollY > 320;
+          const currentTop = Math.max(
+            window.scrollY || 0,
+            document.scrollingElement?.scrollTop || 0,
+            document.documentElement?.scrollTop || 0,
+            document.body?.scrollTop || 0
+          );
+          const shouldShow = currentTop > 320;
           el.fabTop.classList.toggle("visible", shouldShow);
           el.fabTop.setAttribute("aria-hidden", String(!shouldShow));
         };
@@ -5874,15 +6131,22 @@ body.task-drag-mode .activity-card {
           });
         };
 
+        let topJumpAt = 0;
+
         const goTop = event => {
           event.preventDefault();
           event.stopPropagation();
+
+          const now = Date.now();
+          if (now - topJumpAt < 180) return;
+          topJumpAt = now;
+
           el.fab?.classList.remove("open");
           el.fabMain?.setAttribute("aria-expanded", "false");
           scrollToTopTasky();
         };
 
-        el.fabTop.addEventListener("pointerup", goTop, { passive: false });
+        el.fabTop.addEventListener("pointerdown", goTop, { passive: false });
         el.fabTop.addEventListener("click", goTop);
 
         window.addEventListener("scroll", onScroll, { passive: true });
@@ -5993,6 +6257,7 @@ body.task-drag-mode .activity-card {
 
         if (action === "complete-task") {
           const item = event.target.closest("[data-task-id]");
+          if (item?.classList.contains("repeat-done-today")) return;
           completeTask(item?.dataset.taskId);
           return;
         }
@@ -6150,116 +6415,302 @@ body.task-drag-mode .activity-card {
 
     const MOTIVATIONAL_QUOTES = [
       { text: "La manera de empezar es dejar de hablar y comenzar a hacer.", author: "Walt Disney" },
-      { text: "Es divertido hacer lo imposible.", author: "Walt Disney" },
       { text: "Cuando eres curioso, encuentras muchas cosas interesantes que hacer.", author: "Walt Disney" },
+      { text: "Es divertido hacer lo imposible.", author: "Walt Disney" },
       { text: "Hay más tesoro en los libros que en todo el botín pirata de la Isla del Tesoro.", author: "Walt Disney" },
       { text: "Los sueños pueden hacerse realidad si tenemos el valor de perseguirlos.", author: "Walt Disney" },
-      { text: "Todos nuestros sueños pueden hacerse realidad si tenemos el valor de perseguirlos.", author: "Walt Disney" },
+      { text: "La risa es eterna, la imaginación no tiene edad y los sueños son para siempre.", author: "Walt Disney" },
+      { text: "Lo importante es no dejar de preguntar. La curiosidad tiene su propia razón de existir.", author: "Albert Einstein" },
+      { text: "Aprende del ayer, vive para hoy, espera el mañana.", author: "Albert Einstein" },
+      { text: "La imaginación es más importante que el conocimiento.", author: "Albert Einstein" },
+      { text: "Quien nunca ha cometido un error nunca ha intentado nada nuevo.", author: "Albert Einstein" },
+      { text: "En medio de la dificultad yace la oportunidad.", author: "Albert Einstein" },
+      { text: "La vida es como montar en bicicleta. Para mantener el equilibrio debes seguir adelante.", author: "Albert Einstein" },
       { text: "Bien hecho es mejor que bien dicho.", author: "Benjamin Franklin" },
       { text: "Un hoy vale por dos mañanas.", author: "Benjamin Franklin" },
       { text: "La diligencia es la madre de la buena suerte.", author: "Benjamin Franklin" },
-      { text: "El que puede tener paciencia puede tener lo que quiera.", author: "Benjamin Franklin" },
       { text: "Quien tiene paciencia puede tener lo que quiera.", author: "Benjamin Franklin" },
-      { text: "Al no prepararse, te estás preparando para fracasar.", author: "Benjamin Franklin" },
-      { text: "La ocasión está cargada de dificultades, y debemos elevarnos con la ocasión.", author: "Abraham Lincoln" },
-      { text: "Como nuestro caso es nuevo, debemos pensar de nuevo y actuar de nuevo.", author: "Abraham Lincoln" },
-      { text: "La verdad es generalmente la mejor vindicación contra la calumnia.", author: "Abraham Lincoln" },
-      { text: "Los dogmas del pasado tranquilo son inadecuados para el presente tormentoso.", author: "Abraham Lincoln" },
-      { text: "Casi todos los hombres pueden soportar la adversidad, pero si quieres probar el carácter de un hombre, dale poder.", author: "Abraham Lincoln" },
-      { text: "Siempre recuerda que tu propia resolución de triunfar es más importante que cualquier otra.", author: "Abraham Lincoln" },
-      { text: "Lo importante es no dejar de preguntar. La curiosidad tiene su propia razón de existir.", author: "Albert Einstein" },
-      { text: "La imaginación es más importante que el conocimiento.", author: "Albert Einstein" },
-      { text: "En medio de la dificultad yace la oportunidad.", author: "Albert Einstein" },
-      { text: "Quien nunca ha cometido un error nunca ha intentado nada nuevo.", author: "Albert Einstein" },
-      { text: "La vida es como montar en bicicleta. Para mantener el equilibrio, debes seguir adelante.", author: "Albert Einstein" },
-      { text: "La lógica te llevará de A a B. La imaginación te llevará a todas partes.", author: "Albert Einstein" },
+      { text: "Un centavo ahorrado es un centavo ganado.", author: "Benjamin Franklin" },
+      { text: "No dejes para mañana lo que puedas hacer hoy.", author: "Benjamin Franklin" },
       { text: "Hay una manera mejor de hacerlo: encuéntrala.", author: "Thomas A. Edison" },
-      { text: "No he fracasado; he encontrado maneras que no funcionan.", author: "Thomas A. Edison" },
-      { text: "Muchas de las oportunidades de la vida se pierden porque están disfrazadas de trabajo.", author: "Thomas A. Edison" },
-      { text: "El valor consiste en comprender que puedes perder y aun así intentarlo.", author: "Thomas A. Edison" },
-      { text: "Cuando has agotado todas las posibilidades, recuerda esto: no lo has hecho.", author: "Thomas A. Edison" },
-      { text: "Nuestra mayor debilidad está en rendirnos. La manera más segura de tener éxito es intentarlo una vez más.", author: "Thomas A. Edison" },
+      { text: "La oportunidad a menudo se pierde porque va vestida de trabajo.", author: "Thomas A. Edison" },
+      { text: "Nuestra mayor debilidad está en rendirnos.", author: "Thomas A. Edison" },
+      { text: "El propósito de todo trabajo es producir o realizar algo.", author: "Thomas A. Edison" },
+      { text: "Para inventar necesitas una buena imaginación y un montón de basura.", author: "Thomas A. Edison" },
+      { text: "El valor de una idea está en ponerla en práctica.", author: "Thomas A. Edison" },
       { text: "Quien no es lo bastante valiente para asumir riesgos no logrará nada en la vida.", author: "Muhammad Ali" },
-      { text: "El servicio a los demás es el alquiler que pagas por tu lugar aquí en la Tierra.", author: "Muhammad Ali" },
       { text: "No cuentes los días; haz que los días cuenten.", author: "Muhammad Ali" },
-      { text: "Imposible es solo una gran palabra lanzada por hombres pequeños.", author: "Muhammad Ali" },
+      { text: "Imposible es solo una gran palabra.", author: "Muhammad Ali" },
+      { text: "El servicio a los demás es el alquiler que pagas por tu lugar aquí en la Tierra.", author: "Muhammad Ali" },
       { text: "Es la repetición de afirmaciones lo que conduce a la creencia.", author: "Muhammad Ali" },
-      { text: "No es la montaña que tenemos delante la que nos desgasta; es el guijarro en el zapato.", author: "Muhammad Ali" },
+      { text: "Soy el más grande; lo dije incluso antes de saber que lo era.", author: "Muhammad Ali" },
+      { text: "La mejor manera de predecir tu futuro es crearlo.", author: "Abraham Lincoln" },
+      { text: "Siempre recuerda que tu propia resolución de triunfar es más importante que cualquier otra.", author: "Abraham Lincoln" },
+      { text: "Todo lo que soy, o espero ser, se lo debo a mi madre ángel.", author: "Abraham Lincoln" },
+      { text: "Dame seis horas para talar un árbol y pasaré las primeras cuatro afilando el hacha.", author: "Abraham Lincoln" },
+      { text: "La ocasión está cargada de dificultades y debemos elevarnos con la ocasión.", author: "Abraham Lincoln" },
+      { text: "Como nuestro caso es nuevo, debemos pensar de nuevo y actuar de nuevo.", author: "Abraham Lincoln" },
       { text: "Haz lo que puedas, con lo que tengas, donde estés.", author: "Theodore Roosevelt" },
-      { text: "Mucho y lejos, el mejor premio que ofrece la vida es la oportunidad de trabajar duro en un trabajo que valga la pena.", author: "Theodore Roosevelt" },
-      { text: "Ningún hombre vale la pena si no está dispuesto a arriesgarse.", author: "Theodore Roosevelt" },
-      { text: "Cree que puedes y ya estás a medio camino.", author: "Theodore Roosevelt" },
+      { text: "Habla suavemente y lleva un gran garrote.", author: "Theodore Roosevelt" },
+      { text: "El mérito pertenece al hombre que está realmente en la arena.", author: "Theodore Roosevelt" },
       { text: "La comparación es el ladrón de la alegría.", author: "Theodore Roosevelt" },
+      { text: "Mucho y lejos, el mejor premio que ofrece la vida es la oportunidad de trabajar duro.", author: "Theodore Roosevelt" },
+      { text: "Nada en el mundo vale la pena tener o vale la pena hacer a menos que signifique esfuerzo, dolor y dificultad.", author: "Theodore Roosevelt" },
+      { text: "La primera condición para alcanzar algo es quererlo.", author: "Theodore Roosevelt" },
       { text: "El único hombre que nunca comete un error es el hombre que nunca hace nada.", author: "Theodore Roosevelt" },
-      { text: "Solos podemos hacer muy poco; juntos podemos hacer mucho.", author: "Helen Keller" },
-      { text: "La vida es una aventura atrevida o no es nada.", author: "Helen Keller" },
-      { text: "Optimismo es la fe que conduce al logro. Nada puede hacerse sin esperanza y confianza.", author: "Helen Keller" },
-      { text: "Mantén tu rostro hacia el sol y no podrás ver la sombra.", author: "Helen Keller" },
-      { text: "Nunca se nos dará valor para ver qué tan lejos podemos llegar sin ser empujados.", author: "Helen Keller" },
-      { text: "La seguridad es principalmente una superstición. La vida es una aventura atrevida o nada.", author: "Helen Keller" },
+      { text: "La mejor parte de la vida es la que el hombre emplea en sus buenas acciones.", author: "Theodore Roosevelt" },
+      { text: "No hay hombre en la tierra que no pueda hacer más de lo que cree que puede.", author: "Theodore Roosevelt" },
+      { text: "La perseverancia es la capacidad de pasar de un fracaso a otro sin perder el entusiasmo.", author: "Theodore Roosevelt" },
+      { text: "La gran tarea del hombre es actuar.", author: "Theodore Roosevelt" },
+      { text: "El crédito pertenece a quien se entrega a la causa.", author: "Theodore Roosevelt" },
+      { text: "El carácter, a largo plazo, es el factor decisivo en la vida.", author: "Theodore Roosevelt" },
       { text: "Nada en la vida debe ser temido; solo debe ser comprendido.", author: "Marie Curie" },
       { text: "Ahora es el momento de entender más, para que podamos temer menos.", author: "Marie Curie" },
       { text: "Debemos creer que estamos dotados para algo y que debemos lograrlo.", author: "Marie Curie" },
-      { text: "La ciencia es la base de todos nuestros conocimientos.", author: "Marie Curie" },
+      { text: "La ciencia es la base de todo progreso.", author: "Marie Curie" },
       { text: "No debemos temer a nada en la vida.", author: "Marie Curie" },
       { text: "En ciencia debemos interesarnos por las cosas, no por las personas.", author: "Marie Curie" },
-      { text: "Nada funcionará a menos que tú lo hagas.", author: "Maya Angelou" },
-      { text: "Haz lo mejor que puedas hasta que sepas más. Cuando sepas más, hazlo mejor.", author: "Maya Angelou" },
-      { text: "Mi misión en la vida no es simplemente sobrevivir, sino prosperar.", author: "Maya Angelou" },
-      { text: "Puedes encontrar muchas derrotas, pero no debes ser derrotado.", author: "Maya Angelou" },
-      { text: "Nada puede apagar la luz que brilla desde dentro.", author: "Maya Angelou" },
-      { text: "El coraje es la virtud más importante porque, sin coraje, no puedes practicar ninguna otra virtud consistentemente.", author: "Maya Angelou" },
-      { text: "No hay nada en este mundo tan poderoso como una idea cuyo momento ha llegado.", author: "Victor Hugo" },
-      { text: "La música expresa aquello que no puede ponerse en palabras y aquello que no puede permanecer en silencio.", author: "Victor Hugo" },
-      { text: "El futuro tiene muchos nombres: para el débil es lo inalcanzable; para el temeroso, lo desconocido; para el valiente, la oportunidad.", author: "Victor Hugo" },
-      { text: "La risa es el sol que ahuyenta el invierno del rostro humano.", author: "Victor Hugo" },
-      { text: "Incluso la noche más oscura terminará y saldrá el sol.", author: "Victor Hugo" },
-      { text: "Ser bueno es fácil; lo difícil es ser justo.", author: "Victor Hugo" },
-      { text: "La felicidad de tu vida depende de la calidad de tus pensamientos.", author: "Marco Aurelio" },
-      { text: "Tienes poder sobre tu mente, no sobre los acontecimientos externos.", author: "Marco Aurelio" },
-      { text: "La pérdida no es más que cambio, y el cambio es el deleite de la naturaleza.", author: "Marco Aurelio" },
-      { text: "Haz cada acto de tu vida como si fuera el último.", author: "Marco Aurelio" },
-      { text: "El impedimento para la acción hace avanzar la acción. Lo que se interpone se convierte en el camino.", author: "Marco Aurelio" },
-      { text: "Lo que hacemos ahora resuena en la eternidad.", author: "Marco Aurelio" },
-      { text: "No es que tengamos poco tiempo, sino que perdemos mucho.", author: "Séneca" },
-      { text: "Sufrimos más en la imaginación que en la realidad.", author: "Séneca" },
-      { text: "La suerte es lo que sucede cuando la preparación se encuentra con la oportunidad.", author: "Séneca" },
-      { text: "Mientras esperamos la vida, la vida pasa.", author: "Séneca" },
-      { text: "Comienza de una vez a vivir y cuenta cada día como una vida separada.", author: "Séneca" },
-      { text: "La dificultad no es levantarse, sino mantenerse en pie.", author: "Séneca" },
-      { text: "No importa lo lento que vayas, mientras no te detengas.", author: "Confucio" },
-      { text: "Nuestra mayor gloria no es no caer nunca, sino levantarnos cada vez que caemos.", author: "Confucio" },
-      { text: "El hombre que mueve una montaña comienza llevando pequeñas piedras.", author: "Confucio" },
-      { text: "Cuando veas a una persona buena, piensa en llegar a ser como ella.", author: "Confucio" },
-      { text: "Aprender sin pensar es inútil; pensar sin aprender es peligroso.", author: "Confucio" },
-      { text: "Todo tiene belleza, pero no todos la ven.", author: "Confucio" },
-      { text: "La única manera de hacer un gran trabajo es amar lo que haces.", author: "Steve Jobs" },
-      { text: "Tu tiempo es limitado, así que no lo desperdicies viviendo la vida de alguien más.", author: "Steve Jobs" },
-      { text: "La innovación distingue a un líder de un seguidor.", author: "Steve Jobs" },
-      { text: "Estoy convencido de que cerca de la mitad de lo que separa a los emprendedores exitosos de los no exitosos es perseverancia.", author: "Steve Jobs" },
-      { text: "Mantente hambriento. Mantente alocado.", author: "Steve Jobs" },
-      { text: "Decidir qué no hacer es tan importante como decidir qué hacer.", author: "Steve Jobs" },
-      { text: "La única persona en la que estás destinado a convertirte es la persona que decides ser.", author: "Ralph Waldo Emerson" },
-      { text: "Escribe en tu corazón que cada día es el mejor día del año.", author: "Ralph Waldo Emerson" },
-      { text: "Haz siempre lo que temes hacer.", author: "Ralph Waldo Emerson" },
+      { text: "Soy de los que piensan que la ciencia tiene una gran belleza.", author: "Marie Curie" },
+      { text: "La vida no es fácil para ninguno de nosotros. Pero debemos tener perseverancia.", author: "Marie Curie" },
+      { text: "En la ciencia hay que estar interesados en las cosas, no en las personas.", author: "Marie Curie" },
+      { text: "La humanidad necesita hombres prácticos, que aprovechen al máximo su trabajo.", author: "Marie Curie" },
+      { text: "Un científico en su laboratorio no es solamente un técnico.", author: "Marie Curie" },
+      { text: "Nunca se nota lo que se ha hecho; solo puede verse lo que queda por hacer.", author: "Marie Curie" },
+      { text: "Todo mi trabajo tiene una parte de utilidad y una parte de pasión.", author: "Marie Curie" },
+      { text: "El progreso es imposible sin el avance de la ciencia.", author: "Marie Curie" },
       { text: "La recompensa de una cosa bien hecha es haberla hecho.", author: "Ralph Waldo Emerson" },
       { text: "Nada grande fue jamás logrado sin entusiasmo.", author: "Ralph Waldo Emerson" },
-      { text: "La vida es un viaje, no un destino.", author: "Ralph Waldo Emerson" },
-      { text: "La felicidad de tu vida depende de la calidad de tus pensamientos.", author: "Marco Aurelio" },
+      { text: "Haz siempre lo que temes hacer.", author: "Ralph Waldo Emerson" },
+      { text: "La única persona en la que estás destinado a convertirte es la persona que decides ser.", author: "Ralph Waldo Emerson" },
+      { text: "Escribe en tu corazón que cada día es el mejor día del año.", author: "Ralph Waldo Emerson" },
+      { text: "La vida es una sucesión de lecciones que deben ser vividas para ser comprendidas.", author: "Ralph Waldo Emerson" },
+      { text: "Lo que haces habla tan alto que no puedo escuchar lo que dices.", author: "Ralph Waldo Emerson" },
+      { text: "Adopta el ritmo de la naturaleza: su secreto es la paciencia.", author: "Ralph Waldo Emerson" },
+      { text: "El único modo de tener un amigo es ser uno.", author: "Ralph Waldo Emerson" },
+      { text: "La alegría es un perfume que no puedes derramar sobre otros sin que unas gotas caigan sobre ti.", author: "Ralph Waldo Emerson" },
+      { text: "La gente solo ve lo que está preparada para ver.", author: "Ralph Waldo Emerson" },
+      { text: "Todo artista fue primero un aficionado.", author: "Ralph Waldo Emerson" },
+      { text: "Para ser tú mismo en un mundo que intenta hacerte constantemente otra cosa es el mayor logro.", author: "Ralph Waldo Emerson" },
+      { text: "La confianza en uno mismo es el primer secreto del éxito.", author: "Ralph Waldo Emerson" },
+      { text: "No importa lo lento que vayas, mientras no te detengas.", author: "Confucio" },
+      { text: "El hombre que mueve una montaña comienza llevando pequeñas piedras.", author: "Confucio" },
+      { text: "Todo tiene belleza, pero no todos la ven.", author: "Confucio" },
+      { text: "Cuando veas a una persona buena, piensa en llegar a ser como ella.", author: "Confucio" },
+      { text: "Aprender sin pensar es inútil; pensar sin aprender es peligroso.", author: "Confucio" },
+      { text: "Nuestra mayor gloria no es no caer nunca, sino levantarnos cada vez que caemos.", author: "Confucio" },
+      { text: "La voluntad de ganar, el deseo de triunfar y la urgencia de alcanzar tu potencial son las llaves que abrirán la puerta a la excelencia personal.", author: "Confucio" },
+      { text: "El que pregunta es un tonto por cinco minutos; el que no pregunta permanece tonto para siempre.", author: "Confucio" },
+      { text: "Quien aprende pero no piensa está perdido.", author: "Confucio" },
+      { text: "Si tu meta es un año, planta arroz; si es diez años, planta árboles; si es cien años, educa a la gente.", author: "Confucio" },
+      { text: "Elige un trabajo que ames y no tendrás que trabajar ni un día de tu vida.", author: "Confucio" },
+      { text: "El éxito depende de la preparación previa, y sin esa preparación es seguro que habrá fracaso.", author: "Confucio" },
+      { text: "Exígete mucho a ti mismo y espera poco de los demás.", author: "Confucio" },
+      { text: "El que domina a los demás es fuerte; el que se domina a sí mismo es poderoso.", author: "Confucio" },
+      { text: "No es que tengamos poco tiempo, sino que perdemos mucho.", author: "Séneca" },
+      { text: "Sufrimos más en la imaginación que en la realidad.", author: "Séneca" },
+      { text: "Mientras esperamos la vida, la vida pasa.", author: "Séneca" },
+      { text: "Comienza de una vez a vivir y cuenta cada día como una vida separada.", author: "Séneca" },
       { text: "No es pobre el hombre que tiene poco, sino el que anhela mucho.", author: "Séneca" },
-      { text: "La constancia vence lo que la dicha no alcanza.", author: "Miguel de Cervantes" },
+      { text: "La suerte es lo que sucede cuando la preparación se encuentra con la oportunidad.", author: "Séneca" },
+      { text: "A veces incluso vivir es un acto de coraje.", author: "Séneca" },
+      { text: "La dificultad es una oportunidad para hacer algo mejor.", author: "Séneca" },
+      { text: "La mayor parte de la libertad consiste en no hacer lo que se quiere, sino querer lo que se hace.", author: "Séneca" },
+      { text: "Si un hombre no sabe a qué puerto navega, ningún viento es favorable.", author: "Séneca" },
+      { text: "Ningún viento es favorable para quien no sabe a qué puerto se dirige.", author: "Séneca" },
+      { text: "La paciencia y el tiempo hacen más que la fuerza o la pasión.", author: "Séneca" },
+      { text: "La vida es larga, si sabes usarla.", author: "Séneca" },
+      { text: "Haz que cada día sea un nuevo comienzo.", author: "Séneca" },
+      { text: "Tienes poder sobre tu mente, no sobre los acontecimientos externos.", author: "Marco Aurelio" },
+      { text: "La felicidad de tu vida depende de la calidad de tus pensamientos.", author: "Marco Aurelio" },
+      { text: "Haz cada acto de tu vida como si fuera el último.", author: "Marco Aurelio" },
+      { text: "El impedimento para la acción hace avanzar la acción.", author: "Marco Aurelio" },
+      { text: "Lo que hacemos ahora resuena en la eternidad.", author: "Marco Aurelio" },
+      { text: "La mejor venganza es no ser como tu enemigo.", author: "Marco Aurelio" },
+      { text: "La pérdida no es más que cambio, y el cambio es el deleite de la naturaleza.", author: "Marco Aurelio" },
+      { text: "La vida de un hombre es lo que sus pensamientos hacen de ella.", author: "Marco Aurelio" },
+      { text: "No pierdas más tiempo discutiendo sobre cómo debe ser un buen hombre. Sé uno.", author: "Marco Aurelio" },
+      { text: "Acepta las cosas a las que te une el destino y ama a las personas con las que el destino te une.", author: "Marco Aurelio" },
+      { text: "Cuando te levantes por la mañana, piensa en el privilegio de estar vivo.", author: "Marco Aurelio" },
+      { text: "Si estás afligido por algo externo, no es aquello lo que te perturba, sino tu juicio sobre ello.", author: "Marco Aurelio" },
+      { text: "La tranquilidad que viene cuando dejas de preocuparte por lo que dicen.", author: "Marco Aurelio" },
+      { text: "El alma se vuelve teñida del color de sus pensamientos.", author: "Marco Aurelio" },
+      { text: "No son las cosas las que perturban a los hombres, sino los juicios que tienen sobre ellas.", author: "Epicteto" },
+      { text: "Primero di a ti mismo quién quieres ser; después haz lo que tienes que hacer.", author: "Epicteto" },
+      { text: "No busques que los acontecimientos sucedan como quieres, sino quiere que sucedan como suceden.", author: "Epicteto" },
+      { text: "Nadie es libre si no es dueño de sí mismo.", author: "Epicteto" },
+      { text: "Lo que importa no es lo que te sucede, sino cómo reaccionas.", author: "Epicteto" },
+      { text: "La clave es mantener la atención en lo que está bajo tu control.", author: "Epicteto" },
+      { text: "Las circunstancias no hacen al hombre, simplemente lo revelan.", author: "Epicteto" },
+      { text: "No expliques tu filosofía; encárnala.", author: "Epicteto" },
+      { text: "El hombre sabio no necesita consejo; el necio no lo acepta.", author: "Epicteto" },
+      { text: "La libertad es no tener miedo.", author: "Epicteto" },
+      { text: "No hay nada bueno ni malo; es el pensamiento el que lo hace así.", author: "Epicteto" },
+      { text: "Si quieres mejorar, debes aceptar que puedes equivocarte.", author: "Epicteto" },
+      { text: "Dificultades son cosas que muestran lo que los hombres son.", author: "Epicteto" },
+      { text: "Haz cada cosa como si fuera lo último que haces.", author: "Epicteto" },
+      { text: "Un viaje de mil millas comienza con un solo paso.", author: "Lao Tzu" },
+      { text: "La naturaleza no se apresura, pero todo se realiza.", author: "Lao Tzu" },
+      { text: "El que conoce a los demás es sabio; el que se conoce a sí mismo es iluminado.", author: "Lao Tzu" },
+      { text: "El que conquista a otros es fuerte; el que se conquista a sí mismo es poderoso.", author: "Lao Tzu" },
+      { text: "Cuando dejo ir lo que soy, me convierto en lo que podría ser.", author: "Lao Tzu" },
+      { text: "El silencio es una fuente de gran fuerza.", author: "Lao Tzu" },
+      { text: "Un buen viajero no tiene planes fijos y no pretende llegar.", author: "Lao Tzu" },
+      { text: "Hacer poco es mejor que hacer mucho cuando se hace con intención.", author: "Lao Tzu" },
+      { text: "Quien está satisfecho con lo que tiene es rico.", author: "Lao Tzu" },
+      { text: "La simplicidad es la clave de la brillantez.", author: "Lao Tzu" },
+      { text: "La paciencia es una planta amarga que produce frutos dulces.", author: "Lao Tzu" },
+      { text: "El conocimiento es solo reconocer que no sabemos.", author: "Lao Tzu" },
+      { text: "Un buen líder es aquel cuya existencia casi no se nota.", author: "Lao Tzu" },
+      { text: "Dominar a otros es fuerza; dominarte a ti mismo es verdadero poder.", author: "Lao Tzu" },
+      { text: "El tiempo es demasiado lento para quienes esperan.", author: "William Shakespeare" },
+      { text: "Nuestra duda es nuestra traición.", author: "William Shakespeare" },
+      { text: "Nada es bueno o malo; el pensamiento lo hace así.", author: "William Shakespeare" },
+      { text: "Con alegría y risa deja que las viejas arrugas lleguen.", author: "William Shakespeare" },
+      { text: "Mejor tres horas demasiado pronto que un minuto demasiado tarde.", author: "William Shakespeare" },
+      { text: "La acción elocuente es una virtud.", author: "William Shakespeare" },
+      { text: "Los miserables no tienen otra medicina que la esperanza.", author: "William Shakespeare" },
+      { text: "El hábito cambia el carácter.", author: "William Shakespeare" },
+      { text: "El amor consuela como el sol después de la lluvia.", author: "William Shakespeare" },
+      { text: "No temas a la grandeza. Algunos nacen grandes, otros alcanzan la grandeza.", author: "William Shakespeare" },
+      { text: "Todo el mundo es un escenario.", author: "William Shakespeare" },
+      { text: "Dulces son los frutos de la adversidad.", author: "William Shakespeare" },
+      { text: "El sabio sabe que no sabe todo.", author: "William Shakespeare" },
+      { text: "La brevedad es el alma del ingenio.", author: "William Shakespeare" },
+      { text: "La diligencia es la madre de la buena ventura.", author: "Miguel de Cervantes" },
       { text: "El que lee mucho y anda mucho, ve mucho y sabe mucho.", author: "Miguel de Cervantes" },
-      { text: "El tiempo es el mejor autor: siempre encuentra un final perfecto.", author: "Charles Chaplin" },
-      { text: "Un día sin reír es un día perdido.", author: "Charles Chaplin" },
-      { text: "El secreto de una vida feliz y plena es tener un objetivo y realizarlo.", author: "James Allen" },
-      { text: "Actúa como si lo que haces marcara la diferencia. La marca.", author: "William James" },
-      { text: "El mayor descubrimiento de nuestra generación es que un ser humano puede alterar su vida alterando sus actitudes.", author: "William James" },
-      { text: "La acción puede no traer siempre felicidad, pero no hay felicidad sin acción.", author: "William James" },
+      { text: "Por la libertad, así como por la honra, se puede y debe aventurar la vida.", author: "Miguel de Cervantes" },
+      { text: "La verdad adelgaza y no quiebra, y siempre anda sobre la mentira.", author: "Miguel de Cervantes" },
+      { text: "Más vale buen nombre que gran riqueza.", author: "Miguel de Cervantes" },
+      { text: "El sueño es alivio de las miserias para los que las sufren despiertos.", author: "Miguel de Cervantes" },
+      { text: "La libertad es uno de los más preciosos dones que a los hombres dieron los cielos.", author: "Miguel de Cervantes" },
+      { text: "Confía en el tiempo, que suele dar dulces salidas a muchas amargas dificultades.", author: "Miguel de Cervantes" },
+      { text: "El hacer bien a villanos es echar agua en la mar.", author: "Miguel de Cervantes" },
+      { text: "Donde una puerta se cierra, otra se abre.", author: "Miguel de Cervantes" },
+      { text: "La pluma es lengua del alma.", author: "Miguel de Cervantes" },
+      { text: "El valor reside en saber dominar el miedo.", author: "Miguel de Cervantes" },
+      { text: "Al bien hacer jamás le falta premio.", author: "Miguel de Cervantes" },
+      { text: "La experiencia es la madre de la ciencia.", author: "Miguel de Cervantes" },
+      { text: "Nada puede impedir al hombre con la actitud mental correcta alcanzar su objetivo.", author: "Thomas Jefferson" },
+      { text: "Cuando estés en el extremo de tu cuerda, haz un nudo y agárrate.", author: "Thomas Jefferson" },
+      { text: "La felicidad es el gran fin de la vida.", author: "Thomas Jefferson" },
+      { text: "El hombre que no lee nada en absoluto está mejor instruido que el hombre que no lee nada más que periódicos.", author: "Thomas Jefferson" },
+      { text: "Nunca molestes a otro por lo que puedes hacer tú mismo.", author: "Thomas Jefferson" },
+      { text: "Honesty is the first chapter in the book of wisdom.", author: "Thomas Jefferson" },
+      { text: "El orgullo cuesta más que el hambre, la sed y el frío.", author: "Thomas Jefferson" },
+      { text: "Es error suponer que los hombres no se acostumbran al cambio.", author: "Thomas Jefferson" },
+      { text: "Quiero que el futuro sea mejor que el pasado.", author: "Thomas Jefferson" },
+      { text: "Nunca pospongas para mañana lo que puedes hacer hoy.", author: "Thomas Jefferson" },
+      { text: "No debes emprender una tarea para la que no estés dispuesto a perseverar.", author: "Thomas Jefferson" },
+      { text: "La acción no siempre trae felicidad, pero no hay felicidad sin acción.", author: "Thomas Jefferson" },
+      { text: "Nada da tanta seguridad como la práctica.", author: "Thomas Jefferson" },
+      { text: "El talento y el juicio juntos son una fuerza poderosa.", author: "Thomas Jefferson" },
+      { text: "Perseverance and spirit have done wonders in all ages.", author: "George Washington" },
+      { text: "La disciplina es el alma de un ejército.", author: "George Washington" },
+      { text: "La libertad, cuando empieza a echar raíces, es una planta de rápido crecimiento.", author: "George Washington" },
+      { text: "La amistad es una planta de crecimiento lento y debe soportar y resistir los golpes de la adversidad.", author: "George Washington" },
+      { text: "Es mejor estar solo que mal acompañado.", author: "George Washington" },
+      { text: "La verdad finalmente prevalecerá donde haya trabajo para sacarla a la luz.", author: "George Washington" },
+      { text: "La felicidad y el deber deberían ir siempre de la mano.", author: "George Washington" },
+      { text: "La preocupación es el interés que pagamos por un problema antes de que llegue.", author: "George Washington" },
+      { text: "El ejemplo es el liderazgo.", author: "George Washington" },
+      { text: "La experiencia es la más segura de las maestras.", author: "George Washington" },
+      { text: "Asocia con hombres de buena calidad si valoras tu propia reputación.", author: "George Washington" },
+      { text: "La perseverancia es la clave para superar dificultades.", author: "George Washington" },
+      { text: "Haz lo justo y con confianza.", author: "George Washington" },
+      { text: "La libertad es el derecho a elegir tu propia vida.", author: "George Washington" },
+      { text: "La victoria pertenece al más perseverante.", author: "Napoleón Bonaparte" },
+      { text: "Nada hace el futuro tan esperanzador como una buena evaluación del pasado.", author: "Napoleón Bonaparte" },
+      { text: "La imaginación gobierna el mundo.", author: "Napoleón Bonaparte" },
+      { text: "La capacidad nada significa sin oportunidad.", author: "Napoleón Bonaparte" },
+      { text: "Un líder es un negociador de esperanza.", author: "Napoleón Bonaparte" },
+      { text: "La gloria es pasajera, pero la oscuridad es eterna.", author: "Napoleón Bonaparte" },
+      { text: "La victoria no siempre requiere grandes batallones; a veces requiere perseverancia.", author: "Napoleón Bonaparte" },
+      { text: "Un ejército marcha sobre su estómago.", author: "Napoleón Bonaparte" },
+      { text: "La fuerza no es lo que haces, sino lo que puedes soportar.", author: "Napoleón Bonaparte" },
+      { text: "Nunca interrumpas a tu enemigo cuando está cometiendo un error.", author: "Napoleón Bonaparte" },
+      { text: "La estrategia es el arte de hacer uso del tiempo y del espacio.", author: "Napoleón Bonaparte" },
+      { text: "La orden debe ser seguida de acción.", author: "Napoleón Bonaparte" },
+      { text: "Los líderes son distribuidores de esperanza.", author: "Napoleón Bonaparte" },
+      { text: "Un líder debe inspirar más que mandar.", author: "Napoleón Bonaparte" },
+      { text: "Mientras hay vida, hay esperanza.", author: "Cicerón" },
+      { text: "La amistad mejora la felicidad y reduce la miseria.", author: "Cicerón" },
+      { text: "La gratitud no es solo la mayor de las virtudes, sino la madre de todas las demás.", author: "Cicerón" },
+      { text: "La vida de los muertos perdura en la memoria de los vivos.", author: "Cicerón" },
+      { text: "La autoridad de los que enseñan es a menudo un obstáculo para los que quieren aprender.", author: "Cicerón" },
+      { text: "Los hombres son como el vino: algunos se vuelven vinagre, pero los mejores mejoran con la edad.", author: "Cicerón" },
+      { text: "Si tienes un jardín y una biblioteca, tienes todo lo que necesitas.", author: "Cicerón" },
+      { text: "La vida entera de la filosofía es aprender a morir.", author: "Cicerón" },
+      { text: "Las leyes permanecen en silencio en tiempos de guerra.", author: "Cicerón" },
+      { text: "La justicia es la reina de las virtudes.", author: "Cicerón" },
+      { text: "Los deseos son la fuente de todo sufrimiento.", author: "Cicerón" },
+      { text: "El cultivo de la mente debería ser el principal objetivo de la vida.", author: "Cicerón" },
+      { text: "Un hogar sin libros es un cuerpo sin alma.", author: "Cicerón" },
+      { text: "La historia es testigo del tiempo, luz de la verdad, vida de la memoria.", author: "Cicerón" },
+      { text: "El principio es la parte más importante de la obra.", author: "Platón" },
+      { text: "La excelencia no es un regalo, sino una habilidad que requiere práctica.", author: "Platón" },
+      { text: "La necesidad es la madre de la invención.", author: "Platón" },
+      { text: "El conocimiento es la comida del alma.", author: "Platón" },
+      { text: "La dirección en la que comienza la educación de un hombre determinará su vida futura.", author: "Platón" },
+      { text: "La sabiduría es saber que sabemos lo que sabemos y que no sabemos lo que no sabemos.", author: "Platón" },
+      { text: "El hombre que hace todo lo posible alcanza lo mejor de sí mismo.", author: "Platón" },
+      { text: "La ignorancia, la raíz y el tallo de todo mal.", author: "Platón" },
+      { text: "El comienzo es la parte más importante de cualquier trabajo.", author: "Platón" },
+      { text: "La opinión es la intermediaria entre el conocimiento y la ignorancia.", author: "Platón" },
+      { text: "El valor es saber qué no temer.", author: "Platón" },
+      { text: "La música da alma al universo.", author: "Platón" },
+      { text: "El conocimiento adquirido por obligación no permanece en la mente.", author: "Platón" },
+      { text: "La primera y más importante victoria es conquistarse a uno mismo.", author: "Platón" },
+      { text: "Somos lo que hacemos repetidamente.", author: "Aristóteles" },
+      { text: "La excelencia es un hábito.", author: "Aristóteles" },
+      { text: "El placer en el trabajo pone perfección en el trabajo.", author: "Aristóteles" },
+      { text: "Es durante nuestros momentos más oscuros cuando debemos concentrarnos para ver la luz.", author: "Aristóteles" },
+      { text: "La raíz de la educación es amarga, pero el fruto es dulce.", author: "Aristóteles" },
+      { text: "La paciencia es amarga, pero su fruto es dulce.", author: "Aristóteles" },
+      { text: "El propósito del conocimiento es la acción.", author: "Aristóteles" },
+      { text: "El comienzo de la sabiduría es el asombro.", author: "Aristóteles" },
+      { text: "La calidad de vida está determinada por la calidad de nuestros hábitos.", author: "Aristóteles" },
+      { text: "La amistad es un alma que habita en dos cuerpos.", author: "Aristóteles" },
+      { text: "El todo es mayor que la suma de sus partes.", author: "Aristóteles" },
+      { text: "La educación es un adorno en la prosperidad y un refugio en la adversidad.", author: "Aristóteles" },
+      { text: "Quien ha superado sus miedos será verdaderamente libre.", author: "Aristóteles" },
+      { text: "La democracia surgió de la idea de que quienes son iguales en algún aspecto son iguales en todos.", author: "Aristóteles" },
+      { text: "Saber no es suficiente; debemos aplicar. Querer no es suficiente; debemos hacer.", author: "Johann Wolfgang von Goethe" },
+      { text: "Todo lo que puedes hacer o sueñas que puedes, comiénzalo.", author: "Johann Wolfgang von Goethe" },
+      { text: "La audacia tiene genio, poder y magia.", author: "Johann Wolfgang von Goethe" },
+      { text: "Nada vale más que este día.", author: "Johann Wolfgang von Goethe" },
+      { text: "La corrección de errores requiere más valentía que evitarlos.", author: "Johann Wolfgang von Goethe" },
+      { text: "El comportamiento es un espejo en el que cada uno muestra su propia imagen.", author: "Johann Wolfgang von Goethe" },
+      { text: "Quien conoce a los demás es sabio; quien se conoce a sí mismo es iluminado.", author: "Johann Wolfgang von Goethe" },
+      { text: "La acción es el resultado de la disposición.", author: "Johann Wolfgang von Goethe" },
+      { text: "El pensamiento es más interesante que el conocimiento, pero no tanto como la acción.", author: "Johann Wolfgang von Goethe" },
+      { text: "La vida pertenece a los vivos, y quien vive debe estar preparado para los cambios.", author: "Johann Wolfgang von Goethe" },
+      { text: "Un hombre ve en el mundo lo que lleva en su corazón.", author: "Johann Wolfgang von Goethe" },
+      { text: "El talento se forma en la soledad; el carácter, en el mundo.", author: "Johann Wolfgang von Goethe" },
+      { text: "El futuro siempre comienza ahora.", author: "Johann Wolfgang von Goethe" },
+      { text: "La disciplina es la madre de la buena fortuna.", author: "Johann Wolfgang von Goethe" },
+      { text: "Las acciones de los hombres son las mejores intérpretes de sus pensamientos.", author: "John Locke" },
+      { text: "La educación comienza al nacimiento y continúa hasta la muerte.", author: "John Locke" },
+      { text: "Una mente sana en un cuerpo sano es una breve pero completa descripción de un estado feliz.", author: "John Locke" },
+      { text: "Donde no hay ley, no hay libertad.", author: "John Locke" },
+      { text: "El trabajo es el medio por el cual obtenemos muchas de las cosas que queremos.", author: "John Locke" },
+      { text: "Los nuevos conocimientos producen nuevas preguntas.", author: "John Locke" },
+      { text: "La fortaleza no se obtiene de la noche a la mañana.", author: "John Locke" },
+      { text: "La lectura proporciona a la mente materiales de conocimiento; es el pensamiento lo que hace nuestro lo que leemos.", author: "John Locke" },
+      { text: "La disciplina es el puente entre metas y logros.", author: "John Locke" },
+      { text: "La mente del hombre es un almacén de ideas.", author: "John Locke" },
+      { text: "No hay conocimiento innato; la experiencia abre el camino.", author: "John Locke" },
+      { text: "Las personas siempre deben tener la última palabra sobre su propia conducta.", author: "John Locke" },
+      { text: "La razón es la luz natural del entendimiento.", author: "John Locke" },
+      { text: "La curiosidad es el deseo de conocimiento.", author: "John Locke" },
     ];
 
-    const QUOTE_INTERVAL_MS = 90 * 1000;
+    const QUOTE_INTERVAL_MS = 60 * 1000;
+    const QUOTE_HISTORY_KEY = "tasky_quote_history_v56";
+    const QUOTE_HISTORY_DAYS = 2;
+
     let quoteRotationSeed = 0;
-    let quoteLastIndex = -1;
+    let quoteCurrentIndex = -1;
+    let quoteTimer = null;
 
     function createQuoteSeed() {
       const base = Date.now() ^ Math.floor(performance.now() * 1000);
@@ -6277,46 +6728,89 @@ body.task-drag-mode .activity-card {
       return quoteRotationSeed / 4294967296;
     }
 
-    function pickNextQuoteIndex() {
-      if (!MOTIVATIONAL_QUOTES.length) return 0;
-      let index = Math.floor(quoteRandom() * MOTIVATIONAL_QUOTES.length);
-      if (MOTIVATIONAL_QUOTES.length > 1 && index === quoteLastIndex) {
-        index = (index + 1 + Math.floor(quoteRandom() * (MOTIVATIONAL_QUOTES.length - 1))) % MOTIVATIONAL_QUOTES.length;
+    function loadQuoteHistory() {
+      try {
+        const raw = safeStorage.getItem(QUOTE_HISTORY_KEY);
+        const parsed = raw ? JSON.parse(raw) : null;
+
+        if (
+          !parsed ||
+          !Array.isArray(parsed.items) ||
+          parsed.items.length !== MOTIVATIONAL_QUOTES.length ||
+          !Number.isFinite(parsed.startedAt) ||
+          (Date.now() - parsed.startedAt) >= QUOTE_HISTORY_DAYS * 24 * 60 * 60 * 1000
+        ) {
+          return { startedAt: Date.now(), items: [] };
+        }
+
+        return {
+          startedAt: parsed.startedAt,
+          items: [...new Set(parsed.items.map(Number).filter(n => n >= 0 && n < MOTIVATIONAL_QUOTES.length))]
+        };
+      } catch (_) {
+        return { startedAt: Date.now(), items: [] };
       }
-      quoteLastIndex = index;
+    }
+
+    function saveQuoteHistory(history) {
+      try {
+        safeStorage.setItem(QUOTE_HISTORY_KEY, JSON.stringify(history));
+      } catch (_) {}
+    }
+
+    function pickNextQuoteIndex() {
+      const history = loadQuoteHistory();
+      const used = new Set(history.items);
+
+      if (used.size >= MOTIVATIONAL_QUOTES.length) {
+        history.startedAt = Date.now();
+        history.items = [];
+        used.clear();
+      }
+
+      const available = [];
+      for (let i = 0; i < MOTIVATIONAL_QUOTES.length; i++) {
+        if (!used.has(i) && i !== quoteCurrentIndex) available.push(i);
+      }
+
+      if (!available.length) return quoteCurrentIndex >= 0 ? quoteCurrentIndex : 0;
+
+      const index = available[Math.floor(quoteRandom() * available.length)];
+      history.items.push(index);
+      saveQuoteHistory(history);
+
+      quoteCurrentIndex = index;
       return index;
     }
 
     function updateMotivationalQuote(force = false) {
-      const node = document.getElementById('heroSubtitle');
-      const authorNode = document.getElementById('heroQuoteAuthor');
+      const node = document.getElementById("heroSubtitle");
+      const authorNode = document.getElementById("heroQuoteAuthor");
       if (!node || !authorNode || !MOTIVATIONAL_QUOTES.length) return;
 
       if (!quoteRotationSeed) quoteRotationSeed = createQuoteSeed();
+
       const index = pickNextQuoteIndex();
       const quote = MOTIVATIONAL_QUOTES[index];
 
       if (!force && node.textContent === quote.text && authorNode.textContent === quote.author) return;
 
-      node.classList.add('is-changing');
-      authorNode.classList.add('is-changing');
+      node.classList.add("is-changing");
+      authorNode.classList.add("is-changing");
 
       setTimeout(() => {
         node.textContent = quote.text;
         authorNode.textContent = quote.author;
 
         requestAnimationFrame(() => {
-          node.classList.remove('is-changing');
-          authorNode.classList.remove('is-changing');
+          node.classList.remove("is-changing");
+          authorNode.classList.remove("is-changing");
         });
-      }, 140);
+      }, 120);
     }
 
     function init() {
       try {
-        quoteRotationSeed = createQuoteSeed();
-        updateMotivationalQuote(true);
-        setInterval(() => updateMotivationalQuote(false), QUOTE_INTERVAL_MS);
         deviceId = getOrCreateDeviceId();
         document.documentElement.classList.toggle('touch-device', isTouchDevice());
         const savedTheme = safeStorage.getItem(THEME_KEY) || "system";
@@ -6336,8 +6830,10 @@ body.task-drag-mode .activity-card {
         }
 
         bindEvents();
+        quoteRotationSeed = createQuoteSeed();
         updateMotivationalQuote(true);
-        setInterval(() => updateMotivationalQuote(false), 30 * 1000);
+        clearInterval(quoteTimer);
+        quoteTimer = setInterval(() => updateMotivationalQuote(false), QUOTE_INTERVAL_MS);
         refreshIcons();
         hideLoading();
         startFirebase();
