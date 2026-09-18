@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V65 -->
+  <!-- TASKY PRO · V66 -->
 
   <!-- TASKY PRO · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -27,9 +27,7 @@
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-  <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-
-  <style>
+<style>
     :root {
       --bg: #f4f7fb;
       --bg-2: #eaf0f8;
@@ -3321,20 +3319,7 @@ body.task-drag-mode .activity-card {
         scroll-behavior: auto !important;
       }
     }
-
-  
-    .tasky-icon-fallback {
-      display: inline-grid;
-      place-items: center;
-      width: 1.15em;
-      height: 1.15em;
-      line-height: 1;
-      font-weight: 900;
-      font-style: normal;
-    }
-
-  
-    /* V64 · resumen de tres métricas */
+/* V64 · resumen de tres métricas */
     .stats-strip:has(.metric:nth-child(3):last-child) {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
@@ -3381,10 +3366,17 @@ body.task-drag-mode .activity-card {
       color: var(--primary);
     }
 
+  
+    .tasky-svg-icon {
+      flex: 0 0 auto;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
   </style>
 </head>
 
-<body tabindex="-1" data-tasky-version="V65">
+<body tabindex="-1" data-tasky-version="V66">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -3628,7 +3620,7 @@ body.task-drag-mode .activity-card {
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 65;
+    const APP_VERSION = 66;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -3667,7 +3659,6 @@ body.task-drag-mode .activity-card {
       metricCategories: document.getElementById("metricCategories"),
       metricPending: document.getElementById("metricPending"),
       metricCompleted: document.getElementById("metricCompleted"),
-      metricOverdue: document.getElementById("metricOverdue"),
       fab: document.getElementById("fab"),
       fabMain: document.getElementById("fabMain"),
       fabTop: document.getElementById("fabTop"),
@@ -3893,94 +3884,116 @@ body.task-drag-mode .activity-card {
       });
     }
 
-    async function loadOptionalIcons() {
-      if (window.lucide?.createIcons) {
-        refreshIcons();
-        return true;
-      }
-
-      const ready = await waitForGlobal(() => window.lucide?.createIcons, 6500, 40);
-
-      if (ready) {
-        refreshIcons();
-        return true;
-      }
-
-      console.warn("Lucide no está disponible; se muestran iconos de respaldo.");
-      refreshIcons();
-      return false;
-    }
 
     async function ensureFirebaseLoaded() {
       if (window.firebase?.firestore) return true;
 
-      const ready = await waitForGlobal(() => window.firebase?.firestore, 7500, 50);
+      // V66: intentar que los <script defer> terminen primero.
+      let ready = await waitForGlobal(() => window.firebase?.firestore, 5000, 50);
+      if (ready) return true;
 
-      if (!ready) {
-        console.warn("Firebase no pudo inicializarse; Tasky continúa en modo local.");
-        return false;
+      const fallbackSources = [
+        "https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js",
+        "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js",
+        "https://cdn.jsdelivr.net/npm/firebase@10.12.5/compat/firebase-app.js",
+        "https://cdn.jsdelivr.net/npm/firebase@10.12.5/compat/firebase-firestore.js"
+      ];
+
+      for (const src of fallbackSources) {
+        try {
+          const tag = document.createElement("script");
+          tag.src = src;
+          tag.async = true;
+
+          await new Promise((resolve, reject) => {
+            const timer = window.setTimeout(() => reject(new Error("timeout")), 5500);
+            tag.onload = () => {
+              clearTimeout(timer);
+              resolve();
+            };
+            tag.onerror = () => {
+              clearTimeout(timer);
+              reject(new Error("load error"));
+            };
+            document.head.appendChild(tag);
+          });
+
+          ready = Boolean(window.firebase?.firestore);
+          if (ready) return true;
+        } catch (error) {
+          console.warn("Firebase fallback:", src, error);
+        }
       }
 
-      return true;
+      return false;
     }
 
-    const FALLBACK_ICONS = {
-      "check-check": "✓",
-      "sun": "☼",
-      "moon": "☾",
-      "ellipsis": "⋯",
-      "sparkles": "✦",
-      "search": "⌕",
-      "gauge": "◔",
-      "triangle-alert": "⚠",
-      "layout-list": "☷",
-      "plus": "+",
-      "chevron-up": "↑",
-      "chevron-down": "↓",
-      "message-circle": "◌",
-      "download": "⇩",
-      "layers-3": "▱",
-      "x": "×",
-      "shield-check": "◇",
-      "upload": "⇧",
-      "archive": "▣",
-      "trash-2": "⌫",
-      "grip-vertical": "⋮",
-      "bar-chart-3": "▥",
-      "undo-2": "↶",
-      "repeat-2": "↻",
-      "circle-check": "✓",
-      "rotate-ccw": "↶",
-      "cloud-off": "□",
-      "arrow-down-to-line": "↓",
-      "shield-alert": "!"
+    /* =========================================================
+       TASKY PRO V66 · ICONOS LOCALES
+       No dependen de Lucide/CDN. Cada icono se genera como SVG
+       en el propio navegador, garantizando que botones y controles
+       sigan visibles aunque una CDN externa falle.
+       ========================================================= */
+    const LOCAL_ICON_SVG = {
+      "check": '<polyline points="20 6 9 17 4 12"></polyline>',
+      "check-check": '<path d="m3 12 4 4L17 6"></path><path d="m9 12 4 4L21 8"></path>',
+      "sun": '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path>',
+      "moon": '<path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.5 6.5 0 0 0 21 12.8Z"></path>',
+      "ellipsis": '<circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"></circle><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"></circle><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none"></circle>',
+      "sparkles": '<path d="m12 3-1.3 4.3L6 9l4.7 1.7L12 15l1.3-4.3L18 9l-4.7-1.7L12 3Z"></path><path d="m19 14-.7 2.3L16 17l2.3.7L19 20l.7-2.3L22 17l-2.3-.7L19 14Z"></path>',
+      "search": '<circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path>',
+      "gauge": '<path d="M4 14a8 8 0 1 1 16 0"></path><path d="M12 12l4-3"></path><path d="M6 18h12"></path>',
+      "triangle-alert": '<path d="m10.3 3.4-7.6 13A2 2 0 0 0 4.4 19h15.2a2 2 0 0 0 1.7-3l-7.6-13a2 2 0 0 0-3.4 0Z"></path><path d="M12 8v4"></path><path d="M12 16h.01"></path>',
+      "layout-list": '<rect x="3" y="4" width="18" height="4" rx="1"></rect><rect x="3" y="10" width="18" height="4" rx="1"></rect><rect x="3" y="16" width="18" height="4" rx="1"></rect>',
+      "plus": '<path d="M12 5v14"></path><path d="M5 12h14"></path>',
+      "chevron-up": '<path d="m6 15 6-6 6 6"></path>',
+      "chevron-down": '<path d="m6 9 6 6 6-6"></path>',
+      "message-circle": '<path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 8.6 8.6 0 0 1-4-.9L3 21l1.4-4.4A8.4 8.4 0 0 1 3 11.5a9 9 0 1 1 18 0Z"></path>',
+      "download": '<path d="M12 3v11"></path><path d="m7 10 5 5 5-5"></path><path d="M5 20h14"></path>',
+      "layers-3": '<path d="m12 3 9 5-9 5-9-5 9-5Z"></path><path d="m3 12 9 5 9-5"></path><path d="m3 16 9 5 9-5"></path>',
+      "x": '<path d="M6 6l12 12"></path><path d="M18 6 6 18"></path>',
+      "shield-check": '<path d="M12 3 20 6v5c0 5-3.3 8.2-8 10-4.7-1.8-8-5-8-10V6l8-3Z"></path><path d="m9 12 2 2 4-4"></path>',
+      "upload": '<path d="M12 21V8"></path><path d="m7 13 5-5 5 5"></path><path d="M5 3h14"></path>',
+      "archive": '<path d="M4 7h16v13H4z"></path><path d="M3 4h18v3H3z"></path><path d="M9 12h6"></path>',
+      "trash-2": '<path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 15H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path>',
+      "grip-vertical": '<circle cx="9" cy="5" r="1.2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="5" r="1.2" fill="currentColor" stroke="none"></circle><circle cx="9" cy="12" r="1.2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="1.2" fill="currentColor" stroke="none"></circle><circle cx="9" cy="19" r="1.2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="19" r="1.2" fill="currentColor" stroke="none"></circle>',
+      "bar-chart-3": '<path d="M5 20V10"></path><path d="M12 20V4"></path><path d="M19 20v-7"></path>',
+      "undo-2": '<path d="M9 7 4 12l5 5"></path><path d="M4 12h10a6 6 0 0 1 6 6"></path>',
+      "repeat-2": '<path d="m17 1 4 4-4 4"></path><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><path d="m7 23-4-4 4-4"></path><path d="M21 13v2a4 4 0 0 1-4 4H3"></path>',
+      "circle-check": '<circle cx="12" cy="12" r="9"></circle><path d="m8 12 2.5 2.5L16 9"></path>'
     };
 
-    function renderFallbackIcons() {
-      document.querySelectorAll("i[data-lucide]").forEach(icon => {
-        if (icon.dataset.taskyFallback === "true") return;
-
-        const name = icon.getAttribute("data-lucide") || "";
-        icon.textContent = FALLBACK_ICONS[name] || "•";
-        icon.classList.add("tasky-icon-fallback");
-        icon.dataset.taskyFallback = "true";
-        icon.setAttribute("aria-hidden", "true");
-      });
-    }
-
     function refreshIcons() {
-      try {
-        if (window.lucide?.createIcons) {
-          // If a fallback character was inserted, Lucide still sees the
-          // original data-lucide element and replaces it with SVG.
-          lucide.createIcons();
-          return;
-        }
-      } catch (error) {
-        console.warn("No se pudieron actualizar los iconos:", error);
-      }
+      const icons = [...document.querySelectorAll("i[data-lucide]")];
 
-      renderFallbackIcons();
+      for (const node of icons) {
+        const name = node.getAttribute("data-lucide") || "";
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+
+        svg.setAttribute("viewBox", "0 0 24 24");
+        svg.setAttribute("width", "18");
+        svg.setAttribute("height", "18");
+        svg.setAttribute("fill", "none");
+        svg.setAttribute("stroke", "currentColor");
+        svg.setAttribute("stroke-width", "2");
+        svg.setAttribute("stroke-linecap", "round");
+        svg.setAttribute("stroke-linejoin", "round");
+        svg.setAttribute("aria-hidden", "true");
+        svg.setAttribute("focusable", "false");
+        svg.classList.add("tasky-svg-icon");
+
+        svg.innerHTML = LOCAL_ICON_SVG[name] || '<circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"></circle>';
+
+        for (const attr of node.getAttributeNames()) {
+          if (attr === "data-lucide" || attr === "class" || attr === "style") continue;
+        }
+
+        if (node.className) svg.classList.add(...String(node.className).split(/\s+/).filter(Boolean));
+        if (node.getAttribute("style")) svg.setAttribute("style", node.getAttribute("style"));
+        if (node.id) svg.id = node.id;
+
+        node.replaceWith(svg);
+      }
     }
 
     function hideLoading() {
@@ -4217,10 +4230,9 @@ body.task-drag-mode .activity-card {
       el.metricCategories.textContent = state.categories.length;
       el.metricPending.textContent = pending;
       el.metricCompleted.textContent = completed;
-      el.metricOverdue.textContent = overdue.length;
 
       el.overdueCount.textContent = overdue.length;
-      el.overdueBtn.hidden = overdue.length === 0;
+      el.overdueBtn.hidden = false;
 
       const pct = day.total ? Math.round((day.completed / day.total) * 100) : 0;
       el.dayPercent.textContent = pct + "%";
@@ -7006,8 +7018,8 @@ body.task-drag-mode .activity-card {
     let MOTIVATIONAL_QUOTES = [];
 
     const QUOTE_SOURCE = "quotes.json";
-    const QUOTE_CACHE_KEY = "tasky_quotes_cache_v65";
-    const QUOTE_HISTORY_KEY = "tasky_quote_history_v65";
+    const QUOTE_CACHE_KEY = "tasky_quotes_cache_v66";
+    const QUOTE_HISTORY_KEY = "tasky_quote_history_v66";
     const QUOTE_INTERVAL_MS = 60 * 1000;
     const QUOTE_HISTORY_DAYS = 2;
 
@@ -7016,159 +7028,71 @@ body.task-drag-mode .activity-card {
     let quoteTimer = null;
 
     function getQuotesURL() {
-      try {
-        return new URL(QUOTE_SOURCE, document.baseURI).href;
-      } catch (_) {
-        return `${location.origin}/quotes.json`;
-      }
-    }
-
-    function createQuoteSeed() {
-      const base = Date.now() ^ Math.floor(performance.now() * 1000);
+      const candidates = [];
 
       try {
-        const array = new Uint32Array(2);
-        crypto.getRandomValues(array);
-        return (array[0] ^ array[1] ^ base) >>> 0;
-      } catch (_) {
-        return (Math.random() * 0xFFFFFFFF) >>> 0;
-      }
-    }
+        const pageURL = new URL(window.location.href);
+        pageURL.search = "";
+        pageURL.hash = "";
 
-    function quoteRandom() {
-      quoteRotationSeed = (
-        Math.imul(quoteRotationSeed, 1664525) + 1013904223
-      ) >>> 0;
+        const basePath = pageURL.pathname.endsWith("/")
+          ? pageURL.pathname
+          : pageURL.pathname.replace(/\/[^/]*$/, "/");
 
-      return quoteRotationSeed / 4294967296;
-    }
-
-    function normalizeQuoteList(input) {
-      const source = Array.isArray(input) ? input : input?.quotes;
-
-      if (!Array.isArray(source)) return [];
-
-      const unique = [];
-      const seen = new Set();
-
-      for (const entry of source) {
-        const text = String(entry?.text || "").trim();
-        const author = String(entry?.author || "").trim();
-
-        if (!text || !author) continue;
-
-        const key = `${text}\u0000${author}`;
-
-        if (seen.has(key)) continue;
-
-        seen.add(key);
-        unique.push({
-          text,
-          author
-        });
-      }
-
-      return unique;
-    }
-
-    function saveQuotesCache(quotes) {
-      try {
-        safeStorage.setItem(
-          QUOTE_CACHE_KEY,
-          JSON.stringify({
-            savedAt: Date.now(),
-            quotes
-          })
-        );
+        candidates.push(new URL("quotes.json", `${pageURL.origin}${basePath}`).href);
       } catch (_) {}
-    }
 
-    function loadQuotesCache() {
       try {
-        const raw = safeStorage.getItem(QUOTE_CACHE_KEY);
-        if (!raw) return [];
+        candidates.push(new URL("./quotes.json", document.baseURI).href);
+      } catch (_) {}
 
-        const cached = JSON.parse(raw);
+      candidates.push("https://somerito.github.io/Tasky-App/quotes.json");
+      candidates.push("https://raw.githubusercontent.com/SOMERITO/Tasky-App/main/quotes.json");
 
-        return normalizeQuoteList(cached?.quotes);
-      } catch (_) {
-        return [];
-      }
-    }
-
-    function setQuoteMessage(text, author = "", mode = "") {
-      const node = document.getElementById("heroSubtitle");
-      const authorNode = document.getElementById("heroQuoteAuthor");
-
-      if (!node || !authorNode) return;
-
-      node.textContent = text;
-      authorNode.textContent = author;
-
-      node.classList.remove("is-loading", "is-error");
-
-      if (mode) {
-        node.classList.add(mode);
-      }
+      return [...new Set(candidates)];
     }
 
     async function fetchQuotesFromNetwork() {
-      const url = getQuotesURL();
+      const urls = getQuotesURL();
 
-      // Primero intentamos la versión cacheable normal.
-      try {
-        const response = await fetch(
-          `${url}?v=${APP_VERSION}`,
-          {
-            method: "GET",
-            cache: "no-cache",
-            credentials: "same-origin"
+      for (const url of urls) {
+        const attempts = [
+          `${url}${url.includes("?") ? "&" : "?"}v=${APP_VERSION}`,
+          url
+        ];
+
+        for (const requestURL of attempts) {
+          try {
+            const controller = typeof AbortController !== "undefined"
+              ? new AbortController()
+              : null;
+
+            const timer = controller
+              ? window.setTimeout(() => controller.abort(), 6000)
+              : null;
+
+            const response = await fetch(requestURL, {
+              method: "GET",
+              cache: "no-cache",
+              credentials: url.startsWith(location.origin) ? "same-origin" : "omit",
+              signal: controller?.signal
+            });
+
+            if (timer) clearTimeout(timer);
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const payload = await response.json();
+            const quotes = normalizeQuoteList(payload);
+
+            if (quotes.length) return quotes;
+          } catch (error) {
+            console.warn("No se pudo cargar quotes.json desde:", requestURL, error);
           }
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const payload = await response.json();
-        const quotes = normalizeQuoteList(payload);
-
-        if (!quotes.length) {
-          throw new Error("La biblioteca no contiene frases válidas.");
-        }
-
-        return quotes;
-      } catch (firstError) {
-        // Segundo intento con una URL limpia, útil para SW/CDN.
-        try {
-          const cleanResponse = await fetch(url, {
-            method: "GET",
-            cache: "reload",
-            credentials: "same-origin"
-          });
-
-          if (!cleanResponse.ok) {
-            throw new Error(`HTTP ${cleanResponse.status}`);
-          }
-
-          const payload = await cleanResponse.json();
-          const quotes = normalizeQuoteList(payload);
-
-          if (!quotes.length) {
-            throw new Error("La biblioteca no contiene frases válidas.");
-          }
-
-          return quotes;
-        } catch (secondError) {
-          console.warn(
-            "No se pudo obtener quotes.json:",
-            firstError,
-            secondError
-          );
-
-          return [];
         }
       }
+
+      return [];
     }
 
     async function loadQuotesLibrary() {
@@ -7228,7 +7152,7 @@ body.task-drag-mode .activity-card {
       // Estado visible para diagnóstico, no una frase genérica silenciosa.
       setQuoteMessage(
         "No se pudo cargar la biblioteca de frases.",
-        "quotes.json",
+        "",
         "is-error"
       );
 
@@ -7425,7 +7349,6 @@ body.task-drag-mode .activity-card {
           }
         });
 
-        loadOptionalIcons();
         startFirebase();
       } catch (error) {
         console.error("Error de inicialización:", error);
