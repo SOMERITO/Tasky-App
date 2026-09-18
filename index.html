@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky</title>
-  <!-- TASKY · V70 -->
+  <!-- TASKY · V71 -->
 
   <!-- TASKY · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -3390,7 +3390,7 @@ body.task-drag-mode .activity-card {
   </style>
 </head>
 
-<body tabindex="-1" data-tasky-version="V70">
+<body tabindex="-1" data-tasky-version="V71">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -3634,7 +3634,7 @@ body.task-drag-mode .activity-card {
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 70;
+    const APP_VERSION = 71;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -4041,11 +4041,14 @@ body.task-drag-mode .activity-card {
 
       const cats = Array.isArray(source.categories) ? source.categories : [];
       normalized.categories = cats.map((cat, index) => {
+        const rawOrder = Number(cat.order);
+
         const category = {
           id: String(cat.id || uid("cat")),
           title: typeof cat.title === "string" ? cat.title : ("Fase " + (index + 1)),
           emoji: typeof cat.emoji === "string" ? cat.emoji.slice(0, 8) : "",
-          tasks: Array.isArray(cat.tasks) ? cat.tasks : []
+          tasks: Array.isArray(cat.tasks) ? cat.tasks : [],
+          order: Number.isFinite(rawOrder) ? rawOrder : index
         };
 
         category.tasks = category.tasks
@@ -4263,6 +4266,25 @@ body.task-drag-mode .activity-card {
     }
 
 
+
+    function categoryOrderValue(cat, fallback = 0) {
+      const value = Number(cat?.order);
+      return Number.isFinite(value) ? value : fallback;
+    }
+
+    function compareCategoryOrder(a, b) {
+      return (
+        categoryOrderValue(a) -
+        categoryOrderValue(b)
+      );
+    }
+
+    function normalizeCategoryOrder() {
+      state.categories.forEach((cat, index) => {
+        cat.order = index;
+      });
+    }
+
     function categoryHasOpenWorkToday(cat) {
       if (!cat || !Array.isArray(cat.tasks)) return false;
 
@@ -4322,58 +4344,148 @@ body.task-drag-mode .activity-card {
     }
 
     function syncCategoryPlacement(categoryId) {
+      const cat = state.categories.find(
+        c => c.id === categoryId
+      );
+
+      if (!cat) return false;
+
       const card = document.querySelector(
         `.activity-card[data-category-id="${cssEscapeSafe(categoryId)}"]`
       );
-      const cat = state.categories.find(c => c.id === categoryId);
-      if (!cat) return;
 
-      // Primero actualizamos el orden PERSISTENTE. Antes solo movíamos
-      // el nodo visual y luego saveCloud() guardaba el orden anterior.
-      const stateOrderChanged = repositionCategoryInState(categoryId);
-      const completedCard = el.board.querySelector(".completed-card");
-      const shouldBeAfterCompleted = !categoryHasOpenWorkToday(cat);
+      if (!card) return false;
 
-      if (!card) {
-        if (stateOrderChanged) {
-          persistLocal();
-          localDirty = true;
-        }
-        return;
-      }
+      const completedCard =
+        el.board.querySelector(".completed-card");
 
-      if (shouldBeAfterCompleted) {
-        if (completedCard) {
-          // Colocar la fase debajo de Completadas y después de las demás
-          // fases ya aparcadas.
-          let lastCategoryAfterCompleted = completedCard.nextElementSibling;
-          while (
-            lastCategoryAfterCompleted &&
-            lastCategoryAfterCompleted.classList.contains("activity-card") &&
-            !lastCategoryAfterCompleted.classList.contains("completed-card")
+      const otherEntries = sectionCards()
+        .filter(node => node !== card)
+        .map(node => ({
+          node,
+          cat: state.categories.find(
+            c => c.id === node.dataset.categoryId
+          )
+        }))
+        .filter(entry => entry.cat);
+
+      const manualOrder =
+        categoryOrderValue(cat);
+
+      const isFinished =
+        !categoryHasOpenWorkToday(cat);
+
+      if (isFinished) {
+        const nextFinished = otherEntries
+          .filter(entry =>
+            !categoryHasOpenWorkToday(entry.cat)
+          )
+          .sort((a, b) =>
+            compareCategoryOrder(
+              a.cat,
+              b.cat
+            )
+          )
+          .find(entry =>
+            categoryOrderValue(entry.cat) >
+            manualOrder
+          );
+
+        if (nextFinished) {
+          el.board.insertBefore(
+            card,
+            nextFinished.node
+          );
+        } else if (completedCard) {
+          // Después de Completadas y después de todas las
+          // fases terminadas que tengan menor orden manual.
+          let insertAfter = completedCard;
+
+          for (
+            let node = completedCard.nextElementSibling;
+            node && node.classList.contains("activity-card");
+            node = node.nextElementSibling
           ) {
-            lastCategoryAfterCompleted = lastCategoryAfterCompleted.nextElementSibling;
+            const nodeCat = state.categories.find(
+              c => c.id === node.dataset.categoryId
+            );
+
+            if (!nodeCat) break;
+
+            if (
+              !categoryHasOpenWorkToday(nodeCat) &&
+              categoryOrderValue(nodeCat) < manualOrder
+            ) {
+              insertAfter = node;
+              continue;
+            }
+
+            if (
+              !categoryHasOpenWorkToday(nodeCat) &&
+              categoryOrderValue(nodeCat) > manualOrder
+            ) {
+              break;
+            }
+
+            if (
+              categoryHasOpenWorkToday(nodeCat)
+            ) {
+              break;
+            }
           }
 
-          if (lastCategoryAfterCompleted) {
-            el.board.insertBefore(card, lastCategoryAfterCompleted);
-          } else {
-            el.board.appendChild(card);
-          }
+          el.board.insertBefore(
+            card,
+            insertAfter.nextSibling
+          );
         } else {
           el.board.appendChild(card);
         }
-      } else if (completedCard) {
-        // Una fase que vuelve a tener trabajo sube al final del bloque
-        // activo, justo antes de Completadas.
-        el.board.insertBefore(card, completedCard);
+
+      } else {
+        const nextActive = otherEntries
+          .filter(entry =>
+            categoryHasOpenWorkToday(entry.cat)
+          )
+          .sort((a, b) =>
+            compareCategoryOrder(
+              a.cat,
+              b.cat
+            )
+          )
+          .find(entry =>
+            categoryOrderValue(entry.cat) >
+            manualOrder
+          );
+
+        if (nextActive) {
+          el.board.insertBefore(
+            card,
+            nextActive.node
+          );
+        } else if (completedCard) {
+          el.board.insertBefore(
+            card,
+            completedCard
+          );
+        } else {
+          el.board.appendChild(card);
+        }
       }
 
       card.classList.add("section-moved");
-      window.setTimeout(() => card.classList.remove("section-moved"), 260);
+
+      window.setTimeout(
+        () =>
+          card.classList.remove(
+            "section-moved"
+          ),
+        220
+      );
+
       refreshSectionMoveControls();
 
-      return stateOrderChanged;
+      return true;
     }
 
     function render() {
@@ -4388,36 +4500,69 @@ body.task-drag-mode .activity-card {
 
       const query = activeSearch.trim().toLowerCase();
 
-      // Invariante de orden V70: el array persistido mantiene primero las
-      // fases con trabajo de hoy y después las fases aparcadas, sin cambiar
-      // el orden relativo que el usuario haya elegido dentro de cada bloque.
-      const activeState = state.categories.filter(categoryHasOpenWorkToday);
-      const finishedState = state.categories.filter(cat => !categoryHasOpenWorkToday(cat));
-      const canonical = [...activeState, ...finishedState];
-      const canonicalIds = canonical.map(c => c.id).join("|");
-      const stateIds = state.categories.map(c => c.id).join("|");
-      if (canonicalIds !== stateIds) {
-        state.categories = canonical;
+      // V71:
+      // 1. state.categories conserva SIEMPRE el orden manual.
+      // 2. Las fases activas se dibujan antes de Completadas.
+      // 3. Las fases terminadas se dibujan después de Completadas.
+      // 4. Dentro de ambos bloques se conserva category.order.
+      const orderedCategories = [...state.categories]
+        .sort(compareCategoryOrder);
+
+      const needsOrderRepair =
+        orderedCategories.some(
+          (cat, index) =>
+            categoryOrderValue(cat, index) !== index
+        );
+
+      if (needsOrderRepair) {
+        state.categories = orderedCategories;
+        normalizeCategoryOrder();
+        persistLocal();
+        localDirty = true;
+      } else {
+        state.categories = orderedCategories;
       }
 
-      const activeCategories = [];
-      const finishedCategories = [];
+      const activeCategories =
+        state.categories.filter(
+          categoryHasOpenWorkToday
+        );
 
-      for (let i = 0; i < state.categories.length; i++) {
-        const cat = state.categories[i];
-        (categoryHasOpenWorkToday(cat) ? activeCategories : finishedCategories).push({ cat, index: i });
-      }
+      const finishedCategories =
+        state.categories.filter(
+          cat => !categoryHasOpenWorkToday(cat)
+        );
 
-      for (const { cat, index } of activeCategories) {
-        el.board.appendChild(buildCategoryCard(cat, index, query));
+      for (const cat of activeCategories) {
+        const index =
+          state.categories.findIndex(
+            c => c.id === cat.id
+          );
+
+        el.board.appendChild(
+          buildCategoryCard(
+            cat,
+            index,
+            query
+          )
+        );
       }
 
       buildCompletedCard(query);
 
-      // Las fases sin trabajo pendiente para hoy quedan debajo de
-      // Completadas. Mantienen su orden relativo original.
-      for (const { cat, index } of finishedCategories) {
-        el.board.appendChild(buildCategoryCard(cat, index, query));
+      for (const cat of finishedCategories) {
+        const index =
+          state.categories.findIndex(
+            c => c.id === cat.id
+          );
+
+        el.board.appendChild(
+          buildCategoryCard(
+            cat,
+            index,
+            query
+          )
+        );
       }
 
       const visibleCategories = el.board.querySelectorAll(".activity-card:not(.completed-card)");
@@ -4470,6 +4615,9 @@ body.task-drag-mode .activity-card {
       const card = document.createElement("article");
       card.className = "activity-card" + (todayTotal > 0 && pct === 100 ? " is-complete" : "");
       card.dataset.categoryId = cat.id;
+      card.dataset.categoryOrder = String(
+        categoryOrderValue(cat, index)
+      );
 
       card.innerHTML = `
         <div class="card-head">
@@ -4864,9 +5012,24 @@ body.task-drag-mode .activity-card {
 
       if (shouldMove) {
         flipSectionReorder(() => {
-          const [category] = state.categories.splice(drag.fromIndex, 1);
-          state.categories.splice(drag.dropIndex, 0, category);
-          placeSectionCardAtIndex(drag.card, drag.dropIndex);
+          const [category] =
+            state.categories.splice(
+              drag.fromIndex,
+              1
+            );
+
+          state.categories.splice(
+            drag.dropIndex,
+            0,
+            category
+          );
+
+          normalizeCategoryOrder();
+
+          placeSectionCardAtIndex(
+            drag.card,
+            drag.dropIndex
+          );
         }, drag.card);
       }
 
@@ -5518,11 +5681,25 @@ body.task-drag-mode .activity-card {
 
 
     function addCategory() {
+      const maxOrder =
+        state.categories.reduce(
+          (max, cat) =>
+            Math.max(
+              max,
+              categoryOrderValue(
+                cat,
+                -1
+              )
+            ),
+          -1
+        );
+
       const category = {
         id: uid("cat"),
         title: "Nueva fase",
         emoji: "",
-        tasks: []
+        tasks: [],
+        order: maxOrder + 1
       };
       state.categories.push(category);
       persistLocal();
@@ -5572,8 +5749,11 @@ body.task-drag-mode .activity-card {
 
       persistLocal();
       localDirty = true;
+
+      // Crear una tarea puede devolver una fase terminada al bloque activo,
+      // pero NO debe cambiar su orden manual.
       syncCategoryPlacement(categoryId);
-      // syncCategoryPlacement() actualiza state.categories cuando corresponde.
+
       persistLocal();
       updateCategoryUI(categoryId);
       updateSummaryUI();
@@ -5602,8 +5782,19 @@ body.task-drag-mode .activity-card {
         return;
       }
 
-      const [category] = state.categories.splice(index, 1);
-      state.categories.splice(targetIndex, 0, category);
+      const [category] =
+        state.categories.splice(
+          index,
+          1
+        );
+
+      state.categories.splice(
+        targetIndex,
+        0,
+        category
+      );
+
+      normalizeCategoryOrder();
 
       const card = document.querySelector(`.activity-card[data-category-id="${cssEscapeSafe(categoryId)}"]`);
       const cards = [...el.board.querySelectorAll('.activity-card:not(.completed-card)')];
@@ -5649,8 +5840,17 @@ body.task-drag-mode .activity-card {
 
       if (cat.tasks.length && !confirm(`¿Eliminar "${cat.title || "esta fase"}" y sus ${cat.tasks.length} tareas pendientes?`)) return;
 
-      state.categories = state.categories.filter(c => c.id !== categoryId);
-      state.completed = state.completed.filter(t => t.originCat !== categoryId);
+      state.categories =
+        state.categories.filter(
+          c => c.id !== categoryId
+        );
+
+      normalizeCategoryOrder();
+
+      state.completed =
+        state.completed.filter(
+          t => t.originCat !== categoryId
+        );
 
       const card = document.querySelector(`.activity-card[data-category-id="${cssEscapeSafe(categoryId)}"]`);
       if (card) {
@@ -5994,10 +6194,24 @@ body.task-drag-mode .activity-card {
           : target.tasks.length;
         target.tasks.splice(insertAt, 0, restoredTask);
       } else {
+        const maxOrder =
+          state.categories.reduce(
+            (max, cat) =>
+              Math.max(
+                max,
+                categoryOrderValue(
+                  cat,
+                  -1
+                )
+              ),
+            -1
+          );
+
         state.categories.push({
           id: task.originCat || uid('cat'),
           title: 'Recuperadas',
-          tasks: [restoredTask]
+          tasks: [restoredTask],
+          order: maxOrder + 1
         });
       }
 
