@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky</title>
-  <!-- TASKY · V69 -->
+  <!-- TASKY · V70 -->
 
   <!-- TASKY · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -3390,7 +3390,7 @@ body.task-drag-mode .activity-card {
   </style>
 </head>
 
-<body tabindex="-1" data-tasky-version="V69">
+<body tabindex="-1" data-tasky-version="V70">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -3634,7 +3634,7 @@ body.task-drag-mode .activity-card {
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 69;
+    const APP_VERSION = 70;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -4285,21 +4285,67 @@ body.task-drag-mode .activity-card {
       });
     }
 
+    function repositionCategoryInState(categoryId) {
+      const currentIndex = state.categories.findIndex(c => c.id === categoryId);
+      if (currentIndex === -1) return false;
+
+      const category = state.categories[currentIndex];
+      const remaining = state.categories.filter(c => c.id !== categoryId);
+      const shouldBeFinished = !categoryHasOpenWorkToday(category);
+
+      let insertIndex;
+
+      if (shouldBeFinished) {
+        // Las fases sin trabajo de hoy viven al final, después de todas
+        // las fases activas. La fase recién terminada cae al final.
+        insertIndex = remaining.length;
+      } else {
+        // Una fase que vuelve a tener trabajo se coloca al final del bloque
+        // de fases activas, justo antes de la primera fase aparcada.
+        const firstFinishedIndex = remaining.findIndex(
+          c => !categoryHasOpenWorkToday(c)
+        );
+        insertIndex = firstFinishedIndex === -1
+          ? remaining.length
+          : firstFinishedIndex;
+      }
+
+      const changed = currentIndex !== insertIndex || remaining.length !== state.categories.length - 1;
+
+      state.categories = [
+        ...remaining.slice(0, insertIndex),
+        category,
+        ...remaining.slice(insertIndex)
+      ];
+
+      return changed;
+    }
+
     function syncCategoryPlacement(categoryId) {
       const card = document.querySelector(
         `.activity-card[data-category-id="${cssEscapeSafe(categoryId)}"]`
       );
-      if (!card) return;
-
       const cat = state.categories.find(c => c.id === categoryId);
       if (!cat) return;
 
+      // Primero actualizamos el orden PERSISTENTE. Antes solo movíamos
+      // el nodo visual y luego saveCloud() guardaba el orden anterior.
+      const stateOrderChanged = repositionCategoryInState(categoryId);
       const completedCard = el.board.querySelector(".completed-card");
       const shouldBeAfterCompleted = !categoryHasOpenWorkToday(cat);
 
+      if (!card) {
+        if (stateOrderChanged) {
+          persistLocal();
+          localDirty = true;
+        }
+        return;
+      }
+
       if (shouldBeAfterCompleted) {
         if (completedCard) {
-          // Colocarlo al final de las fases aparcadas.
+          // Colocar la fase debajo de Completadas y después de las demás
+          // fases ya aparcadas.
           let lastCategoryAfterCompleted = completedCard.nextElementSibling;
           while (
             lastCategoryAfterCompleted &&
@@ -4318,14 +4364,16 @@ body.task-drag-mode .activity-card {
           el.board.appendChild(card);
         }
       } else if (completedCard) {
-        // Una fase que vuelve a tener trabajo hoy sube inmediatamente
-        // antes de la sección Completadas.
+        // Una fase que vuelve a tener trabajo sube al final del bloque
+        // activo, justo antes de Completadas.
         el.board.insertBefore(card, completedCard);
       }
 
       card.classList.add("section-moved");
       window.setTimeout(() => card.classList.remove("section-moved"), 260);
       refreshSectionMoveControls();
+
+      return stateOrderChanged;
     }
 
     function render() {
@@ -4339,6 +4387,18 @@ body.task-drag-mode .activity-card {
       el.board.innerHTML = "";
 
       const query = activeSearch.trim().toLowerCase();
+
+      // Invariante de orden V70: el array persistido mantiene primero las
+      // fases con trabajo de hoy y después las fases aparcadas, sin cambiar
+      // el orden relativo que el usuario haya elegido dentro de cada bloque.
+      const activeState = state.categories.filter(categoryHasOpenWorkToday);
+      const finishedState = state.categories.filter(cat => !categoryHasOpenWorkToday(cat));
+      const canonical = [...activeState, ...finishedState];
+      const canonicalIds = canonical.map(c => c.id).join("|");
+      const stateIds = state.categories.map(c => c.id).join("|");
+      if (canonicalIds !== stateIds) {
+        state.categories = canonical;
+      }
 
       const activeCategories = [];
       const finishedCategories = [];
@@ -5513,6 +5573,8 @@ body.task-drag-mode .activity-card {
       persistLocal();
       localDirty = true;
       syncCategoryPlacement(categoryId);
+      // syncCategoryPlacement() actualiza state.categories cuando corresponde.
+      persistLocal();
       updateCategoryUI(categoryId);
       updateSummaryUI();
       refreshIcons();
@@ -5867,7 +5929,11 @@ body.task-drag-mode .activity-card {
 
 
     function moveCompletedCategoryToBottom(categoryId) {
-      syncCategoryPlacement(categoryId);
+      const changed = syncCategoryPlacement(categoryId);
+      if (changed) {
+        persistLocal();
+        localDirty = true;
+      }
       return !categoryHasOpenWorkToday(
         state.categories.find(c => c.id === categoryId)
       );
