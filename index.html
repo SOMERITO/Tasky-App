@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky</title>
-  <!-- TASKY · V71 -->
+  <!-- TASKY · V72 -->
 
   <!-- TASKY · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -3387,10 +3387,33 @@ body.task-drag-mode .activity-card {
       opacity: .35 !important;
     }
 
+  
+    /* =========================================================
+       TASKY V72 · Sonidos
+       ========================================================= */
+    #soundToggleBtn {
+      justify-content: flex-start;
+    }
+
+    #soundToggleBtn[aria-pressed="false"] {
+      opacity: .68;
+    }
+
+    #soundToggleBtn i,
+    #soundToggleBtn svg {
+      color: var(--primary);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sound-ripple {
+        display: none !important;
+      }
+    }
+
   </style>
 </head>
 
-<body tabindex="-1" data-tasky-version="V71">
+<body tabindex="-1" data-tasky-version="V72">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -3580,6 +3603,10 @@ body.task-drag-mode .activity-card {
 
       <div class="modal-list">
         <div class="soft-btn" style="cursor:default;justify-content:flex-start;opacity:.9"><i data-lucide="shield-check"></i><span>Protección de datos activa · 20 respaldos locales</span></div>
+        <button class="soft-btn" id="soundToggleBtn" data-menu-action="toggle-sound" aria-pressed="true">
+          <i data-lucide="volume-2"></i>
+          <span id="soundToggleLabel">Sonidos: Activados</span>
+        </button>
         <button class="soft-btn" data-menu-action="export"><i data-lucide="download"></i> Exportar respaldo JSON</button>
         <label class="soft-btn" style="cursor:pointer">
           <i data-lucide="upload"></i>
@@ -3634,7 +3661,7 @@ body.task-drag-mode .activity-card {
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 71;
+    const APP_VERSION = 72;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -3854,6 +3881,400 @@ body.task-drag-mode .activity-card {
       };
     }
 
+
+    /* =========================================================
+       TASKY V72 · MOTOR DE SONIDO
+       Web Audio API, sin archivos externos.
+       ========================================================= */
+    const SOUND_STORAGE_KEY = "tasky_sound_enabled_v72";
+    const SOUND_MASTER_GAIN = 0.045;
+
+    let taskyAudioContext = null;
+    let taskyMasterGain = null;
+
+    function isSoundEnabled() {
+      const saved = safeStorage.getItem(SOUND_STORAGE_KEY);
+      return saved !== "false";
+    }
+
+    function setSoundEnabled(enabled) {
+      safeStorage.setItem(
+        SOUND_STORAGE_KEY,
+        enabled ? "true" : "false"
+      );
+
+      updateSoundToggleUI();
+
+      if (enabled) {
+        playTaskySound("ui");
+      }
+    }
+
+    function updateSoundToggleUI() {
+      const button = document.getElementById("soundToggleBtn");
+      const label = document.getElementById("soundToggleLabel");
+
+      if (!button) return;
+
+      const enabled = isSoundEnabled();
+
+      button.setAttribute(
+        "aria-pressed",
+        enabled ? "true" : "false"
+      );
+
+      if (label) {
+        label.textContent =
+          enabled
+            ? "Sonidos: Activados"
+            : "Sonidos: Desactivados";
+      }
+
+      const icon = button.querySelector(
+        "[data-lucide], svg"
+      );
+
+      if (icon && icon.setAttribute) {
+        if (icon.hasAttribute("data-lucide")) {
+          icon.setAttribute(
+            "data-lucide",
+            enabled ? "volume-2" : "volume-x"
+          );
+        }
+      }
+
+      refreshIcons();
+    }
+
+    function getTaskyAudioContext() {
+      if (taskyAudioContext) {
+        return taskyAudioContext;
+      }
+
+      const AudioContextClass =
+        window.AudioContext ||
+        window.webkitAudioContext;
+
+      if (!AudioContextClass) {
+        return null;
+      }
+
+      try {
+        taskyAudioContext =
+          new AudioContextClass();
+
+        taskyMasterGain =
+          taskyAudioContext.createGain();
+
+        taskyMasterGain.gain.value =
+          SOUND_MASTER_GAIN;
+
+        taskyMasterGain.connect(
+          taskyAudioContext.destination
+        );
+
+        return taskyAudioContext;
+      } catch (error) {
+        console.warn(
+          "Tasky: no se pudo iniciar el audio.",
+          error
+        );
+        return null;
+      }
+    }
+
+    async function unlockTaskyAudio() {
+      const ctx = getTaskyAudioContext();
+
+      if (!ctx) {
+        return false;
+      }
+
+      try {
+        if (ctx.state === "suspended") {
+          await ctx.resume();
+        }
+
+        return ctx.state === "running";
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function createTaskyTone({
+      frequency = 440,
+      start = 0,
+      duration = 0.08,
+      type = "sine",
+      peak = 0.7,
+      detune = 0
+    }) {
+      const ctx =
+        getTaskyAudioContext();
+
+      if (
+        !ctx ||
+        !taskyMasterGain ||
+        !isSoundEnabled()
+      ) {
+        return;
+      }
+
+      const oscillator =
+        ctx.createOscillator();
+
+      const gain =
+        ctx.createGain();
+
+      const now =
+        ctx.currentTime +
+        Math.max(0, start);
+
+      const end =
+        now +
+        Math.max(0.025, duration);
+
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(
+        frequency,
+        now
+      );
+      oscillator.detune.setValueAtTime(
+        detune,
+        now
+      );
+
+      gain.gain.setValueAtTime(
+        0.0001,
+        now
+      );
+
+      gain.gain.exponentialRampToValueAtTime(
+        Math.max(0.01, peak),
+        now + Math.min(0.018, duration * 0.22)
+      );
+
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        end
+      );
+
+      oscillator.connect(gain);
+      gain.connect(taskyMasterGain);
+
+      oscillator.start(now);
+      oscillator.stop(end + 0.015);
+    }
+
+    let lastTaskySoundKey = "";
+    let lastTaskySoundAt = 0;
+
+    async function playTaskySound(kind = "ui") {
+      if (!isSoundEnabled()) {
+        return;
+      }
+
+      const soundKey = String(kind || "ui");
+      const now = performance.now();
+
+      if (
+        lastTaskySoundKey === soundKey &&
+        now - lastTaskySoundAt < 180
+      ) {
+        return;
+      }
+
+      lastTaskySoundKey = soundKey;
+      lastTaskySoundAt = now;
+
+      const ready =
+        await unlockTaskyAudio();
+
+      if (!ready) {
+        return;
+      }
+
+      /*
+       * Todos los sonidos son muy cortos y de baja ganancia.
+       * La diferencia está en el patrón, no en el volumen.
+       */
+      switch (kind) {
+
+        case "complete":
+          createTaskyTone({
+            frequency: 660,
+            duration: 0.07,
+            type: "sine",
+            peak: 0.72
+          });
+          createTaskyTone({
+            frequency: 880,
+            start: 0.06,
+            duration: 0.13,
+            type: "sine",
+            peak: 0.62
+          });
+          break;
+
+        case "restore":
+          createTaskyTone({
+            frequency: 523.25,
+            duration: 0.08,
+            type: "triangle",
+            peak: 0.62
+          });
+          createTaskyTone({
+            frequency: 659.25,
+            start: 0.055,
+            duration: 0.12,
+            type: "triangle",
+            peak: 0.52
+          });
+          break;
+
+        case "delete":
+          createTaskyTone({
+            frequency: 420,
+            duration: 0.07,
+            type: "sine",
+            peak: 0.48
+          });
+          createTaskyTone({
+            frequency: 260,
+            start: 0.055,
+            duration: 0.11,
+            type: "sine",
+            peak: 0.38
+          });
+          break;
+
+        case "add":
+          createTaskyTone({
+            frequency: 560,
+            duration: 0.055,
+            type: "triangle",
+            peak: 0.46
+          });
+          createTaskyTone({
+            frequency: 740,
+            start: 0.035,
+            duration: 0.08,
+            type: "triangle",
+            peak: 0.34
+          });
+          break;
+
+        case "move":
+          createTaskyTone({
+            frequency: 520,
+            duration: 0.045,
+            type: "sine",
+            peak: 0.32
+          });
+          createTaskyTone({
+            frequency: 620,
+            start: 0.045,
+            duration: 0.055,
+            type: "sine",
+            peak: 0.28
+          });
+          break;
+
+        case "repeat":
+          createTaskyTone({
+            frequency: 480,
+            duration: 0.055,
+            type: "triangle",
+            peak: 0.35
+          });
+          createTaskyTone({
+            frequency: 640,
+            start: 0.045,
+            duration: 0.075,
+            type: "triangle",
+            peak: 0.30
+          });
+          break;
+
+        case "error":
+          createTaskyTone({
+            frequency: 320,
+            duration: 0.075,
+            type: "sine",
+            peak: 0.30
+          });
+          createTaskyTone({
+            frequency: 240,
+            start: 0.07,
+            duration: 0.10,
+            type: "sine",
+            peak: 0.26
+          });
+          break;
+
+        case "ui":
+        default:
+          createTaskyTone({
+            frequency: 720,
+            duration: 0.045,
+            type: "sine",
+            peak: 0.25
+          });
+          break;
+      }
+    }
+
+    function soundForClickTarget(target) {
+      const interactive =
+        target?.closest?.(
+          "button, [role='button'], label.soft-btn, .fab-action, .icon-btn, .soft-btn"
+        );
+
+      if (!interactive) {
+        return null;
+      }
+
+      const action =
+        interactive.dataset?.action ||
+        interactive.dataset?.menuAction ||
+        interactive.dataset?.overdueAction ||
+        "";
+
+      switch (action) {
+        case "complete-task":
+          return "complete";
+
+        case "restore-task":
+        case "recover":
+        case "restore":
+          return "restore";
+
+        case "delete-task":
+        case "delete-category":
+        case "reset":
+        case "delete":
+          return "delete";
+
+        case "add-task":
+        case "add-category":
+          return "add";
+
+        case "move-category-up":
+        case "move-category-down":
+        case "today":
+          return "move";
+
+        case "toggle-repeat":
+          return "repeat";
+
+        case "toggle-sound":
+          return "ui";
+
+        default:
+          return "ui";
+      }
+    }
+
     function setSyncStatus(kind, label) {
       el.syncStatus.innerHTML = '<span class="sync-dot ' + escapeHTML(kind) + '"></span> ' + escapeHTML(label);
     }
@@ -3864,6 +4285,11 @@ body.task-drag-mode .activity-card {
       node.innerHTML = '<i data-lucide="' + escapeHTML(icon) + '"></i><span>' + escapeHTML(message) + '</span>';
       el.toastStack.appendChild(node);
       refreshIcons();
+
+      if (type === "error") {
+        playTaskySound("error");
+      }
+
       setTimeout(() => node.remove(), 3600);
     }
 
@@ -5768,6 +6194,7 @@ body.task-drag-mode .activity-card {
         }
       });
       softHaptic(15);
+      playTaskySound("add");
 
       return task;
     }
@@ -5822,6 +6249,7 @@ body.task-drag-mode .activity-card {
       refreshSectionMoveControls();
       scheduleSave(delta < 0 ? 'subir fase' : 'bajar fase');
       softHaptic(16);
+      playTaskySound("move");
     }
 
     function refreshSectionMoveControls() {
@@ -5865,6 +6293,7 @@ body.task-drag-mode .activity-card {
       updateCompletedCardUI();
       updateSummaryUI();
       scheduleSave("eliminar fase");
+      playTaskySound("delete");
       toast("Fase eliminada", "trash-2");
     }
 
@@ -5894,6 +6323,7 @@ body.task-drag-mode .activity-card {
       updateCompletedCardUI();
       updateSummaryUI();
       scheduleSave("eliminar tarea");
+      playTaskySound("delete");
       toast("Tarea eliminada", "trash-2");
     }
 
@@ -5988,6 +6418,7 @@ body.task-drag-mode .activity-card {
       closeModal('repeatModal');
       refreshIcons();
       updateSummaryUI();
+      playTaskySound("repeat");
       toast(task.repeat ? `Repetición: ${repeatDaysToLabel(task.repeatDays)}` : 'Repetición desactivada', task.repeat ? 'repeat-2' : 'repeat');
     }
 
@@ -6073,6 +6504,7 @@ body.task-drag-mode .activity-card {
           );
 
           softHaptic(28);
+          playTaskySound("complete");
 
           toast(
             movedToBottom
@@ -6117,6 +6549,7 @@ body.task-drag-mode .activity-card {
         scheduleSave(movedToBottom ? "completar tarea y reordenar fase" : "completar tarea");
 
         softHaptic(28);
+        playTaskySound("complete");
         toast(
           movedToBottom
             ? "Tarea completada · Fase movida al final"
@@ -6170,6 +6603,7 @@ body.task-drag-mode .activity-card {
         updateSummaryUI();
         updateTaskHeights();
         scheduleSave("restaurar ocurrencia repetitiva");
+        playTaskySound("restore");
         toast("Tarea repetitiva restaurada para hoy", "rotate-ccw");
         return;
       }
@@ -6242,6 +6676,7 @@ body.task-drag-mode .activity-card {
       persistLocal();
       localDirty = true;
       scheduleSave("restaurar tarea");
+      playTaskySound("restore");
       toast("Tarea restaurada", "rotate-ccw");
     }
 
@@ -7121,6 +7556,11 @@ body.task-drag-mode .activity-card {
       });
 
       document.addEventListener("click", event => {
+        const soundKind = soundForClickTarget(event.target);
+        if (soundKind) {
+          playTaskySound(soundKind);
+        }
+
         const action = event.target.closest("[data-action]")?.dataset.action;
 
         if (action === "move-category-up") {
@@ -7232,6 +7672,12 @@ body.task-drag-mode .activity-card {
           exportJSON();
           closeModal("menuModal");
         }
+
+        if (menuAction === "toggle-sound") {
+          setSoundEnabled(!isSoundEnabled());
+          return;
+        }
+
         if (menuAction === "recover") recoverSafetyBackup();
         if (menuAction === "export-safety") { exportSafetyHistory(); closeModal('menuModal'); }
         if (menuAction === "reset") resetBoard();
@@ -7284,7 +7730,10 @@ body.task-drag-mode .activity-card {
 
       el.themeBtn.addEventListener("click", toggleTheme);
 
-      el.menuBtn.addEventListener("click", () => openModal("menuModal"));
+      el.menuBtn.addEventListener("click", () => {
+        updateSoundToggleUI();
+        openModal("menuModal");
+      });
 
       el.importInput.addEventListener("change", event => {
         const file = event.target.files?.[0];
@@ -7981,6 +8430,7 @@ body.task-drag-mode .activity-card {
 
         // Los iconos y Firebase son secundarios y van en segundo plano.
         refreshIcons();
+        updateSoundToggleUI();
 
         // Un segundo frame asegura que las métricas y alturas queden
         // sincronizadas incluso cuando el WebView pinta durante una
