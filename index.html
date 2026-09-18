@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky</title>
-  <!-- TASKY · V68 -->
+  <!-- TASKY · V69 -->
 
   <!-- TASKY · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -3358,7 +3358,7 @@ body.task-drag-mode .activity-card {
     }
 
     .hero-quote-author:empty {
-      display: none;
+      visibility: hidden;
     }
 
     .hero-quote-author::before {
@@ -3373,10 +3373,24 @@ body.task-drag-mode .activity-card {
       vertical-align: middle;
     }
 
+  
+    /* V69 · autor visible siempre que exista */
+    #heroQuoteAuthor:not(:empty) {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      height: auto !important;
+      max-height: none !important;
+    }
+
+    #heroQuoteAuthor.is-changing {
+      opacity: .35 !important;
+    }
+
   </style>
 </head>
 
-<body tabindex="-1" data-tasky-version="V68">
+<body tabindex="-1" data-tasky-version="V69">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -3414,7 +3428,7 @@ body.task-drag-mode .activity-card {
           <span class="eyebrow"><i data-lucide="sparkles"></i> Organiza. Ejecuta. Avanza.</span>
           <h1 id="heroTitle">Tu día, tu orden.</h1>
           <div class="hero-quote-wrap">
-            <p id="heroSubtitle" class="hero-quote">Empieza por una tarea concreta y construye el ritmo.</p>
+            <p id="heroSubtitle" class="hero-quote is-loading">Preparando una nueva frase…</p>
             <div id="heroQuoteAuthor" class="hero-quote-author" aria-live="polite"></div>
           </div>
         </div>
@@ -3620,7 +3634,7 @@ body.task-drag-mode .activity-card {
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 68;
+    const APP_VERSION = 69;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -7012,82 +7026,257 @@ body.task-drag-mode .activity-card {
 
 
     /* =========================================================
-       TASKY V65 · Frases externas
-       Biblioteca: /quotes.json
+       TASKY V69 · BIBLIOTECA DE FRASES
+       quotes.json permanece fuera del HTML.
        ========================================================= */
     let MOTIVATIONAL_QUOTES = [];
 
     const QUOTE_SOURCE = "quotes.json";
-    const QUOTE_CACHE_KEY = "tasky_quotes_cache_v66";
-    const QUOTE_HISTORY_KEY = "tasky_quote_history_v66";
+    const QUOTE_CACHE_KEY = "tasky_quotes_cache_v69";
+    const QUOTE_HISTORY_KEY = "tasky_quote_history_v69";
     const QUOTE_INTERVAL_MS = 60 * 1000;
     const QUOTE_HISTORY_DAYS = 2;
+    const QUOTE_LOAD_TIMEOUT = 6500;
 
     let quoteRotationSeed = 0;
     let quoteCurrentIndex = -1;
     let quoteTimer = null;
+    let quoteLibraryReady = false;
 
-    function getQuotesURL() {
-      const candidates = [];
+    function getQuoteURLs() {
+      const urls = [];
 
       try {
-        const pageURL = new URL(window.location.href);
-        pageURL.search = "";
-        pageURL.hash = "";
+        const page = new URL(window.location.href);
+        page.search = "";
+        page.hash = "";
 
-        const basePath = pageURL.pathname.endsWith("/")
-          ? pageURL.pathname
-          : pageURL.pathname.replace(/\/[^/]*$/, "/");
+        const basePath = page.pathname.endsWith("/")
+          ? page.pathname
+          : page.pathname.replace(/\/[^/]*$/, "/");
 
-        candidates.push(new URL("quotes.json", `${pageURL.origin}${basePath}`).href);
+        urls.push(new URL(
+          "quotes.json",
+          `${page.origin}${basePath}`
+        ).href);
       } catch (_) {}
 
       try {
-        candidates.push(new URL("./quotes.json", document.baseURI).href);
+        urls.push(new URL(
+          "./quotes.json",
+          document.baseURI
+        ).href);
       } catch (_) {}
 
-      candidates.push("https://somerito.github.io/Tasky-App/quotes.json");
-      candidates.push("https://raw.githubusercontent.com/SOMERITO/Tasky-App/main/quotes.json");
+      urls.push("https://somerito.github.io/Tasky-App/quotes.json");
+      urls.push("https://raw.githubusercontent.com/SOMERITO/Tasky-App/main/quotes.json");
 
-      return [...new Set(candidates)];
+      return [...new Set(urls)];
+    }
+
+    function normalizeQuoteList(input) {
+      const source = Array.isArray(input)
+        ? input
+        : input?.quotes;
+
+      if (!Array.isArray(source)) return [];
+
+      const unique = [];
+      const seen = new Set();
+
+      for (const entry of source) {
+        const text = String(entry?.text || "").trim();
+        const author = String(entry?.author || "").trim();
+
+        if (!text || !author) continue;
+
+        const key = `${text}\u0000${author}`;
+
+        if (seen.has(key)) continue;
+
+        seen.add(key);
+        unique.push({ text, author });
+      }
+
+      return unique;
+    }
+
+    function saveQuotesLocal(quotes) {
+      try {
+        safeStorage.setItem(
+          QUOTE_CACHE_KEY,
+          JSON.stringify({
+            savedAt: Date.now(),
+            quotes
+          })
+        );
+      } catch (_) {}
+    }
+
+    function readQuotesLocal() {
+      try {
+        const raw = safeStorage.getItem(
+          QUOTE_CACHE_KEY
+        );
+
+        if (!raw) return [];
+
+        const parsed = JSON.parse(raw);
+
+        return normalizeQuoteList(
+          parsed?.quotes
+        );
+      } catch (_) {
+        return [];
+      }
+    }
+
+    async function readQuotesFromCacheStorage() {
+      if (!("caches" in window)) return [];
+
+      try {
+        for (const url of getQuoteURLs()) {
+          const response = await caches.match(
+            url,
+            { ignoreSearch: true }
+          );
+
+          if (!response) continue;
+
+          const payload =
+            await response.clone().json();
+
+          const quotes =
+            normalizeQuoteList(payload);
+
+          if (quotes.length) {
+            return quotes;
+          }
+        }
+      } catch (error) {
+        console.warn(
+          "No se pudo leer quotes.json desde Cache Storage.",
+          error
+        );
+      }
+
+      return [];
+    }
+
+    function fetchWithXHR(
+      url,
+      timeout = QUOTE_LOAD_TIMEOUT
+    ) {
+      return new Promise(resolve => {
+        if (typeof XMLHttpRequest === "undefined") {
+          resolve([]);
+          return;
+        }
+
+        const xhr = new XMLHttpRequest();
+
+        xhr.open("GET", url, true);
+        xhr.timeout = timeout;
+        xhr.responseType = "text";
+
+        xhr.onload = () => {
+          if (
+            xhr.status < 200 ||
+            xhr.status >= 300
+          ) {
+            resolve([]);
+            return;
+          }
+
+          try {
+            const payload =
+              JSON.parse(xhr.responseText);
+
+            resolve(
+              normalizeQuoteList(payload)
+            );
+          } catch (_) {
+            resolve([]);
+          }
+        };
+
+        xhr.onerror = () => resolve([]);
+        xhr.ontimeout = () => resolve([]);
+
+        try {
+          xhr.send();
+        } catch (_) {
+          resolve([]);
+        }
+      });
     }
 
     async function fetchQuotesFromNetwork() {
-      const urls = getQuotesURL();
+      const urls = getQuoteURLs();
 
-      for (const url of urls) {
-        const attempts = [
-          `${url}${url.includes("?") ? "&" : "?"}v=${APP_VERSION}`,
-          url
+      for (const baseURL of urls) {
+        const requestURLs = [
+          `${baseURL}${baseURL.includes("?") ? "&" : "?"}v=${APP_VERSION}`,
+          baseURL
         ];
 
-        for (const requestURL of attempts) {
+        for (const requestURL of requestURLs) {
           try {
-            const controller = typeof AbortController !== "undefined"
-              ? new AbortController()
-              : null;
+            const controller =
+              typeof AbortController !== "undefined"
+                ? new AbortController()
+                : null;
 
             const timer = controller
-              ? window.setTimeout(() => controller.abort(), 6000)
+              ? window.setTimeout(
+                  () => controller.abort(),
+                  QUOTE_LOAD_TIMEOUT
+                )
               : null;
 
-            const response = await fetch(requestURL, {
-              method: "GET",
-              cache: "no-cache",
-              credentials: url.startsWith(location.origin) ? "same-origin" : "omit",
-              signal: controller?.signal
-            });
+            const response =
+              await fetch(requestURL, {
+                method: "GET",
+                cache: "no-store",
+                credentials:
+                  new URL(requestURL).origin ===
+                  location.origin
+                    ? "same-origin"
+                    : "omit",
+                signal: controller?.signal
+              });
 
-            if (timer) clearTimeout(timer);
+            if (timer) {
+              clearTimeout(timer);
+            }
 
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) {
+              continue;
+            }
 
-            const payload = await response.json();
-            const quotes = normalizeQuoteList(payload);
+            const payload =
+              await response.json();
 
-            if (quotes.length) return quotes;
+            const quotes =
+              normalizeQuoteList(payload);
+
+            if (quotes.length) {
+              return quotes;
+            }
+
           } catch (error) {
-            console.warn("No se pudo cargar quotes.json desde:", requestURL, error);
+            console.warn(
+              "Fetch de quotes.json falló:",
+              requestURL,
+              error
+            );
+          }
+
+          const xhrQuotes =
+            await fetchWithXHR(requestURL);
+
+          if (xhrQuotes.length) {
+            return xhrQuotes;
           }
         }
       }
@@ -7095,81 +7284,76 @@ body.task-drag-mode .activity-card {
       return [];
     }
 
-    async function loadQuotesLibrary() {
-      const node = document.getElementById("heroSubtitle");
-      const authorNode = document.getElementById("heroQuoteAuthor");
-
-      if (node) node.classList.add("is-loading");
-      if (authorNode) authorNode.textContent = "";
-
-      // Primero cache: permite mostrar inmediatamente una frase + autor
-      // aunque la red todavía esté resolviendo quotes.json.
-      const cached = loadQuotesCache();
-
-      if (cached.length) {
-        MOTIVATIONAL_QUOTES = cached;
-
-        quoteRotationSeed = createQuoteSeed();
-        quoteCurrentIndex = -1;
-
-        updateMotivationalQuote(true);
-
-        clearInterval(quoteTimer);
-        quoteTimer = setInterval(
-          () => updateMotivationalQuote(false),
-          QUOTE_INTERVAL_MS
-        );
-      }
-
-      // Después red: actualiza la biblioteca si existe una versión nueva.
-      const networkQuotes = await fetchQuotesFromNetwork();
-
-      if (networkQuotes.length) {
-        MOTIVATIONAL_QUOTES = networkQuotes;
-        saveQuotesCache(networkQuotes);
-
-        // Elegimos una nueva frase después de una carga real para que
-        // actualizar la página también produzca una nueva selección.
-        quoteRotationSeed = createQuoteSeed();
-        quoteCurrentIndex = -1;
-
-        updateMotivationalQuote(true);
-
-        clearInterval(quoteTimer);
-        quoteTimer = setInterval(
-          () => updateMotivationalQuote(false),
-          QUOTE_INTERVAL_MS
+    function createQuoteSeed() {
+      const base =
+        Date.now() ^
+        Math.floor(
+          performance.now() * 1000
         );
 
-        return true;
-      }
+      try {
+        const array =
+          new Uint32Array(2);
 
-      if (cached.length) {
-        // La caché ya se mostró; no cambiamos nada.
-        return true;
-      }
+        crypto.getRandomValues(array);
 
-      // Estado visible para diagnóstico, no una frase genérica silenciosa.
-      setQuoteMessage(
-        "No se pudo cargar la biblioteca de frases.",
-        "",
-        "is-error"
+        return (
+          array[0] ^
+          array[1] ^
+          base
+        ) >>> 0;
+
+      } catch (_) {
+        return (
+          Math.floor(
+            Math.random() *
+            0xFFFFFFFF
+          )
+        ) >>> 0;
+      }
+    }
+
+    function quoteRandom() {
+      quoteRotationSeed =
+        (
+          Math.imul(
+            quoteRotationSeed,
+            1664525
+          ) +
+          1013904223
+        ) >>> 0;
+
+      return (
+        quoteRotationSeed /
+        4294967296
       );
-
-      return false;
     }
 
     function loadQuoteHistory() {
       try {
-        const raw = safeStorage.getItem(QUOTE_HISTORY_KEY);
-        const parsed = raw ? JSON.parse(raw) : null;
+        const raw =
+          safeStorage.getItem(
+            QUOTE_HISTORY_KEY
+          );
+
+        const parsed =
+          raw ? JSON.parse(raw) : null;
 
         if (
           !parsed ||
-          !Array.isArray(parsed.items) ||
-          !Number.isFinite(parsed.startedAt) ||
-          (Date.now() - parsed.startedAt) >=
-            QUOTE_HISTORY_DAYS * 24 * 60 * 60 * 1000
+          !Array.isArray(
+            parsed.items
+          ) ||
+          !Number.isFinite(
+            parsed.startedAt
+          ) ||
+          Date.now() -
+            parsed.startedAt >=
+            QUOTE_HISTORY_DAYS *
+            24 *
+            60 *
+            60 *
+            1000
         ) {
           return {
             startedAt: Date.now(),
@@ -7184,13 +7368,15 @@ body.task-drag-mode .activity-card {
               parsed.items
                 .map(Number)
                 .filter(
-                  n =>
-                    n >= 0 &&
-                    n < MOTIVATIONAL_QUOTES.length
+                  index =>
+                    index >= 0 &&
+                    index <
+                      MOTIVATIONAL_QUOTES.length
                 )
             )
           ]
         };
+
       } catch (_) {
         return {
           startedAt: Date.now(),
@@ -7209,12 +7395,22 @@ body.task-drag-mode .activity-card {
     }
 
     function pickNextQuoteIndex() {
-      if (!MOTIVATIONAL_QUOTES.length) return -1;
+      if (
+        !MOTIVATIONAL_QUOTES.length
+      ) {
+        return -1;
+      }
 
-      const history = loadQuoteHistory();
-      const used = new Set(history.items);
+      const history =
+        loadQuoteHistory();
 
-      if (used.size >= MOTIVATIONAL_QUOTES.length) {
+      const used =
+        new Set(history.items);
+
+      if (
+        used.size >=
+        MOTIVATIONAL_QUOTES.length
+      ) {
         history.startedAt = Date.now();
         history.items = [];
         used.clear();
@@ -7223,15 +7419,16 @@ body.task-drag-mode .activity-card {
       const available = [];
 
       for (
-        let i = 0;
-        i < MOTIVATIONAL_QUOTES.length;
-        i++
+        let index = 0;
+        index <
+          MOTIVATIONAL_QUOTES.length;
+        index++
       ) {
         if (
-          !used.has(i) &&
-          i !== quoteCurrentIndex
+          !used.has(index) &&
+          index !== quoteCurrentIndex
         ) {
-          available.push(i);
+          available.push(index);
         }
       }
 
@@ -7244,7 +7441,8 @@ body.task-drag-mode .activity-card {
       const index =
         available[
           Math.floor(
-            quoteRandom() * available.length
+            quoteRandom() *
+            available.length
           )
         ];
 
@@ -7256,55 +7454,222 @@ body.task-drag-mode .activity-card {
       return index;
     }
 
-    function updateMotivationalQuote(force = false) {
-      const node = document.getElementById("heroSubtitle");
+    function paintQuote(quote) {
+      const node =
+        document.getElementById(
+          "heroSubtitle"
+        );
+
       const authorNode =
-        document.getElementById("heroQuoteAuthor");
+        document.getElementById(
+          "heroQuoteAuthor"
+        );
 
       if (
         !node ||
         !authorNode ||
+        !quote
+      ) {
+        return false;
+      }
+
+      // Frase y autor se actualizan juntos.
+      node.textContent = quote.text;
+      authorNode.textContent =
+        quote.author;
+
+      node.classList.remove(
+        "is-loading",
+        "is-error"
+      );
+
+      authorNode.classList.remove(
+        "is-changing"
+      );
+
+      return true;
+    }
+
+    function updateMotivationalQuote(
+      force = false
+    ) {
+      if (
+        !quoteLibraryReady ||
         !MOTIVATIONAL_QUOTES.length
       ) {
         return;
       }
 
       if (!quoteRotationSeed) {
-        quoteRotationSeed = createQuoteSeed();
+        quoteRotationSeed =
+          createQuoteSeed();
       }
 
-      const index = pickNextQuoteIndex();
+      const index =
+        pickNextQuoteIndex();
 
       if (index < 0) return;
 
       const quote =
         MOTIVATIONAL_QUOTES[index];
 
+      const node =
+        document.getElementById(
+          "heroSubtitle"
+        );
+
+      const authorNode =
+        document.getElementById(
+          "heroQuoteAuthor"
+        );
+
       if (
-        !force &&
-        node.textContent === quote.text &&
-        authorNode.textContent === quote.author
+        !node ||
+        !authorNode
       ) {
         return;
       }
 
-      node.classList.add("is-changing");
-      authorNode.classList.add("is-changing");
+      if (
+        !force &&
+        node.textContent ===
+          quote.text &&
+        authorNode.textContent ===
+          quote.author
+      ) {
+        return;
+      }
 
-      window.setTimeout(() => {
-        node.textContent = quote.text;
-        authorNode.textContent = quote.author;
+      node.classList.add(
+        "is-changing"
+      );
 
-        node.classList.remove(
-          "is-loading",
-          "is-error"
-        );
+      authorNode.classList.add(
+        "is-changing"
+      );
+
+      requestAnimationFrame(() => {
+        paintQuote(quote);
 
         requestAnimationFrame(() => {
-          node.classList.remove("is-changing");
-          authorNode.classList.remove("is-changing");
+          node.classList.remove(
+            "is-changing"
+          );
+
+          authorNode.classList.remove(
+            "is-changing"
+          );
         });
-      }, 120);
+      });
+    }
+
+    function startQuoteRotation() {
+      clearInterval(quoteTimer);
+
+      if (
+        !quoteLibraryReady ||
+        !MOTIVATIONAL_QUOTES.length
+      ) {
+        return;
+      }
+
+      quoteTimer =
+        setInterval(
+          () =>
+            updateMotivationalQuote(false),
+          QUOTE_INTERVAL_MS
+        );
+    }
+
+    async function loadQuotesLibrary() {
+      const node =
+        document.getElementById(
+          "heroSubtitle"
+        );
+
+      const authorNode =
+        document.getElementById(
+          "heroQuoteAuthor"
+        );
+
+      if (node) {
+        node.classList.add(
+          "is-loading"
+        );
+      }
+
+      if (authorNode) {
+        authorNode.textContent = "";
+      }
+
+      // Nivel 1: Cache Storage.
+      let quotes =
+        await readQuotesFromCacheStorage();
+
+      // Nivel 2: localStorage.
+      if (!quotes.length) {
+        quotes =
+          readQuotesLocal();
+      }
+
+      // Pintar cache inmediatamente.
+      if (quotes.length) {
+        MOTIVATIONAL_QUOTES =
+          quotes;
+
+        quoteLibraryReady = true;
+        quoteRotationSeed =
+          createQuoteSeed();
+        quoteCurrentIndex = -1;
+
+        updateMotivationalQuote(true);
+        startQuoteRotation();
+      }
+
+      // Nivel 3: red.
+      const networkQuotes =
+        await fetchQuotesFromNetwork();
+
+      if (networkQuotes.length) {
+        MOTIVATIONAL_QUOTES =
+          networkQuotes;
+
+        quoteLibraryReady = true;
+
+        saveQuotesLocal(
+          networkQuotes
+        );
+
+        quoteRotationSeed =
+          createQuoteSeed();
+        quoteCurrentIndex = -1;
+
+        updateMotivationalQuote(true);
+        startQuoteRotation();
+
+        return true;
+      }
+
+      if (quotes.length) {
+        return true;
+      }
+
+      if (node) {
+        node.textContent =
+          "No se pudo cargar la biblioteca de frases.";
+        node.classList.remove(
+          "is-loading"
+        );
+        node.classList.add(
+          "is-error"
+        );
+      }
+
+      if (authorNode) {
+        authorNode.textContent = "";
+      }
+
+      return false;
     }
 
     function init() {
