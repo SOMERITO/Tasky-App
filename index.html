@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky</title>
-  <!-- TASKY · V67 -->
+  <!-- TASKY · V68 -->
 
   <!-- TASKY · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -3376,7 +3376,7 @@ body.task-drag-mode .activity-card {
   </style>
 </head>
 
-<body tabindex="-1" data-tasky-version="V67">
+<body tabindex="-1" data-tasky-version="V68">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -3620,7 +3620,7 @@ body.task-drag-mode .activity-card {
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 67;
+    const APP_VERSION = 68;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -4244,8 +4244,8 @@ body.task-drag-mode .activity-card {
       el.todayText.textContent = formatDateLong(today()).replace(/^\w/, c => c.toUpperCase());
 
       document.title = overdue.length
-        ? "(" + overdue.length + ") Tasky — Pro"
-        : "Tasky — Pro";
+        ? "(" + overdue.length + ") Tasky"
+        : "Tasky";
     }
 
 
