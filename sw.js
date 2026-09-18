@@ -1,16 +1,16 @@
 /* =========================================================
-   TASKY PRO · SERVICE WORKER V66
+   TASKY · SERVICE WORKER V69
+   =========================================================
 
-   Funciones:
-   - Control de caché de Tasky.
-   - Actualizaciones de index.html sin quedar atrapado
-     en una versión antigua.
-   - quotes.json actualizado desde red cuando sea posible.
-   - Soporte offline mediante caché.
-   - Eliminación automática de cachés antiguas de Tasky.
+   Objetivos:
+   - Mantener Tasky disponible sin conexión.
+   - Evitar que index.html quede atrapado en una versión antigua.
+   - Mantener quotes.json actualizado.
+   - Eliminar cachés antiguas de Tasky.
+   - No interceptar Firebase ni recursos de otros dominios.
    ========================================================= */
 
-const CACHE_NAME = "tasky-v66";
+const CACHE_NAME = "tasky-v69";
 
 const APP_SHELL = [
   "./",
@@ -28,8 +28,12 @@ self.addEventListener("install", event => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
+      .then(cache => {
+        return cache.addAll(APP_SHELL);
+      })
+      .then(() => {
+        return self.skipWaiting();
+      })
   );
 });
 
@@ -41,18 +45,22 @@ self.addEventListener("activate", event => {
   event.waitUntil(
     caches
       .keys()
-      .then(keys =>
-        Promise.all(
-          keys
-            .filter(
-              key =>
-                key.startsWith("tasky-") &&
-                key !== CACHE_NAME
-            )
-            .map(key => caches.delete(key))
-        )
-      )
-      .then(() => self.clients.claim())
+      .then(keys => {
+        const oldCaches = keys.filter(
+          key =>
+            key.startsWith("tasky-") &&
+            key !== CACHE_NAME
+        );
+
+        return Promise.all(
+          oldCaches.map(key => {
+            return caches.delete(key);
+          })
+        );
+      })
+      .then(() => {
+        return self.clients.claim();
+      })
   );
 });
 
@@ -60,64 +68,26 @@ self.addEventListener("activate", event => {
    NETWORK FIRST
    =========================================================
 
-   Primero intenta obtener el archivo desde Internet.
+   Lo usamos para archivos que queremos mantener
+   lo más actualizados posible.
 
-   Si Internet funciona:
-      red → guardar copia → devolver archivo nuevo
+   Orden:
 
-   Si Internet falla:
-      caché → devolver archivo anterior
+   INTERNET
+      ↓
+   guardar en caché
+      ↓
+   devolver versión nueva
+
+   Si no hay Internet:
+
+   CACHÉ
+      ↓
+   devolver última versión disponible
    ========================================================= */
 
 async function networkFirst(request) {
   const cache = await caches.open(CACHE_NAME);
-
-  try {
-    const response = await fetch(request);
-
-    if (response && response.ok) {
-      await cache.put(request, response.clone());
-    }
-
-    return response;
-
-  } catch (error) {
-
-    return (
-      await cache.match(
-        request,
-        { ignoreSearch: true }
-      )
-      ||
-      await cache.match("./index.html")
-    );
-  }
-}
-
-/* =========================================================
-   CACHE FIRST
-   =========================================================
-
-   Para recursos estáticos:
-
-      caché → si existe
-      red    → si no existe
-
-   Esto evita descargar innecesariamente iconos y recursos
-   que no cambian constantemente.
-   ========================================================= */
-
-async function cacheFirst(request) {
-  const cache = await caches.open(CACHE_NAME);
-
-  const cached = await cache.match(
-    request,
-    { ignoreSearch: true }
-  );
-
-  if (cached) {
-    return cached;
-  }
 
   try {
     const response = await fetch(request);
@@ -133,7 +103,157 @@ async function cacheFirst(request) {
 
   } catch (error) {
 
-    return cache.match("./index.html");
+    const cachedResponse = await cache.match(
+      request,
+      {
+        ignoreSearch: true
+      }
+    );
+
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+
+    const fallback = await cache.match(
+      "./index.html"
+    );
+
+    if (fallback) {
+      return fallback;
+    }
+
+    return new Response(
+      "Tasky no está disponible en este momento.",
+      {
+        status: 503,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8"
+        }
+      }
+    );
+  }
+}
+
+/* =========================================================
+   QUOTES FIRST
+   =========================================================
+
+   quotes.json necesita un tratamiento especial.
+
+   1. Si existe una copia en caché, la usamos inmediatamente.
+   2. Paralelamente intentamos obtener una versión nueva.
+   3. Si Internet falla, mantenemos la copia anterior.
+   ========================================================= */
+
+async function quotesFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+
+  const cachedResponse = await cache.match(
+    request,
+    {
+      ignoreSearch: true
+    }
+  );
+
+  try {
+    const networkResponse = await fetch(request);
+
+    if (networkResponse && networkResponse.ok) {
+
+      await cache.put(
+        request,
+        networkResponse.clone()
+      );
+
+      return networkResponse;
+    }
+
+  } catch (error) {
+    // La caché será utilizada debajo.
+  }
+
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
+  return new Response(
+    JSON.stringify({
+      schemaVersion: 1,
+      libraryVersion: 69,
+      quotes: []
+    }),
+    {
+      status: 503,
+      headers: {
+        "Content-Type":
+          "application/json; charset=utf-8"
+      }
+    }
+  );
+}
+
+/* =========================================================
+   CACHE FIRST
+   =========================================================
+
+   Para recursos relativamente estables:
+
+   CACHÉ
+      ↓
+   si existe → usarla
+
+   si no existe:
+
+   INTERNET
+      ↓
+   guardar
+      ↓
+   usar
+   ========================================================= */
+
+async function cacheFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+
+  const cachedResponse = await cache.match(
+    request,
+    {
+      ignoreSearch: true
+    }
+  );
+
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
+  try {
+    const networkResponse = await fetch(request);
+
+    if (networkResponse && networkResponse.ok) {
+
+      await cache.put(
+        request,
+        networkResponse.clone()
+      );
+    }
+
+    return networkResponse;
+
+  } catch (error) {
+
+    const fallback = await cache.match(
+      "./index.html"
+    );
+
+    if (fallback) {
+      return fallback;
+    }
+
+    return new Response(
+      "",
+      {
+        status: 503
+      }
+    );
   }
 }
 
@@ -147,9 +267,6 @@ self.addEventListener("fetch", event => {
 
   /*
      Solo manejamos solicitudes GET.
-
-     POST, PUT, DELETE, etc. deben continuar directamente
-     hacia Internet/Firebase.
   */
   if (request.method !== "GET") {
     return;
@@ -160,39 +277,55 @@ self.addEventListener("fetch", event => {
   );
 
   /*
-     NO interceptar recursos externos.
+     Muy importante:
 
-     Esto incluye:
+     Tasky NO intercepta solicitudes externas.
+
+     Esto deja pasar directamente:
      - Firebase
      - Google
-     - APIs externas
+     - APIs
      - CDN
      - otros dominios
   */
+
   if (
-    url.origin !== self.location.origin
+    url.origin !==
+    self.location.origin
   ) {
     return;
   }
 
   /* =======================================================
-     HTML + QUOTES
-     =======================================================
-
-     Estos archivos son especialmente importantes porque
-     cambian con las nuevas versiones.
-
-     Por eso usamos NETWORK FIRST.
+     INDEX / NAVEGACIÓN
      ======================================================= */
 
   if (
     request.mode === "navigate" ||
-    url.pathname.endsWith("/index.html") ||
-    url.pathname.endsWith("/quotes.json")
+    url.pathname.endsWith(
+      "/index.html"
+    )
   ) {
 
     event.respondWith(
       networkFirst(request)
+    );
+
+    return;
+  }
+
+  /* =======================================================
+     BIBLIOTECA DE FRASES
+     ======================================================= */
+
+  if (
+    url.pathname.endsWith(
+      "/quotes.json"
+    )
+  ) {
+
+    event.respondWith(
+      quotesFirst(request)
     );
 
     return;
@@ -205,4 +338,5 @@ self.addEventListener("fetch", event => {
   event.respondWith(
     cacheFirst(request)
   );
+
 });
