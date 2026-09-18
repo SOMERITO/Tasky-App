@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V58 -->
+  <!-- TASKY PRO · V59 -->
 
   <!-- TASKY PRO · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -3262,7 +3262,7 @@ body.task-drag-mode .activity-card {
   </style>
 </head>
 
-<body tabindex="-1" data-tasky-version="V58">
+<body tabindex="-1" data-tasky-version="V59">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -3507,7 +3507,7 @@ body.task-drag-mode .activity-card {
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 58;
+    const APP_VERSION = 59;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -3694,11 +3694,9 @@ body.task-drag-mode .activity-card {
     function todayTaskStats() {
       const now = today();
       const completedRegular = state.completed.filter(t => completedDateFor(t) === now).length;
-      const completedRecurring = state.categories.reduce(
-        (sum, cat) => sum + cat.tasks.filter(t => isRepeatCompletedToday(t)).length,
-        0
-      );
-      const completed = completedRegular + completedRecurring;
+      // Las tareas repetitivas completadas hoy ya generan una entrada
+      // en state.completed; no se cuentan de nuevo desde la serie.
+      const completed = completedRegular;
 
       const pending = state.categories.reduce(
         (sum, cat) => sum + cat.tasks.filter(
@@ -3801,9 +3799,15 @@ body.task-drag-mode .activity-card {
             originCat: String(task.originCat || ""),
             completedAt: task.completedAt || Date.now(),
             completedDate: /^\d{4}-\d{2}-\d{2}$/.test(task.completedDate || "") ? task.completedDate : completedDateFor(task),
+            completedForDate: /^\d{4}-\d{2}-\d{2}$/.test(task.completedForDate || "") ? task.completedForDate : (
+              /^\d{4}-\d{2}-\d{2}$/.test(task.completedDate || "") ? task.completedDate : completedDateFor(task)
+            ),
             originIndex: Number.isInteger(task.originIndex) ? task.originIndex : 999999,
             repeat: Boolean(task.repeat),
-            repeatDays: Array.isArray(task.repeatDays) ? [...new Set(task.repeatDays.map(Number).filter(n => n >= 1 && n <= 7))].sort((a,b) => a-b) : []
+            repeatDays: Array.isArray(task.repeatDays) ? [...new Set(task.repeatDays.map(Number).filter(n => n >= 1 && n <= 7))].sort((a,b) => a-b) : [],
+            repeatSourceId: typeof task.repeatSourceId === "string" ? task.repeatSourceId : "",
+            recurringOccurrence: Boolean(task.recurringOccurrence),
+            nextOccurrenceDate: /^\d{4}-\d{2}-\d{2}$/.test(task.nextOccurrenceDate || "") ? task.nextOccurrenceDate : null
           })).filter(task => task.text.trim() !== "")
         : [];
 
@@ -4022,10 +4026,21 @@ body.task-drag-mode .activity-card {
     }
 
     function buildCategoryCard(cat, index, query) {
-      const visiblePending = cat.tasks.filter(t => !(!t.draft && t.text.trim() && t.date < today())).length;
+      const visiblePending = cat.tasks.filter(t =>
+        !(
+          !t.draft &&
+          t.text.trim() &&
+          (
+            t.date < today() ||
+            (t.repeat && isRepeatCompletedToday(t)) ||
+            (t.repeat && t.date > today())
+          )
+        )
+      ).length;
+      // Las ocurrencias repetitivas ya viven en state.completed,
+      // por lo que no debemos sumarlas una segunda vez desde la tarea-serie.
       const completedToday =
-        state.completed.filter(t => t.originCat === cat.id && completedDateFor(t) === today()).length
-        + recurringCompletedTodayForCategory(cat.id);
+        state.completed.filter(t => t.originCat === cat.id && completedDateFor(t) === today()).length;
 
       const todayPending = cat.tasks.filter(
         t => !t.draft &&
@@ -4087,6 +4102,13 @@ body.task-drag-mode .activity-card {
 
       for (const task of cat.tasks) {
         if (!task.draft && task.text.trim() && task.date < today()) continue;
+
+        // Una repetitiva que ya se completó hoy queda archivada en
+        // Completadas. Su tarea-serie no vuelve a mostrarse hasta su
+        // siguiente fecha programada.
+        if (!task.draft && task.text.trim() && task.repeat && isRepeatCompletedToday(task)) continue;
+        if (!task.draft && task.text.trim() && task.repeat && task.date > today()) continue;
+
         const item = buildTaskItem(task, query, false);
         list.appendChild(item);
       }
@@ -4867,15 +4889,9 @@ body.task-drag-mode .activity-card {
       const cat = state.categories.find(c => c.id === categoryId);
       if (!cat || !el.statsReportContent) return;
 
-      const completedHistorical = state.completed.filter(
+      const completed = state.completed.filter(
         t => t.originCat === categoryId && completedDateFor(t) === today()
       ).length;
-
-      const completedRecurringLive = cat.tasks.filter(
-        t => !t.draft && isRepeatCompletedToday(t)
-      ).length;
-
-      const completed = completedHistorical + completedRecurringLive;
 
       const pending = cat.tasks.filter(
         t => !t.draft &&
@@ -4977,10 +4993,19 @@ body.task-drag-mode .activity-card {
       const cat = state.categories.find(c => c.id === categoryId);
       if (!cat) return;
 
-      const visiblePending = cat.tasks.filter(t => !(!t.draft && t.text.trim() && t.date < today())).length;
+      const visiblePending = cat.tasks.filter(t =>
+        !(
+          !t.draft &&
+          t.text.trim() &&
+          (
+            t.date < today() ||
+            (t.repeat && isRepeatCompletedToday(t)) ||
+            (t.repeat && t.date > today())
+          )
+        )
+      ).length;
       const completedToday =
-        state.completed.filter(t => t.originCat === categoryId && completedDateFor(t) === today()).length
-        + recurringCompletedTodayForCategory(categoryId);
+        state.completed.filter(t => t.originCat === categoryId && completedDateFor(t) === today()).length;
 
       const todayPending = cat.tasks.filter(
         t => !t.draft &&
@@ -5357,9 +5382,9 @@ body.task-drag-mode .activity-card {
 
         const task = cat.tasks[idx];
 
-        // Las tareas repetitivas generan una OCURRENCIA completada
-        // en el historial y mantienen su tarea-serie en la misma fase,
-        // programada para la siguiente fecha.
+        // Las tareas repetitivas funcionan por OCURRENCIAS:
+        // hoy se archiva la ocurrencia completada y la tarea-serie
+        // queda programada para su siguiente fecha.
         if (task.repeat) {
           if (!Array.isArray(task.repeatDays) || !task.repeatDays.length) {
             task.repeatDays = [1,2,3,4,5,6,7];
@@ -5371,7 +5396,6 @@ body.task-drag-mode .activity-card {
           const originalIndex = idx;
           const sourceTaskId = task.id;
 
-          // La ocurrencia histórica es independiente de la tarea-serie.
           state.completed.unshift({
             ...JSON.parse(JSON.stringify(task)),
             id: uid("completed"),
@@ -5385,55 +5409,55 @@ body.task-drag-mode .activity-card {
             nextOccurrenceDate: nextDate
           });
 
-          // La tarea-serie permanece en la fase y apunta a su próxima
-          // fecha. Se limpian los campos de "completada hoy" para que
-          // mañana vuelva a estar disponible normalmente.
+          // Marcar la serie como completada durante HOY.
+          // La tarea seguirá existiendo en datos, pero no se mostrará
+          // en la lista activa de hoy hasta llegar a la próxima fecha.
           task.repeatCount = Number(task.repeatCount || 0) + 1;
-          task.lastCompletedAt = null;
-          task.lastCompletedDate = null;
+          task.lastCompletedAt = completedAt;
+          task.lastCompletedDate = completedOn;
           task.date = nextDate;
 
           const item = document.querySelector(
             `.task-item[data-task-id="${cssEscapeSafe(sourceTaskId)}"]`
           );
 
-          if (item) {
-            item.classList.remove("repeat-done-today", "repeat-complete", "overdue");
+          // Quitar inmediatamente la tarea de la vista de hoy.
+          // No renderizamos toda la página para evitar parpadeos.
+          animateTaskRemoval(item, () => {
+            item?.remove();
 
-            const check = item.querySelector(".check-btn");
-            if (check) {
-              check.disabled = false;
-              check.classList.remove("repeat-done-today");
-              check.innerHTML = "";
-              check.setAttribute("aria-label", "Completar tarea");
-            }
-
-            const repeatStatus = item.querySelector(".task-due-repeat-status");
-            if (repeatStatus) {
-              repeatStatus.outerHTML =
-                `<span class="task-repeat-badge task-repeat-badge-standalone" title="${escapeHTML(repeatDaysToLabel(task.repeatDays))}">` +
-                `<i data-lucide="repeat-2"></i>${escapeHTML(repeatDaysToLabel(task.repeatDays))}</span>`;
-            }
-
-            // Si la siguiente fecha ya no es hoy (lo normal), la tarjeta
-            // queda como próxima ocurrencia, no como completada.
-            item.dataset.date = task.date;
-            item.classList.toggle("overdue", task.date < today());
-          }
+            updateCompletedCardUI();
+            updateCategoryUI(cat.id);
+            updateSummaryUI();
+            updateTaskHeights();
+            refreshIcons();
+          });
 
           persistLocal();
           localDirty = true;
 
-          updateCategoryUI(cat.id);
+          // Si la fase ya no tiene trabajo para hoy, se envía al final,
+          // igual que una fase cuyas tareas normales fueron completadas.
+          const movedToBottom = moveCompletedCategoryToBottom(cat.id);
+
           updateCompletedCardUI();
+          updateCategoryUI(cat.id);
           updateSummaryUI();
           updateTaskHeights();
-          scheduleSave("completar tarea repetida");
           refreshIcons();
+
+          scheduleSave(
+            movedToBottom
+              ? "completar tarea repetida y reordenar fase"
+              : "completar tarea repetida"
+          );
+
           softHaptic(28);
 
           toast(
-            `Completada hoy ✓ · Próxima ${formatDateLong(nextDate)} ↻`,
+            movedToBottom
+              ? `Completada hoy ✓ · Próxima ${formatDateLong(nextDate)}`
+              : `Completada hoy ✓ · Próxima ${formatDateLong(nextDate)}`,
             "repeat-2"
           );
           return;
@@ -5538,22 +5562,19 @@ body.task-drag-mode .activity-card {
           seriesTask.lastCompletedAt = null;
           seriesTask.lastCompletedDate = null;
           seriesTask.repeat = true;
-          seriesTask.repeatDays = Array.isArray(task.repeatDays) ? [...task.repeatDays] : [...(seriesTask.repeatDays || [])];
+          seriesTask.repeatDays = Array.isArray(task.repeatDays)
+            ? [...task.repeatDays]
+            : [...(seriesTask.repeatDays || [])];
         }
 
-        const completedItem = document.querySelector(
-          `.task-item[data-task-id="${cssEscapeSafe(taskId)}"]`
-        );
-
-        animateTaskRemoval(completedItem, () => {
-          render();
-          refreshIcons();
-          updateSummaryUI();
-          updateTaskHeights();
-        });
-
+        // La entrada histórica ya fue retirada arriba. La serie vuelve
+        // a ser visible hoy sin crear una segunda tarea.
         persistLocal();
         localDirty = true;
+        render();
+        refreshIcons();
+        updateSummaryUI();
+        updateTaskHeights();
         scheduleSave("restaurar ocurrencia repetitiva");
         toast("Tarea repetitiva restaurada para hoy", "rotate-ccw");
         return;
@@ -6940,8 +6961,8 @@ body.task-drag-mode .activity-card {
       { text: "La curiosidad es el deseo de conocimiento.", author: "John Locke" },
     ];
 
-    const QUOTE_INTERVAL_MS = 60 * 1000;
-    const QUOTE_HISTORY_KEY = "tasky_quote_history_v56";
+    const QUOTE_INTERVAL_MS = 60 * 1000; // 1 minuto: lectura cómoda; 30 s resultaría muy rápido para leer frase + autor.
+    const QUOTE_HISTORY_KEY = "tasky_quote_history_v59";
     const QUOTE_HISTORY_DAYS = 2;
 
     let quoteRotationSeed = 0;
