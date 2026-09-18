@@ -10,7 +10,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky — Pro</title>
-  <!-- TASKY PRO · V60 -->
+  <!-- TASKY PRO · V61 -->
 
   <!-- TASKY PRO · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -3258,11 +3258,21 @@ body.task-drag-mode .activity-card {
   
     /* V60: arranque robusto para navegador + Median WebView. */
     html.tasky-booting body {
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
     }
 
+    /* V61: el cargador ya no bloquea el primer render.
+       Tasky se muestra desde el primer paint; Firebase arranca aparte. */
     #loadingScreen {
-      transition: opacity .22s ease, visibility .22s ease;
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
+    #loadingScreen.hidden {
+      display: none !important;
     }
 
     #loadingScreen.boot-fallback {
@@ -3275,10 +3285,40 @@ body.task-drag-mode .activity-card {
       color: var(--muted);
     }
 
+  
+    /* V61 · primer paint estable */
+    body {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .app-shell {
+      min-height: 100vh;
+    }
+
+    @media (min-width: 761px) {
+      body::before {
+        will-change: transform;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      body,
+      .hero h1,
+      .fab-main {
+        animation: none !important;
+      }
+
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+      }
+    }
+
   </style>
 </head>
 
-<body tabindex="-1" data-tasky-version="V60">
+<body tabindex="-1" data-tasky-version="V61">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -3299,7 +3339,7 @@ body.task-drag-mode .activity-card {
 
       <div class="top-actions">
         <div id="syncStatus" class="sync-label" title="Estado de sincronización">
-          <span class="sync-dot"></span> Conectando…
+          <span class="sync-dot"></span> Local
         </div>
         <button id="themeBtn" class="icon-btn" type="button" aria-label="Cambiar tema" title="Cambiar tema">
           <i data-lucide="sun"></i>
@@ -3523,7 +3563,7 @@ body.task-drag-mode .activity-card {
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 60;
+    const APP_VERSION = 61;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -7230,12 +7270,12 @@ body.task-drag-mode .activity-card {
         updateMotivationalQuote(true);
         clearInterval(quoteTimer);
         quoteTimer = setInterval(() => updateMotivationalQuote(false), QUOTE_INTERVAL_MS);
-        refreshIcons();
 
-        // La interfaz NO espera a Firebase.
+        // Primer render terminado: Tasky queda interactiva YA.
         hideLoading();
 
-        // Dependencias externas se cargan en segundo plano.
+        // Los iconos y Firebase son secundarios y van en segundo plano.
+        refreshIcons();
         loadOptionalIcons();
         startFirebase();
       } catch (error) {
