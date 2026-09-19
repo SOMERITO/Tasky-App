@@ -1,0 +1,51 @@
+# TASKY · V72 · VITE MIGRATION
+# Este workflow SOLO comprueba que la aplicación pueda compilar.
+# Todavía NO publica Tasky en GitHub Pages.
+
+name: Tasky - Build Vite
+
+on:
+  push:
+    branches:
+      - vite-migration
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compilar Tasky
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v5
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Compilar Vite
+        run: npm run build
+
+      - name: Verificar archivos generados
+        run: |
+          test -f dist/index.html
+          test -f dist/quotes.json
+          test -f dist/manifest.json
+          test -f dist/sw.js
+          test -f dist/icon.png
+
+          echo "======================================"
+          echo "TASKY VITE BUILD: OK"
+          echo "======================================"
+
+          echo "Contenido de dist:"
+          find dist -maxdepth 2 -type f | sort
