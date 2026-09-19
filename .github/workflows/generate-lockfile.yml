@@ -1,10 +1,16 @@
 # TASKY · Generate package-lock.json
-# Este workflow se ejecuta manualmente.
-# Genera package-lock.json y lo guarda en vite-migration.
+# Genera el lockfile automáticamente en la rama vite-migration.
+# No publica la aplicación.
 
 name: Tasky - Generate Lockfile
 
 on:
+  push:
+    branches:
+      - vite-migration
+    paths-ignore:
+      - package-lock.json
+
   workflow_dispatch:
 
 permissions:
@@ -16,14 +22,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # --------------------------------------------------
+      # 1. Descargar el repositorio
+      # --------------------------------------------------
       - name: Descargar código
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
+      # --------------------------------------------------
+      # 2. Configurar Node.js
+      # --------------------------------------------------
       - name: Configurar Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 22
 
+      # --------------------------------------------------
+      # 3. Generar package-lock.json
+      # --------------------------------------------------
       - name: Generar package-lock.json
         run: |
           npm install \
@@ -32,18 +49,68 @@ jobs:
             --no-audit \
             --no-fund
 
-      - name: Guardar package-lock.json
+      # --------------------------------------------------
+      # 4. Comprobar si realmente existe un cambio
+      # --------------------------------------------------
+      - name: Comprobar lockfile
+        id: lockfile
+        shell: bash
         run: |
-          if git diff --quiet -- package-lock.json; then
-            echo "No hay cambios en package-lock.json."
-            exit 0
+          if [ ! -f package-lock.json ]; then
+            echo "ERROR: package-lock.json no fue generado."
+            exit 1
           fi
 
+          if [ -z "$(git status --porcelain -- package-lock.json)" ]; then
+            echo "package-lock.json ya está actualizado."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "package-lock.json tiene cambios."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --------------------------------------------------
+      # 5. Guardar package-lock.json
+      # --------------------------------------------------
+      - name: Guardar package-lock.json
+        if: steps.lockfile.outputs.changed == 'true'
+        shell: bash
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add package-lock.json
-          git commit -m "Add package-lock.json"
+
+          git commit \
+            -m "Add package-lock.json"
+
           git push origin HEAD:${{ github.ref_name }}
 
-          echo "package-lock.json guardado correctamente."
+      # --------------------------------------------------
+      # 6. Verificación final
+      # --------------------------------------------------
+      - name: Verificar resultado
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "TASKY · LOCKFILE"
+          echo "=========================================="
+
+          if [ -f package-lock.json ]; then
+            echo "✅ package-lock.json existe"
+          else
+            echo "❌ package-lock.json NO existe"
+            exit 1
+          fi
+
+          echo ""
+          echo "Rama:"
+          echo "${GITHUB_REF_NAME}"
+
+          echo ""
+          echo "Versión de npm:"
+          npm -v
+
+          echo ""
+          echo "Tamaño del lockfile:"
+          wc -c package-lock.json
