@@ -1,0 +1,49 @@
+# TASKY · Generate package-lock.json
+# Este workflow se ejecuta manualmente.
+# Genera package-lock.json y lo guarda en vite-migration.
+
+name: Tasky - Generate Lockfile
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate-lockfile:
+    name: Generar package-lock.json
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v5
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Generar package-lock.json
+        run: |
+          npm install \
+            --package-lock-only \
+            --ignore-scripts \
+            --no-audit \
+            --no-fund
+
+      - name: Guardar package-lock.json
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "No hay cambios en package-lock.json."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add package-lock.json
+          git commit -m "Add package-lock.json"
+          git push origin HEAD:${{ github.ref_name }}
+
+          echo "package-lock.json guardado correctamente."
