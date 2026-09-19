@@ -1,0 +1,82 @@
+# TASKY · Vite Build Verification
+# Comprueba que la aplicación pueda instalarse y compilarse.
+# Este workflow NO publica Tasky.
+
+name: Tasky - Build Vite
+
+on:
+  push:
+    branches:
+      - vite-migration
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compilar Tasky
+    runs-on: ubuntu-latest
+
+    steps:
+      # --------------------------------------------------
+      # 1. Descargar el código
+      # --------------------------------------------------
+      - name: Descargar código
+        uses: actions/checkout@v5
+
+      # --------------------------------------------------
+      # 2. Configurar Node.js + caché de npm
+      # --------------------------------------------------
+      - name: Configurar Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      # --------------------------------------------------
+      # 3. Instalar dependencias de forma reproducible
+      # --------------------------------------------------
+      - name: Instalar dependencias
+        run: npm ci
+
+      # --------------------------------------------------
+      # 4. Compilar Vite
+      # --------------------------------------------------
+      - name: Compilar Vite
+        run: npm run build
+
+      # --------------------------------------------------
+      # 5. Verificar archivos generados
+      # --------------------------------------------------
+      - name: Verificar archivos generados
+        shell: bash
+        run: |
+          set -e
+
+          echo "=========================================="
+          echo "TASKY · VITE BUILD"
+          echo "=========================================="
+
+          test -f dist/index.html
+          test -f dist/manifest.json
+          test -f dist/quotes.json
+          test -f dist/sw.js
+          test -f dist/icon.png
+
+          echo ""
+          echo "✅ dist/index.html"
+          echo "✅ dist/manifest.json"
+          echo "✅ dist/quotes.json"
+          echo "✅ dist/sw.js"
+          echo "✅ dist/icon.png"
+
+          echo ""
+          echo "=========================================="
+          echo "✅ TASKY · BUILD EXITOSO"
+          echo "=========================================="
+
+          echo ""
+          echo "Archivos generados:"
+          find dist -maxdepth 2 -type f | sort

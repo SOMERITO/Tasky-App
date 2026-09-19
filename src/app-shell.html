@@ -1,0 +1,206 @@
+<div id="loadingScreen" class="loading-screen">
+    <div class="loading-box">
+      <div class="spinner" aria-hidden="true"></div>
+      <strong id="loadingTitle">Cargando Tasky…</strong>
+      <span id="loadingMessage">Preparando tu espacio personal</span>
+    </div>
+  </div>
+
+  <main class="app-shell" id="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><i data-lucide="check-check"></i></div>
+        <div class="brand-copy">
+          <div class="brand-title">Tasky</div>
+          <div class="brand-subtitle" id="todayText">Hoy</div>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <div id="syncStatus" class="sync-label" title="Estado de sincronización">
+          <span class="sync-dot"></span> Preparando…
+        </div>
+        <button id="themeBtn" class="icon-btn" type="button" aria-label="Cambiar tema" title="Cambiar tema">
+          <i data-lucide="sun"></i>
+        </button>
+        <button id="menuBtn" class="icon-btn" type="button" aria-label="Abrir menú" title="Más opciones">
+          <i data-lucide="ellipsis"></i>
+        </button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-row">
+        <div>
+          <span class="eyebrow"><i data-lucide="sparkles"></i> Organiza. Ejecuta. Avanza.</span>
+          <h1 id="heroTitle">Tu día, tu orden.</h1>
+          <div class="hero-quote-wrap">
+            <p id="heroSubtitle" class="hero-quote is-loading">Preparando una nueva frase…</p>
+            <div id="heroQuoteAuthor" class="hero-quote-author" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <div class="day-progress">
+          <div class="day-progress-head">
+            <span>Progreso de hoy</span>
+            <span id="dayPercent">0%</span>
+          </div>
+          <div class="day-progress-value"><span id="dayCompleted">0</span> / <span id="dayTotal">0</span></div>
+          <div class="progress-track">
+            <div id="dayProgressFill" class="progress-fill"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="toolbar" aria-label="Herramientas">
+      <label class="search-box">
+        <i data-lucide="search" aria-hidden="true"></i>
+        <input id="searchInput" type="search" autocomplete="off" placeholder="Buscar tareas o fases…">
+        <span class="sr-only">Buscar</span>
+      </label>
+
+      <div class="toolbar-actions">
+        <button id="productivityBtn" class="soft-btn" type="button">
+          <i data-lucide="gauge"></i>
+          <span>Mi productividad</span>
+        </button>
+        <button id="overdueBtn" class="soft-btn" type="button" hidden>
+          <i data-lucide="triangle-alert"></i>
+          <span>Atrasadas</span>
+          <strong id="overdueCount">0</strong>
+        </button>
+      </div>
+    </section>
+
+    <section class="stats-strip" aria-label="Resumen">
+      <div class="metric"><small>Fases</small><strong id="metricCategories">0</strong></div>
+      <div class="metric"><small>Pendientes</small><strong id="metricPending">0</strong></div>
+      <div class="metric"><small>Completadas</small><strong id="metricCompleted">0</strong></div>
+    </section>
+
+    <section id="emptyState" class="empty-state">
+      <div class="empty-icon"><i data-lucide="layout-list"></i></div>
+      <h2>Tu tablero está limpio ✨</h2>
+      <p>Crea una fase para empezar. Puedes mover fases, reordenar tareas, pegar listas completas y copiar tu plan a WhatsApp.</p>
+      <button id="emptyAddBtn" class="soft-btn" style="margin-top:16px"><i data-lucide="plus"></i> Crear primera fase</button>
+    </section>
+
+    <section id="board" class="board" aria-live="polite"></section>
+  </main>
+
+  <button id="fabTop"
+          class="fab-top"
+          type="button"
+          aria-label="Volver arriba"
+          title="Volver arriba"
+          aria-hidden="true">
+    <i data-lucide="chevron-up"></i>
+  </button>
+
+  <div id="fab" class="fab">
+    <div class="fab-actions">
+      <button class="fab-action" data-action="whatsapp"><i data-lucide="message-circle"></i> Copiar a WhatsApp</button>
+      <button class="fab-action" data-action="export"><i data-lucide="download"></i> Exportar respaldo</button>
+      <button class="fab-action" data-action="add-category"><i data-lucide="layers-3"></i> Nueva fase</button>
+    </div>
+    <button id="fabMain" class="fab-main" type="button" aria-label="Acciones rápidas" aria-expanded="false">
+      <i data-lucide="plus"></i>
+    </button>
+  </div>
+
+  <div id="dailyProductivityModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="dailyProductivityTitle">
+    <div class="modal stats-report daily-report">
+      <div class="modal-head">
+        <h2 id="dailyProductivityTitle">Mi productividad de hoy</h2>
+        <button class="icon-btn" type="button" data-close-modal="dailyProductivityModal" aria-label="Cerrar productividad">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div id="dailyProductivityContent"></div>
+    </div>
+  </div>
+
+  <div id="statsModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="statsModalTitle">
+    <div class="modal stats-report">
+      <div class="modal-head">
+        <h2 id="statsModalTitle">Informe de fase</h2>
+        <button class="icon-btn" type="button" data-close-modal="statsModal" aria-label="Cerrar informe">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div id="statsReportContent"></div>
+    </div>
+  </div>
+
+  <div id="repeatModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="repeatModalTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h2 id="repeatModalTitle">Repetir tarea</h2>
+          <div id="repeatTaskName" class="brand-subtitle" style="margin-top:4px"></div>
+        </div>
+        <button class="icon-btn" type="button" data-close-modal="repeatModal" aria-label="Cerrar">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <input id="repeatTaskId" type="hidden">
+      <div style="font-weight:800">¿Qué días quieres repetirla?</div>
+      <div class="repeat-editor-days">
+        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="1"><span>L</span></label>
+        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="2"><span>M</span></label>
+        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="3"><span>X</span></label>
+        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="4"><span>J</span></label>
+        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="5"><span>V</span></label>
+        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="6"><span>S</span></label>
+        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="7"><span>D</span></label>
+      </div>
+      <div id="repeatSummary" class="repeat-editor-summary"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap">
+        <button class="soft-btn" type="button" data-close-modal="repeatModal">Cancelar</button>
+        <button class="soft-btn" type="button" id="saveRepeatBtn" style="background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;border-color:transparent"><i data-lucide="check"></i> Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="overdueModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="overdueTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="overdueTitle">Tareas atrasadas</h2>
+        <button class="icon-btn" type="button" data-close-modal="overdueModal" aria-label="Cerrar">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div id="overdueList" class="modal-list"></div>
+    </div>
+  </div>
+
+  <div id="menuModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="menuTitle">Más opciones</h2>
+        <button class="icon-btn" type="button" data-close-modal="menuModal" aria-label="Cerrar">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="modal-list">
+        <div class="soft-btn" style="cursor:default;justify-content:flex-start;opacity:.9"><i data-lucide="shield-check"></i><span>Protección de datos activa · 20 respaldos locales</span></div>
+        <button class="soft-btn" id="soundToggleBtn" data-menu-action="toggle-sound" aria-pressed="true">
+          <i data-lucide="volume-2"></i>
+          <span id="soundToggleLabel">Sonidos: Activados</span>
+        </button>
+        <button class="soft-btn" data-menu-action="export"><i data-lucide="download"></i> Exportar respaldo JSON</button>
+        <label class="soft-btn" style="cursor:pointer">
+          <i data-lucide="upload"></i>
+          Importar respaldo JSON
+          <input id="importInput" type="file" accept="application/json,.json" hidden>
+        </label>
+        <button class="soft-btn" data-menu-action="recover"><i data-lucide="shield-check"></i> Recuperar último respaldo seguro</button>
+        <button class="soft-btn" data-menu-action="export-safety"><i data-lucide="archive"></i> Exportar historial de respaldos</button>
+        <button class="soft-btn" data-menu-action="reset"><i data-lucide="trash-2"></i> Vaciar tablero</button>
+      </div>
+    </div>
+  </div>
+<div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
