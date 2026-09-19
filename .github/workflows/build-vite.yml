@@ -1,6 +1,7 @@
-# TASKY · V72 · VITE MIGRATION
-# Este workflow SOLO comprueba que la aplicación pueda compilar.
-# Todavía NO publica Tasky en GitHub Pages.
+# TASKY · V73 · VITE MIGRATION
+# Build de validación.
+# Este workflow NO publica la aplicación.
+# Su única función es comprobar que Tasky pueda compilar correctamente.
 
 name: Tasky - Build Vite
 
@@ -20,21 +21,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ----------------------------------------
+      # 1. Descargar el repositorio
+      # ----------------------------------------
       - name: Descargar código
         uses: actions/checkout@v5
 
+      # ----------------------------------------
+      # 2. Configurar Node.js
+      # ----------------------------------------
+      # No usamos cache todavía porque aún no
+      # tenemos package-lock.json.
       - name: Configurar Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
 
+      # ----------------------------------------
+      # 3. Instalar dependencias
+      # ----------------------------------------
+      # npm install funciona aunque todavía no
+      # exista package-lock.json.
       - name: Instalar dependencias
-        run: npm ci
+        run: npm install
 
+      # ----------------------------------------
+      # 4. Compilar aplicación
+      # ----------------------------------------
       - name: Compilar Vite
         run: npm run build
 
+      # ----------------------------------------
+      # 5. Verificar resultado
+      # ----------------------------------------
       - name: Verificar archivos generados
         run: |
           test -f dist/index.html
@@ -44,7 +63,7 @@ jobs:
           test -f dist/icon.png
 
           echo "======================================"
-          echo "TASKY VITE BUILD: OK"
+          echo "TASKY V73 · VITE BUILD: OK"
           echo "======================================"
 
           echo "Contenido de dist:"
