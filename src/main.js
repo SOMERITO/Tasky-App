@@ -2565,9 +2565,13 @@ root.innerHTML = appShell;
       } else {
         const item = buildTaskItem(task, activeSearch.trim().toLowerCase(), false);
         item.classList.add('task-enter');
-        list.appendChild(item);
-        refreshIcons();
-        requestAnimationFrame(() => updateTaskHeights());
+list.appendChild(item);
+refreshIcons();
+
+// Registrar el drag de la tarea recién creada.
+initTaskPointerDrag();
+
+requestAnimationFrame(() => updateTaskHeights());
       }
 
       persistLocal();
