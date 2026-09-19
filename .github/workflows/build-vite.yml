@@ -1,7 +1,6 @@
-# TASKY · V73 · VITE MIGRATION
-# Build de validación.
-# Este workflow NO publica la aplicación.
-# Su única función es comprobar que Tasky pueda compilar correctamente.
+# TASKY · Vite Build Verification
+# Comprueba que la aplicación pueda instalarse y compilarse.
+# Este workflow NO publica Tasky.
 
 name: Tasky - Build Vite
 
@@ -21,50 +20,63 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ----------------------------------------
-      # 1. Descargar el repositorio
-      # ----------------------------------------
+      # --------------------------------------------------
+      # 1. Descargar el código
+      # --------------------------------------------------
       - name: Descargar código
         uses: actions/checkout@v5
 
-      # ----------------------------------------
-      # 2. Configurar Node.js
-      # ----------------------------------------
-      # No usamos cache todavía porque aún no
-      # tenemos package-lock.json.
+      # --------------------------------------------------
+      # 2. Configurar Node.js + caché de npm
+      # --------------------------------------------------
       - name: Configurar Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 22
+          cache: npm
 
-      # ----------------------------------------
-      # 3. Instalar dependencias
-      # ----------------------------------------
-      # npm install funciona aunque todavía no
-      # exista package-lock.json.
+      # --------------------------------------------------
+      # 3. Instalar dependencias de forma reproducible
+      # --------------------------------------------------
       - name: Instalar dependencias
-        run: npm install
+        run: npm ci
 
-      # ----------------------------------------
-      # 4. Compilar aplicación
-      # ----------------------------------------
+      # --------------------------------------------------
+      # 4. Compilar Vite
+      # --------------------------------------------------
       - name: Compilar Vite
         run: npm run build
 
-      # ----------------------------------------
-      # 5. Verificar resultado
-      # ----------------------------------------
+      # --------------------------------------------------
+      # 5. Verificar archivos generados
+      # --------------------------------------------------
       - name: Verificar archivos generados
+        shell: bash
         run: |
+          set -e
+
+          echo "=========================================="
+          echo "TASKY · VITE BUILD"
+          echo "=========================================="
+
           test -f dist/index.html
-          test -f dist/quotes.json
           test -f dist/manifest.json
+          test -f dist/quotes.json
           test -f dist/sw.js
           test -f dist/icon.png
 
-          echo "======================================"
-          echo "TASKY V73 · VITE BUILD: OK"
-          echo "======================================"
+          echo ""
+          echo "✅ dist/index.html"
+          echo "✅ dist/manifest.json"
+          echo "✅ dist/quotes.json"
+          echo "✅ dist/sw.js"
+          echo "✅ dist/icon.png"
 
-          echo "Contenido de dist:"
+          echo ""
+          echo "=========================================="
+          echo "✅ TASKY · BUILD EXITOSO"
+          echo "=========================================="
+
+          echo ""
+          echo "Archivos generados:"
           find dist -maxdepth 2 -type f | sort
