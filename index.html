@@ -3,15 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#0b1220">
+  <meta name="theme-color" content="#F5F5F7">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="description" content="Tasky — gestor personal de fases y tareas.">
-  <link rel="prefetch" href="./quotes.json?v=65" as="fetch" crossorigin="anonymous">
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky</title>
-  <!-- TASKY · V73 · MONOLITHIC INDEX · APPLE UI -->
+  <!-- TASKY · V74 · MONOLITHIC INDEX · APPLE UI · STABLE -->
 
   <!-- TASKY · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -24,7 +23,6 @@
   <!-- Dependencias con versiones fijadas para evitar cambios inesperados. -->
   <!-- V62: dependencias diferidas. No bloquean el primer render. -->
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <style>
@@ -3469,6 +3467,11 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
 @media (max-width:1100px){.pro-sidebar{width:190px}.pro-main{padding-left:210px!important}.pro-workspace{grid-template-columns:minmax(0,1fr) 285px}.pro-topbar-left{min-width:185px}.pro-segmented{display:none}.pro-metrics{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:820px){.pro-sidebar{display:none}.pro-main{padding:74px 15px 44px!important}.pro-topbar{padding:0 12px}.traffic-lights{display:none}.pro-topbar-left{min-width:auto}.pro-topbar-search{max-width:none}.pro-topbar-actions{min-width:auto}.sync-label{display:none}.pro-hero-row{align-items:stretch;flex-direction:column}.pro-hero-date-card{min-width:0}.pro-workspace{grid-template-columns:1fr}.pro-right-rail{order:2}.pro-main-column{order:1}.pro-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:560px){.pro-topbar-search{display:none}.pro-hero-title{font-size:30px}.pro-metrics{grid-template-columns:1fr}.pro-focus-banner{align-items:flex-start;flex-wrap:wrap}.pro-primary-btn{width:100%;margin-left:48px}.pro-task-toolbar{align-items:flex-start;flex-direction:column}.pro-toolbar-actions{width:100%}.pro-toolbar-btn{flex:1;justify-content:center}.task-item{grid-template-columns:20px 21px minmax(0,1fr) auto!important}.activity-title{font-size:15px!important}.card-meta,.card-progress{margin-left:51px!important;padding-left:0!important}.pro-quick-add input{font-size:10px!important}}
+.activity-card.is-collapsed .task-list,.activity-card.is-collapsed .add-task,.activity-card.is-collapsed .card-progress{display:none!important}
+.activity-card.is-collapsed .mini-btn[data-action="toggle-category"] svg{transform:rotate(-90deg)}
+.tasky-tooltip{position:fixed;z-index:99999;max-width:240px;padding:7px 10px;border-radius:9px;background:rgba(29,29,31,.96);color:#fff;font:600 11px/1.25 -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;box-shadow:0 10px 28px rgba(0,0,0,.2);pointer-events:none;opacity:0;transform:translateY(4px);animation:taskyTooltipIn .16s ease-out forwards}
+@keyframes taskyTooltipIn{to{opacity:1;transform:translateY(0)}}
+.pro-phase-name,.pro-phase-progress-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 [data-theme="dark"] body,[data-theme="dark"]{background:#111!important;color:#F5F5F7!important}.tasky-booting .pro-topbar,.tasky-booting .pro-sidebar{visibility:hidden}
 [data-theme="dark"] .pro-topbar,[data-theme="dark"] .pro-sidebar{background:rgba(17,17,18,.82);border-color:rgba(255,255,255,.10)}[data-theme="dark"] .pro-main{background:#111!important}[data-theme="dark"] .pro-metric-card,[data-theme="dark"] .activity-card,[data-theme="dark"] .pro-task-toolbar,[data-theme="dark"] .pro-right-card,[data-theme="dark"] .pro-efficiency-card,[data-theme="dark"] .pro-quick-add,[data-theme="dark"] .pro-focus-banner,[data-theme="dark"] .pro-hero-date-card,[data-theme="dark"] .empty-state{background:#1C1C1E!important;border-color:rgba(255,255,255,.10)!important;color:#F5F5F7!important}[data-theme="dark"] .task-item{background:#232326!important;border-color:rgba(255,255,255,.08)!important}[data-theme="dark"] .pro-segmented,[data-theme="dark"] .pro-task-tabs{background:#2A2A2E}[data-theme="dark"] .pro-segment.active,[data-theme="dark"] .pro-task-tab.active{background:#3A3A3C;color:#fff}[data-theme="dark"] .pro-topbar-search{background:#2A2A2E;border-color:rgba(255,255,255,.08)}[data-theme="dark"] .pro-topbar-search:focus-within{background:#1C1C1E;border-color:rgba(10,132,255,.7)}[data-theme="dark"] .activity-title,[data-theme="dark"] .task-input,[data-theme="dark"] .pro-brand,[data-theme="dark"] .pro-metric-card strong{color:#F5F5F7!important}[data-theme="dark"] .pro-muted,[data-theme="dark"] .pro-metric-card span,[data-theme="dark"] .pro-metric-card small,[data-theme="dark"] .pro-hero-quote{color:#A1A1A6!important}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
@@ -3476,7 +3479,7 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
 
 </head>
 
-<body tabindex="-1" data-tasky-version="V73">
+<body tabindex="-1" data-tasky-version="V74">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -3596,7 +3599,7 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
         <section class="pro-main-column">
           <div class="pro-task-toolbar">
             <div class="pro-task-tabs" role="tablist" aria-label="Vistas de tareas">
-              <button class="pro-task-tab active" type="button">Todas</button>
+              <button class="pro-task-tab active" type="button" id="allTaskTab">Todas</button>
               <button class="pro-task-tab" type="button" id="todayTaskTab">Para hoy</button>
               <button class="pro-task-tab" type="button" id="completedTaskTab">Completadas</button>
             </div>
@@ -3807,7 +3810,7 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 72;
+    const APP_VERSION = 74;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -3874,6 +3877,7 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
     let lastBlockedRemoteAt = 0;
     let pendingRemoteState = null;
     let activeSearch = "";
+    let activeTaskView = "all"; // all | today | completed
     let saveInFlight = false;
     let queuedSaveReason = null;
     let sortableCategories = null;
@@ -4580,6 +4584,10 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
 
         node.replaceWith(svg);
       }
+
+      document.querySelectorAll('[title]').forEach(node => {
+        if (!node.dataset.tooltip) node.dataset.tooltip = node.getAttribute('title');
+      });
     }
 
     function hideLoading() {
@@ -4620,7 +4628,8 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
           title: typeof cat.title === "string" ? cat.title : ("Fase " + (index + 1)),
           emoji: typeof cat.emoji === "string" ? cat.emoji.slice(0, 8) : "",
           tasks: Array.isArray(cat.tasks) ? cat.tasks : [],
-          order: Number.isFinite(rawOrder) ? rawOrder : index
+          order: Number.isFinite(rawOrder) ? rawOrder : index,
+          collapsed: Boolean(cat.collapsed)
         };
 
         category.tasks = category.tasks
@@ -4810,13 +4819,143 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
       safeStorage.setItem(STORAGE_KEY, serialize(state));
     }
 
+    function syncProfessionalUI() {
+      try {
+        const cards = [...document.querySelectorAll('#board .activity-card:not(.completed-card)')];
+        const phaseNav = document.getElementById('phaseNav');
+        const right = document.getElementById('rightPhaseProgress');
+
+        if (phaseNav) {
+          phaseNav.innerHTML = '';
+          for (const [index, card] of cards.entries()) {
+            const id = card.dataset.categoryId || '';
+            const title = card.querySelector('.activity-title')?.value?.trim() || `Fase ${index + 1}`;
+            const count = card.querySelectorAll('.task-item[data-task-id]').length;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'pro-phase-link';
+            btn.dataset.targetCategory = id;
+            btn.dataset.tooltip = `Ir a ${title}`;
+            btn.innerHTML = `<span class="pro-phase-dot"></span><span class="pro-phase-name">${escapeHTML(title)}</span><strong class="pro-phase-count">${count}</strong>`;
+            btn.addEventListener('click', () => {
+              document.querySelector(`.activity-card[data-category-id="${cssEscapeSafe(id)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+            phaseNav.appendChild(btn);
+          }
+          if (!cards.length) phaseNav.innerHTML = '<div class="pro-muted" style="padding:6px 8px">Aún no hay fases.</div>';
+        }
+
+        if (right) {
+          right.innerHTML = '';
+          for (const [index, card] of cards.entries()) {
+            const title = card.querySelector('.activity-title')?.value?.trim() || `Fase ${index + 1}`;
+            const pill = card.querySelector('.card-meta .pill.success, .card-meta .pill.primary');
+            const pct = Math.max(0, Math.min(100, parseInt((pill?.textContent || '0').replace(/[^0-9]/g, ''), 10) || 0));
+            const progress = document.createElement('div');
+            progress.className = 'pro-phase-progress';
+            progress.innerHTML = `<div class="pro-phase-progress-head"><span class="pro-phase-progress-name"><span></span><span class="pro-phase-progress-title">${escapeHTML(title)}</span></span><strong>${pct}%</strong></div><div class="pro-phase-progress-track"><span style="width:${pct}%"></span></div><small>${pct >= 100 ? 'Completada' : 'En curso'}</small>`;
+            right.appendChild(progress);
+          }
+          if (!cards.length) right.innerHTML = '<div class="pro-muted">Crea una fase para empezar a ver tu roadmap.</div>';
+        }
+
+        const pct = Math.max(0, Math.min(100, parseInt(document.getElementById('dayPercent')?.textContent || '0', 10) || 0));
+        const ring = document.getElementById('proDayRing');
+        if (ring) ring.setAttribute('stroke-dasharray', `${pct},100`);
+        const sidebarPct = document.getElementById('sidebarDayPercent');
+        if (sidebarPct) sidebarPct.textContent = `${pct}%`;
+        const sidebarProgress = document.getElementById('sidebarDayProgress');
+        if (sidebarProgress) sidebarProgress.style.width = `${pct}%`;
+        const dateEl = document.getElementById('proDateText');
+        if (dateEl) dateEl.textContent = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date()).replace(/^./, ch => ch.toUpperCase());
+        const overdueText = document.getElementById('overdueCount')?.textContent || '0';
+        const sideOverdue = document.getElementById('sidebarOverdueCount');
+        if (sideOverdue) sideOverdue.textContent = overdueText;
+        const completed = parseInt(document.getElementById('metricCompleted')?.textContent || '0', 10) || 0;
+        const efficiency = document.getElementById('proEfficiencyValue');
+        if (efficiency) efficiency.textContent = `${pct}% de avance operativo`;
+        const streak = document.querySelector('.pro-streak-value');
+        if (streak) streak.textContent = pct >= 100 ? '1 día' : (completed > 0 ? 'Activa' : '—');
+      } catch (error) {
+        console.warn('UI profesional:', error);
+      }
+    }
+
+    function setProfessionalNav(mode) {
+      document.querySelectorAll('[data-pro-nav]').forEach(button => {
+        const active = button.dataset.proNav === mode;
+        if (button.classList.contains('pro-segment')) button.classList.toggle('active', active);
+      });
+    }
+
+    function updateTaskViewTabs() {
+      const map = { all: 'allTaskTab', today: 'todayTaskTab', completed: 'completedTaskTab' };
+      Object.entries(map).forEach(([view, id]) => {
+        const button = document.getElementById(id);
+        if (button) button.classList.toggle('active', activeTaskView === view);
+      });
+    }
+
+    function setTaskView(view) {
+      const allowed = new Set(['all', 'today', 'completed']);
+      activeTaskView = allowed.has(view) ? view : 'all';
+      updateTaskViewTabs();
+      setProfessionalNav(activeTaskView === 'completed' ? 'analysis' : activeTaskView === 'today' ? 'home' : 'phases');
+      render();
+    }
+
+    function setupTooltips() {
+      let timer = null;
+      let active = null;
+      let tooltip = null;
+
+      const remove = () => {
+        clearTimeout(timer);
+        if (tooltip) tooltip.remove();
+        tooltip = null;
+        active = null;
+      };
+
+      document.addEventListener('pointerover', event => {
+        const target = event.target.closest?.('[data-tooltip], [title]');
+        if (!target || active === target) return;
+        const text = target.dataset.tooltip || target.getAttribute('title');
+        if (!text || target.matches(':disabled')) return;
+        target.dataset.tooltip = text;
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          if (!target.isConnected) return;
+          const node = document.createElement('div');
+          node.className = 'tasky-tooltip';
+          node.textContent = text;
+          document.body.appendChild(node);
+          const rect = target.getBoundingClientRect();
+          const x = Math.min(Math.max(8, rect.left + rect.width / 2 - node.offsetWidth / 2), window.innerWidth - node.offsetWidth - 8);
+          const y = rect.top - node.offsetHeight - 10;
+          node.style.left = `${x}px`;
+          node.style.top = `${Math.max(8, y)}px`;
+          tooltip = node;
+          active = target;
+        }, 700);
+      });
+      document.addEventListener('pointerout', event => {
+        const target = event.target.closest?.('[data-tooltip], [title]');
+        if (!target) return;
+        const related = event.relatedTarget;
+        if (related && target.contains(related)) return;
+        remove();
+      });
+      window.addEventListener('scroll', remove, { passive: true });
+      window.addEventListener('resize', remove);
+    }
+
     function updateSummaryUI() {
       const overdue = overdueTasks();
       const pending = taskCountPending();
       const completed = taskCountCompleted();
       const day = todayTaskStats();
 
-      el.metricCategories.textContent = state.categories.length;
+      el.metricCategories.textContent = state.categories.filter(categoryHasOpenWorkToday).length;
       el.metricPending.textContent = pending;
       el.metricCompleted.textContent = completed;
 
@@ -4835,6 +4974,8 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
       document.title = overdue.length
         ? "(" + overdue.length + ") Tasky"
         : "Tasky";
+
+      syncProfessionalUI();
     }
 
 
@@ -5105,24 +5246,21 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
           cat => !categoryHasOpenWorkToday(cat)
         );
 
-      for (const cat of activeCategories) {
-        const index =
-          state.categories.findIndex(
-            c => c.id === cat.id
-          );
+      if (activeTaskView !== 'completed') {
+        for (const cat of activeCategories) {
+          const index = state.categories.findIndex(c => c.id === cat.id);
+          el.board.appendChild(buildCategoryCard(cat, index, query));
+        }
 
-        el.board.appendChild(
-          buildCategoryCard(
-            cat,
-            index,
-            query
-          )
-        );
+        if (activeTaskView === 'all') {
+          buildCompletedCard(query);
+        }
+      } else {
+        buildCompletedCard(query);
       }
 
-      buildCompletedCard(query);
-
       for (const cat of finishedCategories) {
+        if (activeTaskView === 'completed' || activeTaskView === 'today') continue;
         const index =
           state.categories.findIndex(
             c => c.id === cat.id
@@ -5156,6 +5294,8 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
       updateSummaryUI();
       refreshIcons();
       updateTaskHeights();
+      updateTaskViewTabs();
+      syncProfessionalUI();
     }
 
     function buildCategoryCard(cat, index, query) {
@@ -5185,7 +5325,7 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
       const pct = todayTotal ? Math.round((completedToday / todayTotal) * 100) : 0;
 
       const card = document.createElement("article");
-      card.className = "activity-card" + (todayTotal > 0 && pct === 100 ? " is-complete" : "");
+      card.className = "activity-card" + (todayTotal > 0 && pct === 100 ? " is-complete" : "") + (cat.collapsed ? " is-collapsed" : "");
       card.dataset.categoryId = cat.id;
       card.dataset.categoryOrder = String(
         categoryOrderValue(cat, index)
@@ -5207,6 +5347,9 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
             </div>
             <input class="activity-title" maxlength="80" value="${escapeHTML(cat.title)}" placeholder="Nombre de la fase…">
             <div class="card-actions">
+              <button class="mini-btn" type="button" data-action="toggle-category" title="Expandir o contraer fase" aria-label="Expandir o contraer fase">
+                <i data-lucide="chevron-up"></i>
+              </button>
               <button class="mini-btn" type="button" data-action="stats" title="Ver resumen" aria-label="Ver resumen">
                 <i data-lucide="bar-chart-3"></i>
               </button>
@@ -5244,6 +5387,7 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
         // siguiente fecha programada.
         if (!task.draft && task.text.trim() && task.repeat && isRepeatCompletedToday(task)) continue;
         if (!task.draft && task.text.trim() && task.repeat && task.date > today()) continue;
+        if (activeTaskView === 'today' && !task.draft && task.text.trim() && task.date !== today()) continue;
 
         const item = buildTaskItem(task, query, false);
         list.appendChild(item);
@@ -5319,23 +5463,23 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
     }
 
     function buildCompletedCard(query) {
-      const completed = state.completed;
-      if (!completed.length) return;
+      const completedToday = state.completed.filter(task => completedDateFor(task) === today());
+      if (!completedToday.length) return;
 
       const card = document.createElement("article");
       card.className = "activity-card completed-card";
       card.dataset.completedCard = "true";
 
-      const visible = completed.filter(task => {
+      const visible = completedToday.filter(task => {
         if (!query) return true;
-        return task.text.toLowerCase().includes(query);
+        return String(task.text || '').toLowerCase().includes(query);
       });
 
       card.innerHTML = `
         <div class="card-head">
           <div class="card-title-row">
             <div style="width:30px"></div>
-            <div class="activity-title" style="display:flex;align-items:center;gap:8px;">Completadas <span class="pill success">${completed.length}</span><span class="pill neutral">Historial</span></div>
+            <div class="activity-title" style="display:flex;align-items:center;gap:8px;">Completadas <span class="pill success">${completedToday.length}</span><span class="pill neutral">Hoy</span></div>
           </div>
         </div>
         <div class="task-list" data-completed-list="true"></div>
@@ -6186,8 +6330,17 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
     function updateCompletedCardUI() {
       let card = document.querySelector('.completed-card');
 
-      if (!state.completed.length) {
+      const completedToday = state.completed.filter(task => completedDateFor(task) === today());
+
+      if (!completedToday.length || activeTaskView === 'today') {
         if (card) card.remove();
+        updateSummaryUI();
+        return;
+      }
+
+      if (activeTaskView === 'completed' && !card) {
+        buildCompletedCard(activeSearch.trim().toLowerCase());
+        refreshIcons();
         updateSummaryUI();
         return;
       }
@@ -6212,7 +6365,7 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
 
       const visibleIds = new Set();
 
-      for (const task of state.completed) {
+      for (const task of completedToday) {
         if (query && !String(task.text || "").toLowerCase().includes(query)) continue;
         visibleIds.add(task.id);
 
@@ -6233,7 +6386,7 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
       });
 
       const countPill = card.querySelector('.pill.success');
-      if (countPill) countPill.textContent = state.completed.length;
+      if (countPill) countPill.textContent = completedToday.length;
 
       refreshIcons();
       updateTaskHeights();
@@ -6505,6 +6658,48 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
         }
       }
       return fromDateStr;
+    }
+
+    function nextRepeatDateOnOrAfter(fromDateStr, days) {
+      const selected = new Set((days || []).map(Number));
+      if (!selected.size) return fromDateStr;
+      const parts = String(fromDateStr).split('-').map(Number);
+      const base = new Date(parts[0], parts[1] - 1, parts[2]);
+      for (let i = 0; i <= 7; i++) {
+        const d = new Date(base);
+        d.setDate(base.getDate() + i);
+        const isoDay = d.getDay() === 0 ? 7 : d.getDay();
+        if (selected.has(isoDay)) {
+          return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+      }
+      return fromDateStr;
+    }
+
+    function syncRepeatingTasksForToday() {
+      const current = today();
+      let changed = false;
+
+      for (const category of state.categories) {
+        for (const task of category.tasks || []) {
+          if (!task?.repeat || task.draft || !String(task.text || '').trim()) continue;
+          if (!Array.isArray(task.repeatDays) || !task.repeatDays.length) continue;
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(task.date || '')) {
+            task.date = current;
+            changed = true;
+            continue;
+          }
+          if (task.date < current) {
+            const next = nextRepeatDateOnOrAfter(current, task.repeatDays);
+            if (task.date !== next) {
+              task.date = next;
+              changed = true;
+            }
+          }
+        }
+      }
+
+      return changed;
     }
 
     function openRepeatEditor(taskId) {
@@ -7369,6 +7564,10 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
         const local = loadLocalState();
         if (local) {
           state = local;
+          if (syncRepeatingTasksForToday()) {
+            persistLocal();
+            localDirty = true;
+          }
           render();
           refreshIcons();
         }
@@ -7515,14 +7714,17 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
       }
 
       state = remote;
+      const repeatChanged = syncRepeatingTasksForToday();
       persistLocal();
+      if (repeatChanged) localDirty = true;
       saveSafetyBackup('sincronización remota aceptada');
-      lastSavedHash = remoteHash;
+      lastSavedHash = hash({ categories: state.categories, completed: state.completed });
       lastConfirmedRemoteHash = remoteHash;
       lastConfirmedRemoteUpdatedBy = remoteUpdatedBy;
       pendingRemoteState = null;
       render();
-      setSyncStatus("online", "Sincronizado");
+      if (repeatChanged) scheduleSave('normalizar tareas repetitivas', 0);
+      setSyncStatus("online", repeatChanged ? "Actualizando repetición…" : "Sincronizado");
       hideLoading();
     }
 
@@ -7543,11 +7745,14 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
 
       state = remote;
       pendingRemoteState = null;
+      const repeatChanged = syncRepeatingTasksForToday();
       persistLocal();
+      if (repeatChanged) localDirty = true;
       saveSafetyBackup('sincronización diferida aceptada');
-      lastSavedHash = remoteHash;
+      lastSavedHash = hash({ categories: state.categories, completed: state.completed });
       lastConfirmedRemoteHash = remoteHash;
       render();
+      if (repeatChanged) scheduleSave('normalizar tareas repetitivas', 0);
     }
 
 
@@ -7575,6 +7780,80 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
           try { document.body.scrollTop = 0; } catch (_) {}
         }
       }, 300);
+    }
+
+    let pomodoroSeconds = 1500;
+    let pomodoroRunning = false;
+    let pomodoroTimer = null;
+
+    function paintPomodoro() {
+      const node = document.getElementById('pomodoro-timer');
+      if (node) node.textContent = `${String(Math.floor(pomodoroSeconds / 60)).padStart(2, '0')}:${String(pomodoroSeconds % 60).padStart(2, '0')}`;
+      const current = document.getElementById('pomo-icon');
+      if (current) {
+        const replacement = document.createElement('i');
+        replacement.id = 'pomo-icon';
+        replacement.dataset.lucide = pomodoroRunning ? 'pause' : 'play';
+        current.replaceWith(replacement);
+        refreshIcons();
+      }
+    }
+
+    function togglePomodoro() {
+      pomodoroRunning = !pomodoroRunning;
+      clearInterval(pomodoroTimer);
+      if (pomodoroRunning) {
+        pomodoroTimer = window.setInterval(() => {
+          if (pomodoroSeconds <= 0) {
+            pomodoroRunning = false;
+            clearInterval(pomodoroTimer);
+            playTaskySound('complete');
+            toast('Sesión de enfoque completada', 'check');
+            paintPomodoro();
+            return;
+          }
+          pomodoroSeconds -= 1;
+          paintPomodoro();
+        }, 1000);
+      }
+      paintPomodoro();
+    }
+
+    function resetPomodoro() {
+      pomodoroRunning = false;
+      clearInterval(pomodoroTimer);
+      pomodoroSeconds = 1500;
+      paintPomodoro();
+    }
+
+    function addQuickTaskToBestCategory() {
+      const input = document.getElementById('inline-new-task-input');
+      const text = String(input?.value || '').trim();
+      if (!text) {
+        const firstCategory = state.categories.find(cat => categoryHasOpenWorkToday(cat)) || state.categories[0];
+        if (firstCategory) addTask(firstCategory.id);
+        else addCategory();
+        return;
+      }
+
+      let category = state.categories.find(cat => categoryHasOpenWorkToday(cat));
+      if (!category) category = state.categories[0];
+      if (!category) {
+        addCategory();
+        window.setTimeout(() => addQuickTaskToBestCategory(), 40);
+        return;
+      }
+
+      const task = addTask(category.id);
+      if (!task) return;
+      window.setTimeout(() => {
+        const node = document.querySelector(`.task-item[data-task-id="${cssEscapeSafe(task.id)}"] .task-input`);
+        if (!node) return;
+        node.value = text;
+        node.dispatchEvent(new Event('input', { bubbles: true }));
+        node.blur();
+        if (input) input.value = '';
+      }, 30);
     }
 
     function bindEvents() {
@@ -7730,6 +8009,19 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
           return;
         }
 
+        if (action === "toggle-category") {
+          const card = event.target.closest("[data-category-id]");
+          const category = state.categories.find(cat => cat.id === card?.dataset.categoryId);
+          if (!category) return;
+          category.collapsed = !category.collapsed;
+          persistLocal();
+          localDirty = true;
+          render();
+          scheduleSave(category.collapsed ? "contraer fase" : "expandir fase");
+          softHaptic(10);
+          return;
+        }
+
         if (action === "add-task") {
           const card = event.target.closest("[data-category-id]");
           addTask(card?.dataset.categoryId);
@@ -7878,6 +8170,35 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
       });
 
       el.themeBtn.addEventListener("click", toggleTheme);
+
+      document.getElementById('allTaskTab')?.addEventListener('click', () => setTaskView('all'));
+      document.getElementById('todayTaskTab')?.addEventListener('click', () => setTaskView('today'));
+      document.getElementById('completedTaskTab')?.addEventListener('click', () => setTaskView('completed'));
+
+      document.querySelectorAll('[data-pro-nav="home"]').forEach(btn => btn.addEventListener('click', () => {
+        setTaskView('all');
+        setProfessionalNav('home');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }));
+      document.querySelectorAll('[data-pro-nav="phases"]').forEach(btn => btn.addEventListener('click', () => {
+        setTaskView('all');
+        setProfessionalNav('phases');
+        document.getElementById('board')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }));
+      document.querySelectorAll('[data-pro-nav="analysis"]').forEach(btn => btn.addEventListener('click', () => {
+        setProfessionalNav('analysis');
+        openDailyProductivityReport();
+      }));
+
+      document.getElementById('sidebarProductivity')?.addEventListener('click', () => openDailyProductivityReport());
+      document.getElementById('sidebarOverdue')?.addEventListener('click', () => { renderOverdueModal(); openModal('overdueModal'); });
+      document.getElementById('sidebarAddPhase')?.addEventListener('click', () => addCategory());
+      document.getElementById('sidebarWhatsApp')?.addEventListener('click', () => copyToWhatsApp());
+      document.getElementById('quick-create-btn')?.addEventListener('click', () => addQuickTaskToBestCategory());
+      document.getElementById('proBrandBtn')?.addEventListener('click', () => { setProfessionalNav('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+
+      document.getElementById('pomo-reset-btn')?.addEventListener('click', resetPomodoro);
+      document.getElementById('pomo-toggle-btn')?.addEventListener('click', togglePomodoro);
 
       el.menuBtn.addEventListener("click", () => {
         updateSoundToggleUI();
@@ -8580,6 +8901,9 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
         // Los iconos y Firebase son secundarios y van en segundo plano.
         refreshIcons();
         updateSoundToggleUI();
+        updateTaskViewTabs();
+        setupTooltips();
+        paintPomodoro();
 
         // Un segundo frame asegura que las métricas y alturas queden
         // sincronizadas incluso cuando el WebView pinta durante una
@@ -8633,127 +8957,5 @@ body{min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
   </script>
 
 
-<script>
-/* TASKY V73 · PROFESSIONAL UI BRIDGE
-   Connects only the new visual layer to existing Tasky functions. */
-(() => {
-  const onReady = () => {
-    const syncProfessionalUI = () => {
-      try {
-        const cards = [...document.querySelectorAll('#board .activity-card:not(.completed-card)')];
-        const phaseNav = document.getElementById('phaseNav');
-        const right = document.getElementById('rightPhaseProgress');
-        if (phaseNav) {
-          phaseNav.innerHTML = '';
-          cards.forEach((card, index) => {
-            const id = card.dataset.categoryId || '';
-            const title = card.querySelector('.activity-title')?.value?.trim() || `Fase ${index + 1}`;
-            const tasks = card.querySelectorAll('.task-item[data-task-id]').length;
-            const btn = document.createElement('button');
-            btn.type = 'button'; btn.className = 'pro-phase-link'; btn.dataset.targetCategory = id;
-            btn.innerHTML = `<span class="pro-phase-dot"></span><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtmlBridge(title)}</span><strong class="pro-phase-count">${tasks}</strong>`;
-            btn.addEventListener('click', () => {
-              document.querySelector(`.activity-card[data-category-id="${cssEscapeBridge(id)}"]`)?.scrollIntoView({behavior:'smooth',block:'center'});
-            });
-            phaseNav.appendChild(btn);
-          });
-          if (!cards.length) phaseNav.innerHTML = '<div class="pro-muted" style="padding:6px 8px">Aún no hay fases.</div>';
-        }
-
-        if (right) {
-          right.innerHTML = '';
-          cards.forEach((card, index) => {
-            const title = card.querySelector('.activity-title')?.value?.trim() || `Fase ${index + 1}`;
-            const pill = card.querySelector('.card-meta .pill.success, .card-meta .pill.primary');
-            const pct = parseInt((pill?.textContent || '0').replace(/[^0-9]/g,''),10) || 0;
-            const progress = document.createElement('div'); progress.className='pro-phase-progress';
-            progress.innerHTML = `<div class="pro-phase-progress-head"><span class="pro-phase-progress-name"><span></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtmlBridge(title)}</span></span><strong>${Math.min(100,pct)}%</strong></div><div class="pro-phase-progress-track"><span style="width:${Math.min(100,pct)}%"></span></div><small>${pct>=100?'Completada':'En curso'}</small>`;
-            right.appendChild(progress);
-          });
-          if (!cards.length) right.innerHTML = '<div class="pro-muted">Crea una fase para empezar a ver tu roadmap.</div>';
-        }
-
-        const p = document.getElementById('dayPercent')?.textContent?.trim() || '0%';
-        const pNum = Math.max(0, Math.min(100, parseInt(p,10) || 0));
-        const ring = document.getElementById('proDayRing');
-        if (ring) ring.setAttribute('stroke-dasharray', `${pNum},100`);
-        const sidebarPct = document.getElementById('sidebarDayPercent'); if (sidebarPct) sidebarPct.textContent = `${pNum}%`;
-        const sidebarProgress = document.getElementById('sidebarDayProgress'); if (sidebarProgress) sidebarProgress.style.width = `${pNum}%`;
-        const dateEl = document.getElementById('proDateText');
-        if (dateEl && window.Intl) {
-          const d = new Date();
-          dateEl.textContent = new Intl.DateTimeFormat('es-PE',{weekday:'long',day:'numeric',month:'long'}).format(d).replace(/^./,m=>m.toUpperCase());
-        }
-        const overdueText = document.getElementById('overdueCount')?.textContent || '0';
-        const sideOverdue = document.getElementById('sidebarOverdueCount'); if (sideOverdue) sideOverdue.textContent = overdueText;
-
-        const completed = parseInt(document.getElementById('metricCompleted')?.textContent || '0',10) || 0;
-        const pending = parseInt(document.getElementById('metricPending')?.textContent || '0',10) || 0;
-        const eff = document.getElementById('proEfficiencyValue');
-        if (eff) eff.textContent = `${pNum}% de avance operativo`;
-        const streak = document.querySelector('.pro-streak-value');
-        if (streak) streak.textContent = pNum >= 100 ? '1 día' : (completed > 0 ? 'Activa' : '—');
-      } catch (_) {}
-    };
-
-    const escapeHtmlBridge = (value) => String(value).replace(/[&<>'"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;', '"':'&quot;'}[m]));
-    const cssEscapeBridge = (value) => (window.CSS && CSS.escape) ? CSS.escape(value) : String(value).replace(/[^a-zA-Z0-9_-]/g,'\\$&');
-    window.escapeHtmlBridge = escapeHtmlBridge;
-    window.cssEscapeBridge = cssEscapeBridge;
-
-    const board = document.getElementById('board');
-    if (board) {
-      new MutationObserver(() => requestAnimationFrame(syncProfessionalUI)).observe(board,{childList:true,subtree:true});
-    }
-    ['metricCategories','metricPending','metricCompleted','dayPercent','overdueCount'].forEach(id => {
-      const node=document.getElementById(id); if(node) new MutationObserver(syncProfessionalUI).observe(node,{childList:true,characterData:true,subtree:true});
-    });
-
-    document.querySelectorAll('[data-pro-nav="home"]').forEach(btn => btn.addEventListener('click', () => window.scrollTo({top:0,behavior:'smooth'})));
-    document.querySelectorAll('[data-pro-nav="phases"]').forEach(btn => btn.addEventListener('click', () => document.getElementById('board')?.scrollIntoView({behavior:'smooth',block:'start'})));
-    document.querySelectorAll('[data-pro-nav="analysis"]').forEach(btn => btn.addEventListener('click', () => document.getElementById('productivityBtn')?.click()));
-    document.getElementById('proBrandBtn')?.addEventListener('click', () => window.scrollTo({top:0,behavior:'smooth'}));
-    document.getElementById('sidebarProductivity')?.addEventListener('click', () => document.getElementById('productivityBtn')?.click());
-    document.getElementById('sidebarOverdue')?.addEventListener('click', () => document.getElementById('overdueBtn')?.click());
-    document.getElementById('sidebarAddPhase')?.addEventListener('click', () => document.querySelector('[data-action="add-category"]')?.click());
-    document.getElementById('sidebarWhatsApp')?.addEventListener('click', () => document.querySelector('[data-action="whatsapp"]')?.click());
-    document.getElementById('quick-create-btn')?.addEventListener('click', () => document.querySelector('[data-action="add-category"]')?.click());
-
-    const quick = document.getElementById('inline-new-task-input');
-    const addQuick = () => {
-      const text = quick?.value?.trim(); if (!text) return;
-      const firstAdd = document.querySelector('#board .add-task[data-action="add-task"]');
-      if (!firstAdd) {
-        document.querySelector('[data-action="add-category"]')?.click();
-        setTimeout(addQuick, 100);
-        return;
-      }
-      firstAdd.click();
-      setTimeout(() => {
-        const inputs = [...document.querySelectorAll('#board .task-item .task-input')];
-        const target = inputs.find(el => !el.value.trim()) || inputs.at(-1);
-        if (!target) return;
-        target.value = text;
-        target.dispatchEvent(new Event('input',{bubbles:true}));
-        target.blur();
-        quick.value='';
-      }, 40);
-    };
-    quick?.addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault();addQuick();} });
-    document.getElementById('submit-quick-task')?.addEventListener('click', addQuick);
-
-    // Pomodoro — independiente de Firebase y totalmente opcional.
-    let seconds = 1500, running = false, timer = null;
-    const timerEl = document.getElementById('pomodoro-timer'); const toggle = document.getElementById('pomo-toggle-btn'); const icon = document.getElementById('pomo-icon');
-    const paintTimer=()=>{if(timerEl)timerEl.textContent=`${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`};
-    document.getElementById('pomo-reset-btn')?.addEventListener('click',()=>{running=false;clearInterval(timer);seconds=1500;paintTimer();if(icon){icon.outerHTML='<i data-lucide="play" id="pomo-icon"></i>'; if(typeof window.refreshIcons==='function')window.refreshIcons();}});
-    toggle?.addEventListener('click',()=>{running=!running;clearInterval(timer);if(icon){icon.outerHTML=`<i data-lucide="${running?'pause':'play'}" id="pomo-icon"></i>`; if(typeof window.refreshIcons==='function')window.refreshIcons();}if(running){timer=setInterval(()=>{if(seconds>0){seconds--;paintTimer();}else{running=false;clearInterval(timer);paintTimer();}},1000);}});
-    paintTimer();
-
-    syncProfessionalUI();
-  };
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',onReady,{once:true}); else onReady();
-})();
-</script>
 </body>
 </html>
