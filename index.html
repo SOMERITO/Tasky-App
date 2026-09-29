@@ -3685,7 +3685,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .pomodoro-duration-box{width:min(100%,320px);margin:6px 0 16px;padding:12px 14px;border:1px solid rgba(210,210,215,.72);background:#F7F7F9;border-radius:14px}
 .pomodoro-duration-head{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px;color:var(--apple-muted);font-weight:700}
 .pomodoro-duration-head strong{color:var(--apple-text);font-size:12px}
-.pomodoro-range{width:100%;height:5px;margin-top:11px;appearance:none;border-radius:999px;background:linear-gradient(90deg,#0A84FF,#5856D6);outline:0}
+.pomodoro-range{width:100%;height:5px;margin-top:11px;appearance:none;border-radius:999px;background:linear-gradient(90deg,var(--apple-blue),var(--apple-indigo));outline:0}
 .pomodoro-range::-webkit-slider-thumb{appearance:none;width:20px;height:20px;border-radius:50%;background:#fff;border:1px solid rgba(210,210,215,.9);box-shadow:0 3px 9px rgba(0,0,0,.12);cursor:grab}
 .pomodoro-range::-webkit-slider-thumb:active{cursor:grabbing;transform:scale(1.08)}
 .pomodoro-range::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:1px solid rgba(210,210,215,.9);box-shadow:0 3px 9px rgba(0,0,0,.12);cursor:grab}
@@ -3716,166 +3716,181 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 </style>
 
 
-<style id="tasky-v79-polish">
+<style id="tasky-v79-professional">
 /* =========================================================
-   TASKY V79 · REFINED VISUAL POLISH
+   TASKY V79 · REFINAMIENTO VISUAL + FASES VACÍAS + LAVA EFFICIENCY
    ========================================================= */
 :root{
   --v79-blue:#0A84FF;
-  --v79-indigo:#6E5AE6;
-  --v79-mint:#43C99E;
-  --v79-peach:#FFB56B;
-  --v79-pink:#EF86AE;
-  --v79-ice:#EAF3FF;
+  --v79-indigo:#6E63E6;
+  --v79-violet:#9B8AFB;
+  --v79-rose:#F4A7C7;
+  --v79-peach:#F7CBAA;
+  --v79-mint:#B9EAD8;
+  --v79-sky:#BBDCF8;
+  --v79-ink:#1D1D1F;
+  --v79-muted:#6E6E73;
+  --v79-line:rgba(210,210,215,.68);
+  --v79-soft:rgba(245,245,247,.86);
+  --v79-ease:cubic-bezier(.22,1,.36,1);
 }
 
-/* 1) Fondo: aurora más agradable, profunda y gradual. */
-html{background:#eef3f9!important}
+/* ---- Agradables aurora gradients: suaves, luminosos y de transición lenta ---- */
+html{background:#DDE8F7!important}
 body{
-  position:relative;
-  isolation:isolate;
   background:
-    linear-gradient(120deg,#edf5ff 0%,#f5efff 24%,#fff1f4 46%,#fff5ea 64%,#eefaf5 82%,#edf5ff 100%) !important;
-  background-size:360% 360%!important;
-  animation:taskyGentleAurora 34s ease-in-out infinite!important;
+    radial-gradient(circle at 8% 18%, rgba(10,132,255,.30), transparent 29%),
+    radial-gradient(circle at 88% 14%, rgba(110,99,230,.26), transparent 30%),
+    radial-gradient(circle at 84% 84%, rgba(185,234,216,.30), transparent 28%),
+    radial-gradient(circle at 16% 84%, rgba(247,203,170,.25), transparent 29%),
+    linear-gradient(120deg,#DCEBFF 0%,#E8DEFF 22%,#FBE5EE 42%,#E4F6EE 62%,#DCEBFF 80%,#E7DFFF 100%) !important;
+  background-size:260% 260%,260% 260%,270% 270%,270% 270%,420% 420% !important;
+  animation:v79BackgroundDrift 34s cubic-bezier(.42,0,.58,1) infinite !important;
 }
 body::before{
-  content:"";
-  position:fixed!important;
-  inset:-18%!important;
-  z-index:-2!important;
-  pointer-events:none!important;
   background:
-    radial-gradient(circle at 12% 18%,rgba(73,148,255,.42),transparent 25%),
-    radial-gradient(circle at 82% 15%,rgba(121,103,239,.34),transparent 26%),
-    radial-gradient(circle at 72% 82%,rgba(67,201,158,.34),transparent 24%),
-    radial-gradient(circle at 18% 82%,rgba(255,181,107,.30),transparent 24%),
-    radial-gradient(circle at 50% 48%,rgba(239,134,174,.24),transparent 24%)!important;
-  filter:blur(78px) saturate(112%)!important;
-  opacity:.88!important;
-  transform:translate3d(0,0,0) scale(1.02)!important;
-  animation:taskyAuroraDrift 22s ease-in-out infinite alternate!important;
+    radial-gradient(circle at 20% 20%,rgba(10,132,255,.20),transparent 32%),
+    radial-gradient(circle at 80% 24%,rgba(155,138,251,.22),transparent 31%),
+    radial-gradient(circle at 74% 76%,rgba(185,234,216,.20),transparent 30%),
+    radial-gradient(circle at 28% 82%,rgba(244,167,199,.15),transparent 32%) !important;
+  filter:blur(58px) saturate(118%) !important;
+  animation:v79AmbientDrift 22s ease-in-out infinite alternate !important;
 }
-body::after{
-  content:"";
-  position:fixed!important;
-  inset:0!important;
-  z-index:-1!important;
-  pointer-events:none!important;
-  background:radial-gradient(circle at center,rgba(255,255,255,.16),rgba(255,255,255,0) 64%)!important;
-  opacity:.9!important;
+@keyframes v79BackgroundDrift{
+  0%,100%{background-position:0% 50%,100% 0%,100% 100%,0% 100%,0% 50%}
+  50%{background-position:100% 48%,0% 52%,12% 28%,82% 14%,100% 50%}
+}
+@keyframes v79AmbientDrift{
+  0%{transform:translate3d(-2%,-1%,0) scale(1)}
+  50%{transform:translate3d(2%,1%,0) scale(1.03)}
+  100%{transform:translate3d(-1%,2%,0) scale(1.015)}
 }
 
-/* 2) Sonido: presencia mayor sin volverse estridente. */
-#soundToggleBtn[aria-pressed="true"]{box-shadow:0 6px 18px rgba(10,132,255,.12)}
+/* ---- Hero: mejor jerarquía vertical ---- */
+.pro-hero-row{align-items:flex-start!important}
+.pro-eyebrow{line-height:1.1!important;letter-spacing:.11em!important;white-space:nowrap}
+.pro-hero-title{margin-top:9px!important;line-height:1.08!important}
+.hero-quote-wrap{margin-top:19px!important;max-width:720px}
+.pro-hero-quote{margin:0!important;line-height:1.55!important}
+.pro-hero-author{margin-top:5px!important;line-height:1.25!important}
+.pro-hero-date-card{display:flex!important;flex-direction:column!important;align-items:flex-end!important;justify-content:center!important;gap:4px!important;min-width:220px!important}
+.pro-hero-date-value{line-height:1.2!important}
+.pro-hero-status{margin-top:1px!important;line-height:1.2!important}
 
-/* 3) Control de duración Pomodoro: más limpio, táctil y premium. */
-.pomodoro-duration-box{
-  width:min(100%,360px)!important;
-  margin:8px 0 16px!important;
-  padding:12px 14px 13px!important;
-  border:1px solid rgba(210,210,215,.56)!important;
-  background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(246,247,251,.92))!important;
-  border-radius:18px!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.92),0 10px 28px rgba(15,23,42,.06)!important;
-}
-.pomodoro-duration-head{font-size:10px!important;letter-spacing:.02em}
-.pomodoro-duration-head strong{
-  display:inline-flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  min-width:58px!important;
-  height:28px!important;
-  padding:0 10px!important;
-  border-radius:999px!important;
-  background:linear-gradient(180deg,#fff,#f2f5fa)!important;
-  border:1px solid rgba(210,210,215,.62)!important;
-  box-shadow:0 4px 14px rgba(0,0,0,.06)!important;
-  color:#1D1D1F!important;
-  font-variant-numeric:tabular-nums;
-}
-.pomodoro-range{
-  height:8px!important;
-  margin-top:12px!important;
-  border-radius:999px!important;
-  background:linear-gradient(90deg,#0A84FF 0%,#5856D6 55%,#D8D9E2 55%,#D8D9E2 100%)!important;
-  box-shadow:inset 0 1px 2px rgba(0,0,0,.06),0 1px 0 rgba(255,255,255,.85)!important;
-  cursor:pointer!important;
-}
-.pomodoro-range::-webkit-slider-runnable-track{height:8px;border-radius:999px;background:transparent}
-.pomodoro-range::-moz-range-track{height:8px;border-radius:999px;background:transparent}
-.pomodoro-range::-webkit-slider-thumb{
-  appearance:none!important;
-  width:24px!important;height:24px!important;
-  margin-top:-8px!important;
-  border-radius:50%!important;
-  border:2px solid #fff!important;
-  background:linear-gradient(180deg,#ffffff,#f0f4fb)!important;
-  box-shadow:0 5px 14px rgba(0,0,0,.16),0 0 0 4px rgba(10,132,255,.12)!important;
-  cursor:grab!important;
-  transition:transform .18s cubic-bezier(.22,1,.36,1),box-shadow .18s ease!important;
-}
-.pomodoro-range::-webkit-slider-thumb:hover{transform:scale(1.10)!important;box-shadow:0 7px 18px rgba(0,0,0,.18),0 0 0 6px rgba(10,132,255,.12)!important}
-.pomodoro-range::-webkit-slider-thumb:active{cursor:grabbing!important;transform:scale(1.14)!important}
-.pomodoro-range::-moz-range-thumb{
-  width:24px!important;height:24px!important;
-  border-radius:50%!important;
-  border:2px solid #fff!important;
-  background:linear-gradient(180deg,#ffffff,#f0f4fb)!important;
-  box-shadow:0 5px 14px rgba(0,0,0,.16),0 0 0 4px rgba(10,132,255,.12)!important;
-  cursor:grab!important;
-}
-.pomodoro-range:focus-visible{outline:3px solid rgba(10,132,255,.16)!important;outline-offset:5px!important}
-.pomodoro-range-labels{margin-top:7px!important;font-size:8px!important;letter-spacing:.02em}
+/* ---- Fases: cabecera más limpia y consistente ---- */
+.card-title-row{min-height:30px!important;align-items:center!important}
+.activity-title{display:block!important;line-height:1.25!important;min-height:28px!important}
+.card-meta{padding:6px 0 0 55px!important;display:flex!important;align-items:center!important;flex-wrap:wrap!important;row-gap:5px!important}
+.card-progress{margin-top:8px!important;min-width:0!important}
+.card-progress-value{white-space:nowrap!important}
+.add-task-header-btn{color:var(--apple-blue)!important;background:rgba(0,113,227,.07)!important;border:1px solid rgba(0,113,227,.10)!important}
+.add-task-header-btn:hover{background:rgba(0,113,227,.13)!important;color:var(--apple-blue)!important;transform:translateY(-1px)!important;box-shadow:0 5px 12px rgba(0,113,227,.10)!important}
+.add-task-header-btn:active{transform:scale(.95)!important}
 
-/* 4) Microinteracciones generales. */
-.pro-metric-card,.pro-right-card,.pro-focus-banner,.pro-quick-add,.activity-card,.task-item,.pro-hero-date-card,.pro-toolbar,.pro-efficiency-card{
-  transition:transform .24s cubic-bezier(.22,1,.36,1),box-shadow .24s ease,border-color .24s ease,background-color .24s ease!important;
+/* ---- Tareas: alineación de columnas y textos ---- */
+.task-item{
+  grid-template-columns:20px 20px minmax(0,1fr) auto!important;
+  align-items:start!important;
+  min-width:0!important;
+  padding:9px 10px!important;
 }
-.pro-metric-card:hover,.pro-right-card:hover,.pro-focus-banner:hover,.pro-hero-date-card:hover,.pro-efficiency-card:hover{
-  transform:translateY(-2px)!important;
-  box-shadow:0 16px 34px rgba(15,23,42,.09)!important;
-}
-.activity-card:hover{box-shadow:0 14px 32px rgba(15,23,42,.07)!important}
-.task-item{transition:transform .2s cubic-bezier(.22,1,.36,1),box-shadow .2s ease,border-color .2s ease,background-color .2s ease!important}
-.task-item:hover{transform:translateY(-1px)!important}
-.pro-primary-btn,.soft-btn,.pro-toolbar-btn,.pro-pomodoro-button,.pro-quick-add-btn,.category-toggle-btn,.section-order-btn,.mini-btn,.repeat-btn,.delete-task-btn,.completed-restore-btn,.completed-delete-btn,.fab-action,.fab-main,.icon-btn{
-  will-change:transform,box-shadow!important;
+.drag-task,.check-btn{margin-top:1px!important}
+.task-input{display:block!important;line-height:1.45!important;min-width:0!important;overflow-wrap:anywhere!important}
+.task-item-actions{align-self:start!important;padding-top:0!important}
+.task-repeat-badge-standalone,.task-due-repeat-status,.completed-repeat-note{line-height:1.4!important;overflow-wrap:anywhere!important}
+.completed-item{grid-template-columns:20px minmax(0,1fr) auto auto!important;align-items:start!important}
+.completed-item .task-input{line-height:1.45!important}
+.completed-restore-btn,.completed-delete-btn{margin-top:0!important}
+
+@media (max-width:760px){
+  .pro-hero-date-card{align-items:flex-start!important;text-align:left!important;min-width:0!important;width:100%!important}
+  .pro-hero-status{justify-content:flex-start!important}
+  .card-meta,.card-progress{margin-left:0!important;padding-left:0!important}
+  .task-item{grid-template-columns:18px 20px minmax(0,1fr) auto!important}
+  .completed-item{grid-template-columns:20px minmax(0,1fr) auto auto!important}
 }
 
-/* 5) Mejor sensación táctil en el Pomodoro principal. */
-.pro-pomodoro-button{
-  background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(248,250,253,.94))!important;
-  box-shadow:0 12px 28px rgba(0,113,227,.07),inset 0 1px 0 rgba(255,255,255,.95)!important;
+/* ---- Pomodoro: más premium, más legible, sin aspecto de botón genérico ---- */
+.pro-pomodoro-card{
+  position:relative!important;
+  overflow:hidden!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(247,249,255,.94))!important;
+  border-color:rgba(0,113,227,.16)!important;
+  box-shadow:0 14px 36px rgba(0,74,160,.08),inset 0 1px 0 rgba(255,255,255,.78)!important;
 }
-.pro-pomodoro-button:hover{transform:translateY(-3px)!important;box-shadow:0 18px 34px rgba(0,113,227,.11),inset 0 1px 0 rgba(255,255,255,.98)!important}
-.pro-pomodoro-button:active{transform:translateY(-1px) scale(.992)!important}
+.pro-pomodoro-card::before{
+  content:"";position:absolute;inset:-40% -20% auto auto;width:170px;height:170px;border-radius:50%;
+  background:radial-gradient(circle,rgba(10,132,255,.15),transparent 68%);pointer-events:none;transition:transform .55s var(--v79-ease),opacity .4s ease;
+}
+.pro-pomodoro-card:hover::before{transform:translate(-18px,14px) scale(1.12);opacity:.9}
+.pro-pomodoro-card .pro-card-head,.pro-pomodoro-button-copy,.pro-pomodoro-action-hint{position:relative;z-index:1}
+.pro-pomodoro-button-time{font-variant-numeric:tabular-nums!important;letter-spacing:-.065em!important;font-size:39px!important}
+.pro-mini-icon-visual{width:34px!important;height:34px!important;border-radius:50%!important;background:linear-gradient(145deg,#0A84FF,#5E5CE6)!important;color:#fff!important;border:0!important;box-shadow:0 8px 18px rgba(0,113,227,.22)!important}
+.pro-pomodoro-card:hover .pro-mini-icon-visual{transform:rotate(-6deg) scale(1.04);box-shadow:0 11px 24px rgba(0,113,227,.26)!important}
 
-/* 6) Dark mode conserva contraste. */
-[data-theme="dark"] .pomodoro-duration-box{background:linear-gradient(180deg,#2A2A2E,#232326)!important;border-color:rgba(255,255,255,.10)!important}
-[data-theme="dark"] .pomodoro-duration-head strong{background:#1C1C1E!important;color:#F5F5F7!important;border-color:rgba(255,255,255,.10)!important}
+/* ---- Resumen de eficiencia: efecto lava sofisticado ---- */
+.pro-efficiency-card{
+  isolation:isolate!important;
+  min-height:150px!important;
+  background:#17171B!important;
+  overflow:hidden!important;
+  box-shadow:0 20px 44px rgba(28,18,52,.14)!important;
+}
+.pro-efficiency-bg{
+  position:absolute!important;inset:-35%!important;
+  opacity:1!important;
+  background:
+    radial-gradient(circle at 18% 34%,rgba(10,132,255,.65) 0 10%,transparent 28%),
+    radial-gradient(circle at 72% 22%,rgba(110,99,230,.76) 0 12%,transparent 29%),
+    radial-gradient(circle at 70% 76%,rgba(244,167,199,.58) 0 11%,transparent 26%),
+    radial-gradient(circle at 30% 78%,rgba(185,234,216,.46) 0 12%,transparent 26%),
+    radial-gradient(circle at 52% 50%,rgba(247,203,170,.38) 0 8%,transparent 21%);
+  filter:blur(24px) saturate(128%);
+  animation:v79LavaA 12s ease-in-out infinite alternate,v79LavaB 20s linear infinite;
+}
+.pro-efficiency-bg::before,.pro-efficiency-bg::after{
+  content:"";position:absolute;border-radius:50%;pointer-events:none;mix-blend-mode:screen;
+}
+.pro-efficiency-bg::before{
+  width:46%;height:58%;left:8%;top:22%;
+  background:radial-gradient(circle at 38% 42%,rgba(255,255,255,.19),rgba(0,122,255,.38) 30%,transparent 72%);
+  filter:blur(18px);
+  animation:v79BlobOne 8s ease-in-out infinite alternate;
+}
+.pro-efficiency-bg::after{
+  width:52%;height:64%;right:3%;top:12%;
+  background:radial-gradient(circle at 54% 52%,rgba(255,255,255,.16),rgba(110,99,230,.44) 28%,rgba(244,167,199,.20) 48%,transparent 75%);
+  filter:blur(20px);
+  animation:v79BlobTwo 10s ease-in-out infinite alternate;
+}
+.pro-efficiency-card::after{
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(12,12,16,.04),rgba(12,12,16,.50));
+}
+.pro-efficiency-content{z-index:2!important}
+.pro-efficiency-content span{color:rgba(255,255,255,.64)!important}
+.pro-efficiency-content strong{font-size:15px!important;letter-spacing:-.025em!important;text-shadow:0 1px 8px rgba(0,0,0,.22)}
+.pro-efficiency-content p{color:rgba(255,255,255,.78)!important}
+@keyframes v79LavaA{0%{transform:translate3d(-5%,1%,0) scale(1)}50%{transform:translate3d(4%,-4%,0) scale(1.08)}100%{transform:translate3d(2%,5%,0) scale(1.03)}}
+@keyframes v79LavaB{0%{rotate:0deg}100%{rotate:360deg}}
+@keyframes v79BlobOne{0%{transform:translate3d(-10%,7%,0) scale(.84)}100%{transform:translate3d(16%,-10%,0) scale(1.18)}}
+@keyframes v79BlobTwo{0%{transform:translate3d(10%,4%,0) scale(.88)}100%{transform:translate3d(-14%,12%,0) scale(1.16)}}
 
-@keyframes taskyGentleAurora{
-  0%{background-position:0% 50%}
-  25%{background-position:62% 34%}
-  50%{background-position:100% 58%}
-  75%{background-position:36% 72%}
-  100%{background-position:0% 50%}
+/* ---- Microinteracciones globales ---- */
+button,.pro-icon-btn,.pro-task-tab,.pro-toolbar-btn,.mini-btn,.section-order-btn,.drag-card,.drag-task,.check-btn{
+  transition:transform .18s var(--v79-ease),background-color .22s ease,border-color .22s ease,box-shadow .22s ease,color .18s ease,opacity .18s ease!important;
 }
-@keyframes taskyAuroraDrift{
-  0%{transform:translate3d(-2%,-1%,0) scale(1.01)}
-  50%{transform:translate3d(3%,2%,0) scale(1.06)}
-  100%{transform:translate3d(-1%,3%,0) scale(1.03)}
-}
-@media (max-width:820px){
-  body{animation-duration:28s!important}
-  body::before{animation-duration:18s!important}
-}
+button:not(:disabled):hover{will-change:transform}
+button:not(:disabled):active{transform:translateY(0) scale(.975)}
+button:focus-visible{outline:3px solid rgba(10,132,255,.20)!important;outline-offset:2px}
+.pro-primary-btn:hover,.pro-quick-add-btn:hover{transform:translateY(-1px)!important;box-shadow:0 9px 21px rgba(0,113,227,.19)!important}
+.pro-toolbar-btn:hover,.pro-icon-btn:hover,.mini-btn:hover,.section-order-btn:hover{transform:translateY(-1px)!important}
+
 @media (prefers-reduced-motion:reduce){
-  body,body::before{animation:none!important}
+  body,body::before,.pro-efficiency-bg,.pro-efficiency-bg::before,.pro-efficiency-bg::after{animation:none!important}
+  *,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important}
 }
 </style>
-
 </head>
 
 <body tabindex="-1" data-tasky-version="V79">
@@ -3907,8 +3922,8 @@ body::after{
       <section class="pro-hero-block">
         <div class="pro-hero-row">
           <div>
-            <span class="pro-eyebrow"><i data-lucide="sparkles"></i> NUEVO DÍA · NUEVA OPORTUNIDAD</span>
-            <h1 id="heroTitle" class="pro-hero-title">Tu día, tu orden.</h1>
+            <span class="pro-eyebrow"><i data-lucide="sparkles"></i> TU DÍA · TU ORDEN</span>
+            <h1 id="heroTitle" class="pro-hero-title">Nuevo día, nueva oportunidad.</h1>
             <div class="hero-quote-wrap">
               <p id="heroSubtitle" class="pro-hero-quote is-loading">Preparando una nueva frase…</p>
               <div id="heroQuoteAuthor" class="pro-hero-author" aria-live="polite"></div>
@@ -4419,7 +4434,7 @@ body::after{
        Web Audio API, sin archivos externos.
        ========================================================= */
     const SOUND_STORAGE_KEY = "tasky_sound_enabled_v72";
-    const SOUND_MASTER_GAIN = 0.060;
+    const SOUND_MASTER_GAIN = 0.035;
 
     let taskyAudioContext = null;
     let taskyMasterGain = null;
@@ -4627,8 +4642,8 @@ body::after{
       }
 
       /*
-       * Sonidos cortos, suaves y con más presencia.
-       * Los patrones cambian según la acción para conservar una sensación nativa y elegante.
+       * Todos los sonidos son muy cortos y de baja ganancia.
+       * La diferencia está en el patrón, no en el volumen.
        */
       switch (kind) {
 
@@ -5699,6 +5714,9 @@ body::after{
             </div>
             <input class="activity-title" maxlength="80" value="${escapeHTML(cat.title)}" placeholder="Nombre de la fase…">
             <div class="card-actions">
+              <button class="mini-btn add-task-header-btn" type="button" data-action="add-task" title="Añadir tarea a esta fase" aria-label="Añadir tarea a esta fase">
+                <i data-lucide="plus"></i>
+              </button>
               <button class="mini-btn category-toggle-btn" type="button" data-action="toggle-category" title="${cat.collapsed ? "Expandir fase" : "Contraer fase"}" aria-label="${cat.collapsed ? "Expandir fase" : "Contraer fase"}" aria-expanded="${cat.collapsed ? "false" : "true"}">
                 <i data-lucide="${cat.collapsed ? "chevron-right" : "chevron-down"}"></i>
               </button>
@@ -7081,23 +7099,39 @@ body::after{
 
     function syncRepeatingTasksForToday() {
       const current = today();
+      const currentParts = current.split('-').map(Number);
+      const currentDate = new Date(currentParts[0], currentParts[1] - 1, currentParts[2]);
       let changed = false;
 
       for (const category of state.categories) {
         for (const task of category.tasks || []) {
           if (!task?.repeat || task.draft || !String(task.text || '').trim()) continue;
           if (!Array.isArray(task.repeatDays) || !task.repeatDays.length) continue;
-          if (!/^\d{4}-\d{2}-\d{2}$/.test(task.date || '')) {
-            task.date = current;
-            changed = true;
-            continue;
+
+          const selected = new Set(task.repeatDays.map(Number));
+          const currentIsoDay = currentDate.getDay() === 0 ? 7 : currentDate.getDay();
+          const completedToday = isRepeatCompletedToday(task);
+
+          // Una ocurrencia repetitiva debe representar siempre la próxima
+          // ocurrencia válida, no una fecha pasada ni un día futuro que ya
+          // haya quedado obsoleto frente al calendario actual.
+          let targetDate = null;
+
+          if (completedToday) {
+            targetDate = nextRepeatDate(current, task.repeatDays);
+          } else if (selected.has(currentIsoDay)) {
+            targetDate = current;
+          } else if (!/^\d{4}-\d{2}-\d{2}$/.test(task.date || '') || task.date < current) {
+            targetDate = nextRepeatDateOnOrAfter(current, task.repeatDays);
+          } else {
+            // Si la fecha guardada es futura pero no corresponde al día
+            // actual, conservamos esa ocurrencia programada.
+            targetDate = task.date;
           }
-          if (task.date < current) {
-            const next = nextRepeatDateOnOrAfter(current, task.repeatDays);
-            if (task.date !== next) {
-              task.date = next;
-              changed = true;
-            }
+
+          if (targetDate && task.date !== targetDate) {
+            task.date = targetDate;
+            changed = true;
           }
         }
       }
@@ -8223,8 +8257,6 @@ body::after{
       if (durationInput) {
         durationInput.value = String(pomodoroDurationMinutes);
         durationInput.disabled = pomodoroRunning;
-        const ratio = Math.max(0, Math.min(1, (pomodoroDurationMinutes - 1) / 59));
-        durationInput.style.background = `linear-gradient(90deg,#0A84FF 0%,#5856D6 ${Math.max(8, ratio * 100)}%,#D8D9E2 ${Math.max(8, ratio * 100)}%,#D8D9E2 100%)`;
       }
       if (durationValue) durationValue.textContent = String(pomodoroDurationMinutes);
 
