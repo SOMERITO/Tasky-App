@@ -3879,7 +3879,7 @@ body::after{
 
 <style id="tasky-v80-modifications">
 /* =========================================================
-   TASKY V81 · ajustes solicitados
+   TASKY V81 · ajustes solicitados + V82 polish
    ========================================================= */
 .pro-hero-title{font-size:38px!important}
 
@@ -3967,6 +3967,9 @@ body::after{
    TASKY V81 · spacing, productivity analysis, repeat engine
    and simplified task workspace
    ========================================================= */
+
+/* V82 · tipografía principal ligeramente más protagonista. */
+.pro-hero-title{font-size:46px!important}
 .pro-hero-title{
   font-size:41px!important;
   line-height:1.02!important;
@@ -4207,9 +4210,195 @@ body::after{
   .repeat-editor-actions .soft-btn,.repeat-editor-actions .repeat-save-btn{width:100%;justify-content:center}
 }
 </style>
+
+
+<style id="tasky-v82-final-polish">
+/* =========================================================
+   TASKY V82 · legibilidad, contador de pendientes,
+   movimiento de entrada y microinteracciones globales
+   ========================================================= */
+
+/* 1) Completadas: el texto ocupa su propia columna y no queda
+      atrapado en los 36px del carril del botón de check. */
+.completed-item{
+  grid-template-columns:36px minmax(0,1fr) auto auto!important;
+  column-gap:12px!important;
+  row-gap:8px!important;
+  align-items:center!important;
+}
+.completed-item .task-input{
+  grid-column:auto!important;
+  min-width:0!important;
+  width:100%!important;
+  display:block!important;
+  white-space:normal!important;
+  word-break:normal!important;
+  overflow-wrap:anywhere!important;
+  overflow:visible!important;
+  max-height:none!important;
+  line-height:1.45!important;
+  padding:3px 0!important;
+  margin:0!important;
+  color:#5F6368!important;
+  font-size:12px!important;
+}
+.completed-item .completed-repeat-note{
+  margin-top:4px!important;
+}
+.completed-item .completed-restore-btn,
+.completed-item .completed-delete-btn{justify-self:end!important}
+
+/* 2) Contador numérico al lado del botón desplegar/comprimir. */
+.category-pending-count{
+  width:30px!important;
+  min-width:30px!important;
+  height:28px!important;
+  display:inline-grid!important;
+  place-items:center!important;
+  flex:0 0 auto!important;
+  border-radius:9px!important;
+  border:1px solid rgba(210,210,215,.76)!important;
+  background:linear-gradient(180deg,#FFFFFF,#F4F4F6)!important;
+  color:#505056!important;
+  box-shadow:0 2px 7px rgba(15,23,42,.055)!important;
+  font-size:10px!important;
+  font-weight:800!important;
+  line-height:1!important;
+  font-variant-numeric:tabular-nums!important;
+  transition:transform .2s var(--pro-ease),background .2s ease,border-color .2s ease,color .2s ease,box-shadow .2s ease!important;
+}
+.category-pending-count:hover{
+  transform:translateY(-1px) scale(1.03)!important;
+  border-color:rgba(0,113,227,.28)!important;
+  color:var(--apple-blue)!important;
+  box-shadow:0 7px 16px rgba(0,113,227,.10)!important;
+}
+[data-theme="dark"] .category-pending-count{
+  background:linear-gradient(180deg,#313138,#27272C)!important;
+  border-color:rgba(255,255,255,.16)!important;
+  color:#E7E7EA!important;
+  box-shadow:0 3px 10px rgba(0,0,0,.26)!important;
+}
+[data-theme="dark"] .category-pending-count:hover{
+  border-color:rgba(10,132,255,.44)!important;
+  color:#64A8FF!important;
+}
+
+/* 3) Título principal un poco mayor también en tamaños pequeños. */
+@media (max-width:760px){
+  .pro-hero-title{font-size:38px!important}
+  .completed-item{
+    grid-template-columns:32px minmax(0,1fr) auto!important;
+    align-items:center!important;
+    column-gap:10px!important;
+  }
+  .completed-item .completed-restore-btn{
+    grid-column:2!important;
+    grid-row:2!important;
+    justify-self:start!important;
+  }
+  .completed-item .completed-delete-btn{
+    grid-column:3!important;
+    grid-row:1!important;
+  }
+}
+@media (max-width:480px){
+  .pro-hero-title{font-size:34px!important}
+  .category-pending-count{width:28px!important;min-width:28px!important;height:27px!important;font-size:9px!important;border-radius:8px!important}
+  .completed-item{grid-template-columns:31px minmax(0,1fr) auto!important;column-gap:9px!important}
+  .completed-item .task-input{font-size:11.5px!important}
+}
+
+/* 4) Entrada global: la misma sensación de “cargar → respirar → aparecer”
+      que ahora existe en Mi productividad. Se aplica una sola vez al abrir
+      la vista para que los renders posteriores no resulten molestos. */
+@keyframes taskyGlobalReveal{
+  0%{opacity:0;transform:translate3d(0,16px,0) scale(.988);filter:blur(6px)}
+  55%{opacity:1;filter:blur(1px)}
+  100%{opacity:1;transform:none;filter:blur(0)}
+}
+@keyframes taskyGlobalSheen{
+  0%{transform:translateX(-120%);opacity:0}
+  18%{opacity:.55}
+  52%{opacity:0}
+  100%{transform:translateX(140%);opacity:0}
+}
+.tasky-reveal{
+  animation:taskyGlobalReveal .62s var(--pro-ease) var(--tasky-delay,0ms) both!important;
+  will-change:transform,opacity,filter!important;
+}
+.tasky-reveal.pro-metric-card,
+.tasky-reveal.activity-card,
+.tasky-reveal.pro-task-toolbar,
+.tasky-reveal.pro-hero-date-card{
+  position:relative!important;
+  overflow:hidden!important;
+}
+.tasky-reveal.pro-metric-card::after,
+.tasky-reveal.activity-card::after,
+.tasky-reveal.pro-task-toolbar::after,
+.tasky-reveal.pro-hero-date-card::after{
+  content:"";
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:0;
+  width:34%;
+  pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.32),transparent);
+  transform:translateX(-120%);
+  animation:taskyGlobalSheen .9s ease calc(var(--tasky-delay,0ms) + .16s) both;
+}
+.pro-hero-block.tasky-reveal + .pro-metrics .pro-metric-card:nth-child(2){--tasky-delay:110ms}
+.pro-hero-block.tasky-reveal + .pro-metrics .pro-metric-card:nth-child(3){--tasky-delay:180ms}
+.pro-hero-block.tasky-reveal + .pro-metrics .pro-metric-card:nth-child(4){--tasky-delay:250ms}
+
+/* Progreso: un pequeño brillo que recorre la barra una vez al entrar. */
+.card-progress .progress-fill,
+.pro-progress span{
+  position:relative!important;
+  overflow:hidden!important;
+}
+.card-progress .progress-fill::after,
+.pro-progress span::after{
+  content:"";
+  position:absolute;
+  inset:0 auto 0 -35%;
+  width:32%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.48),transparent);
+  animation:taskyGlobalSheen 1.05s ease .48s both;
+  pointer-events:none;
+}
+
+/* Microinteracción adicional al mostrar tareas: entrada escalonada y una ligera
+   respiración en el círculo de completar al pasar el cursor. */
+.activity-card .task-item.tasky-reveal:nth-child(2){animation-delay:70ms!important}
+.activity-card .task-item.tasky-reveal:nth-child(3){animation-delay:125ms!important}
+.activity-card .task-item.tasky-reveal:nth-child(4){animation-delay:180ms!important}
+.activity-card .task-item.tasky-reveal:nth-child(5){animation-delay:235ms!important}
+.task-item:not(.completed-item):hover .check-btn{transform:scale(1.045)!important;box-shadow:0 0 0 4px rgba(0,113,227,.06)!important}
+.task-item:not(.completed-item) .repeat-btn.active{animation:taskyRepeatBreath 2.8s ease-in-out infinite}
+@keyframes taskyRepeatBreath{
+  0%,100%{box-shadow:0 0 0 0 rgba(88,86,214,0)}
+  50%{box-shadow:0 0 0 4px rgba(88,86,214,.06)}
+}
+
+[data-theme="dark"] .completed-item .task-input{color:#B8B8BF!important}
+[data-theme="dark"] .tasky-reveal.pro-metric-card::after,
+[data-theme="dark"] .tasky-reveal.activity-card::after,
+[data-theme="dark"] .tasky-reveal.pro-task-toolbar::after,
+[data-theme="dark"] .tasky-reveal.pro-hero-date-card::after{
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.10),transparent)
+}
+
+@media (prefers-reduced-motion:reduce){
+  .tasky-reveal,.tasky-reveal::after,.card-progress .progress-fill::after,.pro-progress span::after,.task-item:not(.completed-item) .repeat-btn.active{animation:none!important}
+}
+</style>
+
 </head>
 
-<body tabindex="-1" data-tasky-version="V81">
+<body tabindex="-1" data-tasky-version="V82">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -4458,7 +4647,7 @@ body::after{
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 81;
+    const APP_VERSION = 82;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -4687,7 +4876,7 @@ body::after{
        Web Audio API, sin archivos externos.
        ========================================================= */
     const SOUND_STORAGE_KEY = "tasky_sound_enabled_v72";
-    const SOUND_MASTER_GAIN = 0.090;
+    const SOUND_MASTER_GAIN = 0.120;
 
     let taskyAudioContext = null;
     let taskyMasterGain = null;
@@ -5816,6 +6005,29 @@ body::after{
       return true;
     }
 
+    let taskyWorkspaceHasRevealed = false;
+
+    function animateTaskySurface() {
+      const nodes = document.querySelectorAll([
+        '.pro-topbar',
+        '.pro-sidebar',
+        '.pro-hero-block',
+        '.pro-hero-date-card',
+        '.pro-metric-card',
+        '.pro-task-toolbar',
+        '#board > .activity-card',
+        '#board .task-item',
+        '.fab-main'
+      ].join(','));
+
+      nodes.forEach((node, index) => {
+        if (node.classList.contains('tasky-reveal')) return;
+        const delay = Math.min(index * 55, 850);
+        node.style.setProperty('--tasky-delay', `${delay}ms`);
+        node.classList.add('tasky-reveal');
+      });
+    }
+
     function render() {
       const repeatChangedOnRender = syncRepeatingTasksForToday();
       if (repeatChangedOnRender) {
@@ -5917,6 +6129,11 @@ body::after{
       updateTaskHeights();
       updateTaskViewTabs();
       syncProfessionalUI();
+
+      if (!taskyWorkspaceHasRevealed) {
+        taskyWorkspaceHasRevealed = true;
+        requestAnimationFrame(() => animateTaskySurface());
+      }
     }
 
     function buildCategoryCard(cat, index, query) {
@@ -5971,6 +6188,7 @@ body::after{
               <button class="mini-btn category-toggle-btn" type="button" data-action="toggle-category" title="${cat.collapsed ? "Expandir fase" : "Contraer fase"}" aria-label="${cat.collapsed ? "Expandir fase" : "Contraer fase"}" aria-expanded="${cat.collapsed ? "false" : "true"}">
                 <i data-lucide="${cat.collapsed ? "chevron-right" : "chevron-down"}"></i>
               </button>
+              <span class="category-pending-count" title="${visiblePending} tarea${visiblePending === 1 ? "" : "s"} pendiente${visiblePending === 1 ? "" : "s"}" aria-label="${visiblePending} tareas pendientes">${visiblePending}</span>
               <button class="mini-btn" type="button" data-action="stats" title="Ver resumen" aria-label="Ver resumen">
                 <i data-lucide="bar-chart-3"></i>
               </button>
@@ -6899,14 +7117,14 @@ body::after{
             </div>
           </section>
 
-          <section class="daily-report-bottom" style="--report-delay:.49s">
-            <article class="daily-insight-card">
-              <div class="daily-insight-icon"><i data-lucide="lightbulb"></i></div>
-              <div><small>LECTURA DE TASKY</small><p>${escapeHTML(message)}</p></div>
-            </article>
-            <article class="daily-streak-card">
+          <section class="daily-report-bottom daily-constancy-bottom" style="--report-delay:.49s">
+            <article class="daily-insight-card daily-constancy-card">
               <div class="daily-streak-visual"><i data-lucide="flame"></i></div>
-              <div><small>CONSTANCIA</small><strong>${streak} ${streak === 1 ? 'día' : 'días'}</strong><span>${streak ? 'racha activa' : 'empieza hoy'}</span></div>
+              <div>
+                <small>CONSTANCIA</small>
+                <strong>${streak} ${streak === 1 ? 'día' : 'días'}</strong>
+                <p>${streak ? 'Tu racha está activa. Mantén el ritmo y protege el hábito de volver mañana.' : 'Tu constancia comienza con una tarea cerrada hoy. Da el primer paso y construye la racha.'}</p>
+              </div>
             </article>
           </section>
 
