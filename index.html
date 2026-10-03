@@ -5389,9 +5389,66 @@ select,
 .task-drag-source{opacity:.25!important;outline:1px dashed rgba(0,113,227,.26)!important}
 </style>
 
+
+<style id="tasky-v98-final-polish">
+/* =========================================================
+   TASKY V98 · TITLE FLOW + ROBUST TASK DRAG
+   ========================================================= */
+.pro-hero-title{
+  -webkit-background-clip:text!important;
+  background-clip:text!important;
+  -webkit-text-fill-color:transparent!important;
+  color:transparent!important;
+  background-image:linear-gradient(100deg,
+    #0A84FF 0%,
+    #3F8CFF 15%,
+    #6677F0 30%,
+    #8B78E8 45%,
+    #A36BDD 58%,
+    #8B78E8 70%,
+    #6677F0 84%,
+    #3F8CFF 94%,
+    #0A84FF 100%
+  )!important;
+  background-size:360% 100%!important;
+  background-position:0% 50%!important;
+  animation:taskyTitleFlowV98 11s linear infinite!important;
+  will-change:background-position;
+}
+@keyframes taskyTitleFlowV98{
+  0%{background-position:0% 50%}
+  100%{background-position:100% 50%}
+}
+
+/* Hacer inequívoco el estado de "mantener presionado para mover". */
+.task-item:not(.completed-item){
+  -webkit-user-drag:none!important;
+  -webkit-touch-callout:none!important;
+}
+.task-item.task-press-arming,
+.task-item.task-long-press-ready{
+  -webkit-user-select:none!important;
+  user-select:none!important;
+}
+.task-item.task-drag-source{
+  transition:opacity .16s ease, box-shadow .18s ease, transform .18s var(--ease)!important;
+}
+.task-drag-preview{
+  opacity:0!important;
+  pointer-events:none!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+}
+.task-drag-preview.is-ready{opacity:.98!important}
+
+@media (prefers-reduced-motion:reduce){
+  .pro-hero-title{animation:none!important}
+}
+</style>
+
 </head>
 
-<body tabindex="-1" data-tasky-version="V97">
+<body tabindex="-1" data-tasky-version="V98">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -5679,7 +5736,7 @@ select,
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 97;
+    const APP_VERSION = 98;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -7744,9 +7801,9 @@ select,
       if (typeof taskPointerCleanup === "function") taskPointerCleanup();
 
       const listeners = [];
-      const LONG_PRESS_ROW_MS = 380;
-      const LONG_PRESS_HANDLE_MS = 180;
-      const MOVE_CANCEL_PX = 6;
+      const LONG_PRESS_ROW_MS = 430;
+      const LONG_PRESS_HANDLE_MS = 220;
+      const MOVE_CANCEL_PX = 8;
 
       document.querySelectorAll(".task-item:not(.completed-item)").forEach(item => {
         let pressTimer = null;
@@ -7755,6 +7812,7 @@ select,
         let pressStartY = 0;
         let pressStarted = false;
         let pressType = "row";
+        let pressPointerType = "mouse";
 
         const getContext = () => ({
           taskId: item.dataset.taskId || "",
@@ -7763,7 +7821,7 @@ select,
         });
 
         const clearPress = () => {
-          if (pressTimer) {
+          if (pressTimer !== null) {
             clearTimeout(pressTimer);
             pressTimer = null;
           }
@@ -7771,11 +7829,13 @@ select,
           pressPointerId = null;
           pressStarted = false;
           pressType = "row";
+          pressPointerType = "mouse";
         };
 
         const beginDrag = () => {
           if (activeTaskDrag || pressPointerId === null) return;
 
+          const pointerId = pressPointerId;
           const { taskId, sourceCategoryId, handle } = getContext();
           if (!taskId || !sourceCategoryId) {
             clearPress();
@@ -7783,6 +7843,11 @@ select,
           }
 
           pressStarted = true;
+          if (pressTimer !== null) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+          }
+
           item.classList.remove("task-press-arming");
           item.classList.add("task-long-press-ready");
 
@@ -7791,11 +7856,11 @@ select,
           }
           try { window.getSelection?.()?.removeAllRanges?.(); } catch (_) {}
 
-          try { item.setPointerCapture?.(pressPointerId); } catch (_) {}
+          try { item.setPointerCapture?.(pointerId); } catch (_) {}
 
           const dragEvent = {
-            pointerId: pressPointerId,
-            pointerType: pressType === "handle" ? "mouse" : "mouse",
+            pointerId,
+            pointerType: pressPointerType,
             clientX: pressStartX,
             clientY: pressStartY,
             button: 0,
@@ -7804,14 +7869,20 @@ select,
           };
 
           startTaskPointerDrag(dragEvent, item, handle, taskId, sourceCategoryId);
+          if (activeTaskDrag) {
+            activeTaskDrag.pointerType = pressPointerType;
+          }
+
+          softHaptic(12);
         };
 
         const arm = (event, type) => {
           if (activeTaskDrag) return;
-          if (event.button !== undefined && event.button !== 0) return;
           if (event.isPrimary === false) return;
+          if (event.button !== undefined && event.button !== 0) return;
 
-          const interactive = event.target.closest?.("button, a, select");
+          const target = event.target instanceof Element ? event.target : null;
+          const interactive = target?.closest("button, a, select");
           if (interactive && !interactive.classList.contains("drag-task")) return;
 
           const { taskId, sourceCategoryId } = getContext();
@@ -7822,12 +7893,21 @@ select,
           pressStartX = event.clientX;
           pressStartY = event.clientY;
           pressType = type;
+          pressPointerType = event.pointerType || "mouse";
           item.classList.add("task-press-arming");
 
-          // En ratón evitamos que el navegador intente una selección/drag nativo.
-          if (event.pointerType === "mouse") {
-            event.preventDefault();
+          /*
+           * El navegador puede cancelar un gesto táctil para hacer scroll.
+           * Solo anulamos el comportamiento por defecto cuando el gesto ya
+           * está dirigido al asa o cuando estamos usando mouse/pen. En el
+           * texto editable dejamos que el foco normal ocurra.
+           */
+          const onEditableText = Boolean(target?.closest(".task-input"));
+          if (!onEditableText || pressType === "handle" || pressPointerType === "mouse") {
+            try { event.preventDefault(); } catch (_) {}
           }
+
+          try { item.setPointerCapture?.(pressPointerId); } catch (_) {}
 
           pressTimer = window.setTimeout(
             beginDrag,
@@ -7836,7 +7916,7 @@ select,
         };
 
         const onPointerDown = event => {
-          const onHandle = Boolean(event.target.closest?.(".drag-task"));
+          const onHandle = Boolean(event.target instanceof Element && event.target.closest(".drag-task"));
           arm(event, onHandle ? "handle" : "row");
         };
 
@@ -7848,14 +7928,14 @@ select,
             return;
           }
 
-          if (event.pointerId !== pressPointerId) return;
+          if (event.pointerId !== pressPointerId || pressStarted) return;
 
           const distance = Math.hypot(
             event.clientX - pressStartX,
             event.clientY - pressStartY
           );
 
-          if (distance > MOVE_CANCEL_PX && !pressStarted) {
+          if (distance > MOVE_CANCEL_PX) {
             clearPress();
           }
         };
@@ -7864,14 +7944,19 @@ select,
           if (activeTaskDrag && event.pointerId === activeTaskDrag.pointerId) {
             event.preventDefault();
             finishTaskPointerDrag(true);
+            try { item.releasePointerCapture?.(event.pointerId); } catch (_) {}
             return;
           }
-          if (event.pointerId === pressPointerId) clearPress();
+          if (event.pointerId === pressPointerId) {
+            try { item.releasePointerCapture?.(event.pointerId); } catch (_) {}
+            clearPress();
+          }
         };
 
         const onPointerCancel = event => {
           if (activeTaskDrag && event.pointerId === activeTaskDrag.pointerId) {
             finishTaskPointerDrag(Boolean(activeTaskDrag.moved && activeTaskDrag.targetList));
+            try { item.releasePointerCapture?.(event.pointerId); } catch (_) {}
             return;
           }
           if (event.pointerId === pressPointerId) clearPress();
@@ -7883,10 +7968,7 @@ select,
           }
         };
 
-        const onDragStart = event => {
-          // Nunca permitir el drag nativo del navegador; Tasky usa Pointer Events.
-          event.preventDefault();
-        };
+        const onDragStart = event => event.preventDefault();
 
         item.addEventListener("pointerdown", onPointerDown, { passive:false });
         item.addEventListener("pointermove", onPointerMove, { passive:false });
@@ -8130,7 +8212,7 @@ select,
       drag.targetList?.classList.remove("task-drop-target");
       drag.targetList?.closest('.activity-card')?.classList.remove('task-drop-target');
       drag.item.closest(".activity-card")?.classList.remove("task-drag-active");
-      drag.item.classList.remove("task-drag-source");
+      drag.item.classList.remove("task-drag-source", "task-long-press-ready", "task-press-arming");
       document.body.classList.remove("task-pointer-dragging");
 
       const moved = commit && drag.moved && drag.targetList;
