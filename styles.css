@@ -6238,3 +6238,342 @@ body::before{
   .monthly-history-label strong{font-size:8px}
   .monthly-history-current strong{font-size:9px}
 }
+
+
+/* =========================================================
+   TASKY V106
+   Selección múltiple · fases reprogramadas · arcoíris visible
+   ========================================================= */
+
+/* Solo los campos editables permiten seleccionar texto. */
+body, body *{
+  -webkit-user-select:none!important;
+  user-select:none!important;
+}
+textarea,
+input:not([type="hidden"]),
+select,
+[contenteditable="true"]{
+  -webkit-user-select:text!important;
+  user-select:text!important;
+}
+.task-input,
+.activity-title,
+#searchInput{
+  -webkit-user-select:text!important;
+  user-select:text!important;
+  cursor:text!important;
+}
+
+/* La fila de tarea ahora tiene: arrastre · completar · seleccionar · texto · acciones. */
+.task-item:not(.completed-item){
+  grid-template-columns:21px 24px 25px minmax(0,1fr) auto!important;
+}
+.task-item:not(.completed-item) .select-task-btn{
+  width:25px!important;
+  height:25px!important;
+  padding:0!important;
+  border:1px solid rgba(118,118,128,.20)!important;
+  border-radius:8px!important;
+  background:rgba(118,118,128,.045)!important;
+  color:#8B8B91!important;
+  display:grid!important;
+  place-items:center!important;
+  cursor:pointer!important;
+  transition:transform .16s ease,background .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease!important;
+}
+.select-task-btn .selection-mark{
+  display:grid;
+  place-items:center;
+  width:100%;
+  height:100%;
+  font-size:13px;
+  font-weight:900;
+  line-height:1;
+}
+.task-item:not(.completed-item) .select-task-btn:hover{
+  transform:translateY(-1px) scale(1.03)!important;
+  color:#0A84FF!important;
+  background:rgba(10,132,255,.06)!important;
+  border-color:rgba(10,132,255,.25)!important;
+}
+.task-item:not(.completed-item).is-selected{
+  background:linear-gradient(100deg,rgba(10,132,255,.08),rgba(255,255,255,.76))!important;
+  border-color:rgba(10,132,255,.26)!important;
+  box-shadow:0 8px 22px rgba(10,132,255,.07)!important;
+}
+.task-item:not(.completed-item).is-selected .select-task-btn{
+  color:#fff!important;
+  border-color:transparent!important;
+  background:linear-gradient(145deg,#0A84FF,#675CE8)!important;
+  box-shadow:0 6px 14px rgba(10,132,255,.20)!important;
+}
+.task-item:not(.completed-item) .task-item-actions{
+  grid-column:5!important;
+  grid-row:1 / span 2!important;
+}
+.task-item:not(.completed-item) .task-rescheduled-date{
+  grid-column:4!important;
+  grid-row:2!important;
+  justify-self:start!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:4px!important;
+  margin-top:-2px!important;
+  color:#B45D00!important;
+  font-size:8px!important;
+  font-weight:760!important;
+  -webkit-user-select:none!important;
+  user-select:none!important;
+}
+.task-rescheduled-date .tasky-svg-icon{
+  width:12px!important;
+  height:12px!important;
+}
+
+/* Barra de acciones masivas */
+.bulk-actions-bar{
+  margin:10px 0 12px;
+  padding:8px 9px;
+  border:1px solid rgba(10,132,255,.14);
+  border-radius:15px;
+  background:rgba(255,255,255,.80);
+  backdrop-filter:blur(20px) saturate(145%);
+  -webkit-backdrop-filter:blur(20px) saturate(145%);
+  box-shadow:0 12px 30px rgba(15,23,42,.075);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  opacity:0;
+  transform:translateY(-5px) scale(.985);
+  pointer-events:none;
+  transition:opacity .20s ease,transform .20s ease;
+}
+.bulk-actions-bar[hidden]{display:none!important}
+.bulk-actions-bar.is-visible{
+  opacity:1;
+  transform:none;
+  pointer-events:auto;
+}
+.bulk-selection-label{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-width:0;
+}
+.bulk-selection-icon{
+  width:30px;
+  height:30px;
+  border-radius:9px;
+  display:grid;
+  place-items:center;
+  color:#0A84FF;
+  background:rgba(10,132,255,.08);
+}
+.bulk-selection-label strong{
+  font-size:10px;
+  color:var(--apple-text);
+}
+.bulk-actions-buttons{
+  display:flex;
+  align-items:center;
+  gap:5px;
+}
+.bulk-action-btn,
+.bulk-clear-btn{
+  min-height:32px;
+  border:1px solid rgba(118,118,128,.13);
+  border-radius:9px;
+  background:rgba(118,118,128,.05);
+  color:#505058;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  padding:0 9px;
+  font-size:8px;
+  font-weight:800;
+  cursor:pointer;
+  transition:transform .16s ease,background .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease;
+}
+.bulk-action-btn:hover{
+  transform:translateY(-1px);
+  color:#0A84FF;
+  background:rgba(10,132,255,.055);
+  border-color:rgba(10,132,255,.22);
+  box-shadow:0 6px 15px rgba(10,132,255,.07);
+}
+.bulk-action-btn.danger{color:#C51F2B}
+.bulk-action-btn.danger:hover{
+  color:#A81823;
+  background:rgba(255,59,48,.06);
+  border-color:rgba(255,59,48,.22);
+}
+.bulk-clear-btn{
+  width:32px;
+  padding:0;
+  color:#8A8A90;
+}
+
+/* Fases cuyos pendientes están completamente reprogramados */
+.rescheduled-phase-card{
+  order:10000!important;
+  background:linear-gradient(180deg,#FFFDF9,#FFF6E8)!important;
+  border-color:rgba(255,149,0,.28)!important;
+  box-shadow:0 18px 46px rgba(255,149,0,.10)!important;
+}
+.rescheduled-phase-card .activity-title{
+  color:#A85B00!important;
+}
+.rescheduled-phase-card .category-pending-count{
+  background:rgba(255,149,0,.11)!important;
+  color:#B45D00!important;
+}
+.rescheduled-phase-card .card-meta .pill{
+  color:#A45C08!important;
+}
+.rescheduled-phase-card .progress-track{
+  background:rgba(255,149,0,.10)!important;
+}
+.rescheduled-phase-card .progress-fill{
+  width:100%!important;
+  background:linear-gradient(90deg,#FFB54D,#FF8A00,#F59E0B)!important;
+}
+.rescheduled-phase-card .task-list{
+  padding-top:5px!important;
+}
+.rescheduled-phase-card .task-item{
+  border-color:rgba(255,149,0,.15)!important;
+  background:rgba(255,255,255,.80)!important;
+}
+[data-theme="dark"] .rescheduled-phase-card{
+  background:linear-gradient(180deg,#28231C,#211E18)!important;
+  border-color:rgba(255,149,0,.22)!important;
+}
+[data-theme="dark"] .rescheduled-phase-card .activity-title{color:#FFC269!important}
+[data-theme="dark"] .rescheduled-phase-card .task-item{
+  background:rgba(38,35,31,.88)!important;
+}
+[data-theme="dark"] .rescheduled-phase-card .task-rescheduled-date{color:#FFC067!important}
+
+/* Arcoíris del título: varios colores visibles a la vez y desplazamiento continuo. */
+.pro-hero-title{
+  background-image:linear-gradient(100deg,
+    #0A84FF 0%,
+    #12BFE3 9%,
+    #34C759 18%,
+    #B8D94B 28%,
+    #F2B84B 38%,
+    #FF875F 48%,
+    #EC5FA3 58%,
+    #C44FE8 68%,
+    #8B5CF6 77%,
+    #6E7BF2 87%,
+    #16B8D4 95%,
+    #0A84FF 100%
+  )!important;
+  background-size:180% 100%!important;
+  background-position:0% 50%!important;
+  background-repeat:no-repeat!important;
+  -webkit-background-clip:text!important;
+  background-clip:text!important;
+  -webkit-text-fill-color:transparent!important;
+  color:transparent!important;
+  animation:taskyHeroRainbowV106 9s linear infinite!important;
+  will-change:background-position!important;
+}
+@keyframes taskyHeroRainbowV106{
+  0%{background-position:0% 50%}
+  10%{background-position:20% 50%}
+  20%{background-position:40% 50%}
+  30%{background-position:60% 50%}
+  40%{background-position:80% 50%}
+  50%{background-position:100% 50%}
+  60%{background-position:120% 50%}
+  70%{background-position:140% 50%}
+  80%{background-position:160% 50%}
+  90%{background-position:180% 50%}
+  100%{background-position:0% 50%}
+}
+
+/* Fondo arcoíris pastel: las distintas familias cromáticas se mantienen visibles. */
+body{
+  background-image:
+    radial-gradient(circle at 8% 10%,rgba(18,191,227,.16),transparent 25%),
+    radial-gradient(circle at 86% 11%,rgba(196,79,232,.13),transparent 25%),
+    radial-gradient(circle at 88% 82%,rgba(255,135,95,.14),transparent 25%),
+    radial-gradient(circle at 10% 84%,rgba(52,199,89,.12),transparent 24%),
+    radial-gradient(circle at 52% 52%,rgba(242,184,75,.10),transparent 22%),
+    linear-gradient(118deg,
+      #E8F8FF 0%,
+      #EEFBEF 18%,
+      #FFF9E9 35%,
+      #FFF0F6 52%,
+      #F5EEFF 68%,
+      #ECF7FF 84%,
+      #F4FFF0 100%
+    )!important;
+  background-size:
+    150% 150%,
+    150% 150%,
+    150% 150%,
+    150% 150%,
+    130% 130%,
+    180% 180%!important;
+  background-position:
+    0% 0%,
+    100% 0%,
+    100% 100%,
+    0% 100%,
+    50% 50%,
+    0% 50%!important;
+  background-attachment:fixed!important;
+  animation:taskyBodyRainbowV106 18s ease-in-out infinite!important;
+}
+@keyframes taskyBodyRainbowV106{
+  0%{
+    background-position:0% 0%,100% 0%,100% 100%,0% 100%,50% 50%,0% 50%;
+  }
+  25%{
+    background-position:12% 8%,88% 14%,94% 88%,7% 91%,58% 42%,42% 50%;
+  }
+  50%{
+    background-position:24% 0%,76% 22%,86% 76%,14% 82%,42% 58%,100% 50%;
+  }
+  75%{
+    background-position:8% 18%,94% 7%,100% 90%,2% 72%,62% 44%,58% 50%;
+  }
+  100%{
+    background-position:0% 0%,100% 0%,100% 100%,0% 100%,50% 50%,0% 50%;
+  }
+}
+
+body::before{
+  background:
+    radial-gradient(circle at 24% 22%,rgba(18,191,227,.17),transparent 22%),
+    radial-gradient(circle at 73% 18%,rgba(52,199,89,.12),transparent 22%),
+    radial-gradient(circle at 83% 58%,rgba(242,184,75,.13),transparent 23%),
+    radial-gradient(circle at 28% 79%,rgba(236,95,163,.12),transparent 22%),
+    radial-gradient(circle at 60% 70%,rgba(168,85,247,.12),transparent 23%)!important;
+  filter:blur(66px) saturate(120%)!important;
+  animation:taskyAmbientRainbowV106 14s ease-in-out infinite alternate!important;
+  will-change:transform,opacity!important;
+}
+@keyframes taskyAmbientRainbowV106{
+  0%{transform:translate3d(-3%,0,0) scale(1);opacity:.62}
+  25%{transform:translate3d(1%,-1%,0) scale(1.05);opacity:.86}
+  50%{transform:translate3d(3%,2%,0) scale(1.09);opacity:.78}
+  75%{transform:translate3d(-1%,1%,0) scale(1.06);opacity:.92}
+  100%{transform:translate3d(2%,-2%,0) scale(1.085);opacity:.70}
+}
+
+@media (max-width:760px){
+  .bulk-actions-bar{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .bulk-selection-label{justify-content:center}
+  .bulk-actions-buttons{justify-content:center;flex-wrap:wrap}
+  .bulk-action-btn{flex:1 1 92px}
+}
