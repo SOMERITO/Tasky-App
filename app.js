@@ -37,7 +37,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 105;
+    const APP_VERSION = 106;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -6980,5 +6980,415 @@
         }
       }
     }, 3500);
+
+
+
+    /* =========================================================
+       TASKY V106 · patches funcionales
+       Selección múltiple · Ctrl+Z · fases reprogramadas
+       ========================================================= */
+    const TASKY_V106_UNDO_KEY = "tasky_undo_stack_v106";
+    const TASKY_V106_UNDO_LIMIT = 30;
+    const taskyV106Selected = new Set();
+    let taskyV106UndoStack = [];
+    let taskyV106UndoRestoring = false;
+    let taskyV106LastPersisted = null;
+
+    function taskyV106LoadUndo() {
+      try {
+        const raw = safeStorage.getItem(TASKY_V106_UNDO_KEY);
+        const data = JSON.parse(raw || "[]");
+        return Array.isArray(data) ? data.slice(-TASKY_V106_UNDO_LIMIT) : [];
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function taskyV106SaveUndo() {
+      try {
+        safeStorage.setItem(TASKY_V106_UNDO_KEY, JSON.stringify(taskyV106UndoStack.slice(-TASKY_V106_UNDO_LIMIT)));
+      } catch (_) {}
+    }
+
+    function taskyV106IsEditableFocus() {
+      const node = document.activeElement;
+      return Boolean(node && (
+        node.matches?.("textarea") ||
+        node.matches?.("select") ||
+        node.matches?.("input:not([type='hidden']):not([type='button']):not([type='checkbox'])") ||
+        node.isContentEditable
+      ));
+    }
+
+    function taskyV106CaptureUndo() {
+      if (taskyV106UndoRestoring || taskyV106IsEditableFocus()) return;
+      if (!taskyV106LastPersisted) return;
+      if (taskyV106UndoStack[taskyV106UndoStack.length - 1] === taskyV106LastPersisted) return;
+
+      taskyV106UndoStack.push(taskyV106LastPersisted);
+      if (taskyV106UndoStack.length > TASKY_V106_UNDO_LIMIT) {
+        taskyV106UndoStack = taskyV106UndoStack.slice(-TASKY_V106_UNDO_LIMIT);
+      }
+      taskyV106SaveUndo();
+    }
+
+    const taskyV106BasePersistLocal = persistLocal;
+    persistLocal = function() {
+      const next = serialize(state);
+      if (!taskyV106UndoRestoring && taskyV106LastPersisted && taskyV106LastPersisted !== next) {
+        taskyV106CaptureUndo();
+      }
+      taskyV106BasePersistLocal();
+      taskyV106LastPersisted = next;
+    };
+
+    function taskyV106Undo() {
+      if (!taskyV106UndoStack.length) {
+        toast("No hay una acción anterior para deshacer.", "rotate-ccw", "info");
+        return;
+      }
+
+      const snapshot = taskyV106UndoStack.pop();
+      taskyV106SaveUndo();
+
+      try {
+        taskyV106UndoRestoring = true;
+        state = normalizeState(JSON.parse(snapshot));
+        taskyV106Selected.clear();
+        pendingRemoteState = null;
+        persistLocal();
+        localDirty = true;
+        render();
+        updateSummaryUI();
+        scheduleSave("deshacer acción", 0);
+        softHaptic(24);
+        playTaskySound("restore");
+        toast("Acción deshecha", "rotate-ccw");
+      } catch (error) {
+        console.error("Undo Tasky:", error);
+        toast("No se pudo deshacer la última acción.", "triangle-alert", "error");
+      } finally {
+        taskyV106UndoRestoring = false;
+      }
+    }
+
+    function taskyV106UpdateSelectionUI() {
+      const bar = document.getElementById("bulkActionsBar");
+      const count = document.getElementById("bulkSelectedCount");
+      if (count) count.textContent = String(taskyV106Selected.size);
+      if (bar) {
+        bar.hidden = taskyV106Selected.size === 0;
+        bar.classList.toggle("is-visible", taskyV106Selected.size > 0);
+      }
+
+      document.querySelectorAll(".task-item[data-task-id]").forEach(item => {
+        const id = item.dataset.taskId;
+        const selected = taskyV106Selected.has(id);
+        item.classList.toggle("is-selected", selected);
+        const button = item.querySelector(".select-task-btn");
+        if (button) {
+          button.setAttribute("aria-pressed", selected ? "true" : "false");
+          const mark = button.querySelector(".selection-mark");
+          if (mark) mark.textContent = selected ? "✓" : "";
+        }
+      });
+    }
+
+    function taskyV106ToggleSelection(taskId) {
+      if (!taskId) return;
+      if (taskyV106Selected.has(taskId)) taskyV106Selected.delete(taskId);
+      else taskyV106Selected.add(taskId);
+      taskyV106UpdateSelectionUI();
+      playTaskySound("click");
+      softHaptic(8);
+    }
+
+    function taskyV106ClearSelection() {
+      taskyV106Selected.clear();
+      taskyV106UpdateSelectionUI();
+    }
+
+    function taskyV106SelectedItems() {
+      const items = [];
+      state.categories.forEach(cat => {
+        (cat.tasks || []).forEach(task => {
+          if (taskyV106Selected.has(task.id) && !task.draft && String(task.text || "").trim()) {
+            items.push({task,cat});
+          }
+        });
+      });
+      return items;
+    }
+
+    function taskyV106CreateBulkBar() {
+      if (document.getElementById("bulkActionsBar")) return;
+
+      const toolbar = document.querySelector(".pro-task-toolbar");
+      if (!toolbar) return;
+
+      const bar = document.createElement("div");
+      bar.id = "bulkActionsBar";
+      bar.className = "bulk-actions-bar";
+      bar.hidden = true;
+      bar.innerHTML =
+        '<div class="bulk-selection-label">' +
+          '<span class="bulk-selection-icon"><i data-lucide="check-square"></i></span>' +
+          '<strong><span id="bulkSelectedCount">0</span> seleccionadas</strong>' +
+        '</div>' +
+        '<div class="bulk-actions-buttons">' +
+          '<button type="button" class="bulk-action-btn" data-action="bulk-tomorrow"><i data-lucide="sun"></i><span>Mañana</span></button>' +
+          '<button type="button" class="bulk-action-btn" data-action="bulk-date"><i data-lucide="calendar-plus"></i><span>Elegir fecha</span></button>' +
+          '<button type="button" class="bulk-action-btn danger" data-action="bulk-delete"><i data-lucide="trash-2"></i><span>Eliminar</span></button>' +
+          '<button type="button" class="bulk-clear-btn" data-action="clear-selection" aria-label="Cancelar selección"><i data-lucide="x"></i></button>' +
+        '</div>';
+
+      toolbar.insertAdjacentElement("afterend", bar);
+      refreshIcons();
+    }
+
+    const taskyV106BaseBuildTaskItem = buildTaskItem;
+    buildTaskItem = function(task, query, completed) {
+      const item = taskyV106BaseBuildTaskItem(task, query, completed);
+      if (completed || !item) return item;
+
+      const textarea = item.querySelector(".task-input");
+      if (!textarea || item.querySelector(".select-task-btn")) return item;
+
+      const selectButton = document.createElement("button");
+      selectButton.type = "button";
+      selectButton.className = "select-task-btn";
+      selectButton.dataset.action = "toggle-select-task";
+      selectButton.dataset.tooltip = "Seleccionar tarea";
+      selectButton.setAttribute("aria-label", "Seleccionar tarea");
+      selectButton.setAttribute("aria-pressed", taskyV106Selected.has(task.id) ? "true" : "false");
+      selectButton.innerHTML = '<span class="selection-mark">' + (taskyV106Selected.has(task.id) ? "✓" : "") + '</span>';
+
+      textarea.parentNode.insertBefore(selectButton, textarea);
+
+      if (task.rescheduled && task.date && task.date > today()) {
+        const dateBadge = document.createElement("span");
+        dateBadge.className = "task-rescheduled-date";
+        dateBadge.innerHTML = '<i data-lucide="calendar-clock"></i>' + escapeHTML("Reprogramada · " + formatDateLong(task.date));
+        item.appendChild(dateBadge);
+      }
+
+      return item;
+    };
+
+    function taskyV106DecorateRescheduledPhases() {
+      document.querySelectorAll(".rescheduled-card").forEach(node => node.remove());
+
+      const rescheduledCategories = state.categories.filter(cat => isFullyRescheduledCategory(cat));
+
+      rescheduledCategories.forEach(cat => {
+        const card = document.querySelector('.activity-card[data-category-id="' + cssEscapeSafe(cat.id) + '"]');
+        if (!card) return;
+
+        card.classList.add("rescheduled-phase-card");
+
+        const list = card.querySelector(".task-list");
+        if (list) {
+          list.innerHTML = "";
+          (cat.tasks || []).forEach(task => {
+            if (!task.draft && String(task.text || "").trim() && task.rescheduled && task.date > today()) {
+              list.appendChild(buildTaskItem(task, activeSearch.trim().toLowerCase(), false));
+            }
+          });
+        }
+
+        const count = cat.tasks.filter(task =>
+          !task.draft && String(task.text || "").trim() && task.rescheduled && task.date > today()
+        ).length;
+
+        const countNode = card.querySelector(".category-pending-count");
+        if (countNode) countNode.textContent = String(count);
+
+        const pills = card.querySelectorAll(".card-meta .pill");
+        if (pills[0]) {
+          pills[0].innerHTML =
+            '<i data-lucide="calendar-clock"></i>' +
+            count + ' reprogramada' + (count === 1 ? '' : 's');
+        }
+        if (pills[1]) {
+          pills[pills.length - 1].textContent = "Fuera de hoy";
+          pills[pills.length - 1].className = "pill rescheduled-pill";
+        }
+
+        // El card reprogramado siempre va debajo de las fases ya cumplidas.
+        el.board.appendChild(card);
+      });
+
+      refreshIcons();
+      updateTaskHeights();
+      if (typeof initTaskPointerDrag === "function") initTaskPointerDrag();
+    }
+
+    const taskyV106BaseRender = render;
+    render = function() {
+      taskyV106BaseRender.apply(this, arguments);
+      taskyV106DecorateRescheduledPhases();
+      taskyV106UpdateSelectionUI();
+    };
+
+    // Ya no queremos una tarjeta global adicional de reprogramadas en el tablero.
+    buildRescheduledCard = function() { return null; };
+    updateRescheduledCardUI = function() {
+      document.querySelectorAll(".rescheduled-card").forEach(node => node.remove());
+      updateRescheduledUI();
+    };
+
+    // Reprogramación para una fecha personalizada, individual o múltiple.
+    saveRescheduleDate = function() {
+      const hidden = document.getElementById("rescheduleDateTaskId");
+      const input = document.getElementById("rescheduleDateInput");
+      if (!hidden || !input) return;
+
+      const taskIds = String(hidden.value || "").split(",").map(id => id.trim()).filter(Boolean);
+      const targetDate = planningCalendarSelected || input.value;
+
+      if (!taskIds.length || !targetDate || targetDate <= today()) {
+        toast("Elige una fecha futura para reprogramar la tarea.", "calendar-alert", "error");
+        return;
+      }
+
+      const selected = [];
+      state.categories.forEach(cat => {
+        (cat.tasks || []).forEach(task => {
+          if (taskIds.includes(task.id) && !task.draft && !task.repeat) selected.push({task,cat});
+        });
+      });
+
+      if (!selected.length) {
+        closeModal("rescheduleDateModal");
+        toast("No hay tareas válidas para reprogramar.", "calendar-alert", "error");
+        return;
+      }
+
+      taskyV106CaptureUndo();
+
+      selected.forEach(({task}) => {
+        const originalDate = task.rescheduledFrom || task.date || today();
+        task.rescheduled = true;
+        task.rescheduledFrom = originalDate;
+        task.rescheduledAt = new Date().toISOString();
+        task.date = targetDate;
+      });
+
+      closeModal("rescheduleDateModal");
+      taskyV106ClearSelection();
+      persistLocal();
+      localDirty = true;
+      state.categories.forEach(cat => syncCategoryPlacement(cat.id));
+      render();
+      updateSummaryUI();
+      scheduleSave("reprogramar tarea(s) para otra fecha");
+      playTaskySound("reschedule");
+      toast(selected.length + " tarea" + (selected.length===1 ? "" : "s") + " reprogramada" + (selected.length===1 ? "" : "s") + " para " + formatDateLong(targetDate),"calendar-check");
+    };
+
+    function taskyV106BulkTomorrow() {
+      const selected = taskyV106SelectedItems().filter(({task}) => !task.repeat);
+      if (!selected.length) {
+        toast("No hay tareas normales seleccionadas.", "calendar-alert", "info");
+        return;
+      }
+
+      taskyV106CaptureUndo();
+      const target = addDays(today(),1);
+
+      selected.forEach(({task}) => {
+        const originalDate = task.rescheduledFrom || task.date || today();
+        task.rescheduled = true;
+        task.rescheduledFrom = originalDate;
+        task.rescheduledAt = new Date().toISOString();
+        task.date = target;
+      });
+
+      taskyV106ClearSelection();
+      persistLocal();
+      localDirty = true;
+      state.categories.forEach(cat => syncCategoryPlacement(cat.id));
+      render();
+      updateSummaryUI();
+      scheduleSave("reprogramar selección para mañana");
+      playTaskySound("reschedule");
+      toast(selected.length + " tarea" + (selected.length===1 ? "" : "s") + " reprogramada" + (selected.length===1 ? "" : "s") + " para mañana","sun");
+    }
+
+    function taskyV106BulkDelete() {
+      const selected = taskyV106SelectedItems();
+      if (!selected.length) return;
+
+      taskyV106CaptureUndo();
+
+      const ids = new Set(selected.map(({task}) => task.id));
+      state.categories.forEach(cat => {
+        cat.tasks = (cat.tasks || []).filter(task => !ids.has(task.id));
+      });
+
+      taskyV106ClearSelection();
+      persistLocal();
+      localDirty = true;
+      render();
+      updateSummaryUI();
+      scheduleSave("eliminar tareas seleccionadas");
+      playTaskySound("delete");
+      toast(selected.length + " tarea" + (selected.length===1 ? "" : "s") + " eliminada" + (selected.length===1 ? "" : "s"),"trash-2");
+    }
+
+    // Inicialización V106 después de las funciones base.
+    const taskyV106BaseInit = init;
+    init = function() {
+      taskyV106UndoStack = taskyV106LoadUndo();
+      taskyV106LastPersisted = safeStorage.getItem(STORAGE_KEY) || null;
+      taskyV106BaseInit.apply(this, arguments);
+      taskyV106CreateBulkBar();
+      taskyV106UpdateSelectionUI();
+
+      document.addEventListener("click", event => {
+        const action = event.target.closest?.("[data-action]")?.dataset.action;
+
+        if (action === "toggle-select-task") {
+          event.preventDefault();
+          event.stopPropagation();
+          taskyV106ToggleSelection(event.target.closest("[data-task-id]")?.dataset.taskId);
+          return;
+        }
+
+        if (action === "bulk-tomorrow") {
+          event.preventDefault();
+          event.stopPropagation();
+          taskyV106BulkTomorrow();
+          return;
+        }
+
+        if (action === "bulk-date") {
+          event.preventDefault();
+          event.stopPropagation();
+          openBulkRescheduleDateEditor();
+          return;
+        }
+
+        if (action === "bulk-delete") {
+          event.preventDefault();
+          event.stopPropagation();
+          taskyV106BulkDelete();
+          return;
+        }
+
+        if (action === "clear-selection") {
+          event.preventDefault();
+          event.stopPropagation();
+          taskyV106ClearSelection();
+        }
+      });
+
+      document.addEventListener("keydown", event => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z" && !taskyV106IsEditableFocus()) {
+          event.preventDefault();
+          taskyV106Undo();
+        }
+      });
+    };
 
     init();
