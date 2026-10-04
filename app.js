@@ -3809,81 +3809,276 @@
       closeModal('milestoneModal');
     }
 
+
+    let planningCalendarSelected = "";
+    let planningCalendarCursor = null;
+
+    function isoDateLocal(date) {
+      return date.getFullYear() + "-" +
+        String(date.getMonth() + 1).padStart(2, "0") + "-" +
+        String(date.getDate()).padStart(2, "0");
+    }
+
+    function parseISODateLocal(iso) {
+      const parts = String(iso || "").split("-").map(Number);
+      if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
+      return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+
+    function nextWeekdayDate(fromDateStr, targetWeekday) {
+      const current = isoWeekday(fromDateStr);
+      if (!current) return addDays(fromDateStr, 1);
+      let delta = (targetWeekday - current + 7) % 7;
+      if (delta === 0) delta = 7;
+      return addDays(fromDateStr, delta);
+    }
+
+    function updatePlanningSelectionUI() {
+      const input = document.getElementById("rescheduleDateInput");
+      const label = document.getElementById("planningSelectionLabel");
+      const hint = document.getElementById("rescheduleDateHint");
+
+      if (input) input.value = planningCalendarSelected || "";
+
+      const formatted = planningCalendarSelected
+        ? formatDateLong(planningCalendarSelected)
+        : "Selecciona una fecha";
+
+      if (label) label.textContent = formatted;
+      if (hint) {
+        hint.textContent = planningCalendarSelected
+          ? "Se programará para " + formatted + "."
+          : "Selecciona una fecha futura.";
+      }
+    }
+
+    function renderPlanningCalendar() {
+      const grid = document.getElementById("planningCalendarGrid");
+      const monthLabel = document.getElementById("planningMonthLabel");
+      const prevButton = document.querySelector('[data-action="planning-prev-month"]');
+      if (!grid || !monthLabel) return;
+
+      const minimumIso = addDays(today(), 1);
+      const minimumDate = parseISODateLocal(minimumIso);
+      if (!minimumDate) return;
+
+      const cursor = planningCalendarCursor instanceof Date
+        ? new Date(planningCalendarCursor.getFullYear(), planningCalendarCursor.getMonth(), 1)
+        : new Date(minimumDate.getFullYear(), minimumDate.getMonth(), 1);
+
+      planningCalendarCursor = cursor;
+
+      const monthText = new Intl.DateTimeFormat("es-PE", {
+        month: "long",
+        year: "numeric"
+      }).format(cursor);
+
+      monthLabel.textContent = monthText.replace(/^./, function(char) {
+        return char.toUpperCase();
+      });
+
+      const minimumMonth = new Date(minimumDate.getFullYear(), minimumDate.getMonth(), 1);
+      if (prevButton) {
+        prevButton.disabled = cursor <= minimumMonth;
+      }
+
+      grid.innerHTML = "";
+
+      const firstDay = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+      const offset = (firstDay.getDay() + 6) % 7;
+      const fragment = document.createDocumentFragment();
+
+      for (let index = 0; index < 42; index++) {
+        const date = new Date(
+          cursor.getFullYear(),
+          cursor.getMonth(),
+          1 - offset + index
+        );
+
+        const iso = isoDateLocal(date);
+        const outsideMonth = date.getMonth() !== cursor.getMonth();
+        const disabled = iso <= today();
+        const selected = iso === planningCalendarSelected;
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className =
+          "planning-day" +
+          (outsideMonth ? " is-outside" : "") +
+          (disabled ? " is-disabled" : "") +
+          (selected ? " is-selected" : "") +
+          (iso === today() ? " is-today" : "");
+
+        button.dataset.planningDate = iso;
+        button.textContent = String(date.getDate());
+        button.setAttribute("aria-label", formatDateLong(iso));
+
+        if (disabled) {
+          button.disabled = true;
+        }
+
+        if (selected) {
+          button.setAttribute("aria-current", "date");
+        }
+
+        fragment.appendChild(button);
+      }
+
+      grid.appendChild(fragment);
+      updatePlanningSelectionUI();
+      refreshIcons();
+    }
+
+    function shiftPlanningCalendarMonth(delta) {
+      const base = planningCalendarCursor instanceof Date
+        ? new Date(planningCalendarCursor)
+        : new Date();
+
+      base.setMonth(base.getMonth() + Number(delta || 0), 1);
+
+      const minimum = parseISODateLocal(addDays(today(), 1));
+      if (!minimum) return;
+
+      const minimumMonth = new Date(minimum.getFullYear(), minimum.getMonth(), 1);
+      if (base < minimumMonth) return;
+
+      planningCalendarCursor = base;
+      renderPlanningCalendar();
+      playTaskySound("click");
+    }
+
+    function selectPlanningDate(dateStr) {
+      if (!dateStr) return;
+
+      const current = today();
+      if (dateStr <= current) {
+        toast("Elige una fecha futura para reprogramar la tarea.", "calendar-alert", "error");
+        return;
+      }
+
+      const date = parseISODateLocal(dateStr);
+      if (!date) return;
+
+      planningCalendarSelected = dateStr;
+      planningCalendarCursor = new Date(date.getFullYear(), date.getMonth(), 1);
+
+      renderPlanningCalendar();
+
+      const selectedButton = document.querySelector(
+        '[data-planning-date="' + cssEscapeSafe(dateStr) + '"]'
+      );
+
+      try {
+        selectedButton?.focus({ preventScroll: true });
+      } catch (_) {}
+
+      playTaskySound("click");
+    }
+
     function openRescheduleDateEditor(taskId) {
       if (!taskId) return;
+
       const found = state.categories
         .map(cat => ({ cat, task: (cat.tasks || []).find(t => t.id === taskId) }))
         .find(item => item.task);
+
       const task = found?.task;
       if (!task || task.draft) return;
 
       if (task.repeat) {
-        toast('Esta tarea usa una programación repetitiva. Edita sus días desde el botón de repetición.', 'repeat-2', 'info');
+        toast("Esta tarea usa una programación repetitiva. Edita sus días desde el botón de repetición.", "repeat-2", "info");
         return;
       }
 
-      const input = document.getElementById('rescheduleDateInput');
-      const name = document.getElementById('rescheduleDateTaskName');
-      const hidden = document.getElementById('rescheduleDateTaskId');
-      const hint = document.getElementById('rescheduleDateHint');
+      const input = document.getElementById("rescheduleDateInput");
+      const name = document.getElementById("rescheduleDateTaskName");
+      const hidden = document.getElementById("rescheduleDateTaskId");
       if (!input || !name || !hidden) return;
 
       const minimum = addDays(today(), 1);
+      const selected = task.date && task.date > today()
+        ? task.date
+        : minimum;
+
       hidden.value = taskId;
       input.min = minimum;
-      input.value = task.date && task.date > today() ? task.date : minimum;
-      name.textContent = task.text?.trim() || 'Tarea sin nombre';
-      if (hint) hint.textContent = `Se moverá a ${formatDateLong(input.value)}.`;
+      input.value = selected;
+      name.textContent = task.text?.trim() || "Tarea sin nombre";
 
-      openModal('rescheduleDateModal');
-      refreshIcons();
+      planningCalendarSelected = selected;
+
+      const date = parseISODateLocal(selected);
+      planningCalendarCursor = date
+        ? new Date(date.getFullYear(), date.getMonth(), 1)
+        : null;
+
+      openModal("rescheduleDateModal");
+      renderPlanningCalendar();
 
       window.setTimeout(() => {
-        try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); }
+        const selectedButton = document.querySelector(
+          '[data-planning-date="' + cssEscapeSafe(selected) + '"]'
+        );
+        try {
+          selectedButton?.focus({ preventScroll: true });
+        } catch (_) {}
       }, 120);
     }
 
     function saveRescheduleDate() {
-      const hidden = document.getElementById('rescheduleDateTaskId');
-      const input = document.getElementById('rescheduleDateInput');
+      const hidden = document.getElementById("rescheduleDateTaskId");
+      const input = document.getElementById("rescheduleDateInput");
       if (!hidden || !input) return;
 
       const taskId = hidden.value;
-      const targetDate = input.value;
+      const targetDate = planningCalendarSelected || input.value;
+
       if (!taskId || !targetDate || targetDate <= today()) {
-        toast('Elige una fecha futura para reprogramar la tarea.', 'calendar-alert', 'error');
+        toast("Elige una fecha futura para reprogramar la tarea.", "calendar-alert", "error");
         return;
       }
 
       let task = null;
       let category = null;
+
       for (const cat of state.categories) {
         const match = (cat.tasks || []).find(t => t.id === taskId);
-        if (match) { task = match; category = cat; break; }
+        if (match) {
+          task = match;
+          category = cat;
+          break;
+        }
       }
+
       if (!task || !category || task.draft) return;
+
       if (task.repeat) {
-        closeModal('rescheduleDateModal');
-        toast('Las tareas repetitivas se gestionan desde el botón de repetición.', 'repeat-2', 'info');
+        closeModal("rescheduleDateModal");
+        toast("Las tareas repetitivas se gestionan desde el botón de repetición.", "repeat-2", "info");
         return;
       }
 
       const originalDate = task.rescheduledFrom || task.date || today();
+
       task.rescheduled = true;
       task.rescheduledFrom = originalDate;
       task.rescheduledAt = new Date().toISOString();
       task.date = targetDate;
 
-      closeModal('rescheduleDateModal');
+      closeModal("rescheduleDateModal");
+
       persistLocal();
       localDirty = true;
+
       syncCategoryPlacement(category.id);
       render();
       updateSummaryUI();
-      scheduleSave('reprogramar tarea para otra fecha');
+      updateRescheduledCardUI();
+      scheduleSave("reprogramar tarea para otra fecha");
+
       softHaptic(18);
-      playTaskySound('reschedule');
-      toast(`Reprogramada para ${formatDateLong(targetDate)}`, 'calendar-check');
+      playTaskySound("reschedule");
+      toast("Reprogramada para " + formatDateLong(targetDate), "calendar-check");
     }
 
     function completeTask(taskId) {
@@ -5341,10 +5536,7 @@
           if (card) updateTitle(card.dataset.categoryId, target.value);
         }
         if (target.matches("#rescheduleDateInput")) {
-          const hint = document.getElementById('rescheduleDateHint');
-          if (hint) hint.textContent = target.value
-            ? `Se moverá a ${formatDateLong(target.value)}.`
-            : 'Selecciona una fecha futura.';
+          if (target.value) selectPlanningDate(target.value);
         }
       });
 
@@ -5405,7 +5597,34 @@
           playTaskySound(soundKind);
         }
 
+        const planningDateControl = event.target.closest("[data-planning-date]");
+        if (planningDateControl && !planningDateControl.disabled) {
+          selectPlanningDate(planningDateControl.dataset.planningDate);
+          return;
+        }
+
+        const planningShortcut = event.target.closest("[data-planning-shortcut]");
+        if (planningShortcut) {
+          const shortcut = planningShortcut.dataset.planningShortcut;
+          if (shortcut === "tomorrow") {
+            selectPlanningDate(addDays(today(), 1));
+          } else if (shortcut === "monday") {
+            selectPlanningDate(nextWeekdayDate(today(), 1));
+          }
+          return;
+        }
+
         const action = event.target.closest("[data-action]")?.dataset.action;
+
+        if (action === "planning-prev-month") {
+          shiftPlanningCalendarMonth(-1);
+          return;
+        }
+
+        if (action === "planning-next-month") {
+          shiftPlanningCalendarMonth(1);
+          return;
+        }
 
         if (action === "move-category-up") {
           const card = event.target.closest("[data-category-id]");
