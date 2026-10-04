@@ -5659,3 +5659,372 @@ body::before{
   .pro-hero-title{animation:none!important}
   body,body::before{animation:none!important}
 }
+
+
+/* =========================================================
+   TASKY V105 · edición + tarjeta de reprogramadas + planificación
+   ========================================================= */
+
+/* Solo los controles editables permiten seleccionar texto. */
+body, body *{
+  -webkit-user-select:none!important;
+  user-select:none!important;
+}
+input:not([type="hidden"]), textarea, select, [contenteditable="true"]{
+  -webkit-user-select:text!important;
+  user-select:text!important;
+}
+.task-input, .activity-title, #searchInput{
+  -webkit-user-select:text!important;
+  user-select:text!important;
+  cursor:text!important;
+  pointer-events:auto!important;
+}
+.task-item .task-input{
+  touch-action:manipulation!important;
+}
+
+/* La fila permite desplazamiento/arrastre; el texto conserva edición. */
+.task-item:not(.completed-item):not(.rescheduled-task-item){
+  touch-action:pan-y!important;
+}
+.drag-task{touch-action:none!important}
+
+/* Botón de planificación/reprogramadas: naranja, profesional y animado. */
+.rescheduled-toolbar-btn{
+  position:relative!important;
+  overflow:hidden!important;
+  isolation:isolate;
+  color:#B45309!important;
+  background:linear-gradient(135deg,rgba(255,149,0,.08),rgba(255,196,112,.12))!important;
+  border:1px solid rgba(255,149,0,.17)!important;
+  box-shadow:0 6px 20px rgba(255,149,0,.06)!important;
+}
+.rescheduled-toolbar-btn::before{
+  content:""!important;
+  position:absolute!important;
+  inset:-90% 30% -90% -40%!important;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.62),transparent)!important;
+  transform:translateX(-120%) skewX(-18deg)!important;
+  animation:taskyPlanningShimmerV105 3.4s ease-in-out infinite!important;
+  pointer-events:none!important;
+  z-index:-1!important;
+}
+.rescheduled-toolbar-btn:hover{
+  color:#9A4A00!important;
+  border-color:rgba(255,149,0,.30)!important;
+  transform:translateY(-1px)!important;
+  box-shadow:0 11px 27px rgba(255,149,0,.11)!important;
+}
+@keyframes taskyPlanningShimmerV105{
+  0%,55%{transform:translateX(-130%) skewX(-18deg);opacity:0}
+  68%{opacity:1}
+  88%,100%{transform:translateX(310%) skewX(-18deg);opacity:0}
+}
+
+/* Fases completamente reprogramadas se agrupan debajo de Completadas. */
+.rescheduled-card{
+  order:999!important;
+  background:linear-gradient(180deg,#FFFDF9,#FFF8ED)!important;
+  border-color:rgba(255,149,0,.22)!important;
+  box-shadow:0 17px 44px rgba(255,149,0,.085)!important;
+}
+.rescheduled-card .card-head{padding:15px 15px 10px!important}
+.rescheduled-card .card-title-row{gap:10px!important}
+.rescheduled-card-icon{
+  width:34px;height:34px;border-radius:11px;display:grid;place-items:center;flex:0 0 34px;
+  color:#C56A00;background:linear-gradient(145deg,rgba(255,149,0,.15),rgba(255,198,104,.23));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.76),0 8px 20px rgba(255,149,0,.10);
+}
+.rescheduled-card-icon .tasky-svg-icon{width:17px!important;height:17px!important}
+.rescheduled-card-title{display:flex;flex-direction:column;gap:1px;min-width:0}
+.rescheduled-card-title strong{font-size:15px;letter-spacing:-.02em;color:var(--apple-text)}
+.rescheduled-card-title span{font-size:9px;font-weight:650;color:#A06A30}
+.rescheduled-card .rescheduled-pill{
+  background:rgba(255,149,0,.11)!important;
+  color:#A45C08!important;
+}
+.rescheduled-card .category-toggle-btn:hover{
+  background:rgba(255,149,0,.10)!important;
+  color:#A45C08!important;
+}
+.rescheduled-task-list{padding:5px 13px 13px!important;gap:7px!important}
+.rescheduled-task-item{
+  grid-template-columns:32px minmax(0,1fr) auto!important;
+  grid-template-rows:auto auto!important;
+  column-gap:9px!important;
+  row-gap:2px!important;
+  background:rgba(255,255,255,.78)!important;
+  border-color:rgba(255,149,0,.14)!important;
+  box-shadow:0 5px 17px rgba(255,149,0,.055)!important;
+  animation:taskyRescheduledRowInV105 .34s cubic-bezier(.22,1,.36,1) var(--rescheduled-delay,0ms) both;
+}
+.rescheduled-task-item:hover{
+  border-color:rgba(255,149,0,.28)!important;
+  box-shadow:0 9px 23px rgba(255,149,0,.09)!important;
+}
+.rescheduled-task-marker{
+  grid-row:1 / span 2;
+  width:30px;height:30px;border-radius:10px;display:grid;place-items:center;
+  color:#C96B00;background:rgba(255,149,0,.10);
+}
+.rescheduled-task-marker .tasky-svg-icon{width:15px!important;height:15px!important}
+.rescheduled-task-item .task-input{
+  grid-column:2!important;
+  min-height:20px!important;
+  margin:0!important;
+  padding:2px 0!important;
+}
+.rescheduled-task-meta{
+  grid-column:2!important;
+  min-width:0;display:flex;align-items:center;gap:4px;
+  font-size:9px;font-weight:650;color:#A16A2D;
+}
+.rescheduled-task-meta strong{font-weight:800;color:#B45D00}
+.rescheduled-task-actions{
+  grid-column:3!important;
+  grid-row:1 / span 2!important;
+  align-self:center!important;
+  min-width:56px!important;
+}
+.rescheduled-task-actions button{
+  width:27px!important;height:27px!important;border-radius:8px!important;
+}
+.rescheduled-return-btn{
+  color:#B45D00!important;
+  background:rgba(255,149,0,.08)!important;
+}
+.rescheduled-return-btn:hover{
+  color:#934800!important;
+  background:rgba(255,149,0,.16)!important;
+}
+@keyframes taskyRescheduledRowInV105{
+  from{opacity:0;transform:translateY(7px)}
+  to{opacity:1;transform:none}
+}
+
+/* Planificación: modal visual propio y calendario integrado. */
+.planning-modal{
+  width:min(100%,620px)!important;
+  max-width:620px!important;
+  padding:0!important;
+  overflow:hidden!important;
+  background:linear-gradient(180deg,#FFFFFF,#FBFCFF)!important;
+  border:1px solid rgba(255,149,0,.14)!important;
+  box-shadow:0 35px 100px rgba(22,31,51,.22)!important;
+}
+.planning-modal-head{padding:22px 22px 13px!important;margin:0!important}
+.planning-modal-head .reschedule-date-kicker{color:#B45D00!important}
+.planning-modal-head h2{font-size:25px!important;letter-spacing:-.045em!important}
+.planning-task-preview{
+  margin:0 22px 13px!important;
+  background:linear-gradient(135deg,rgba(255,149,0,.055),rgba(255,255,255,.96))!important;
+  border-color:rgba(255,149,0,.15)!important;
+}
+.planning-selection-banner{
+  margin:0 22px 14px!important;
+  padding:13px 14px!important;
+  border-radius:15px!important;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  border:1px solid rgba(10,132,255,.10);
+  background:linear-gradient(135deg,rgba(10,132,255,.06),rgba(168,85,247,.05),rgba(255,149,0,.06));
+  box-shadow:0 8px 24px rgba(10,132,255,.04);
+}
+.planning-selection-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
+.planning-selection-copy span{font-size:8px;font-weight:850;letter-spacing:.13em;color:#8A8A90}
+.planning-selection-copy strong{font-size:14px;letter-spacing:-.025em;color:var(--apple-text)}
+.planning-selection-icon{
+  width:34px;height:34px;border-radius:11px;display:grid;place-items:center;flex:0 0 34px;
+  color:#0A84FF;background:rgba(10,132,255,.09);
+}
+.planning-calendar-shell{
+  margin:0 22px;
+  padding:15px;
+  border-radius:18px;
+  border:1px solid rgba(210,210,215,.66);
+  background:rgba(248,249,252,.86);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 10px 25px rgba(15,23,42,.045);
+}
+.planning-calendar-top{display:grid;grid-template-columns:38px minmax(0,1fr) 38px;align-items:center;gap:8px}
+.planning-month-btn{
+  width:38px!important;height:38px!important;padding:0!important;
+  border:1px solid rgba(210,210,215,.72)!important;border-radius:11px!important;
+  background:#fff!important;color:#6E6E73!important;
+  display:grid!important;place-items:center!important;cursor:pointer!important;
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,color .18s ease!important;
+  user-select:none!important;-webkit-user-select:none!important;
+}
+.planning-month-btn:hover:not(:disabled){
+  transform:translateY(-1px)!important;border-color:rgba(10,132,255,.28)!important;color:#0A84FF!important;
+  box-shadow:0 8px 18px rgba(10,132,255,.08)!important;
+}
+.planning-month-btn:disabled{opacity:.28!important;cursor:default!important;transform:none!important}
+.planning-month-copy{text-align:center;min-width:0;display:flex;flex-direction:column;gap:2px}
+.planning-month-copy strong{font-size:14px;letter-spacing:-.025em;color:var(--apple-text)}
+.planning-month-copy span{font-size:8px;font-weight:700;color:#8B8B91}
+.planning-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:13px}
+.planning-weekdays span{text-align:center;font-size:8px;font-weight:850;color:#9A9AA0;letter-spacing:.04em}
+.planning-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-top:7px}
+.planning-day{
+  position:relative;min-height:38px;border:1px solid transparent;border-radius:10px;background:transparent;
+  color:#3C3C43;font-size:10px;font-weight:760;cursor:pointer;
+  display:grid;place-items:center;
+  transition:transform .16s ease,background .16s ease,border-color .16s ease,box-shadow .16s ease,color .16s ease!important;
+  user-select:none!important;-webkit-user-select:none!important;
+}
+.planning-day:hover:not(:disabled):not(.is-selected){
+  transform:translateY(-1px);background:rgba(10,132,255,.07);border-color:rgba(10,132,255,.12);color:#0A84FF;
+}
+.planning-day.is-outside{color:#B9BCC3!important;opacity:.48}
+.planning-day.is-disabled{cursor:default!important;color:#C9CBD0!important;opacity:.35}
+.planning-day.is-today:not(.is-disabled)::after{
+  content:"";position:absolute;bottom:4px;width:3px;height:3px;border-radius:50%;background:#0A84FF;
+}
+.planning-day.is-selected{
+  color:#fff!important;background:linear-gradient(145deg,#0A84FF,#6E7BF2)!important;
+  border-color:transparent!important;box-shadow:0 8px 17px rgba(10,132,255,.20)!important;transform:scale(1.035);
+}
+.planning-shortcuts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:11px}
+.planning-shortcut-btn{
+  min-height:38px;padding:0 10px;border:1px solid rgba(255,149,0,.16);border-radius:10px;
+  background:rgba(255,149,0,.06);color:#A65C0A;font-size:9px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;
+  transition:transform .16s ease,background .16s ease,border-color .16s ease!important;
+  user-select:none!important;-webkit-user-select:none!important;
+}
+.planning-shortcut-btn:hover{transform:translateY(-1px);background:rgba(255,149,0,.10);border-color:rgba(255,149,0,.28)}
+.planning-shortcut-btn .tasky-svg-icon{width:14px!important;height:14px!important}
+.planning-save-btn{
+  min-width:130px!important;
+  background:linear-gradient(135deg,#0A84FF,#675CE8)!important;
+  box-shadow:0 12px 26px rgba(10,132,255,.20)!important;
+}
+.planning-save-btn:hover{transform:translateY(-1px)!important}
+.planning-modal .reschedule-date-hint{margin:12px 22px 0!important}
+.planning-modal .reschedule-date-note{margin:9px 22px 0!important}
+.planning-modal .reschedule-date-actions{padding:0 22px 22px!important;margin-top:14px!important}
+
+[data-theme="dark"] .rescheduled-card{
+  background:linear-gradient(180deg,#24211B,#211E19)!important;border-color:rgba(255,149,0,.18)!important;
+}
+[data-theme="dark"] .rescheduled-task-item{
+  background:rgba(35,33,30,.88)!important;border-color:rgba(255,149,0,.13)!important;
+}
+[data-theme="dark"] .rescheduled-card-title span,
+[data-theme="dark"] .rescheduled-task-meta{color:#D09A56!important}
+[data-theme="dark"] .rescheduled-task-meta strong{color:#FFB95C!important}
+[data-theme="dark"] .planning-modal{
+  background:linear-gradient(180deg,#1D1E22,#17181C)!important;border-color:rgba(255,149,0,.17)!important;
+}
+[data-theme="dark"] .planning-calendar-shell{
+  background:rgba(30,31,35,.92)!important;border-color:rgba(255,255,255,.08)!important;
+}
+[data-theme="dark"] .planning-month-btn{
+  background:#25262A!important;border-color:rgba(255,255,255,.09)!important;color:#C9C9D0!important;
+}
+[data-theme="dark"] .planning-month-copy strong,
+[data-theme="dark"] .planning-selection-copy strong{color:#F5F5F7!important}
+[data-theme="dark"] .planning-selection-banner{
+  background:linear-gradient(135deg,rgba(10,132,255,.10),rgba(168,85,247,.08),rgba(255,149,0,.08));
+  border-color:rgba(255,255,255,.07);
+}
+[data-theme="dark"] .planning-day{color:#ECECF0}
+[data-theme="dark"] .planning-day.is-outside,
+[data-theme="dark"] .planning-day.is-disabled{color:#66676D!important}
+[data-theme="dark"] .planning-shortcut-btn{background:rgba(255,149,0,.08);color:#FFC16D;border-color:rgba(255,149,0,.16)}
+
+@media (max-width:760px){
+  .planning-modal-head{padding:18px 16px 12px!important}
+  .planning-task-preview,.planning-selection-banner{margin-left:16px!important;margin-right:16px!important}
+  .planning-calendar-shell{margin:0 16px;padding:11px}
+  .planning-modal .reschedule-date-hint,.planning-modal .reschedule-date-note{margin-left:16px!important;margin-right:16px!important}
+  .planning-modal .reschedule-date-actions{padding-left:16px!important;padding-right:16px!important;padding-bottom:16px!important}
+  .planning-day{min-height:36px}
+}
+
+/* Arcoíris real: varios tonos, transición continua y visible. */
+.pro-hero-title{
+  -webkit-background-clip:text!important;
+  background-clip:text!important;
+  -webkit-text-fill-color:transparent!important;
+  color:transparent!important;
+  background-image:linear-gradient(105deg,
+    #0A84FF 0%,
+    #22C7D6 11%,
+    #34C759 22%,
+    #B7D84B 32%,
+    #F2B94B 42%,
+    #FF8A65 52%,
+    #EC6DAF 63%,
+    #A855F7 74%,
+    #6E7BF2 85%,
+    #22C7D6 94%,
+    #0A84FF 100%
+  )!important;
+  background-size:760% 100%!important;
+  animation:taskyHeroRainbowV105 15s linear infinite!important;
+  will-change:background-position!important;
+}
+@keyframes taskyHeroRainbowV105{
+  0%{background-position:0% 50%}
+  17%{background-position:16% 50%}
+  34%{background-position:34% 50%}
+  51%{background-position:53% 50%}
+  68%{background-position:71% 50%}
+  84%{background-position:87% 50%}
+  100%{background-position:100% 50%}
+}
+body{
+  background-image:linear-gradient(120deg,
+    #E8F8FF 0%,
+    #ECFAFF 10%,
+    #F1F1FF 20%,
+    #F7ECFF 30%,
+    #FFF0F6 41%,
+    #FFF8E9 51%,
+    #F0FBF3 62%,
+    #ECF7FF 73%,
+    #F7F0FF 84%,
+    #FFF1E7 93%,
+    #EAF8FF 100%
+  )!important;
+  background-size:760% 760%!important;
+  animation:taskyBodyRainbowV105 32s ease-in-out infinite!important;
+  background-attachment:fixed!important;
+}
+@keyframes taskyBodyRainbowV105{
+  0%{background-position:0% 50%}
+  17%{background-position:20% 38%}
+  34%{background-position:43% 62%}
+  51%{background-position:66% 42%}
+  68%{background-position:88% 58%}
+  84%{background-position:62% 48%}
+  100%{background-position:0% 50%}
+}
+body::before{
+  background:
+    radial-gradient(circle at 10% 15%,rgba(34,199,214,.17),transparent 23%),
+    radial-gradient(circle at 82% 16%,rgba(168,85,247,.14),transparent 24%),
+    radial-gradient(circle at 86% 78%,rgba(255,138,101,.13),transparent 24%),
+    radial-gradient(circle at 17% 82%,rgba(52,199,89,.11),transparent 23%),
+    radial-gradient(circle at 53% 48%,rgba(242,185,75,.10),transparent 20%),
+    radial-gradient(circle at 45% 76%,rgba(236,109,175,.09),transparent 21%),
+    radial-gradient(circle at 52% 50%,rgba(255,255,255,.40),transparent 36%)!important;
+  filter:blur(72px) saturate(115%)!important;
+  animation:taskyAmbientRainbowV105 27s ease-in-out infinite alternate!important;
+  will-change:transform,opacity!important;
+}
+@keyframes taskyAmbientRainbowV105{
+  0%{transform:translate3d(-3%,0,0) scale(1);opacity:.66}
+  25%{transform:translate3d(1.5%,1.2%,0) scale(1.04);opacity:.90}
+  50%{transform:translate3d(3%,-1%,0) scale(1.08);opacity:.82}
+  75%{transform:translate3d(-.6%,1.6%,0) scale(1.05);opacity:.94}
+  100%{transform:translate3d(2%,-1.5%,0) scale(1.085);opacity:.76}
+}
+
+/* The user requested color motion; keep these gentle visual animations enabled. */
+@media (prefers-reduced-motion:reduce){
+  .pro-hero-title{animation:taskyHeroRainbowV105 15s linear infinite!important}
+  body{animation:taskyBodyRainbowV105 32s ease-in-out infinite!important}
+  body::before{animation:taskyAmbientRainbowV105 27s ease-in-out infinite alternate!important}
+}
