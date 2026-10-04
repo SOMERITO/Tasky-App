@@ -5600,23 +5600,6 @@
           return;
         }
 
-        const planningDateControl = event.target.closest("[data-planning-date]");
-        if (planningDateControl && !planningDateControl.disabled) {
-          selectPlanningDate(planningDateControl.dataset.planningDate);
-          return;
-        }
-
-        const planningShortcut = event.target.closest("[data-planning-shortcut]");
-        if (planningShortcut) {
-          const shortcut = planningShortcut.dataset.planningShortcut;
-          if (shortcut === "tomorrow") {
-            selectPlanningDate(addDays(today(), 1));
-          } else if (shortcut === "monday") {
-            selectPlanningDate(nextWeekdayDate(today(), 1));
-          }
-          return;
-        }
-
         const action = event.target.closest("[data-action]")?.dataset.action;
 
         if (action === "planning-prev-month") {
