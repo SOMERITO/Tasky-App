@@ -7073,6 +7073,16 @@
     }
 
     function taskyV106UpdateSelectionUI() {
+      const validIds = new Set();
+      state.categories.forEach(cat => {
+        (cat.tasks || []).forEach(task => {
+          if (task && !task.draft && String(task.text || "").trim()) validIds.add(task.id);
+        });
+      });
+      [...taskyV106Selected].forEach(id => {
+        if (!validIds.has(id)) taskyV106Selected.delete(id);
+      });
+
       const bar = document.getElementById("bulkActionsBar");
       const count = document.getElementById("bulkSelectedCount");
       if (count) count.textContent = String(taskyV106Selected.size);
@@ -7390,5 +7400,33 @@
         }
       });
     };
+
+
+    function openBulkRescheduleDateEditor() {
+      const selected = taskyV106SelectedItems().filter(({task}) => !task.repeat);
+      if (!selected.length) {
+        toast("Selecciona al menos una tarea normal.", "calendar-alert", "info");
+        return;
+      }
+
+      const target = addDays(today(), 1);
+      planningCalendarSelected = target;
+
+      const date = typeof parseISODateLocal === "function" ? parseISODateLocal(target) : null;
+      planningCalendarCursor = date
+        ? new Date(date.getFullYear(), date.getMonth(), 1)
+        : null;
+
+      const hidden = document.getElementById("rescheduleDateTaskId");
+      const name = document.getElementById("rescheduleDateTaskName");
+      const input = document.getElementById("rescheduleDateInput");
+
+      if (hidden) hidden.value = selected.map(({task}) => task.id).join(",");
+      if (name) name.textContent = selected.length + " tareas seleccionadas";
+      if (input) input.value = target;
+
+      openModal("rescheduleDateModal");
+      renderPlanningCalendar();
+    }
 
     init();
