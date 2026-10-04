@@ -82,7 +82,7 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 
-<body tabindex="-1" data-tasky-version="V104">
+<body tabindex="-1" data-tasky-version="V105">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -246,19 +246,20 @@
   </div>
 
   <div id="rescheduleDateModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="rescheduleDateTitle">
-    <div class="modal reschedule-date-modal">
-      <div class="modal-head">
+    <div class="modal reschedule-date-modal planning-modal">
+      <div class="modal-head planning-modal-head">
         <div>
           <div class="reschedule-date-kicker"><i data-lucide="calendar-plus"></i> PLANIFICACIÓN</div>
           <h2 id="rescheduleDateTitle">Elegir nueva fecha</h2>
         </div>
-        <button class="icon-btn" type="button" data-close-modal="rescheduleDateModal" aria-label="Cerrar selección de fecha">
+        <button class="icon-btn" type="button" data-close-modal="rescheduleDateModal" aria-label="Cerrar planificación">
           <i data-lucide="x"></i>
         </button>
       </div>
 
       <input id="rescheduleDateTaskId" type="hidden" value="">
-      <div class="reschedule-date-task">
+
+      <div class="reschedule-date-task planning-task-preview">
         <div class="reschedule-date-task-icon"><i data-lucide="calendar-days"></i></div>
         <div>
           <small>TAREA</small>
@@ -266,17 +267,67 @@
         </div>
       </div>
 
-      <label class="reschedule-date-field">
-        <span>Programar para</span>
+      <div class="planning-selection-banner">
+        <div class="planning-selection-copy">
+          <span>FECHA SELECCIONADA</span>
+          <strong id="planningSelectionLabel">Selecciona una fecha</strong>
+        </div>
+        <div class="planning-selection-icon"><i data-lucide="calendar-check-2"></i></div>
+      </div>
+
+      <div class="planning-calendar-shell">
+        <div class="planning-calendar-top">
+          <button class="planning-month-btn" type="button" data-action="planning-prev-month" aria-label="Mes anterior">
+            <i data-lucide="chevron-left"></i>
+          </button>
+          <div class="planning-month-copy">
+            <strong id="planningMonthLabel">—</strong>
+            <span>Elige cualquier fecha a partir de mañana</span>
+          </div>
+          <button class="planning-month-btn" type="button" data-action="planning-next-month" aria-label="Mes siguiente">
+            <i data-lucide="chevron-right"></i>
+          </button>
+        </div>
+
+        <div class="planning-weekdays" aria-hidden="true">
+          <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
+        </div>
+
+        <div class="planning-calendar-grid" aria-label="Calendario de planificación">
+          <div class="planning-calendar-note">
+            <i data-lucide="calendar-days"></i>
+            <span>Selecciona una fecha futura en el calendario del dispositivo.</span>
+          </div>
+        </div>
+
+        <div class="planning-shortcuts">
+          <button type="button" class="planning-shortcut-btn" data-planning-shortcut="tomorrow">
+            <i data-lucide="sun"></i>
+            <span>Mañana</span>
+          </button>
+          <button type="button" class="planning-shortcut-btn" data-planning-shortcut="monday">
+            <i data-lucide="calendar-days"></i>
+            <span>Próximo lunes</span>
+          </button>
+        </div>
+      </div>
+
+      <label class="planning-date-field">
+        <span>Fecha personalizada</span>
         <input id="rescheduleDateInput" type="date" min="" aria-label="Nueva fecha de la tarea">
       </label>
       <div id="rescheduleDateHint" class="reschedule-date-hint" aria-live="polite">Selecciona una fecha futura.</div>
 
-      <div class="reschedule-date-note"><i data-lucide="info"></i><span>La tarea saldrá de tu día actual y quedará reservada para la fecha que elijas.</span></div>
+      <div class="reschedule-date-note">
+        <i data-lucide="info"></i>
+        <span>La tarea saldrá de tu día actual y quedará reservada para la fecha que elijas.</span>
+      </div>
 
       <div class="reschedule-date-actions">
         <button class="soft-btn" type="button" data-close-modal="rescheduleDateModal">Cancelar</button>
-        <button class="pro-primary-btn" type="button" data-action="save-reschedule-date"><i data-lucide="calendar-check"></i> Guardar fecha</button>
+        <button class="pro-primary-btn planning-save-btn" type="button" data-action="save-reschedule-date">
+          <i data-lucide="calendar-check"></i> Guardar fecha
+        </button>
       </div>
     </div>
   </div>
