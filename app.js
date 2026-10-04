@@ -3975,6 +3975,156 @@
       playTaskySound("click");
     }
 
+    let planningCalendarSelected = "";
+    let planningCalendarCursor = null;
+
+    function isoDateLocal(date) {
+      return date.getFullYear() + "-" +
+        String(date.getMonth() + 1).padStart(2, "0") + "-" +
+        String(date.getDate()).padStart(2, "0");
+    }
+
+    function parseISODateLocal(iso) {
+      const parts = String(iso || "").split("-").map(Number);
+      if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
+      return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+
+    function nextWeekdayDate(fromDateStr, targetWeekday) {
+      const current = isoWeekday(fromDateStr);
+      if (!current) return addDays(fromDateStr, 1);
+      let delta = (targetWeekday - current + 7) % 7;
+      if (delta === 0) delta = 7;
+      return addDays(fromDateStr, delta);
+    }
+
+    function updatePlanningSelectionUI() {
+      const input = document.getElementById("rescheduleDateInput");
+      const label = document.getElementById("planningSelectionLabel");
+      const hint = document.getElementById("rescheduleDateHint");
+
+      if (input) input.value = planningCalendarSelected || "";
+
+      const formatted = planningCalendarSelected
+        ? formatDateLong(planningCalendarSelected)
+        : "Selecciona una fecha";
+
+      if (label) label.textContent = formatted;
+      if (hint) {
+        hint.textContent = planningCalendarSelected
+          ? "Se programará para " + formatted + "."
+          : "Selecciona una fecha futura.";
+      }
+    }
+
+    function renderPlanningCalendar() {
+      const grid = document.getElementById("planningCalendarGrid");
+      const monthLabel = document.getElementById("planningMonthLabel");
+      const prevButton = document.querySelector('[data-action="planning-prev-month"]');
+
+      if (!grid || !monthLabel) return;
+
+      const minimumIso = addDays(today(), 1);
+      const minimumDate = parseISODateLocal(minimumIso);
+      if (!minimumDate) return;
+
+      const cursor = planningCalendarCursor instanceof Date
+        ? new Date(planningCalendarCursor.getFullYear(), planningCalendarCursor.getMonth(), 1)
+        : new Date(minimumDate.getFullYear(), minimumDate.getMonth(), 1);
+
+      planningCalendarCursor = cursor;
+
+      const monthText = new Intl.DateTimeFormat("es-PE", {
+        month: "long",
+        year: "numeric"
+      }).format(cursor);
+
+      monthLabel.textContent = monthText.replace(/^./, function(char) {
+        return char.toUpperCase();
+      });
+
+      const minimumMonth = new Date(minimumDate.getFullYear(), minimumDate.getMonth(), 1);
+      if (prevButton) prevButton.disabled = cursor <= minimumMonth;
+
+      grid.innerHTML = "";
+
+      const firstDay = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+      const offset = (firstDay.getDay() + 6) % 7;
+      const fragment = document.createDocumentFragment();
+
+      for (let index = 0; index < 42; index++) {
+        const date = new Date(cursor.getFullYear(), cursor.getMonth(), 1 - offset + index);
+        const iso = isoDateLocal(date);
+        const outsideMonth = date.getMonth() !== cursor.getMonth();
+        const disabled = iso <= today();
+        const selected = iso === planningCalendarSelected;
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className =
+          "planning-day" +
+          (outsideMonth ? " is-outside" : "") +
+          (disabled ? " is-disabled" : "") +
+          (selected ? " is-selected" : "") +
+          (iso === today() ? " is-today" : "");
+
+        button.dataset.planningDate = iso;
+        button.textContent = String(date.getDate());
+        button.setAttribute("aria-label", formatDateLong(iso));
+        if (disabled) button.disabled = true;
+        if (selected) button.setAttribute("aria-current", "date");
+
+        fragment.appendChild(button);
+      }
+
+      grid.appendChild(fragment);
+      updatePlanningSelectionUI();
+      refreshIcons();
+    }
+
+    function shiftPlanningCalendarMonth(delta) {
+      const cursor = planningCalendarCursor instanceof Date
+        ? new Date(planningCalendarCursor)
+        : new Date();
+
+      cursor.setMonth(cursor.getMonth() + Number(delta || 0), 1);
+
+      const minimum = parseISODateLocal(addDays(today(), 1));
+      if (!minimum) return;
+
+      const minimumMonth = new Date(minimum.getFullYear(), minimum.getMonth(), 1);
+      if (cursor < minimumMonth) return;
+
+      planningCalendarCursor = cursor;
+      renderPlanningCalendar();
+      playTaskySound("click");
+    }
+
+    function selectPlanningDate(dateStr) {
+      if (!dateStr) return;
+
+      if (dateStr <= today()) {
+        toast("Elige una fecha futura para reprogramar la tarea.", "calendar-alert", "error");
+        return;
+      }
+
+      const date = parseISODateLocal(dateStr);
+      if (!date) return;
+
+      planningCalendarSelected = dateStr;
+      planningCalendarCursor = new Date(date.getFullYear(), date.getMonth(), 1);
+
+      renderPlanningCalendar();
+
+      try {
+        document
+          .querySelector('[data-planning-date="' + cssEscapeSafe(dateStr) + '"]')
+          ?.focus({ preventScroll: true });
+      } catch (_) {}
+
+      playTaskySound("click");
+    }
+
     function openRescheduleDateEditor(taskId) {
       if (!taskId) return;
 
@@ -3996,9 +4146,7 @@
       if (!input || !name || !hidden) return;
 
       const minimum = addDays(today(), 1);
-      const selected = task.date && task.date > today()
-        ? task.date
-        : minimum;
+      const selected = task.date && task.date > today() ? task.date : minimum;
 
       hidden.value = taskId;
       input.min = minimum;
@@ -4006,7 +4154,6 @@
       name.textContent = task.text?.trim() || "Tarea sin nombre";
 
       planningCalendarSelected = selected;
-
       const date = parseISODateLocal(selected);
       planningCalendarCursor = date
         ? new Date(date.getFullYear(), date.getMonth(), 1)
@@ -4014,15 +4161,6 @@
 
       openModal("rescheduleDateModal");
       renderPlanningCalendar();
-
-      window.setTimeout(() => {
-        const selectedButton = document.querySelector(
-          '[data-planning-date="' + cssEscapeSafe(selected) + '"]'
-        );
-        try {
-          selectedButton?.focus({ preventScroll: true });
-        } catch (_) {}
-      }, 120);
     }
 
     function saveRescheduleDate() {
@@ -4066,10 +4204,8 @@
       task.date = targetDate;
 
       closeModal("rescheduleDateModal");
-
       persistLocal();
       localDirty = true;
-
       syncCategoryPlacement(category.id);
       render();
       updateSummaryUI();
@@ -5614,7 +5750,36 @@
           return;
         }
 
+        const planningDateControl = event.target.closest("[data-planning-date]");
+        if (planningDateControl && !planningDateControl.disabled) {
+          selectPlanningDate(planningDateControl.dataset.planningDate);
+          return;
+        }
+
+        const planningShortcut = event.target.closest("[data-planning-shortcut]");
+        if (planningShortcut) {
+          const shortcut = planningShortcut.dataset.planningShortcut;
+          if (shortcut === "tomorrow") {
+            selectPlanningDate(addDays(today(), 1));
+          } else if (shortcut === "monday") {
+            selectPlanningDate(nextWeekdayDate(today(), 1));
+          }
+          return;
+        }
+
         const action = event.target.closest("[data-action]")?.dataset.action;
+
+        if (action === "planning-prev-month") {
+          shiftPlanningCalendarMonth(-1);
+          return;
+        }
+
+        if (action === "planning-next-month") {
+          shiftPlanningCalendarMonth(1);
+          return;
+        }
+
+
 
         if (action === "planning-prev-month") {
           shiftPlanningCalendarMonth(-1);
