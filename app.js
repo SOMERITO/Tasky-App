@@ -7191,7 +7191,17 @@
       const rescheduledCategories = state.categories.filter(cat => isFullyRescheduledCategory(cat));
 
       rescheduledCategories.forEach(cat => {
-        const card = document.querySelector('.activity-card[data-category-id="' + cssEscapeSafe(cat.id) + '"]');
+        let card = document.querySelector('.activity-card[data-category-id="' + cssEscapeSafe(cat.id) + '"]');
+
+        // render() base intentionally separates fully-rescheduled phases from
+        // active/finished phases. We create their normal category card here
+        // and then place it at the very end, preserving the original phase.
+        if (!card) {
+          const categoryIndex = state.categories.findIndex(item => item.id === cat.id);
+          card = buildCategoryCard(cat, categoryIndex, activeSearch.trim().toLowerCase());
+          if (card) el.board.appendChild(card);
+        }
+
         if (!card) return;
 
         card.classList.add("rescheduled-phase-card");
