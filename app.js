@@ -196,8 +196,78 @@
       }, 0);
     }
 
+    function currentMonthKey(date = new Date()) {
+      return date.getFullYear() + "-" +
+        String(date.getMonth() + 1).padStart(2, "0");
+    }
+
+    function currentMonthLabel() {
+      return new Intl.DateTimeFormat("es-PE", {
+        month: "long",
+        year: "numeric"
+      }).format(new Date()).replace(/^./, char => char.toUpperCase());
+    }
+
     function taskCountCompleted() {
-      return state.completed.length;
+      const monthKey = currentMonthKey();
+      return state.completed.filter(task => {
+        const date = completedDateFor(task);
+        return /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+          date.slice(0, 7) === monthKey;
+      }).length;
+    }
+
+    function monthlyCompletionHistory() {
+      const buckets = new Map();
+
+      state.completed.forEach(task => {
+        const date = completedDateFor(task);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+
+        const key = date.slice(0, 7);
+        const bucket = buckets.get(key) || { key, completed: 0 };
+        bucket.completed += 1;
+        buckets.set(key, bucket);
+      });
+
+      const currentKey = currentMonthKey();
+      if (!buckets.has(currentKey)) {
+        buckets.set(currentKey, { key: currentKey, completed: 0 });
+      }
+
+      return [...buckets.values()].sort((a, b) => b.key.localeCompare(a.key));
+    }
+
+    function renderMonthlyProgressHistory() {
+      const history = monthlyCompletionHistory();
+      const max = Math.max(1, ...history.map(item => item.completed));
+
+      return history.map((item, index) => {
+        const [year, month] = item.key.split("-").map(Number);
+        const label = new Intl.DateTimeFormat("es-PE", {
+          month: "long",
+          year: "numeric"
+        }).format(new Date(year, month - 1, 1)).replace(/^./, char => char.toUpperCase());
+
+        const isCurrent = item.key === currentMonthKey();
+        const width = item.completed === 0 ? 0 : Math.max(5, Math.round((item.completed / max) * 100));
+
+        return `
+          <article class="monthly-history-row ${isCurrent ? "is-current" : ""}" style="--month-delay:${Math.min(index, 12) * 42}ms">
+            <div class="monthly-history-label">
+              <strong>${escapeHTML(label)}</strong>
+              <span>${isCurrent ? "Mes actual" : "Registro histórico"}</span>
+            </div>
+            <div class="monthly-history-track" aria-hidden="true">
+              <span style="width:${width}%"></span>
+            </div>
+            <div class="monthly-history-count">
+              <strong>${item.completed}</strong>
+              <span>${item.completed === 1 ? "tarea" : "tareas"}</span>
+            </div>
+          </article>
+        `;
+      }).join("");
     }
 
     function overdueTasks() {
@@ -1184,6 +1254,55 @@
       a.remove();
       URL.revokeObjectURL(url);
       toast('Historial de respaldos exportado', 'archive');
+    }
+
+    function getBestRecoveryState() {
+      const candidates = [];
+
+      const local = loadLocalState();
+      if (local && stateStats(local).total > 0) {
+        candidates.push({ source: "LocalStorage", state: local });
+      }
+
+      const backup = loadSafetyBackup();
+      if (backup && stateStats(backup).total > 0) {
+        candidates.push({ source: "respaldo de seguridad", state: backup });
+      }
+
+      const history = loadSafetyHistory();
+      history.forEach((record, index) => {
+        try {
+          const candidate = record?.data;
+          const normalized = candidate ? normalizeState(candidate) : null;
+          if (normalized && stateStats(normalized).total > 0) {
+            candidates.push({
+              source: index === 0 ? "historial reciente" : "historial de seguridad",
+              state: normalized
+            });
+          }
+        } catch (_) {}
+      });
+
+      candidates.sort((a, b) => {
+        const aStats = stateStats(a.state);
+        const bStats = stateStats(b.state);
+        if (bStats.total !== aStats.total) return bStats.total - aStats.total;
+        if (bStats.completed !== aStats.completed) return bStats.completed - aStats.completed;
+        return bStats.categories - aStats.categories;
+      });
+
+      return candidates[0] || null;
+    }
+
+    function restoreBestRecoveryState(reason = "recuperación automática") {
+      const recovered = getBestRecoveryState();
+      if (!recovered) return null;
+
+      state = cloneState(recovered.state);
+      persistLocal();
+      localDirty = true;
+      saveSafetyBackup(reason + " · " + recovered.source, state);
+      return recovered;
     }
 
     function loadLocalState() {
@@ -2854,7 +2973,23 @@
             </article>
           </section>
 
-          <div class="daily-report-footer-note"><i data-lucide="info"></i> El análisis refleja únicamente las tareas cerradas durante la jornada actual y el trabajo programado para hoy.</div>
+          <section class="monthly-history-section">
+            <div class="monthly-history-head">
+              <div>
+                <small>HISTORIAL</small>
+                <h4>Progreso mes por mes</h4>
+              </div>
+              <div class="monthly-history-current">
+                <strong>${escapeHTML(currentMonthLabel())}</strong>
+                <span>${taskCountCompleted()} completadas</span>
+              </div>
+            </div>
+            <div class="monthly-history-list">
+              ${renderMonthlyProgressHistory()}
+            </div>
+          </section>
+
+          <div class="daily-report-footer-note"><i data-lucide="info"></i> El análisis diario refleja hoy. El historial registra todas las tareas completadas por mes.</div>
         </div>
       `;
 
@@ -5160,10 +5295,19 @@
           return;
         }
 
+        const recovered = restoreBestRecoveryState("recuperación por documento remoto vacío");
+        if (recovered) {
+          render();
+          updateSummaryUI();
+          hideLoading();
+          setTimeout(() => saveCloud("restaurar respaldo recuperado"), 120);
+          toast("Se recuperaron tus tareas desde un respaldo de seguridad.", "shield-check", "success");
+          return;
+        }
+
         state = defaultState();
         render();
         hideLoading();
-        setTimeout(() => saveCloud("crear tablero"), 120);
         return;
       }
 
@@ -5265,6 +5409,18 @@
         warnProtectedRemote(remoteHash);
         hideLoading();
         return;
+      }
+
+      if (stateStats(remote).total === 0) {
+        const recovered = restoreBestRecoveryState("estado remoto vacío protegido");
+        if (recovered) {
+          render();
+          updateSummaryUI();
+          hideLoading();
+          scheduleSave("restaurar respaldo ante estado remoto vacío", 0);
+          toast("Se protegieron tus datos y se restauró el respaldo más completo.", "shield-check", "success");
+          return;
+        }
       }
 
       state = remote;
@@ -6747,11 +6903,19 @@
         }
 
         const local = loadLocalState();
-        if (local) {
+        if (local && stateStats(local).total > 0) {
           state = local;
           render();
           if (!loadSafetyBackup() && stateStats(state).total > 0) saveSafetyBackup('inicio');
           setSyncStatus("offline", "Cargando copia local");
+        } else {
+          const recovered = restoreBestRecoveryState("recuperación automática al iniciar");
+          if (recovered) {
+            render();
+            updateSummaryUI();
+            setSyncStatus("offline", "Respaldo recuperado");
+            toast("Tasky recuperó el respaldo más completo disponible.", "shield-check", "success");
+          }
         }
 
         bindEvents();
