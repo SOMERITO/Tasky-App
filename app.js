@@ -37,13 +37,14 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 104;
+    const APP_VERSION = 105;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
     const THEME_KEY = "tasky_theme";
     const DEVICE_KEY = "tasky_device_id";
     const COMPLETED_COLLAPSED_KEY = "tasky_completed_collapsed";
+    const RESCHEDULED_COLLAPSED_KEY = "tasky_rescheduled_collapsed";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YrhvEcb8",
@@ -109,6 +110,7 @@
     let activeSearch = "";
     let activeTaskView = "all"; // all | today | completed
     let completedCollapsed = false;
+    let rescheduledCollapsed = false;
     let saveInFlight = false;
     let queuedSaveReason = null;
     let sortableCategories = null;
@@ -1201,7 +1203,7 @@
 
     function syncProfessionalUI() {
       try {
-        const cards = [...document.querySelectorAll('#board .activity-card:not(.completed-card)')];
+        const cards = [...document.querySelectorAll('#board .activity-card:not(.completed-card):not(.rescheduled-card)')];
 
         const pct = Math.max(0, Math.min(100, parseInt(document.getElementById('dayPercent')?.textContent || '0', 10) || 0));
         const ring = document.getElementById('proDayRing');
@@ -1582,14 +1584,20 @@
         state.categories = orderedCategories;
       }
 
+      const reprogrammedCategoryIds = new Set(
+        state.categories
+          .filter(isFullyRescheduledCategory)
+          .map(cat => cat.id)
+      );
+
       const activeCategories =
         state.categories.filter(
-          categoryHasOpenWorkToday
+          cat => !reprogrammedCategoryIds.has(cat.id) && categoryHasOpenWorkToday(cat)
         );
 
       const finishedCategories =
         state.categories.filter(
-          cat => !categoryHasOpenWorkToday(cat)
+          cat => !reprogrammedCategoryIds.has(cat.id) && !categoryHasOpenWorkToday(cat)
         );
 
       if (activeTaskView !== 'completed') {
@@ -1600,6 +1608,7 @@
 
         if (activeTaskView === 'all') {
           buildCompletedCard(query);
+          buildRescheduledCard();
         }
       } else {
         buildCompletedCard(query);
@@ -1621,11 +1630,16 @@
         );
       }
 
-      const visibleCategories = el.board.querySelectorAll(".activity-card:not(.completed-card)");
+      const visibleCategories = el.board.querySelectorAll(".activity-card:not(.completed-card):not(.rescheduled-card)");
       const completedCard = el.board.querySelector(".completed-card");
+      const rescheduledCard = el.board.querySelector(".rescheduled-card");
       const completedVisibleCount = completedCard
         ? completedCard.querySelectorAll(".task-item:not(.search-hidden)").length
         : 0;
+      const rescheduledVisibleCount = rescheduledCard
+        ? rescheduledCard.querySelectorAll(".rescheduled-task-item:not(.search-hidden)").length
+        : 0;
+      const hasVisibleSpecialCard = completedVisibleCount > 0 || rescheduledVisibleCount > 0;
 
       if (activeTaskView === "completed") {
         // Filtrar por Completadas no equivale a hacer una búsqueda.
@@ -1645,7 +1659,7 @@
       } else {
         el.emptyState.style.display = state.categories.length === 0 ? "block" : "none";
 
-        if (state.categories.length > 0 && visibleCategories.length === 0) {
+        if (state.categories.length > 0 && visibleCategories.length === 0 && !hasVisibleSpecialCard) {
           el.emptyState.style.display = "block";
           el.emptyState.querySelector("h2").textContent = "No encontramos coincidencias";
           el.emptyState.querySelector("p").textContent = "Prueba con otra palabra o limpia el buscador.";
@@ -1886,7 +1900,7 @@
     const GRIP_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><circle cx="9" cy="5" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg>';
 
     function sectionCards() {
-      return [...el.board.querySelectorAll('.activity-card:not(.completed-card)')];
+      return [...el.board.querySelectorAll('.activity-card:not(.completed-card):not(.rescheduled-card)')];
     }
 
     function isDragging() {
@@ -1897,11 +1911,11 @@
       if (typeof sectionPointerCleanup === 'function') sectionPointerCleanup();
       const listeners = [];
 
-      document.querySelectorAll('#board .activity-card:not(.completed-card) .drag-card').forEach(handle => {
+      document.querySelectorAll('#board .activity-card:not(.completed-card):not(.rescheduled-card) .drag-card').forEach(handle => {
         const onPointerDown = (event) => {
           if (event.button !== undefined && event.button !== 0) return;
           if (activeSectionDrag) return;
-          const card = handle.closest('.activity-card:not(.completed-card)');
+          const card = handle.closest('.activity-card:not(.completed-card):not(.rescheduled-card)');
           if (!card) return;
           event.preventDefault();
           event.stopPropagation();
@@ -2278,12 +2292,12 @@
            * texto editable dejamos que el foco normal ocurra.
            */
           const onEditableText = Boolean(target?.closest(".task-input"));
-          if (!onEditableText || pressType === "handle" || pressPointerType === "mouse") {
+          if (!onEditableText || pressType === "handle") {
             try { event.preventDefault(); } catch (_) {}
           }
 
-          try { item.setPointerCapture?.(pressPointerId); } catch (_) {}
-
+          // No capturamos el puntero mientras el usuario edita o selecciona texto.
+          // El pointer capture comienza solo cuando realmente arranca el arrastre.
           pressTimer = window.setTimeout(
             beginDrag,
             type === "handle" ? LONG_PRESS_HANDLE_MS : LONG_PRESS_ROW_MS
@@ -2291,7 +2305,12 @@
         };
 
         const onPointerDown = event => {
-          const onHandle = Boolean(event.target instanceof Element && event.target.closest(".drag-task"));
+          const target = event.target instanceof Element ? event.target : null;
+          const onHandle = Boolean(target?.closest(".drag-task"));
+
+          // El clic sobre el texto es edición, no inicio de arrastre.
+          if (target?.closest(".task-input") && !onHandle) return;
+
           arm(event, onHandle ? "handle" : "row");
         };
 
@@ -2450,7 +2469,7 @@
       if (card) return card.closest(".activity-card")?.querySelector(".task-list") || null;
 
       // Fallback: nearest category card by vertical distance.
-      const cards = [...document.querySelectorAll(".activity-card:not(.completed-card)")];
+      const cards = [...document.querySelectorAll(".activity-card:not(.completed-card):not(.rescheduled-card)")];
       let best = null;
       let bestDistance = Infinity;
 
@@ -2653,7 +2672,7 @@
     }
 
     function syncCategoryOrderFromDOM() {
-      const ids = [...el.board.querySelectorAll(".activity-card:not(.completed-card)")].map(card => card.dataset.categoryId);
+      const ids = [...el.board.querySelectorAll(".activity-card:not(.completed-card):not(.rescheduled-card)")].map(card => card.dataset.categoryId);
       const map = new Map(state.categories.map(cat => [cat.id, cat]));
       state.categories = ids.map(id => map.get(id)).filter(Boolean);
     }
@@ -3180,7 +3199,7 @@
       normalizeCategoryOrder();
 
       const card = document.querySelector(`.activity-card[data-category-id="${cssEscapeSafe(categoryId)}"]`);
-      const cards = [...el.board.querySelectorAll('.activity-card:not(.completed-card)')];
+      const cards = [...el.board.querySelectorAll('.activity-card:not(.completed-card):not(.rescheduled-card)')];
       const reference = cards[targetIndex];
 
       if (card) {
@@ -3209,7 +3228,7 @@
     }
 
     function refreshSectionMoveControls() {
-      const cards = [...el.board.querySelectorAll('.activity-card:not(.completed-card)')];
+      const cards = [...el.board.querySelectorAll('.activity-card:not(.completed-card):not(.rescheduled-card)')];
       cards.forEach((card, index) => {
         const up = card.querySelector('[data-action="move-category-up"]');
         const down = card.querySelector('[data-action="move-category-down"]');
@@ -3230,6 +3249,122 @@
         }
       }
       return result.sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.text).localeCompare(String(b.text), 'es'));
+    }
+
+    function isFullyRescheduledCategory(cat) {
+      if (!cat || !Array.isArray(cat.tasks)) return false;
+      const meaningful = cat.tasks.filter(task => !task?.draft && String(task?.text || '').trim());
+      if (!meaningful.length) return false;
+      const now = today();
+      return meaningful.every(task =>
+        Boolean(task.rescheduled) && Boolean(task.date) && task.date > now
+      );
+    }
+
+    function buildRescheduledCard() {
+      const tasks = rescheduledTasks();
+      if (!tasks.length) return null;
+
+      const card = document.createElement("article");
+      card.className = "activity-card rescheduled-card" + (rescheduledCollapsed ? " is-collapsed" : "");
+      card.dataset.rescheduledCard = "true";
+      card.innerHTML =
+        '<div class="card-head">' +
+          '<div class="card-title-row">' +
+            '<div class="rescheduled-card-icon" aria-hidden="true"><i data-lucide="calendar-clock"></i></div>' +
+            '<div class="rescheduled-card-title"><strong>Tareas reprogramadas</strong><span>Reservadas para una fecha futura</span></div>' +
+            '<div class="card-actions">' +
+              '<button class="mini-btn category-toggle-btn rescheduled-toggle-btn" type="button" data-action="toggle-rescheduled" aria-expanded="' +
+                (rescheduledCollapsed ? "false" : "true") +
+                '" aria-label="' +
+                (rescheduledCollapsed ? "Expandir tareas reprogramadas" : "Contraer tareas reprogramadas") +
+                '" data-tooltip="' +
+                (rescheduledCollapsed ? "Expandir tareas reprogramadas" : "Contraer tareas reprogramadas") +
+                '">' + (rescheduledCollapsed ? "▼" : "▲") + '</button>' +
+              '<span class="category-pending-count rescheduled-count" aria-hidden="true">' + tasks.length + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="card-meta"><span class="pill rescheduled-pill"><i data-lucide="calendar-clock"></i>' +
+            tasks.length + ' programada' + (tasks.length === 1 ? "" : "s") +
+          '</span><span class="pill neutral">Fuera de hoy</span></div>' +
+        '</div>' +
+        '<div class="task-list rescheduled-task-list" data-rescheduled-list="true" style="' +
+          (rescheduledCollapsed ? "display:none" : "") + '"></div>';
+
+      const list = card.querySelector("[data-rescheduled-list]");
+      const fragment = document.createDocumentFragment();
+
+      tasks.forEach((task, index) => {
+        const row = document.createElement("div");
+        row.className = "task-item rescheduled-task-item task-enter";
+        row.dataset.taskId = task.id;
+        row.style.setProperty("--rescheduled-delay", (index * 42) + "ms");
+        row.innerHTML =
+          '<div class="rescheduled-task-marker" aria-hidden="true"><i data-lucide="calendar-days"></i></div>' +
+          '<textarea class="task-input" rows="1" maxlength="500" aria-label="Editar tarea reprogramada">' +
+            escapeHTML(task.text) +
+          '</textarea>' +
+          '<div class="rescheduled-task-meta"><span>' +
+            escapeHTML(task.originTitle || "Fase") +
+            '</span><span>·</span><strong>Para ' +
+            escapeHTML(formatDateLong(task.date)) +
+          '</strong></div>' +
+          '<div class="task-item-actions rescheduled-task-actions">' +
+            '<button class="rescheduled-return-btn" type="button" data-rescheduled-action="today" data-task-id="' +
+              escapeHTML(task.id) +
+              '" data-tooltip="Volver a hoy" aria-label="Volver a hoy"><i data-lucide="calendar-check"></i></button>' +
+            '<button class="delete-task-btn" type="button" data-action="delete-task" data-task-id="' +
+              escapeHTML(task.id) +
+              '" data-tooltip="Eliminar tarea" aria-label="Eliminar tarea"><i data-lucide="x"></i></button>' +
+          '</div>';
+        fragment.appendChild(row);
+      });
+
+      list.appendChild(fragment);
+      return card;
+    }
+
+    function updateRescheduledCardUI() {
+      const tasks = rescheduledTasks();
+      const card = document.querySelector(".rescheduled-card");
+
+      if (!tasks.length) {
+        card?.remove();
+        return;
+      }
+
+      if (!card) {
+        if (activeTaskView !== "all") return;
+        const completedCard = document.querySelector(".completed-card");
+        const newCard = buildRescheduledCard();
+        if (!newCard) return;
+        if (completedCard) el.board.insertBefore(newCard, completedCard.nextSibling);
+        else el.board.appendChild(newCard);
+        refreshIcons();
+        updateTaskHeights();
+        applySearchFilter();
+        return;
+      }
+
+      const list = card.querySelector("[data-rescheduled-list]");
+      if (list) {
+        const validIds = new Set(tasks.map(task => task.id));
+        list.querySelectorAll(".rescheduled-task-item[data-task-id]").forEach(item => {
+          if (!validIds.has(item.dataset.taskId)) item.remove();
+        });
+      }
+
+      const count = card.querySelector(".rescheduled-count");
+      if (count) count.textContent = String(tasks.length);
+
+      const pill = card.querySelector(".rescheduled-pill");
+      if (pill) pill.innerHTML =
+        '<i data-lucide="calendar-clock"></i>' +
+        tasks.length + ' programada' + (tasks.length === 1 ? "" : "s");
+
+      refreshIcons();
+      updateTaskHeights();
+      applySearchFilter();
     }
 
     function updateRescheduledUI() {
@@ -3432,6 +3567,7 @@
       localDirty = true;
       if (originCat) updateCategoryUI(originCat);
       updateCompletedCardUI();
+      updateRescheduledCardUI();
       updateSummaryUI();
       scheduleSave("eliminar tarea");
       playTaskySound("delete");
@@ -4127,7 +4263,7 @@
       const query = activeSearch.trim().toLowerCase();
       const categoryCards = [
         ...document.querySelectorAll(
-          "#board .activity-card:not(.completed-card)"
+          "#board .activity-card:not(.completed-card):not(.rescheduled-card)"
         )
       ];
       let visibleCategories = 0;
@@ -4622,6 +4758,25 @@
         });
         const liveHash = hash({ categories: liveRemote.categories, completed: liveRemote.completed });
         const liveUpdatedBy = String(liveData.updatedBy || '');
+
+        const localTotalBeforeWrite = stateStats(state).total;
+        const remoteTotalBeforeWrite = stateStats(liveRemote).total;
+        const suspiciousEmptyRemoteBeforeWrite =
+          !allowDestructive &&
+          localTotalBeforeWrite > 0 &&
+          remoteTotalBeforeWrite === 0 &&
+          liveUpdatedBy &&
+          liveUpdatedBy !== deviceId;
+
+        if (suspiciousEmptyRemoteBeforeWrite) {
+          pendingRemoteState = liveRemote;
+          warnProtectedRemote(
+            liveHash,
+            'Se bloqueó un estado remoto vacío para proteger tus tareas locales.'
+          );
+          saveSafetyBackup('estado remoto vacío bloqueado', state);
+          return;
+        }
 
         // El listener de Firestore puede entregar una versión local pendiente.
         // Si esa versión ya coincide con nuestro estado, no es un conflicto.
@@ -5288,6 +5443,31 @@
             button.removeAttribute('title');
             button.setAttribute('aria-label', completedTooltip);
           }
+          playTaskySound('click');
+          softHaptic(10);
+          return;
+        }
+
+        if (action === "toggle-rescheduled") {
+          const card = event.target.closest('.rescheduled-card');
+          if (!card) return;
+
+          rescheduledCollapsed = !rescheduledCollapsed;
+          safeStorage.setItem(RESCHEDULED_COLLAPSED_KEY, rescheduledCollapsed ? '1' : '0');
+          card.classList.toggle('is-collapsed', rescheduledCollapsed);
+          const list = card.querySelector('[data-rescheduled-list]');
+          const button = card.querySelector('.rescheduled-toggle-btn');
+
+          if (list) list.style.display = rescheduledCollapsed ? 'none' : '';
+          if (button) {
+            const tooltip = rescheduledCollapsed ? 'Expandir tareas reprogramadas' : 'Contraer tareas reprogramadas';
+            button.textContent = rescheduledCollapsed ? '▼' : '▲';
+            button.setAttribute('aria-expanded', rescheduledCollapsed ? 'false' : 'true');
+            button.dataset.tooltip = tooltip;
+            button.removeAttribute('title');
+            button.setAttribute('aria-label', tooltip);
+          }
+
           playTaskySound('click');
           softHaptic(10);
           return;
@@ -6342,6 +6522,7 @@
         const savedTheme = safeStorage.getItem(THEME_KEY) || "system";
         applyTheme(savedTheme);
         completedCollapsed = safeStorage.getItem(COMPLETED_COLLAPSED_KEY) === '1';
+        rescheduledCollapsed = safeStorage.getItem(RESCHEDULED_COLLAPSED_KEY) === '1';
 
         if (!getLatestBackupRecord()) {
           const legacy = loadSafetyBackup();
