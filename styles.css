@@ -6078,3 +6078,10 @@ body::before{
 @media (max-width:760px){
   .planning-date-field{margin-left:16px!important;margin-right:16px!important}
 }
+
+/* V105 · El encabezado Completadas es informativo, no editable. */
+.completed-card-title{
+  -webkit-user-select:none!important;
+  user-select:none!important;
+  cursor:default!important;
+}
