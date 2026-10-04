@@ -3897,7 +3897,7 @@
 
         const iso = isoDateLocal(date);
         const outsideMonth = date.getMonth() !== cursor.getMonth();
-        const disabled = iso <= today();
+        const disabled = iso <= today() || outsideMonth;
         const selected = iso === planningCalendarSelected;
 
         const button = document.createElement("button");
