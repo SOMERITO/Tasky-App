@@ -1842,17 +1842,13 @@
     }
 
     function buildCategoryCard(cat, index, query) {
-      const visiblePending = cat.tasks.filter(t =>
-        !(
-          !t.draft &&
-          t.text.trim() &&
-          (
-            t.date < today() ||
-            (t.repeat && isRepeatCompletedToday(t)) ||
-            (t.repeat && t.date > today())
-          )
-        )
-      ).length;
+      const visiblePending = cat.tasks.filter(t => {
+        if (!t || t.draft || !String(t.text || "").trim()) return false;
+        if (t.date < today()) return false;
+        if (t.date > today()) return false;
+        if (t.repeat && isRepeatCompletedToday(t)) return false;
+        return true;
+      }).length;
       // Las ocurrencias repetitivas ya viven en state.completed,
       // por lo que no debemos sumarlas una segunda vez desde la tarea-serie.
       const completedToday =
@@ -1925,19 +1921,15 @@
       const list = card.querySelector(".task-list");
 
       for (const task of cat.tasks) {
-        if (!task.draft && task.text.trim() && task.date < today()) continue;
+        if (!task || task.draft || !String(task.text || "").trim()) continue;
 
-        // Una tarea reprogramada para una fecha futura deja de pertenecer
-        // al tablero de hoy. Permanece en "Tareas reprogramadas" hasta que
-        // llegue su nueva fecha.
-        if (!task.draft && task.text.trim() && task.rescheduled && task.date > today()) continue;
+        // El tablero principal representa el trabajo de HOY.
+        // Toda tarea futura, incluida una reprogramada, vive fuera de la fase
+        // hasta que llegue su fecha. Se muestra en "Tareas reprogramadas".
+        if (task.date !== today()) continue;
 
-        // Una repetitiva que ya se completó hoy queda archivada en
-        // Completadas. Su tarea-serie no vuelve a mostrarse hasta su
-        // siguiente fecha programada.
-        if (!task.draft && task.text.trim() && task.repeat && isRepeatCompletedToday(task)) continue;
-        if (!task.draft && task.text.trim() && task.repeat && task.date > today()) continue;
-        if (activeTaskView === 'today' && !task.draft && task.text.trim() && task.date !== today()) continue;
+        // Una repetitiva ya completada hoy queda archivada en Completadas.
+        if (task.repeat && isRepeatCompletedToday(task)) continue;
 
         const item = buildTaskItem(task, query, false);
         list.appendChild(item);
