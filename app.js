@@ -1098,11 +1098,21 @@
               repeatCount: Number.isFinite(Number(task.repeatCount)) ? Number(task.repeatCount) : 0,
               lastCompletedAt: task.lastCompletedAt || null,
               lastCompletedDate: /^\d{4}-\d{2}-\d{2}$/.test(task.lastCompletedDate || "") ? task.lastCompletedDate : null,
-              // V104: estos campos deben sobrevivir a F5, al recargar desde localStorage
-              // y a la normalización de Firestore. Antes se perdían y la tarea regresaba a hoy.
-              rescheduled: Boolean(task.rescheduled),
-              rescheduledFrom: /^\d{4}-\d{2}-\d{2}$/.test(task.rescheduledFrom || "") ? task.rescheduledFrom : null,
-              rescheduledAt: task.rescheduledAt || null
+              // Las marcas de reprogramación se conservan mientras la tarea
+              // todavía pertenece a una fecha futura. Cuando llega su fecha
+              // (hoy o una fecha ya vencida), la tarea vuelve a ser una tarea
+              // normal del tablero y deja de depender del estado "reprogramada".
+              ...(Boolean(task.rescheduled) && task.date && task.date <= today()
+                ? {
+                    rescheduled: false,
+                    rescheduledFrom: null,
+                    rescheduledAt: null
+                  }
+                : {
+                    rescheduled: Boolean(task.rescheduled),
+                    rescheduledFrom: /^\d{4}-\d{2}-\d{2}$/.test(task.rescheduledFrom || "") ? task.rescheduledFrom : null,
+                    rescheduledAt: task.rescheduledAt || null
+                  })
             };
           });
 
