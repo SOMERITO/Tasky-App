@@ -37,7 +37,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 106;
+    const APP_VERSION = 107;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -6189,10 +6189,10 @@
       normalizeQuoteList(BUILTIN_MOTIVATIONAL_QUOTES);
 
     const QUOTE_SOURCE = "quotes.json";
-    const QUOTE_CACHE_KEY = "tasky_quotes_cache_v97";
-    const QUOTE_HISTORY_KEY = "tasky_quote_history_v97";
+    const QUOTE_CACHE_KEY = "tasky_quotes_cache_v107";
+    const QUOTE_HISTORY_KEY = "tasky_quote_history_v107";
     const QUOTE_INTERVAL_MS = 18 * 1000;
-    const QUOTE_HISTORY_DAYS = 2;
+    const QUOTE_HISTORY_DAYS = 60;
     const QUOTE_LOAD_TIMEOUT = 6500;
 
     let quoteRotationSeed = 0;
@@ -7439,4 +7439,87 @@
       renderPlanningCalendar();
     }
 
+    /* =========================================================
+       TASKY V107 · UX refinado
+       ========================================================= */
+
+    function taskyV107NormalizeArrivedRescheduledTasks() {
+      const current = today();
+      let changed = false;
+      for (const category of state.categories || []) {
+        for (const task of category.tasks || []) {
+          if (!task || task.draft || !String(task.text || '').trim()) continue;
+          if (!task.rescheduled || !task.date) continue;
+          if (task.date <= current) {
+            task.rescheduled = false;
+            task.rescheduledFrom = null;
+            task.rescheduledAt = null;
+            changed = true;
+          }
+        }
+      }
+      if (changed) {
+        const previous = taskyV106UndoRestoring;
+        taskyV106UndoRestoring = true;
+        persistLocal();
+        taskyV106UndoRestoring = previous;
+        localDirty = true;
+        scheduleSave('activar tareas al llegar su fecha', 0);
+      }
+      return changed;
+    }
+
+    const taskyV107BaseRender = render;
+    render = function() {
+      taskyV107NormalizeArrivedRescheduledTasks();
+      taskyV107BaseRender.apply(this, arguments);
+    };
+
+    const taskyV107BaseDeleteCategory = deleteCategory;
+    deleteCategory = function(categoryId) {
+      taskyV106CaptureUndo();
+      taskyV107BaseDeleteCategory(categoryId);
+    };
+
+    function taskyV107CompletionFeedback() {
+      const stats = todayTaskStats();
+      const completed = stats.completed;
+      const total = Math.max(completed, stats.total);
+      if (completed === 1) return '¡Primera tarea completada! El día ya está en movimiento.';
+      if (completed === 2) return '¡2 tareas completadas! Ya construiste el impulso.';
+      if (completed === 3) return '¡3 tareas completadas! Tu avance ya empieza a notarse.';
+      if (completed === 4) return '¡4 tareas completadas! Estás a un paso de tu próximo bloque.';
+      if (completed === 5) return '¡5 tareas completadas! Primer gran bloque del día cerrado.';
+      if (completed < 10) return '¡' + completed + ' tareas completadas! Mantén el ritmo.';
+      if (completed < 15) return '¡' + completed + ' tareas completadas! Tu constancia está marcando la diferencia.';
+      if (completed < 20) return '¡' + completed + ' tareas completadas! Estás construyendo un día extraordinario.';
+      if (total > 0 && completed >= total) return '¡Día completado! Cerraste todo lo que te propusiste.';
+      return '¡' + completed + ' tareas completadas! Sigue con la siguiente.';
+    }
+
+    const TASKY_V107_ACTIONS = [
+      'Dar un paso más hoy','Terminar lo que empezaste','Cumplir una tarea pendiente','Ordenar tu próximo paso','Empezar aunque no sea perfecto',
+      'Mantener tu palabra contigo','Elegir una prioridad','Cerrar un pendiente pequeño','Avanzar sin buscar prisa','Volver al plan después de una pausa',
+      'Proteger unos minutos de enfoque','Hacer primero lo importante','Convertir una idea en acción','Poner orden donde hay ruido','Seguir cuando la motivación baja',
+      'Reconocer un avance pequeño','Dividir un reto grande','Preparar el terreno para mañana','Hacer espacio para concentrarte','Decidir qué merece tu energía',
+      'Completar una cosa antes de saltar a otra','Volver a intentarlo con calma','Cuidar la constancia','Usar bien la próxima hora','Elegir el siguiente paso'
+    ];
+
+    const TASKY_V107_RESULTS = [
+      'reduce la distancia entre tu intención y tu resultado.','convierte una intención en algo que ya existe.','demuestra que el progreso también se construye en pequeño.',
+      'te devuelve claridad cuando todo parece urgente.','fortalece el hábito de confiar en tus propias decisiones.','hace que mañana empiece con menos peso.',
+      'te ayuda a cambiar movimiento por avance real.','crea evidencia de que sí puedes cumplirte.','pone el foco en lo que realmente importa.',
+      'hace visible un progreso que antes solo estaba en tu cabeza.','te acerca a la versión de tu día que querías construir.',
+      'protege tu atención de lo que no necesita ocurrir ahora.','transforma esfuerzo disperso en dirección.','abre espacio mental para pensar con más calma.',
+      'hace que una meta grande se sienta más manejable.'
+    ];
+
+    const TASKY_V107_GENERATED_QUOTES = [];
+    for (const action of TASKY_V107_ACTIONS) {
+      for (const result of TASKY_V107_RESULTS) {
+        TASKY_V107_GENERATED_QUOTES.push({ text: action + ' ' + result, author: 'Reflexión' });
+      }
+    }
+    BUILTIN_MOTIVATIONAL_QUOTES.push(...TASKY_V107_GENERATED_QUOTES);
+    CLEAN_BUILTIN_MOTIVATIONAL_QUOTES.push(...TASKY_V107_GENERATED_QUOTES);
     init();
