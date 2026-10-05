@@ -37,7 +37,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 109;
+    const APP_VERSION = 110;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     const APP_VOLUME_LABEL = `Vol. ${APP_VERSION}`;
     // Registro central de versión: usar APP_VOLUME_LABEL para identificar
@@ -7582,3 +7582,41 @@
     CLEAN_BUILTIN_MOTIVATIONAL_QUOTES.length = 0;
     CLEAN_BUILTIN_MOTIVATIONAL_QUOTES.push(...normalizeQuoteList(TASKY_V108_VERIFIED_FALLBACK_QUOTES));
     init();
+
+    /* =========================================================
+       TASKY · VOL. 110 · MOTOR REAL DE COLOR EN VIVO
+       La variación cromática del hero y del fondo se ejecuta
+       mediante requestAnimationFrame, independiente de que el
+       navegador haya desactivado las animaciones CSS.
+       ========================================================= */
+    (function taskyLiveColorMotionV110(){
+      const startedAt = performance.now();
+
+      function tick(now){
+        const elapsed = (now - startedAt) / 1000;
+        const title = document.getElementById('heroTitle');
+        const body = document.body;
+        const root = document.documentElement;
+
+        if (title) {
+          const heroPos = (elapsed * 30) % 300;
+          const hue = Math.sin(elapsed * 0.72) * 24;
+          title.style.setProperty('--tasky-hero-pos', heroPos.toFixed(2) + '%');
+          title.style.setProperty('--tasky-title-hue', hue.toFixed(2) + 'deg');
+        }
+
+        if (body) {
+          const bodyX = (elapsed * 16) % 300;
+          const bodyY = 50 + Math.sin(elapsed * 0.34) * 22;
+          body.style.setProperty('--tasky-body-pos', bodyX.toFixed(2) + '%');
+          body.style.setProperty('--tasky-body-y', bodyY.toFixed(2) + '%');
+        }
+
+        const backgroundHue = (elapsed * 8) % 360;
+        root.style.setProperty('--tasky-bg-hue', backgroundHue.toFixed(2) + 'deg');
+
+        window.requestAnimationFrame(tick);
+      }
+
+      window.requestAnimationFrame(tick);
+    })();
