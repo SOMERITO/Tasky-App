@@ -3319,10 +3319,9 @@
       persistLocal();
       localDirty = true;
 
-      // Crear una tarea puede devolver una fase terminada al bloque activo,
-      // pero NO debe cambiar su orden manual.
-      syncCategoryPlacement(categoryId);
-
+      // Agregar una tarea NO debe reordenar ni desplazar la fase.
+      // La posición elegida por el usuario se conserva intacta, incluso
+      // cuando la fase pasa de "sin trabajo" a "con trabajo".
       persistLocal();
       updateCategoryUI(categoryId);
       updateSummaryUI();
