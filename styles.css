@@ -7065,3 +7065,71 @@ body::before{
   margin-right:0!important;
   text-align:left!important;
 }
+
+
+/* =========================================================
+   TASKY · VOL. 117 · COLOR EN VIVO CONECTADO AL MOTOR JS
+   ========================================================= */
+
+/* El gradiente ya no depende de CSS animation. JS actualiza estas
+   variables cada frame y el navegador solo interpola/renderiza la posición. */
+.pro-hero-title{
+  animation:none!important;
+  background-position:var(--tasky-hero-pos,0%) 50%!important;
+  filter:hue-rotate(var(--tasky-title-hue,0deg))!important;
+  will-change:background-position,filter!important;
+}
+
+body{
+  animation:none!important;
+  background-position:var(--tasky-body-pos,0%) var(--tasky-body-y,50%)!important;
+  background-attachment:scroll!important;
+  will-change:background-position!important;
+}
+
+/* Mantener la luz ambiental viva como segunda capa independiente. */
+body::before{
+  animation:taskyAnimatedAmbientV117 18s ease-in-out infinite alternate!important;
+  will-change:transform,opacity,background-position!important;
+}
+
+@keyframes taskyAnimatedAmbientV117{
+  0%{
+    transform:translate3d(-3%,-1%,0) scale(1);
+    opacity:.50;
+    background-position:0% 50%;
+  }
+  25%{
+    transform:translate3d(1%,-1%,0) scale(1.045);
+    opacity:.70;
+    background-position:32% 38%;
+  }
+  50%{
+    transform:translate3d(3%,2%,0) scale(1.08);
+    opacity:.60;
+    background-position:68% 64%;
+  }
+  75%{
+    transform:translate3d(-1%,1%,0) scale(1.05);
+    opacity:.74;
+    background-position:100% 34%;
+  }
+  100%{
+    transform:translate3d(2%,-2%,0) scale(1.085);
+    opacity:.52;
+    background-position:66% 58%;
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+  /* Este efecto forma parte de la identidad visual solicitada por Tasky. */
+  .pro-hero-title{
+    animation:none!important;
+  }
+  body{
+    animation:none!important;
+  }
+  body::before{
+    animation:taskyAnimatedAmbientV117 26s ease-in-out infinite alternate!important;
+  }
+}
