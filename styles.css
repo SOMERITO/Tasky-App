@@ -6914,3 +6914,29 @@ body::before{
     animation:taskyAnimatedAmbientV109 24s ease-in-out infinite alternate!important;
   }
 }
+
+
+/* =========================================================
+   TASKY · VOL. 110 · CORRECCIÓN DEFINITIVA DEL MOVIMIENTO CROMÁTICO
+   ========================================================= */
+
+/* El movimiento ya no depende de @keyframes: el motor JS V110
+   cambia estas variables en tiempo real. */
+.pro-hero-title{
+  background-position:var(--tasky-hero-pos,0%) 50%!important;
+  animation:none!important;
+  filter:hue-rotate(var(--tasky-title-hue,0deg)) saturate(108%)!important;
+  will-change:background-position,filter!important;
+}
+
+body{
+  background-position:var(--tasky-body-pos,0%) var(--tasky-body-y,50%)!important;
+  animation:none!important;
+  will-change:background-position!important;
+}
+
+body::before{
+  filter:blur(68px) saturate(118%) hue-rotate(var(--tasky-bg-hue,0deg))!important;
+  animation:none!important;
+  will-change:filter,transform!important;
+}
