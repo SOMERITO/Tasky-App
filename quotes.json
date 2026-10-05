@@ -1,7 +1,7 @@
 {
   "version": 108,
   "updatedAt": "2026-10-05",
-  "policy": "Solo frases con autor identificado. Se excluyen atribuciones internas como 'Tasky' y 'Reflexión'.",
+  "policy": "Biblioteca curada: autor identificado, sin atribuciones internas. Las atribuciones se basan en fuentes de citas consultadas; se excluyen frases con atribución dudosa.",
   "quotes": [
     {
       "text": "Admira a los que han emprendido cosas grandes aunque hayan fracasado.",
@@ -164,21 +164,6 @@
       "category": "tiempo"
     },
     {
-      "text": "Todo lo que oyes es una opinión, no un hecho. Todo lo que ves es una perspectiva, no la verdad.",
-      "author": "Marco Aurelio",
-      "category": "perspectiva"
-    },
-    {
-      "text": "Tu vida es lo que tus pensamientos hacen de ella.",
-      "author": "Marco Aurelio",
-      "category": "mente"
-    },
-    {
-      "text": "La felicidad de tu vida depende de la calidad de tus pensamientos.",
-      "author": "Marco Aurelio",
-      "category": "mente"
-    },
-    {
       "text": "A los veinte años, reina la voluntad; a los treinta, el ingenio, y a los cuarenta, el juicio.",
       "author": "Benjamin Franklin",
       "category": "crecimiento"
@@ -269,54 +254,14 @@
       "category": "tiempo"
     },
     {
-      "text": "El hombre más rico es aquel cuyos placeres son los más baratos.",
-      "author": "Henry David Thoreau",
-      "category": "felicidad"
-    },
-    {
-      "text": "No nacemos para hacer lo que es fácil, sino para hacer lo que es necesario.",
-      "author": "Henry David Thoreau",
-      "category": "propósito"
-    },
-    {
-      "text": "El arte es el camino del creador a su obra.",
-      "author": "Henry David Thoreau",
-      "category": "creatividad"
-    },
-    {
       "text": "Es duro caer, pero es peor todavía no haber intentado nunca subir.",
       "author": "Theodore Roosevelt",
       "category": "superación"
     },
     {
-      "text": "El único hombre que nunca comete un error es el que nunca hace nada.",
-      "author": "Theodore Roosevelt",
-      "category": "acción"
-    },
-    {
-      "text": "Haz lo que puedas, con lo que tengas, donde estés.",
-      "author": "Theodore Roosevelt",
-      "category": "acción"
-    },
-    {
-      "text": "Habla suavemente y lleva un gran garrote; llegarás lejos.",
-      "author": "Theodore Roosevelt",
-      "category": "liderazgo"
-    },
-    {
       "text": "El futuro pertenece a quienes creen en la belleza de sus sueños.",
       "author": "Eleanor Roosevelt",
       "category": "futuro"
-    },
-    {
-      "text": "Nadie puede hacerte sentir inferior sin tu consentimiento.",
-      "author": "Eleanor Roosevelt",
-      "category": "empoderamiento"
-    },
-    {
-      "text": "Haz una cosa que te asuste cada día.",
-      "author": "Eleanor Roosevelt",
-      "category": "valentía"
     },
     {
       "text": "Casi todos podemos soportar la adversidad, pero si queréis probar el carácter de un hombre, dadle poder.",
@@ -574,19 +519,9 @@
       "category": "búsqueda"
     },
     {
-      "text": "La alegría es una pasión que no se puede considerar mala.",
-      "author": "Blaise Pascal",
-      "category": "felicidad"
-    },
-    {
       "text": "Estando siempre dispuestos a ser felices, es inevitable no serlo alguna vez.",
       "author": "Blaise Pascal",
       "category": "felicidad"
-    },
-    {
-      "text": "El corazón tiene razones que la razón no conoce.",
-      "author": "Blaise Pascal",
-      "category": "reflexión"
     },
     {
       "text": "Comprender es el primer paso; vivir, el segundo.",
@@ -624,11 +559,6 @@
       "category": "éxito"
     },
     {
-      "text": "La acción puede no siempre traer felicidad, pero no hay felicidad sin acción.",
-      "author": "George Bernard Shaw",
-      "category": "acción"
-    },
-    {
       "text": "La condición esencial de la felicidad del ser humano es el trabajo.",
       "author": "León Tolstói",
       "category": "trabajo"
@@ -664,14 +594,59 @@
       "category": "constancia"
     },
     {
-      "text": "Si eres inconstante como el agua, no llegarás a la cumbre.",
+      "text": "Si el hombre fuera constante, sería perfecto.",
       "author": "William Shakespeare",
       "category": "constancia"
     },
     {
-      "text": "Si el hombre fuera constante, sería perfecto.",
-      "author": "William Shakespeare",
-      "category": "constancia"
+      "text": "Acechar la ocasión, asirla con audaz habilidad y aprovecharla con enérgica perseverancia, tales son las virtudes condicionantes del éxito.",
+      "author": "Edward John Phelps",
+      "category": "perseverancia"
+    },
+    {
+      "text": "El genio se compone de un 2 % de talento y un 98 % de perseverante aplicación.",
+      "author": "Beethoven",
+      "category": "disciplina"
+    },
+    {
+      "text": "El valor es bueno, pero la perseverancia es mejor.",
+      "author": "Theodor Fontane",
+      "category": "perseverancia"
+    },
+    {
+      "text": "Perseverar en el cumplimiento del deber y guardar silencio es la mejor respuesta a la calumnia.",
+      "author": "George Washington",
+      "category": "disciplina"
+    },
+    {
+      "text": "Caminante, son tus huellas el camino y nada más; caminante, no hay camino, se hace camino al andar.",
+      "author": "Antonio Machado",
+      "category": "progreso"
+    },
+    {
+      "text": "Nunca andes por el camino trazado, pues él te conducirá solo a donde otros ya fueron.",
+      "author": "Alexander Graham Bell",
+      "category": "innovación"
+    },
+    {
+      "text": "Hay que esperar cuando se está desesperado, y andar cuando se espera.",
+      "author": "Gustave Flaubert",
+      "category": "esperanza"
+    },
+    {
+      "text": "El éxito es fácil de obtener. Lo difícil es merecerlo.",
+      "author": "Albert Camus",
+      "category": "éxito"
+    },
+    {
+      "text": "El camino hacia el éxito se encuentra siempre en construcción.",
+      "author": "Lily Tomlin",
+      "category": "progreso"
+    },
+    {
+      "text": "El éxito es hijo de la perseverancia y firmeza en el trabajo.",
+      "author": "Orison Swett Marden",
+      "category": "perseverancia"
     }
   ]
 }
