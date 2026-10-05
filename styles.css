@@ -6917,26 +6917,129 @@ body::before{
 
 
 /* =========================================================
-   TASKY · VOL. 110 · CORRECCIÓN DEFINITIVA DEL MOVIMIENTO CROMÁTICO
+   TASKY · VOL. 111 · ANIMACIÓN CROMÁTICA REAL
    ========================================================= */
 
-/* El movimiento ya no depende de @keyframes: el motor JS V110
-   cambia estas variables en tiempo real. */
+/* Título: el gradiente se desplaza continuamente sin depender de JavaScript. */
 .pro-hero-title{
-  background-position:var(--tasky-hero-pos,0%) 50%!important;
-  animation:none!important;
-  filter:hue-rotate(var(--tasky-title-hue,0deg)) saturate(108%)!important;
-  will-change:background-position,filter!important;
-}
-
-body{
-  background-position:var(--tasky-body-pos,0%) var(--tasky-body-y,50%)!important;
-  animation:none!important;
+  display:block!important;
+  width:max-content!important;
+  max-width:100%!important;
+  background-image:linear-gradient(
+    90deg,
+    #0A84FF 0%,
+    #12C9E8 10%,
+    #34C759 20%,
+    #B9D94B 30%,
+    #F4C34E 40%,
+    #FF875F 50%,
+    #EC5FA3 60%,
+    #B650E8 70%,
+    #7E67F2 80%,
+    #2D9CDB 90%,
+    #0A84FF 100%
+  )!important;
+  background-repeat:repeat-x!important;
+  background-size:300% 100%!important;
+  background-position:0% 50%!important;
+  -webkit-background-clip:text!important;
+  background-clip:text!important;
+  -webkit-text-fill-color:transparent!important;
+  color:transparent!important;
+  animation:taskyHeroGradientV111 7s linear infinite!important;
   will-change:background-position!important;
 }
 
+@keyframes taskyHeroGradientV111{
+  0%{background-position:0% 50%}
+  100%{background-position:300% 50%}
+}
+
+/* Fondo: se mantiene pastel y se desplaza lentamente para que el cambio sea
+   visible pero no distraiga del tablero. */
+body{
+  background-image:linear-gradient(
+    125deg,
+    #E9F9FF 0%,
+    #EEFDF4 14%,
+    #FFFBEA 28%,
+    #FFF0F7 42%,
+    #F5EEFF 56%,
+    #EAF7FF 70%,
+    #F2FFF1 84%,
+    #FFF2E8 100%
+  )!important;
+  background-repeat:no-repeat!important;
+  background-size:400% 400%!important;
+  background-position:0% 50%!important;
+  background-attachment:fixed!important;
+  animation:taskyBackgroundGradientV111 18s ease-in-out infinite!important;
+  will-change:background-position!important;
+}
+
+@keyframes taskyBackgroundGradientV111{
+  0%{background-position:0% 50%}
+  25%{background-position:100% 30%}
+  50%{background-position:200% 65%}
+  75%{background-position:300% 35%}
+  100%{background-position:400% 50%}
+}
+
+/* Luz ambiental adicional, también animada, para evitar que el fondo parezca
+   una sola imagen estática. */
 body::before{
-  filter:blur(68px) saturate(118%) hue-rotate(var(--tasky-bg-hue,0deg))!important;
-  animation:none!important;
-  will-change:filter,transform!important;
+  background:
+    radial-gradient(circle at 12% 18%,rgba(18,201,232,.22),transparent 23%),
+    radial-gradient(circle at 82% 17%,rgba(182,80,232,.18),transparent 24%),
+    radial-gradient(circle at 86% 80%,rgba(255,135,95,.17),transparent 25%),
+    radial-gradient(circle at 14% 84%,rgba(52,199,89,.15),transparent 23%),
+    radial-gradient(circle at 52% 45%,rgba(244,195,78,.12),transparent 22%),
+    radial-gradient(circle at 48% 78%,rgba(236,95,163,.10),transparent 20%)!important;
+  background-size:170% 170%!important;
+  background-position:0% 50%!important;
+  filter:blur(68px) saturate(118%)!important;
+  animation:taskyAmbientV111 15s ease-in-out infinite alternate!important;
+  will-change:transform,opacity,background-position!important;
+}
+
+@keyframes taskyAmbientV111{
+  0%{
+    transform:translate3d(-3%,-1%,0) scale(1);
+    opacity:.48;
+    background-position:0% 50%;
+  }
+  25%{
+    transform:translate3d(1.5%,1%,0) scale(1.045);
+    opacity:.70;
+    background-position:35% 35%;
+  }
+  50%{
+    transform:translate3d(3%,2%,0) scale(1.08);
+    opacity:.62;
+    background-position:70% 65%;
+  }
+  75%{
+    transform:translate3d(-1%,1%,0) scale(1.05);
+    opacity:.74;
+    background-position:100% 35%;
+  }
+  100%{
+    transform:translate3d(2%,-2%,0) scale(1.08);
+    opacity:.52;
+    background-position:65% 60%;
+  }
+}
+
+/* El movimiento solicitado por el producto prevalece incluso con
+   prefers-reduced-motion, pero a una velocidad más tranquila. */
+@media (prefers-reduced-motion:reduce){
+  .pro-hero-title{
+    animation:taskyHeroGradientV111 12s linear infinite!important;
+  }
+  body{
+    animation:taskyBackgroundGradientV111 28s ease-in-out infinite!important;
+  }
+  body::before{
+    animation:taskyAmbientV111 24s ease-in-out infinite alternate!important;
+  }
 }
