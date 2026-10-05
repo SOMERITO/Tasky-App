@@ -4521,8 +4521,17 @@
       for (const cat of state.categories) {
         const task = cat.tasks.find(t => t.id === taskId);
         if (!task) continue;
+
         task.text = text;
         task.draft = text.trim() === "";
+
+        // El contador de la fase debe actualizarse en el mismo instante
+        // en que una tarea deja de ser borrador (o vuelve a quedar vacía).
+        // Antes el texto se guardaba correctamente, pero el contador podía
+        // quedarse con el valor anterior hasta un render posterior.
+        updateCategoryUI(cat.id);
+        updateSummaryUI();
+
         localDirty = true;
         persistLocal();
         scheduleSave("editar tarea", 700);
