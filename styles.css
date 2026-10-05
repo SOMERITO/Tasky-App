@@ -6577,3 +6577,192 @@ body::before{
   .bulk-actions-buttons{justify-content:center;flex-wrap:wrap}
   .bulk-action-btn{flex:1 1 92px}
 }
+
+
+/* =========================================================
+   TASKY V107 · refinamiento premium
+   ========================================================= */
+
+/* Selección múltiple: barra flotante fuera del flujo para que la pantalla
+   jamás salte al seleccionar/deseleccionar tareas. */
+.bulk-actions-bar{
+  position:fixed!important;
+  left:50%!important;
+  bottom:18px!important;
+  top:auto!important;
+  width:min(760px,calc(100vw - 28px))!important;
+  margin:0!important;
+  z-index:10050!important;
+  transform:translate(-50%,12px) scale(.985)!important;
+  transform-origin:center bottom!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
+.bulk-actions-bar.is-visible{
+  transform:translate(-50%,0) scale(1)!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+.bulk-actions-bar::before{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  border-radius:inherit!important;
+  pointer-events:none!important;
+  background:linear-gradient(105deg,rgba(10,132,255,.05),rgba(168,85,247,.06),rgba(52,199,89,.045),rgba(255,149,0,.055))!important;
+  background-size:260% 100%!important;
+  animation:taskyBulkSheenV107 7s ease-in-out infinite!important;
+}
+@keyframes taskyBulkSheenV107{
+  0%,100%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+}
+
+/* Botones de mes: flechas reales, sin dependencia de iconos externos. */
+.planning-month-btn .planning-arrow-symbol{
+  display:block!important;
+  font-size:22px!important;
+  line-height:1!important;
+  font-weight:500!important;
+  transform:translateY(-1px)!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+}
+.planning-month-btn:hover:not(:disabled) .planning-arrow-symbol{
+  transform:translateY(-1px) scale(1.12)!important;
+}
+.planning-month-btn:active:not(:disabled) .planning-arrow-symbol{
+  transform:translateY(-1px) scale(.94)!important;
+}
+.planning-month-btn{
+  animation:taskyArrowIdleV107 3.4s ease-in-out infinite!important;
+}
+.planning-month-btn:nth-child(3){
+  animation-delay:.45s!important;
+}
+@keyframes taskyArrowIdleV107{
+  0%,100%{box-shadow:0 4px 13px rgba(15,23,42,.025)}
+  50%{box-shadow:0 8px 19px rgba(10,132,255,.07)}
+}
+
+/* Título más grande y con cambio cromático real y continuo. */
+.pro-hero-title{
+  font-size:clamp(48px,5.2vw,76px)!important;
+  line-height:.98!important;
+  letter-spacing:-.055em!important;
+  background-size:165% 100%!important;
+  animation:taskyHeroRainbowV107 6s linear infinite!important;
+  will-change:background-position,filter!important;
+}
+@keyframes taskyHeroRainbowV107{
+  0%{
+    background-position:0% 50%;
+    filter:hue-rotate(0deg);
+  }
+  20%{
+    background-position:40% 50%;
+    filter:hue-rotate(8deg);
+  }
+  40%{
+    background-position:80% 50%;
+    filter:hue-rotate(-7deg);
+  }
+  60%{
+    background-position:120% 50%;
+    filter:hue-rotate(10deg);
+  }
+  80%{
+    background-position:160% 50%;
+    filter:hue-rotate(-6deg);
+  }
+  100%{
+    background-position:200% 50%;
+    filter:hue-rotate(0deg);
+  }
+}
+
+/* Fondo: capas suaves que cambian realmente de tono mediante hue-rotate,
+   además del desplazamiento de las luces ambientales. */
+body{
+  animation:taskyBodyRainbowV107 14s ease-in-out infinite!important;
+  background-size:180% 180%!important;
+  background-position:0% 50%!important;
+  will-change:background-position!important;
+}
+@keyframes taskyBodyRainbowV107{
+  0%{background-position:0% 50%}
+  25%{background-position:45% 35%}
+  50%{background-position:100% 65%}
+  75%{background-position:55% 40%}
+  100%{background-position:0% 50%}
+}
+body::before{
+  animation:taskyAmbientRainbowV107 10s ease-in-out infinite alternate!important;
+  will-change:transform,opacity,filter,background-position!important;
+  background-size:180% 180%!important;
+}
+@keyframes taskyAmbientRainbowV107{
+  0%{
+    transform:translate3d(-3%,0,0) scale(1);
+    opacity:.58;
+    filter:blur(66px) saturate(115%) hue-rotate(0deg);
+    background-position:0% 50%;
+  }
+  25%{
+    transform:translate3d(1%,-1%,0) scale(1.05);
+    opacity:.82;
+    filter:blur(66px) saturate(123%) hue-rotate(45deg);
+    background-position:28% 42%;
+  }
+  50%{
+    transform:translate3d(3%,2%,0) scale(1.09);
+    opacity:.74;
+    filter:blur(66px) saturate(130%) hue-rotate(90deg);
+    background-position:58% 62%;
+  }
+  75%{
+    transform:translate3d(-1%,1%,0) scale(1.06);
+    opacity:.88;
+    filter:blur(66px) saturate(123%) hue-rotate(180deg);
+    background-position:82% 38%;
+  }
+  100%{
+    transform:translate3d(2%,-2%,0) scale(1.085);
+    opacity:.66;
+    filter:blur(66px) saturate(118%) hue-rotate(270deg);
+    background-position:100% 50%;
+  }
+}
+
+/* Fases completamente reprogramadas: identidad naranja + animación sutil. */
+.rescheduled-phase-card{
+  animation:taskyRescheduledPhaseV107 .48s cubic-bezier(.22,1,.36,1) both!important;
+}
+@keyframes taskyRescheduledPhaseV107{
+  from{opacity:.82;transform:translateY(5px)}
+  to{opacity:1;transform:none}
+}
+
+/* La selección visual nunca debe hacer saltar el viewport. */
+.task-item.is-selected{
+  scroll-margin-block:24px!important;
+}
+
+/* La etiqueta de fecha reprogramada es informativa y no editable. */
+.task-rescheduled-date,
+.rescheduled-task-meta,
+.card-meta,
+.card-progress-value{
+  -webkit-user-select:none!important;
+  user-select:none!important;
+}
+
+@media (max-width:760px){
+  .bulk-actions-bar{
+    bottom:12px!important;
+    width:calc(100vw - 20px)!important;
+  }
+  .pro-hero-title{
+    font-size:clamp(42px,11vw,62px)!important;
+  }
+}
