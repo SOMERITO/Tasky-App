@@ -3302,13 +3302,14 @@
       const task = { id: uid("task"), text: "", date: today(), draft: true, repeat: false, repeatDays: [], repeatCount: 0, lastCompletedAt: null };
       cat.tasks.push(task);
 
+      let createdItem = null;
       const list = document.querySelector(`.task-list[data-category-id="${cssEscapeSafe(categoryId)}"]`);
       if (!list) {
         render();
       } else {
-        const item = buildTaskItem(task, activeSearch.trim().toLowerCase(), false);
-        item.classList.add('task-enter');
-        list.appendChild(item);
+        createdItem = buildTaskItem(task, activeSearch.trim().toLowerCase(), false);
+        createdItem.classList.add('task-enter');
+        list.appendChild(createdItem);
         refreshIcons();
         // La tarea nueva entra directamente al DOM, así que debemos conectar
         // su asa de arrastre sin esperar a un render completo.
@@ -3322,19 +3323,29 @@
       // Agregar una tarea NO debe reordenar ni desplazar la fase.
       // La posición elegida por el usuario se conserva intacta, incluso
       // cuando la fase pasa de "sin trabajo" a "con trabajo".
-      persistLocal();
       updateCategoryUI(categoryId);
       updateSummaryUI();
       refreshIcons();
       scheduleSave("nueva tarea");
 
-      requestAnimationFrame(() => {
-        const node = document.querySelector(`[data-task-id="${cssEscapeSafe(task.id)}"] .task-input`);
-        if (node) {
-          resizeSingleTextarea(node);
+      // El foco pasa inmediatamente al nuevo redactor. La segunda llamada
+      // en el frame siguiente protege el foco frente a renders/actualizaciones
+      // que puedan ocurrir durante el mismo ciclo del navegador.
+      const focusNewTaskInput = () => {
+        const node = createdItem?.querySelector(".task-input")
+          || document.querySelector(`[data-task-id="${cssEscapeSafe(task.id)}"] .task-input`);
+        if (!node) return;
+        resizeSingleTextarea(node);
+        try {
           node.focus({ preventScroll: true });
+        } catch (_) {
+          node.focus();
         }
-      });
+      };
+
+      focusNewTaskInput();
+      requestAnimationFrame(focusNewTaskInput);
+
       softHaptic(15);
       playTaskySound("add");
 
@@ -4606,10 +4617,30 @@
     function handleTaskKeydown(event, textarea) {
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
+        event.stopPropagation();
         const item = textarea.closest(".task-item");
         const list = item?.closest(".task-list");
         const catId = list?.dataset.categoryId;
-        if (catId) addTask(catId);
+        if (catId) {
+          const newTask = addTask(catId);
+          // Refuerzo específico para Enter: el cursor debe quedar listo
+          // para escribir inmediatamente la siguiente tarea.
+          if (newTask) {
+            requestAnimationFrame(() => {
+              const nextInput = document.querySelector(
+                `[data-task-id="${cssEscapeSafe(newTask.id)}"] .task-input`
+              );
+              if (nextInput) {
+                resizeSingleTextarea(nextInput);
+                try {
+                  nextInput.focus({ preventScroll: true });
+                } catch (_) {
+                  nextInput.focus();
+                }
+              }
+            });
+          }
+        }
       } else if (event.key === "Escape") {
         event.preventDefault();
         const item = textarea.closest(".task-item");
