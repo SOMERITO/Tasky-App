@@ -7133,3 +7133,62 @@ body::before{
     animation:taskyAnimatedAmbientV117 26s ease-in-out infinite alternate!important;
   }
 }
+
+
+/* =========================================================
+   TASKY · VOL. 118 · COLOR QUE CAMBIA, NO BLOQUES QUE SE DESPLAZAN
+   ========================================================= */
+
+/* El fondo conserva una sola composición espacial. Sus tonalidades
+   cambian de forma continua mediante una variable de matiz global,
+   evitando que una nueva franja cromática parezca entrar por un lado. */
+body{
+  --tasky-pastel-hue:var(--tasky-bg-hue,0deg);
+  background-image:linear-gradient(125deg,
+    hsl(calc(195deg + var(--tasky-pastel-hue)) 72% 97%) 0%,
+    hsl(calc(145deg + var(--tasky-pastel-hue)) 62% 97%) 14%,
+    hsl(calc(48deg + var(--tasky-pastel-hue)) 74% 96%) 28%,
+    hsl(calc(335deg + var(--tasky-pastel-hue)) 66% 97%) 42%,
+    hsl(calc(260deg + var(--tasky-pastel-hue)) 62% 97%) 56%,
+    hsl(calc(205deg + var(--tasky-pastel-hue)) 68% 97%) 70%,
+    hsl(calc(102deg + var(--tasky-pastel-hue)) 58% 97%) 84%,
+    hsl(calc(25deg + var(--tasky-pastel-hue)) 70% 97%) 100%
+  )!important;
+  background-repeat:no-repeat!important;
+  background-size:100% 100%!important;
+  background-position:0 0!important;
+  background-attachment:scroll!important;
+  animation:none!important;
+  transition:background-image .12s linear!important;
+  will-change:background-image!important;
+}
+
+/* La capa ambiental acompaña el mismo cambio cromático sin desplazar
+   manchas de color de una zona a otra. Solo respira con transform/opacity. */
+body::before{
+  filter:blur(72px) saturate(112%) hue-rotate(var(--tasky-bg-hue,0deg))!important;
+  animation:taskyAmbientBreathV118 16s ease-in-out infinite alternate!important;
+  background-position:50% 50%!important;
+  will-change:transform,opacity,filter!important;
+}
+
+@keyframes taskyAmbientBreathV118{
+  0%{transform:translate3d(-1.5%,-1%,0) scale(1);opacity:.46}
+  50%{transform:translate3d(1.2%,1%,0) scale(1.045);opacity:.62}
+  100%{transform:translate3d(-.5%,.5%,0) scale(1.02);opacity:.52}
+}
+
+/* =========================================================
+   TASKY · VOL. 118 · FOCO NATIVO EN LA SIGUIENTE TAREA
+   ========================================================= */
+.task-item.task-enter .task-input{
+  caret-color:var(--primary)!important;
+}
+
+@media (prefers-reduced-motion:reduce){
+  /* El color cromático sigue cambiando porque lo gobierna el motor JS,
+     mientras que la respiración ambiental se hace más lenta. */
+  body::before{
+    animation:taskyAmbientBreathV118 28s ease-in-out infinite alternate!important;
+  }
+}
