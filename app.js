@@ -37,7 +37,7 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 107;
+    const APP_VERSION = 108;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
@@ -6189,9 +6189,9 @@
       normalizeQuoteList(BUILTIN_MOTIVATIONAL_QUOTES);
 
     const QUOTE_SOURCE = "quotes.json";
-    const QUOTE_CACHE_KEY = "tasky_quotes_cache_v107";
-    const QUOTE_HISTORY_KEY = "tasky_quote_history_v107";
-    const QUOTE_INTERVAL_MS = 18 * 1000;
+    const QUOTE_CACHE_KEY = "tasky_quotes_cache_v108";
+    const QUOTE_HISTORY_KEY = "tasky_quote_history_v108";
+    const QUOTE_INTERVAL_MS = 60 * 1000;
     const QUOTE_HISTORY_DAYS = 60;
     const QUOTE_LOAD_TIMEOUT = 6500;
 
@@ -6256,7 +6256,7 @@
           .trim()
           .toLowerCase();
 
-        if (normalizedAuthor === "tasky" || normalizedAuthor === "tasky app" || normalizedAuthor === "tasky-app") {
+        if (normalizedAuthor === "tasky" || normalizedAuthor === "tasky app" || normalizedAuthor === "tasky-app" || normalizedAuthor === "reflexion" || normalizedAuthor === "reflexión") {
           continue;
         }
 
@@ -7522,4 +7522,60 @@
     }
     BUILTIN_MOTIVATIONAL_QUOTES.push(...TASKY_V107_GENERATED_QUOTES);
     CLEAN_BUILTIN_MOTIVATIONAL_QUOTES.push(...TASKY_V107_GENERATED_QUOTES);
+    /* TASKY V108 · Fallback de frases con autor identificado */
+    const TASKY_V108_VERIFIED_FALLBACK_QUOTES = [
+      { text: 'Admira a los que han emprendido cosas grandes aunque hayan fracasado.', author: 'Séneca' },
+      { text: 'El trabajo es el alimento de las almas nobles.', author: 'Séneca' },
+      { text: 'No nos atrevemos a muchas cosas porque son difíciles, pero son difíciles porque no nos atrevemos a hacerlas.', author: 'Séneca' },
+      { text: 'Nuestra naturaleza está en la acción. El reposo presagia la muerte.', author: 'Séneca' },
+      { text: 'Por la dificultad se llega a las estrellas.', author: 'Séneca' },
+      { text: 'Hace falta toda una vida para aprender a vivir.', author: 'Séneca' },
+      { text: 'Debemos rehuir la amistad de los malos y la enemistad de los buenos.', author: 'Epicteto' },
+      { text: 'El deseo y la felicidad no pueden vivir juntos.', author: 'Epicteto' },
+      { text: 'La adversidad no es una desgracia, antes bien, el sufrirla con grandeza de ánimo es una dicha.', author: 'Epicteto' },
+      { text: 'Las ocasiones son diferentes, no lo es el uso que se hace de ellas.', author: 'Epicteto' },
+      { text: 'Lo que perturba al hombre no son las cosas, sino los juicios relativos a las cosas.', author: 'Epicteto' },
+      { text: 'Los hábitos contraídos no se corrigen sino con hábitos opuestos.', author: 'Epicteto' },
+      { text: 'La conciencia vale por mil testigos.', author: 'Marco Aurelio' },
+      { text: 'El tiempo es como un río, formado por los hechos, que adquiere violenta corriente.', author: 'Marco Aurelio' },
+      { text: 'La falta de cuidado hace más daño que la falta de ciencia.', author: 'Benjamin Franklin' },
+      { text: 'La pereza hace que todo sea difícil; el trabajo lo vuelve todo fácil.', author: 'Benjamin Franklin' },
+      { text: 'Las puertas de la sabiduría nunca están cerradas.', author: 'Benjamin Franklin' },
+      { text: 'Abandonar puede tener justificación, abandonarse no la tiene jamás.', author: 'Ralph Waldo Emerson' },
+      { text: 'La confianza en uno mismo es el primer secreto del éxito.', author: 'Ralph Waldo Emerson' },
+      { text: 'El pensamiento es la semilla de la acción.', author: 'Ralph Waldo Emerson' },
+      { text: 'No vayas por donde el camino te lleve. Ve en cambio por donde no hay camino, y deja rastro.', author: 'Ralph Waldo Emerson' },
+      { text: 'Es duro caer, pero es peor todavía no haber intentado nunca subir.', author: 'Theodore Roosevelt' },
+      { text: 'El futuro pertenece a quienes creen en la belleza de sus sueños.', author: 'Eleanor Roosevelt' },
+      { text: 'El éxito depende menos de las ayudas externas que de la confianza en sí mismo.', author: 'Abraham Lincoln' },
+      { text: 'Siempre parece imposible hasta que se hace.', author: 'Nelson Mandela' },
+      { text: 'Da el primer paso con fe. No necesitas ver toda la escalera, solo el primer paso.', author: 'Martin Luther King Jr.' },
+      { text: 'Actuar es fácil, pensar es difícil; actuar según se piensa es aún más difícil.', author: 'Johann Wolfgang von Goethe' },
+      { text: 'Ambición y amor son las alas de las grandes acciones.', author: 'Johann Wolfgang von Goethe' },
+      { text: 'Actúa como si lo que haces marca la diferencia. Lo hace.', author: 'William James' },
+      { text: 'La acción puede no siempre traer felicidad, pero no hay felicidad sin acción.', author: 'William James' },
+      { text: 'La paciencia tiene más poder que la fuerza.', author: 'Plutarco' },
+      { text: 'El cerebro no es un vaso por llenar, sino una lámpara por encender.', author: 'Plutarco' },
+      { text: 'El camino a todas las cosas grandes pasa por el silencio.', author: 'Friedrich Nietzsche' },
+      { text: 'Todo lo que no me hace morir me hace más fuerte.', author: 'Friedrich Nietzsche' },
+      { text: 'Comprender es el primer paso; vivir, el segundo.', author: 'Victor Hugo' },
+      { text: 'El futuro tiene muchos nombres. Para los débiles es lo inalcanzable. Para los temerosos, lo desconocido. Para los valientes es la oportunidad.', author: 'Victor Hugo' },
+      { text: 'La condición esencial de la felicidad del ser humano es el trabajo.', author: 'León Tolstói' },
+      { text: 'La única intención de la vida es servir al género humano.', author: 'León Tolstói' },
+      { text: 'La gota horada la piedra, no por su fuerza, sino por su constancia.', author: 'Ovidio' },
+      { text: 'Si el hombre fuera constante, sería perfecto.', author: 'William Shakespeare' },
+      { text: 'Aprender sin pensar es inútil. Pensar sin aprender, peligroso.', author: 'Confucio' },
+      { text: 'El que vence a los otros es fuerte. El que se vence a sí mismo es poderoso.', author: 'Lao-Tsé' },
+      { text: 'El éxito es fácil de obtener. Lo difícil es merecerlo.', author: 'Albert Camus' },
+      { text: 'El genio se compone de un 2 % de talento y un 98 % de perseverante aplicación.', author: 'Beethoven' },
+      { text: 'El valor es bueno, pero la perseverancia es mejor.', author: 'Theodor Fontane' },
+      { text: 'Perseverar en el cumplimiento del deber y guardar silencio es la mejor respuesta a la calumnia.', author: 'George Washington' },
+      { text: 'Caminante, son tus huellas el camino y nada más; caminante, no hay camino, se hace camino al andar.', author: 'Antonio Machado' },
+      { text: 'El camino hacia el éxito se encuentra siempre en construcción.', author: 'Lily Tomlin' },
+      { text: 'El éxito es hijo de la perseverancia y firmeza en el trabajo.', author: 'Orison Swett Marden' }
+    ];
+    BUILTIN_MOTIVATIONAL_QUOTES.length = 0;
+    BUILTIN_MOTIVATIONAL_QUOTES.push(...TASKY_V108_VERIFIED_FALLBACK_QUOTES);
+    CLEAN_BUILTIN_MOTIVATIONAL_QUOTES.length = 0;
+    CLEAN_BUILTIN_MOTIVATIONAL_QUOTES.push(...normalizeQuoteList(TASKY_V108_VERIFIED_FALLBACK_QUOTES));
     init();
