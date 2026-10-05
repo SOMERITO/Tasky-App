@@ -7192,3 +7192,48 @@ body::before{
     animation:taskyAmbientBreathV118 28s ease-in-out infinite alternate!important;
   }
 }
+
+/* =========================================================
+   TASKY · VOL. 119 · FONDO CROMÁTICO CONTINUO
+   ========================================================= */
+html{background:#F5F7FB!important}
+body{
+  position:relative!important;
+  isolation:isolate!important;
+  background:#F5F7FB!important;
+  background-image:none!important;
+  background-position:0 0!important;
+  background-size:auto!important;
+  background-attachment:scroll!important;
+  transition:none!important;
+  overflow-x:hidden!important;
+}
+body::after{
+  content:""!important;
+  position:fixed!important;
+  inset:0!important;
+  z-index:-2!important;
+  pointer-events:none!important;
+  background:linear-gradient(125deg,#E9F9FF 0%,#EEFDF4 14%,#FFFBEA 28%,#FFF0F7 42%,#F5EEFF 56%,#EAF7FF 70%,#F2FFF1 84%,#FFF2E8 100%)!important;
+  background-size:100% 100%!important;
+  background-repeat:no-repeat!important;
+  background-position:center!important;
+  filter:hue-rotate(var(--tasky-bg-hue,0deg)) saturate(103%)!important;
+  transform:translateZ(0)!important;
+  will-change:filter!important;
+  transition:none!important;
+}
+body::before{
+  animation:taskyAmbientBreathV119 18s ease-in-out infinite alternate!important;
+  filter:blur(74px) saturate(108%) hue-rotate(var(--tasky-bg-hue,0deg))!important;
+  background-position:50% 50%!important;
+  background-size:120% 120%!important;
+  opacity:.34!important;
+  will-change:transform,opacity,filter!important;
+}
+@keyframes taskyAmbientBreathV119{
+  0%{transform:translate3d(-.6%,-.4%,0) scale(1);opacity:.28}
+  50%{transform:translate3d(.5%,.4%,0) scale(1.025);opacity:.40}
+  100%{transform:translate3d(-.3%,.2%,0) scale(1.012);opacity:.31}
+}
+.activity-card.section-moved{animation:none!important}
