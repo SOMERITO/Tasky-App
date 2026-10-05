@@ -7043,3 +7043,25 @@ body::before{
     animation:taskyAmbientV111 24s ease-in-out infinite alternate!important;
   }
 }
+
+
+/* =========================================================
+   TASKY · VOL. 116 · ORDEN VISUAL Y POSICIÓN ESTABLE
+   ========================================================= */
+
+/* Crear una tarea no debe cambiar la posición manual de su fase.
+   El JS V116 ya evita el reordenamiento; esta regla solo mantiene
+   el orden visual del tablero sin añadir movimientos CSS. */
+
+/* "Tu día, tu orden." debe alinearse con el inicio de las frases,
+   no centrarse dentro del bloque del hero. */
+.pro-hero-row > div:first-child{
+  text-align:left!important;
+  justify-self:start!important;
+}
+
+.pro-hero-title{
+  margin-left:0!important;
+  margin-right:0!important;
+  text-align:left!important;
+}
