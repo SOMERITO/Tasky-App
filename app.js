@@ -3135,6 +3135,7 @@
       const pct = todayTotal ? Math.round((completedToday / todayTotal) * 100) : 0;
 
       const pendingPill = card.querySelector('.card-meta .pill:first-child');
+      const pendingCount = card.querySelector('.category-pending-count');
       const meta = card.querySelector('.card-meta');
       let rescheduledPill = card.querySelector('.rescheduled-pill');
       const percentPill = card.querySelector('.card-meta .pill:last-child');
@@ -3142,6 +3143,13 @@
       const fraction = card.querySelector('.card-progress-value');
 
       if (pendingPill) pendingPill.textContent = `${visiblePending} pendiente${visiblePending === 1 ? '' : 's'}`;
+      if (pendingCount) {
+        pendingCount.textContent = String(visiblePending);
+        const pendingLabel = visiblePending + " tarea" + (visiblePending === 1 ? "" : "s") + " pendiente" + (visiblePending === 1 ? "" : "s");
+        pendingCount.title = pendingLabel;
+        pendingCount.setAttribute("aria-label", pendingLabel);
+      }
+
       if (deferredToday && !rescheduledPill && meta) {
         rescheduledPill = document.createElement('span');
         rescheduledPill.className = 'pill rescheduled-pill';
@@ -4318,9 +4326,8 @@
           persistLocal();
           localDirty = true;
 
-          // Si la fase ya no tiene trabajo para hoy, se envía al final,
-          // igual que una fase cuyas tareas normales fueron completadas.
-          const movedToBottom = moveCompletedCategoryToBottom(cat.id);
+          // Completar una tarea no cambia nunca la posición manual de la fase.
+          // La tarjeta permanece exactamente donde la dejó el usuario.
 
           updateCompletedCardUI();
           updateCategoryUI(cat.id);
@@ -4328,11 +4335,7 @@
           updateTaskHeights();
           refreshIcons();
 
-          scheduleSave(
-            movedToBottom
-              ? "completar tarea repetida y reordenar fase"
-              : "completar tarea repetida"
-          );
+          scheduleSave("completar tarea repetida");
 
           softHaptic(28);
           playTaskySound("complete");
@@ -4380,18 +4383,14 @@
         localDirty = true;
         updateCategoryUI(cat.id);
 
-        const movedToBottom = moveCompletedCategoryToBottom(cat.id);
+        // Completar una tarea no cambia nunca la posición manual de la fase.
+        // Eliminamos aquí el antiguo reordenamiento automático.
         updateSummaryUI();
-        scheduleSave(movedToBottom ? "completar tarea y reordenar fase" : "completar tarea");
+        scheduleSave("completar tarea");
 
         softHaptic(28);
         playTaskySound("complete");
-        toast(
-          movedToBottom
-            ? "Tarea completada · Fase movida al final"
-            : "Tarea completada ✓",
-          movedToBottom ? "arrow-down-to-line" : "circle-check"
-        );
+        toast("Tarea completada ✓", "circle-check");
         maybeCelebrateCompletionMilestone();
         return;
       }
