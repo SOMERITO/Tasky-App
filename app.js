@@ -7641,42 +7641,44 @@
     BUILTIN_MOTIVATIONAL_QUOTES.push(...TASKY_V108_VERIFIED_FALLBACK_QUOTES);
     CLEAN_BUILTIN_MOTIVATIONAL_QUOTES.length = 0;
     CLEAN_BUILTIN_MOTIVATIONAL_QUOTES.push(...normalizeQuoteList(TASKY_V108_VERIFIED_FALLBACK_QUOTES));
-    init();
-
     /* =========================================================
-       TASKY · VOL. 110 · MOTOR REAL DE COLOR EN VIVO
-       La variación cromática del hero y del fondo se ejecuta
-       mediante requestAnimationFrame, independiente de que el
-       navegador haya desactivado las animaciones CSS.
+       TASKY · VOL. 117 · MOTOR CROMÁTICO DIRECTO
+       El color se actualiza mediante requestAnimationFrame y se
+       conecta directamente con background-position. Así no
+       dependemos de que el navegador ejecute CSS animation.
        ========================================================= */
-    (function taskyLiveColorMotionV110(){
+    (function taskyLiveColorMotionV117(){
       const startedAt = performance.now();
+      let titleEl = null;
+      let bodyEl = null;
 
       function tick(now){
         const elapsed = (now - startedAt) / 1000;
-        const title = document.getElementById('heroTitle');
-        const body = document.body;
-        const root = document.documentElement;
+        titleEl = titleEl || document.getElementById('heroTitle');
+        bodyEl = bodyEl || document.body;
 
-        if (title) {
-          const heroPos = (elapsed * 30) % 300;
-          const hue = Math.sin(elapsed * 0.72) * 24;
-          title.style.setProperty('--tasky-hero-pos', heroPos.toFixed(2) + '%');
-          title.style.setProperty('--tasky-title-hue', hue.toFixed(2) + 'deg');
+        if (titleEl) {
+          /* 0 → 300 → 0: recorrido continuo y suave por todo el arcoíris. */
+          const heroPos = (elapsed * 27) % 300;
+          const hue = Math.sin(elapsed * 0.55) * 16;
+          titleEl.style.setProperty('--tasky-hero-pos', heroPos.toFixed(2) + '%');
+          titleEl.style.setProperty('--tasky-title-hue', hue.toFixed(2) + 'deg');
         }
 
-        if (body) {
-          const bodyX = (elapsed * 16) % 300;
-          const bodyY = 50 + Math.sin(elapsed * 0.34) * 22;
-          body.style.setProperty('--tasky-body-pos', bodyX.toFixed(2) + '%');
-          body.style.setProperty('--tasky-body-y', bodyY.toFixed(2) + '%');
+        if (bodyEl) {
+          /* El fondo se desplaza en X y oscila muy suavemente en Y. */
+          const bodyX = (elapsed * 11) % 300;
+          const bodyY = 50 + Math.sin(elapsed * 0.22) * 18;
+          bodyEl.style.setProperty('--tasky-body-pos', bodyX.toFixed(2) + '%');
+          bodyEl.style.setProperty('--tasky-body-y', bodyY.toFixed(2) + '%');
         }
-
-        const backgroundHue = (elapsed * 8) % 360;
-        root.style.setProperty('--tasky-bg-hue', backgroundHue.toFixed(2) + 'deg');
 
         window.requestAnimationFrame(tick);
       }
 
+      /* Arranca antes de init() para que un fallo de inicialización no pueda
+         dejar el sistema cromático sin iniciar. */
       window.requestAnimationFrame(tick);
     })();
+
+    init();
