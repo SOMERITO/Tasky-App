@@ -37,8 +37,11 @@
        - DOM NO es la fuente de verdad
        ========================================================= */
 
-    const APP_VERSION = 108;
+    const APP_VERSION = 109;
     const APP_VERSION_LABEL = `V${APP_VERSION}`;
+    const APP_VOLUME_LABEL = `Vol. ${APP_VERSION}`;
+    // Registro central de versión: usar APP_VOLUME_LABEL para identificar
+    // inequívocamente cada modificación funcional de Tasky en el código.
     // Version visible y persistencia compatibles con versiones anteriores.
     const STORAGE_KEY = "tasky_pro_v26";
     const THEME_KEY = "tasky_theme";
