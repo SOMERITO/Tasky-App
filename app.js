@@ -187,11 +187,17 @@
 
     function taskCountPending() {
       const now = today();
+      const completedIds = new Set(
+        (state.completed || [])
+          .map(task => String(task?.id || ""))
+          .filter(Boolean)
+      );
 
       return state.categories.reduce((sum, cat) => {
         return sum + cat.tasks.filter(task =>
           !task.draft &&
           String(task.text || "").trim() &&
+          !completedIds.has(String(task.id || "")) &&
           task.date &&
           task.date <= now &&
           !isRepeatCompletedToday(task)
@@ -276,10 +282,32 @@
     function overdueTasks() {
       const now = today();
       const result = [];
+      const completedIds = new Set(
+        (state.completed || [])
+          .map(task => String(task?.id || ""))
+          .filter(Boolean)
+      );
+
       for (const cat of state.categories) {
-        for (const task of cat.tasks) {
-          if (!task.draft && task.text.trim() && task.date && task.date < now && !(task.rescheduled && task.date === now)) {
-            result.push({ ...task, originCat: cat.id, originTitle: cat.title });
+        for (const task of cat.tasks || []) {
+          const taskId = String(task?.id || "");
+          if (!task || task.draft || !String(task.text || "").trim()) continue;
+
+          // Una tarea que ya existe en "Completadas" jamás debe volver a
+          // aparecer como atrasada, aunque una copia residual quede en
+          // alguna fase por una sincronización o restauración anterior.
+          if (completedIds.has(taskId)) continue;
+
+          if (
+            task.date &&
+            task.date < now &&
+            !(task.rescheduled && task.date === now)
+          ) {
+            result.push({
+              ...task,
+              originCat: cat.id,
+              originTitle: cat.title
+            });
           }
         }
       }
