@@ -4013,18 +4013,26 @@
       const input = document.getElementById("rescheduleDateInput");
       const label = document.getElementById("planningSelectionLabel");
       const hint = document.getElementById("rescheduleDateHint");
+      const current = today();
 
-      if (input) input.value = planningCalendarSelected || "";
+      // Al abrir el calendario, hoy funciona como referencia visual.
+      // No se escribe en el input porque el mínimo permitido es mañana.
+      if (input) input.value = planningCalendarSelected > current ? planningCalendarSelected : "";
 
       const formatted = planningCalendarSelected
         ? formatDateLong(planningCalendarSelected)
         : "Selecciona una fecha";
 
-      if (label) label.textContent = formatted;
+      if (label) {
+        label.textContent = planningCalendarSelected === current
+          ? "Hoy · " + formatted
+          : formatted;
+      }
+
       if (hint) {
-        hint.textContent = planningCalendarSelected
-          ? "Se programará para " + formatted + "."
-          : "Selecciona una fecha futura.";
+        hint.textContent = planningCalendarSelected === current
+          ? "Hoy está marcado como referencia. Elige una fecha futura para reprogramar."
+          : "Selecciona una fecha futura. Se guardará automáticamente.";
       }
     }
 
@@ -4172,15 +4180,17 @@
       if (!input || !name || !hidden) return;
 
       const minimum = addDays(today(), 1);
-      const selected = task.date && task.date > today() ? task.date : minimum;
 
       hidden.value = taskId;
       input.min = minimum;
-      input.value = selected;
+      input.value = "";
       name.textContent = task.text?.trim() || "Tarea sin nombre";
 
-      planningCalendarSelected = selected;
-      const date = parseISODateLocal(selected);
+      // La apertura siempre parte visualmente desde HOY.
+      // Si la tarea ya estaba reprogramada, la nueva elección reemplazará
+      // la fecha anterior al seleccionar otra fecha futura.
+      planningCalendarSelected = today();
+      const date = parseISODateLocal(today());
       planningCalendarCursor = date
         ? new Date(date.getFullYear(), date.getMonth(), 1)
         : null;
@@ -4195,7 +4205,9 @@
       if (!hidden || !input) return;
 
       const taskId = hidden.value;
-      const targetDate = planningCalendarSelected || input.value;
+      const targetDate = (planningCalendarSelected && planningCalendarSelected > today())
+        ? planningCalendarSelected
+        : input.value;
 
       if (!taskId || !targetDate || targetDate <= today()) {
         toast("Elige una fecha futura para reprogramar la tarea.", "calendar-alert", "error");
@@ -5719,7 +5731,10 @@
           if (card) updateTitle(card.dataset.categoryId, target.value);
         }
         if (target.matches("#rescheduleDateInput")) {
-          if (target.value) selectPlanningDate(target.value);
+          if (target.value) {
+            selectPlanningDate(target.value);
+            saveRescheduleDate();
+          }
         }
       });
 
@@ -5782,7 +5797,14 @@
 
         const planningDateControl = event.target.closest("[data-planning-date]");
         if (planningDateControl && !planningDateControl.disabled) {
-          selectPlanningDate(planningDateControl.dataset.planningDate);
+          const selectedDate = planningDateControl.dataset.planningDate;
+          selectPlanningDate(selectedDate);
+
+          // Seleccionar una fecha futura confirma la nueva fecha y cierra
+          // inmediatamente el popup: no existe un segundo paso de "Guardar".
+          if (selectedDate > today()) {
+            window.setTimeout(() => saveRescheduleDate(), 0);
+          }
           return;
         }
 
