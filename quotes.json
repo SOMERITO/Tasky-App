@@ -1,0 +1,677 @@
+{
+  "version": 108,
+  "updatedAt": "2026-10-05",
+  "policy": "Solo frases con autor identificado. Se excluyen atribuciones internas como 'Tasky' y 'Reflexión'.",
+  "quotes": [
+    {
+      "text": "Admira a los que han emprendido cosas grandes aunque hayan fracasado.",
+      "author": "Séneca",
+      "category": "perseverancia"
+    },
+    {
+      "text": "Comienzan como vicios, y acaban como costumbres.",
+      "author": "Séneca",
+      "category": "hábitos"
+    },
+    {
+      "text": "El lenguaje de la verdad es simple.",
+      "author": "Séneca",
+      "category": "reflexión"
+    },
+    {
+      "text": "El que teme es un esclavo del miedo.",
+      "author": "Séneca",
+      "category": "fortaleza"
+    },
+    {
+      "text": "El trabajo es el alimento de las almas nobles.",
+      "author": "Séneca",
+      "category": "trabajo"
+    },
+    {
+      "text": "Enseñando se aprende.",
+      "author": "Séneca",
+      "category": "aprendizaje"
+    },
+    {
+      "text": "Estudiad, no por saber más, sino por saberlo mejor.",
+      "author": "Séneca",
+      "category": "aprendizaje"
+    },
+    {
+      "text": "No nos atrevemos a muchas cosas porque son difíciles, pero son difíciles porque no nos atrevemos a hacerlas.",
+      "author": "Séneca",
+      "category": "acción"
+    },
+    {
+      "text": "Nuestra naturaleza está en la acción. El reposo presagia la muerte.",
+      "author": "Séneca",
+      "category": "acción"
+    },
+    {
+      "text": "Por la dificultad se llega a las estrellas.",
+      "author": "Séneca",
+      "category": "superación"
+    },
+    {
+      "text": "La recompensa de una buena acción está en haberla hecho.",
+      "author": "Séneca",
+      "category": "acción"
+    },
+    {
+      "text": "Hace falta toda una vida para aprender a vivir.",
+      "author": "Séneca",
+      "category": "crecimiento"
+    },
+    {
+      "text": "La vida, si sabes emplearla, es larga.",
+      "author": "Séneca",
+      "category": "tiempo"
+    },
+    {
+      "text": "Apresúrate a vivir bien y piensa que cada día es, por sí solo, una vida.",
+      "author": "Séneca",
+      "category": "vida"
+    },
+    {
+      "text": "Debemos rehuir la amistad de los malos y la enemistad de los buenos.",
+      "author": "Epicteto",
+      "category": "carácter"
+    },
+    {
+      "text": "De no hablar sino cuando fuere preciso, raramente despegaríamos los labios.",
+      "author": "Epicteto",
+      "category": "disciplina"
+    },
+    {
+      "text": "Dos cosas hay que quitarle al hombre: la vanidad y la desconfianza.",
+      "author": "Epicteto",
+      "category": "carácter"
+    },
+    {
+      "text": "El deseo y la felicidad no pueden vivir juntos.",
+      "author": "Epicteto",
+      "category": "felicidad"
+    },
+    {
+      "text": "El error del anciano es que pretende enjuiciar el hoy con el criterio del ayer.",
+      "author": "Epicteto",
+      "category": "adaptación"
+    },
+    {
+      "text": "El tiempo libra a los necios de la aflicción y el buen juicio a los sanos.",
+      "author": "Epicteto",
+      "category": "sabiduría"
+    },
+    {
+      "text": "En la prosperidad es muy fácil encontrar amigos, en la adversidad no hay nada más difícil.",
+      "author": "Epicteto",
+      "category": "reflexión"
+    },
+    {
+      "text": "¿Es la libertad algo más que el derecho a vivir como se desee? Nada más.",
+      "author": "Epicteto",
+      "category": "libertad"
+    },
+    {
+      "text": "La adversidad no es una desgracia, antes bien, el sufrirla con grandeza de ánimo es una dicha.",
+      "author": "Epicteto",
+      "category": "fortaleza"
+    },
+    {
+      "text": "La cosa más difícil es conocernos a nosotros mismos. La más fácil, hablar mal de los demás.",
+      "author": "Epicteto",
+      "category": "autoconocimiento"
+    },
+    {
+      "text": "La felicidad consiste en ser libre, es decir, en no desear nada.",
+      "author": "Epicteto",
+      "category": "libertad"
+    },
+    {
+      "text": "Las ocasiones son diferentes, no lo es el uso que se hace de ellas.",
+      "author": "Epicteto",
+      "category": "actitud"
+    },
+    {
+      "text": "La verdad triunfa por sí misma, la mentira necesita siempre complicidad.",
+      "author": "Epicteto",
+      "category": "integridad"
+    },
+    {
+      "text": "Lo que perturba al hombre no son las cosas, sino los juicios relativos a las cosas.",
+      "author": "Epicteto",
+      "category": "perspectiva"
+    },
+    {
+      "text": "Los hábitos contraídos no se corrigen sino con hábitos opuestos.",
+      "author": "Epicteto",
+      "category": "hábitos"
+    },
+    {
+      "text": "Antes de empezar a hablar, procura que en tu rostro pueda leerse lo que vas a decir.",
+      "author": "Marco Aurelio",
+      "category": "comunicación"
+    },
+    {
+      "text": "La conciencia vale por mil testigos.",
+      "author": "Marco Aurelio",
+      "category": "integridad"
+    },
+    {
+      "text": "El tiempo es como un río, formado por los hechos, que adquiere violenta corriente.",
+      "author": "Marco Aurelio",
+      "category": "tiempo"
+    },
+    {
+      "text": "Todo lo que oyes es una opinión, no un hecho. Todo lo que ves es una perspectiva, no la verdad.",
+      "author": "Marco Aurelio",
+      "category": "perspectiva"
+    },
+    {
+      "text": "Tu vida es lo que tus pensamientos hacen de ella.",
+      "author": "Marco Aurelio",
+      "category": "mente"
+    },
+    {
+      "text": "La felicidad de tu vida depende de la calidad de tus pensamientos.",
+      "author": "Marco Aurelio",
+      "category": "mente"
+    },
+    {
+      "text": "A los veinte años, reina la voluntad; a los treinta, el ingenio, y a los cuarenta, el juicio.",
+      "author": "Benjamin Franklin",
+      "category": "crecimiento"
+    },
+    {
+      "text": "La falta de cuidado hace más daño que la falta de ciencia.",
+      "author": "Benjamin Franklin",
+      "category": "disciplina"
+    },
+    {
+      "text": "La felicidad no se produce por grandes golpes de fortuna, sino por pequeñas ventajas que ocurren todos los días.",
+      "author": "Benjamin Franklin",
+      "category": "felicidad"
+    },
+    {
+      "text": "La pereza anda tan despacio que la pobreza no tarda en alcanzarla.",
+      "author": "Benjamin Franklin",
+      "category": "disciplina"
+    },
+    {
+      "text": "La pereza hace que todo sea difícil; el trabajo lo vuelve todo fácil.",
+      "author": "Benjamin Franklin",
+      "category": "trabajo"
+    },
+    {
+      "text": "Las puertas de la sabiduría nunca están cerradas.",
+      "author": "Benjamin Franklin",
+      "category": "aprendizaje"
+    },
+    {
+      "text": "Las tres cosas más difíciles en este mundo son: guardar un secreto, perdonar un agravio y aprovechar el tiempo.",
+      "author": "Benjamin Franklin",
+      "category": "sabiduría"
+    },
+    {
+      "text": "Lo que empieza con cólera termina con vergüenza.",
+      "author": "Benjamin Franklin",
+      "category": "autocontrol"
+    },
+    {
+      "text": "Abandonar puede tener justificación, abandonarse no la tiene jamás.",
+      "author": "Ralph Waldo Emerson",
+      "category": "perseverancia"
+    },
+    {
+      "text": "Carácter firme es aquel que puede continuar sin éxitos.",
+      "author": "Ralph Waldo Emerson",
+      "category": "fortaleza"
+    },
+    {
+      "text": "El pensamiento es la floración; el lenguaje, el capullo; la acción, el fruto.",
+      "author": "Ralph Waldo Emerson",
+      "category": "acción"
+    },
+    {
+      "text": "El secreto de la educación está en el respeto al discípulo.",
+      "author": "Ralph Waldo Emerson",
+      "category": "aprendizaje"
+    },
+    {
+      "text": "La confianza en uno mismo es el primer secreto del éxito.",
+      "author": "Ralph Waldo Emerson",
+      "category": "empoderamiento"
+    },
+    {
+      "text": "El éxito consiste en obtener lo que se desea. La felicidad, en disfrutar de lo que se ha obtenido.",
+      "author": "Ralph Waldo Emerson",
+      "category": "éxito"
+    },
+    {
+      "text": "El pensamiento es la semilla de la acción.",
+      "author": "Ralph Waldo Emerson",
+      "category": "acción"
+    },
+    {
+      "text": "No vayas por donde el camino te lleve. Ve en cambio por donde no hay camino, y deja rastro.",
+      "author": "Ralph Waldo Emerson",
+      "category": "liderazgo"
+    },
+    {
+      "text": "Apunta por encima de la moralidad. No seas simplemente bueno; ser bueno para algo.",
+      "author": "Henry David Thoreau",
+      "category": "propósito"
+    },
+    {
+      "text": "Bienaventurado el mortal que no pierde un momento de la vida fugitiva en recordar el pasado.",
+      "author": "Henry David Thoreau",
+      "category": "tiempo"
+    },
+    {
+      "text": "El hombre más rico es aquel cuyos placeres son los más baratos.",
+      "author": "Henry David Thoreau",
+      "category": "felicidad"
+    },
+    {
+      "text": "No nacemos para hacer lo que es fácil, sino para hacer lo que es necesario.",
+      "author": "Henry David Thoreau",
+      "category": "propósito"
+    },
+    {
+      "text": "El arte es el camino del creador a su obra.",
+      "author": "Henry David Thoreau",
+      "category": "creatividad"
+    },
+    {
+      "text": "Es duro caer, pero es peor todavía no haber intentado nunca subir.",
+      "author": "Theodore Roosevelt",
+      "category": "superación"
+    },
+    {
+      "text": "El único hombre que nunca comete un error es el que nunca hace nada.",
+      "author": "Theodore Roosevelt",
+      "category": "acción"
+    },
+    {
+      "text": "Haz lo que puedas, con lo que tengas, donde estés.",
+      "author": "Theodore Roosevelt",
+      "category": "acción"
+    },
+    {
+      "text": "Habla suavemente y lleva un gran garrote; llegarás lejos.",
+      "author": "Theodore Roosevelt",
+      "category": "liderazgo"
+    },
+    {
+      "text": "El futuro pertenece a quienes creen en la belleza de sus sueños.",
+      "author": "Eleanor Roosevelt",
+      "category": "futuro"
+    },
+    {
+      "text": "Nadie puede hacerte sentir inferior sin tu consentimiento.",
+      "author": "Eleanor Roosevelt",
+      "category": "empoderamiento"
+    },
+    {
+      "text": "Haz una cosa que te asuste cada día.",
+      "author": "Eleanor Roosevelt",
+      "category": "valentía"
+    },
+    {
+      "text": "Casi todos podemos soportar la adversidad, pero si queréis probar el carácter de un hombre, dadle poder.",
+      "author": "Abraham Lincoln",
+      "category": "carácter"
+    },
+    {
+      "text": "El carácter es como un árbol, y la reputación como una sombra; el árbol es la verdadera cosa, la sombra, lo que pensamos de ella.",
+      "author": "Abraham Lincoln",
+      "category": "carácter"
+    },
+    {
+      "text": "El éxito depende menos de las ayudas externas que de la confianza en sí mismo.",
+      "author": "Abraham Lincoln",
+      "category": "empoderamiento"
+    },
+    {
+      "text": "Es difícil hacer a un hombre miserable mientras sienta que es digno de sí mismo.",
+      "author": "Abraham Lincoln",
+      "category": "autoestima"
+    },
+    {
+      "text": "Es más fácil reprimir el primer capricho que satisfacer todos los que le siguen.",
+      "author": "Abraham Lincoln",
+      "category": "autocontrol"
+    },
+    {
+      "text": "La pérdida de un enemigo no compensa la de un amigo.",
+      "author": "Abraham Lincoln",
+      "category": "reflexión"
+    },
+    {
+      "text": "Mejor es callar y que sospechen de tu poca sabiduría que hablar y eliminar cualquier duda sobre ello.",
+      "author": "Abraham Lincoln",
+      "category": "prudencia"
+    },
+    {
+      "text": "Del mismo modo que no sería un esclavo, tampoco sería un amo.",
+      "author": "Abraham Lincoln",
+      "category": "libertad"
+    },
+    {
+      "text": "Da y tendrás en abundancia.",
+      "author": "Lao-Tsé",
+      "category": "generosidad"
+    },
+    {
+      "text": "De dos luchadores, el pensador vence.",
+      "author": "Lao-Tsé",
+      "category": "sabiduría"
+    },
+    {
+      "text": "El agradecimiento es la memoria del corazón.",
+      "author": "Lao-Tsé",
+      "category": "gratitud"
+    },
+    {
+      "text": "El buen hombre es el maestro del malo, el mal hombre es la lección del bueno.",
+      "author": "Lao-Tsé",
+      "category": "aprendizaje"
+    },
+    {
+      "text": "El camino del hombre sabio se sigue sin luchar.",
+      "author": "Lao-Tsé",
+      "category": "sabiduría"
+    },
+    {
+      "text": "El que todo lo juzga fácil, encontrará muchas dificultades.",
+      "author": "Lao-Tsé",
+      "category": "prudencia"
+    },
+    {
+      "text": "El que vence a los otros es fuerte. El que se vence a sí mismo es poderoso.",
+      "author": "Lao-Tsé",
+      "category": "autodominio"
+    },
+    {
+      "text": "Gobierna mejor quien gobierna menos.",
+      "author": "Lao-Tsé",
+      "category": "liderazgo"
+    },
+    {
+      "text": "Aprende a vivir y sabrás morir.",
+      "author": "Confucio",
+      "category": "vida"
+    },
+    {
+      "text": "Aprender sin pensar es inútil. Pensar sin aprender, peligroso.",
+      "author": "Confucio",
+      "category": "aprendizaje"
+    },
+    {
+      "text": "Aprender sin reflexionar es malgastar la energía.",
+      "author": "Confucio",
+      "category": "aprendizaje"
+    },
+    {
+      "text": "A un gran ejército le pueden quitar su jefe, pero nadie puede robar a un solo hombre pobre su voluntad.",
+      "author": "Confucio",
+      "category": "voluntad"
+    },
+    {
+      "text": "Algún dinero evita preocupaciones; mucho, las atrae.",
+      "author": "Confucio",
+      "category": "sencillez"
+    },
+    {
+      "text": "La pereza camina tan despacio que no ha de esforzarse mucho la pobreza para alcanzarla.",
+      "author": "Confucio",
+      "category": "disciplina"
+    },
+    {
+      "text": "Amamos nuestro deseo, y no aquello que deseamos.",
+      "author": "Friedrich Nietzsche",
+      "category": "deseo"
+    },
+    {
+      "text": "Amo a quien quiere algo superior a él, aunque en tal empeño sucumba.",
+      "author": "Friedrich Nietzsche",
+      "category": "superación"
+    },
+    {
+      "text": "El camino a todas las cosas grandes pasa por el silencio.",
+      "author": "Friedrich Nietzsche",
+      "category": "disciplina"
+    },
+    {
+      "text": "La felicidad de sufrir es la que determina la sabiduría.",
+      "author": "Friedrich Nietzsche",
+      "category": "fortaleza"
+    },
+    {
+      "text": "La ventaja de la mala memoria es que se disfruta varias veces de las mismas cosas por primera vez.",
+      "author": "Friedrich Nietzsche",
+      "category": "perspectiva"
+    },
+    {
+      "text": "¿Qué dosis de verdad puede soportar un hombre?",
+      "author": "Friedrich Nietzsche",
+      "category": "verdad"
+    },
+    {
+      "text": "¿Qué te dice la conciencia? «Debes convertirte en lo que eres».",
+      "author": "Friedrich Nietzsche",
+      "category": "identidad"
+    },
+    {
+      "text": "Todo lo que no me hace morir me hace más fuerte.",
+      "author": "Friedrich Nietzsche",
+      "category": "fortaleza"
+    },
+    {
+      "text": "Actuar es fácil, pensar es difícil; actuar según se piensa es aún más difícil.",
+      "author": "Johann Wolfgang von Goethe",
+      "category": "acción"
+    },
+    {
+      "text": "Ambición y amor son las alas de las grandes acciones.",
+      "author": "Johann Wolfgang von Goethe",
+      "category": "ambición"
+    },
+    {
+      "text": "Caminar y ver su camino es el primer deber de un hombre.",
+      "author": "Johann Wolfgang von Goethe",
+      "category": "camino"
+    },
+    {
+      "text": "El talento se educa en la soledad y el carácter en la tempestad.",
+      "author": "Johann Wolfgang von Goethe",
+      "category": "carácter"
+    },
+    {
+      "text": "Quien en nombre de la libertad renuncia a ser el que tiene que ser, es un suicida en pie.",
+      "author": "Johann Wolfgang von Goethe",
+      "category": "libertad"
+    },
+    {
+      "text": "La libertad, como la vida, sólo la merece quien sabe conquistarla todos los días.",
+      "author": "Johann Wolfgang von Goethe",
+      "category": "libertad"
+    },
+    {
+      "text": "Actúa como si lo que haces marca la diferencia. Lo hace.",
+      "author": "William James",
+      "category": "acción"
+    },
+    {
+      "text": "El arte de ser sabio es conocer qué pasar por alto.",
+      "author": "William James",
+      "category": "sabiduría"
+    },
+    {
+      "text": "El mayor descubrimiento de cualquier generación es que un humano puede alterar su vida cambiando su actitud.",
+      "author": "William James",
+      "category": "crecimiento"
+    },
+    {
+      "text": "La acción puede no siempre traer felicidad, pero no hay felicidad sin acción.",
+      "author": "William James",
+      "category": "acción"
+    },
+    {
+      "text": "La mayor arma contra el estrés es nuestra capacidad para elegir un pensamiento sobre otro.",
+      "author": "William James",
+      "category": "mente"
+    },
+    {
+      "text": "Cree que vivir es valioso y tu creencia te ayudará a conseguirlo.",
+      "author": "William James",
+      "category": "vida"
+    },
+    {
+      "text": "La paciencia tiene más poder que la fuerza.",
+      "author": "Plutarco",
+      "category": "paciencia"
+    },
+    {
+      "text": "El amor nos enseña todas las virtudes.",
+      "author": "Plutarco",
+      "category": "virtudes"
+    },
+    {
+      "text": "El carácter de los hombres se conoce mejor por su discurso que por las facciones de su rostro.",
+      "author": "Plutarco",
+      "category": "carácter"
+    },
+    {
+      "text": "El cerebro no es un vaso por llenar, sino una lámpara por encender.",
+      "author": "Plutarco",
+      "category": "aprendizaje"
+    },
+    {
+      "text": "Disfrutar de todos los placeres es insensato, evitarlos, insensible.",
+      "author": "Plutarco",
+      "category": "equilibrio"
+    },
+    {
+      "text": "El único placer que no pueden arrebataros, es el de haber hecho una buena acción.",
+      "author": "Plutarco",
+      "category": "acción"
+    },
+    {
+      "text": "El juicio enlaza la amistad, el trato la hace agradable, y la ocasión la constituye útil.",
+      "author": "Plutarco",
+      "category": "relaciones"
+    },
+    {
+      "text": "El menos activo y más estúpido de todos los temores es el que produce la superstición.",
+      "author": "Plutarco",
+      "category": "miedos"
+    },
+    {
+      "text": "Aquel que duda y no busca es, a la vez, sumamente desgraciado y sumamente injusto.",
+      "author": "Blaise Pascal",
+      "category": "búsqueda"
+    },
+    {
+      "text": "La alegría es una pasión que no se puede considerar mala.",
+      "author": "Blaise Pascal",
+      "category": "felicidad"
+    },
+    {
+      "text": "Estando siempre dispuestos a ser felices, es inevitable no serlo alguna vez.",
+      "author": "Blaise Pascal",
+      "category": "felicidad"
+    },
+    {
+      "text": "El corazón tiene razones que la razón no conoce.",
+      "author": "Blaise Pascal",
+      "category": "reflexión"
+    },
+    {
+      "text": "Comprender es el primer paso; vivir, el segundo.",
+      "author": "Victor Hugo",
+      "category": "crecimiento"
+    },
+    {
+      "text": "Abrid escuelas para cerrar prisiones.",
+      "author": "Victor Hugo",
+      "category": "educación"
+    },
+    {
+      "text": "Amar es la mitad de creer.",
+      "author": "Victor Hugo",
+      "category": "amor"
+    },
+    {
+      "text": "El futuro tiene muchos nombres. Para los débiles es lo inalcanzable. Para los temerosos, lo desconocido. Para los valientes es la oportunidad.",
+      "author": "Victor Hugo",
+      "category": "futuro"
+    },
+    {
+      "text": "Aunque toda sociedad está basada en la intolerancia, todo progreso estriba en la tolerancia.",
+      "author": "George Bernard Shaw",
+      "category": "progreso"
+    },
+    {
+      "text": "Cómo nos hemos de portar, no depende de nuestra experiencia, sino de lo que esperamos.",
+      "author": "George Bernard Shaw",
+      "category": "actitud"
+    },
+    {
+      "text": "El éxito encubre mil desaciertos.",
+      "author": "George Bernard Shaw",
+      "category": "éxito"
+    },
+    {
+      "text": "La acción puede no siempre traer felicidad, pero no hay felicidad sin acción.",
+      "author": "George Bernard Shaw",
+      "category": "acción"
+    },
+    {
+      "text": "La condición esencial de la felicidad del ser humano es el trabajo.",
+      "author": "León Tolstói",
+      "category": "trabajo"
+    },
+    {
+      "text": "La dicha del hombre consiste en observar las reglas y condiciones por las cuales se consigue el bien de todos los hombres.",
+      "author": "León Tolstói",
+      "category": "virtud"
+    },
+    {
+      "text": "La disciplina es necesaria únicamente para los conquistadores.",
+      "author": "León Tolstói",
+      "category": "disciplina"
+    },
+    {
+      "text": "La felicidad consiste en vivir en el seno de la naturaleza.",
+      "author": "León Tolstói",
+      "category": "felicidad"
+    },
+    {
+      "text": "La única intención de la vida es servir al género humano.",
+      "author": "León Tolstói",
+      "category": "propósito"
+    },
+    {
+      "text": "La verdad debe imponerse sin violencia.",
+      "author": "León Tolstói",
+      "category": "integridad"
+    },
+    {
+      "text": "La gota horada la piedra, no por su fuerza, sino por su constancia.",
+      "author": "Ovidio",
+      "category": "constancia"
+    },
+    {
+      "text": "Si eres inconstante como el agua, no llegarás a la cumbre.",
+      "author": "William Shakespeare",
+      "category": "constancia"
+    },
+    {
+      "text": "Si el hombre fuera constante, sería perfecto.",
+      "author": "William Shakespeare",
+      "category": "constancia"
+    }
+  ]
+}
