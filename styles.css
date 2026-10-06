@@ -7937,3 +7937,69 @@ body::before{
     touch-action:pan-y!important;
   }
 }
+
+
+/* =========================================================
+   TASKY · VOL. 124 · MOBILE APP VIEWPORT SCROLL
+   El contenido móvil usa su propio viewport desplazable.
+   Esto evita conflictos entre gestos de arrastre de tareas
+   y el scroll global del WebView de Median.
+   ========================================================= */
+@media (max-width:760px){
+  html,
+  body{
+    height:100%!important;
+    min-height:100%!important;
+    max-height:100%!important;
+    overflow:hidden!important;
+  }
+
+  body{
+    overscroll-behavior:none!important;
+  }
+
+  .pro-main{
+    position:fixed!important;
+    top:0!important;
+    right:0!important;
+    bottom:0!important;
+    left:0!important;
+    width:100%!important;
+    height:100dvh!important;
+    min-height:100dvh!important;
+    max-height:100dvh!important;
+    box-sizing:border-box!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-y:contain!important;
+    touch-action:pan-y!important;
+    padding-top:112px!important;
+    padding-bottom:calc(36px + env(safe-area-inset-bottom))!important;
+  }
+
+  .pro-main > .pro-container{
+    min-height:calc(100dvh - 112px)!important;
+    height:auto!important;
+    overflow:visible!important;
+  }
+
+  /* Los handlers de arrastre siguen funcionando en sus controles,
+     pero el resto del contenido deja explícito que su gesto es vertical. */
+  .board,
+  .activity-card,
+  .task-list{
+    touch-action:pan-y!important;
+  }
+
+  .drag-card,
+  .drag-task{
+    touch-action:none!important;
+  }
+
+  .task-input,
+  .activity-title,
+  .pro-topbar-search input{
+    touch-action:manipulation!important;
+  }
+}
