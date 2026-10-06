@@ -7237,3 +7237,11 @@ body::before{
   100%{transform:translate3d(-.3%,.2%,0) scale(1.012);opacity:.31}
 }
 .activity-card.section-moved{animation:none!important}
+
+
+/* =========================================================
+   TASKY · VOL. 120 · PROGRESO DE HOY SIN REPROGRAMADAS
+   ========================================================= */
+.category-pending-count{
+  transition:transform .14s ease,opacity .14s ease;
+}
