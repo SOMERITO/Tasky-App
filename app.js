@@ -2335,10 +2335,20 @@
     let activeTaskDrag = null;
 
     function initSortables() {
-      // Fases: Pointer Events. Tareas: Pointer Events sin reflow,
-      // para conservar la línea de inserción y permitir movimientos
-      // entre listas en Median/WebView.
+      // En móvil/WebView priorizamos el gesto vertical nativo sobre
+      // el arrastre libre de cada tarea. Las acciones explícitas de
+      // orden de fase siguen disponibles y el escritorio conserva
+      // todo el drag & drop.
+      const isMobileViewport = window.matchMedia?.("(max-width: 760px)")?.matches || false;
+
       initSectionPointerDrag();
+
+      if (isMobileViewport) {
+        if (typeof taskPointerCleanup === "function") taskPointerCleanup();
+        taskPointerCleanup = null;
+        return;
+      }
+
       initTaskPointerDrag();
     }
 
