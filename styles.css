@@ -7245,3 +7245,39 @@ body::before{
 .category-pending-count{
   transition:transform .14s ease,opacity .14s ease;
 }
+
+/* =========================================================
+   TASKY · VOL. 121 · IDENTIDAD CROMÁTICA DEL HISTORIAL MENSUAL
+   ========================================================= */
+.monthly-history-row{
+  --month-color:#0A84FF;
+  --month-soft:rgba(10,132,255,.075);
+  --month-border:rgba(10,132,255,.22);
+  border-left:3px solid var(--month-color)!important;
+}
+.monthly-history-row .monthly-history-track > span{
+  background:linear-gradient(90deg,var(--month-color),color-mix(in srgb,var(--month-color) 64%,white))!important;
+}
+.monthly-history-row.is-current{
+  background:linear-gradient(135deg,var(--month-soft),rgba(255,255,255,.72))!important;
+  border-color:var(--month-border)!important;
+}
+.monthly-history-row.month-tone-1{--month-color:#0A84FF;--month-soft:rgba(10,132,255,.08);--month-border:rgba(10,132,255,.23)}
+.monthly-history-row.month-tone-2{--month-color:#EC4899;--month-soft:rgba(236,72,153,.08);--month-border:rgba(236,72,153,.23)}
+.monthly-history-row.month-tone-3{--month-color:#34A853;--month-soft:rgba(52,168,83,.08);--month-border:rgba(52,168,83,.23)}
+.monthly-history-row.month-tone-4{--month-color:#F59E0B;--month-soft:rgba(245,158,11,.09);--month-border:rgba(245,158,11,.24)}
+.monthly-history-row.month-tone-5{--month-color:#8B5CF6;--month-soft:rgba(139,92,246,.08);--month-border:rgba(139,92,246,.23)}
+.monthly-history-row.month-tone-6{--month-color:#06B6D4;--month-soft:rgba(6,182,212,.08);--month-border:rgba(6,182,212,.23)}
+.monthly-history-row.month-tone-7{--month-color:#EF4444;--month-soft:rgba(239,68,68,.07);--month-border:rgba(239,68,68,.22)}
+.monthly-history-row.month-tone-8{--month-color:#F97316;--month-soft:rgba(249,115,22,.08);--month-border:rgba(249,115,22,.23)}
+.monthly-history-row.month-tone-9{--month-color:#14B8A6;--month-soft:rgba(20,184,166,.08);--month-border:rgba(20,184,166,.23)}
+.monthly-history-row.month-tone-10{--month-color:#6366F1;--month-soft:rgba(99,102,241,.08);--month-border:rgba(99,102,241,.23)}
+.monthly-history-row.month-tone-11{--month-color:#A855F7;--month-soft:rgba(168,85,247,.08);--month-border:rgba(168,85,247,.23)}
+.monthly-history-row.month-tone-12{--month-color:#22C55E;--month-soft:rgba(34,197,94,.08);--month-border:rgba(34,197,94,.23)}
+[data-theme="dark"] .monthly-history-row.is-current{
+  background:linear-gradient(135deg,var(--month-soft),rgba(28,29,34,.82))!important;
+  border-color:var(--month-border)!important;
+}
+[data-theme="dark"] .monthly-history-row{
+  border-left-color:var(--month-color)!important;
+}
