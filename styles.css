@@ -7281,3 +7281,615 @@ body::before{
 [data-theme="dark"] .monthly-history-row{
   border-left-color:var(--month-color)!important;
 }
+
+
+/* =========================================================
+   TASKY · VOL. 122 · MOBILE APP EXPERIENCE
+   Adaptación específica para teléfonos sin alterar la
+   información, IDs ni lógica de escritorio.
+   ========================================================= */
+
+@media (max-width: 760px){
+
+  :root{
+    --tasky-mobile-gutter:12px;
+    --tasky-mobile-radius:18px;
+    --tasky-mobile-shadow:0 8px 26px rgba(15,23,42,.07);
+  }
+
+  html{
+    width:100%;
+    min-width:100%;
+    overflow-x:hidden!important;
+    background:#F5F7FB!important;
+    -webkit-text-size-adjust:100%;
+  }
+
+  body{
+    width:100%;
+    min-width:0!important;
+    overflow-x:hidden!important;
+    padding-bottom:calc(92px + env(safe-area-inset-bottom))!important;
+    background:#F5F7FB!important;
+  }
+
+  /* La barra superior se convierte en una cabecera real de app:
+     buscador arriba + acciones compactas, respetando safe areas. */
+  .pro-topbar{
+    position:fixed!important;
+    top:0!important;
+    left:0!important;
+    right:0!important;
+    width:100%!important;
+    min-height:92px!important;
+    height:auto!important;
+    box-sizing:border-box!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    grid-template-areas:
+      "search actions"
+      "status status"!important;
+    align-items:center!important;
+    gap:7px 8px!important;
+    padding:calc(8px + env(safe-area-inset-top)) 12px 8px!important;
+    border-bottom:1px solid rgba(210,210,215,.72)!important;
+    background:rgba(248,249,252,.88)!important;
+    backdrop-filter:saturate(180%) blur(22px)!important;
+    -webkit-backdrop-filter:saturate(180%) blur(22px)!important;
+  }
+
+  .pro-topbar-search{
+    grid-area:search!important;
+    display:flex!important;
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    margin:0!important;
+    min-height:40px!important;
+    box-sizing:border-box!important;
+    padding:8px 11px!important;
+    border-radius:13px!important;
+    background:rgba(232,232,237,.82)!important;
+    border-color:rgba(210,210,215,.62)!important;
+  }
+
+  .pro-topbar-search input{
+    font-size:14px!important;
+    min-width:0!important;
+  }
+
+  .pro-topbar-actions{
+    grid-area:actions!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:5px!important;
+    min-width:0!important;
+  }
+
+  .pro-topbar-actions .pro-icon-btn{
+    width:40px!important;
+    height:40px!important;
+    min-width:40px!important;
+    border-radius:12px!important;
+  }
+
+  .sync-label{
+    grid-area:status!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    width:100%!important;
+    min-height:14px!important;
+    margin:0!important;
+    padding:0 2px!important;
+    font-size:10px!important;
+    line-height:1!important;
+    color:var(--apple-muted)!important;
+    opacity:.88!important;
+  }
+
+  .sync-dot{
+    flex:0 0 7px!important;
+    width:7px!important;
+    height:7px!important;
+    margin-right:6px!important;
+    border-radius:50%!important;
+  }
+
+  .pro-main{
+    padding:112px var(--tasky-mobile-gutter) 36px!important;
+    width:100%!important;
+    box-sizing:border-box!important;
+  }
+
+  .pro-container{
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+  }
+
+  /* Hero compacto: mantiene fecha, frase y título, pero sin gastar media pantalla. */
+  .pro-hero-block{
+    margin-bottom:14px!important;
+  }
+
+  .pro-hero-row{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    gap:12px!important;
+    align-items:start!important;
+  }
+
+  .pro-hero-row > div:first-child{
+    min-width:0!important;
+    width:100%!important;
+  }
+
+  .pro-hero-title{
+    width:max-content!important;
+    max-width:100%!important;
+    margin:0!important;
+    padding:0!important;
+    font-size:clamp(30px,9.3vw,39px)!important;
+    line-height:1.02!important;
+    letter-spacing:-.055em!important;
+  }
+
+  .hero-quote-wrap{
+    min-height:0!important;
+    margin-top:9px!important;
+    max-width:100%!important;
+  }
+
+  .pro-hero-quote{
+    font-size:11px!important;
+    line-height:1.35!important;
+  }
+
+  .pro-hero-author{
+    font-size:10px!important;
+    margin-top:4px!important;
+  }
+
+  .pro-hero-date-card{
+    min-width:0!important;
+    width:auto!important;
+    max-width:128px!important;
+    padding:10px 11px!important;
+    border-radius:14px!important;
+    box-shadow:0 7px 18px rgba(15,23,42,.06)!important;
+  }
+
+  .pro-hero-date-value{
+    font-size:12px!important;
+    line-height:1.15!important;
+    margin-top:4px!important;
+  }
+
+  .pro-hero-status{
+    font-size:8px!important;
+    margin-top:5px!important;
+  }
+
+  /* Resumen: 4 indicadores en dos columnas para lectura rápida. */
+  .pro-metrics{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:8px!important;
+    margin-bottom:11px!important;
+  }
+
+  .pro-metric-card{
+    min-height:82px!important;
+    padding:11px 12px!important;
+    gap:8px!important;
+    border-radius:15px!important;
+    box-shadow:var(--tasky-mobile-shadow)!important;
+  }
+
+  .pro-metric-card span{
+    font-size:9px!important;
+  }
+
+  .pro-metric-card strong{
+    font-size:23px!important;
+    margin-top:4px!important;
+  }
+
+  .pro-metric-card small{
+    max-width:120px!important;
+    font-size:8px!important;
+    line-height:1.25!important;
+    margin-top:4px!important;
+  }
+
+  .pro-ring{
+    width:43px!important;
+    height:43px!important;
+  }
+
+  .metric-icon{
+    width:36px!important;
+    height:36px!important;
+    border-radius:10px!important;
+  }
+
+  /* Barra de vistas: primero las vistas, luego las herramientas. */
+  .pro-task-toolbar{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    gap:8px!important;
+    padding:7px!important;
+    margin-bottom:10px!important;
+    border-radius:15px!important;
+  }
+
+  .pro-task-tabs{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:3px!important;
+    padding:3px!important;
+    overflow:visible!important;
+  }
+
+  .pro-task-tab{
+    min-width:0!important;
+    min-height:37px!important;
+    padding:8px 5px!important;
+    border-radius:9px!important;
+    font-size:11px!important;
+  }
+
+  .pro-toolbar-actions{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:6px!important;
+  }
+
+  .pro-toolbar-btn{
+    min-width:0!important;
+    min-height:37px!important;
+    justify-content:center!important;
+    padding:7px 6px!important;
+    border-radius:10px!important;
+    font-size:9px!important;
+  }
+
+  .pro-toolbar-btn .tasky-svg-icon{
+    width:15px!important;
+    height:15px!important;
+    flex:0 0 auto!important;
+  }
+
+  .toolbar-count{
+    min-width:18px!important;
+    height:18px!important;
+    padding:0 5px!important;
+    border-radius:999px!important;
+  }
+
+  /* Tablero: las fases pasan a ser tarjetas de lectura rápida. */
+  .board{
+    width:100%!important;
+    gap:9px!important;
+  }
+
+  .activity-card{
+    width:100%!important;
+    border-radius:var(--tasky-mobile-radius)!important;
+    box-shadow:var(--tasky-mobile-shadow)!important;
+  }
+
+  .card-head{
+    padding:12px 11px 8px!important;
+  }
+
+  .card-title-row{
+    gap:6px!important;
+    min-width:0!important;
+  }
+
+  .drag-card{
+    width:22px!important;
+    height:30px!important;
+    flex:0 0 22px!important;
+  }
+
+  .activity-title{
+    min-width:0!important;
+    width:100%!important;
+    font-size:15px!important;
+    line-height:1.15!important;
+  }
+
+  .card-actions{
+    gap:1px!important;
+    flex:0 0 auto!important;
+  }
+
+  .section-order-controls{
+    gap:0!important;
+  }
+
+  .section-order-btn,
+  .mini-btn{
+    width:30px!important;
+    height:30px!important;
+    border-radius:9px!important;
+  }
+
+  .card-meta{
+    padding:5px 0 0 28px!important;
+    margin:0!important;
+    gap:5px!important;
+  }
+
+  .pill{
+    min-height:22px!important;
+    padding:4px 7px!important;
+    font-size:9px!important;
+  }
+
+  .card-progress{
+    margin:8px 0 0 28px!important;
+    padding:0!important;
+    gap:7px!important;
+  }
+
+  .card-progress .progress-track{
+    height:5px!important;
+  }
+
+  .card-progress-value{
+    min-width:38px!important;
+    font-size:9px!important;
+  }
+
+  .task-list{
+    width:100%!important;
+    box-sizing:border-box!important;
+    gap:6px!important;
+    padding:0 9px 9px!important;
+  }
+
+  /* Cada tarea conserva drag, check, contenido, fecha y acciones,
+     pero usa una composición táctil más cómoda. */
+  .task-item{
+    grid-template-columns:20px 28px minmax(0,1fr) 58px!important;
+    column-gap:6px!important;
+    row-gap:3px!important;
+    min-height:50px!important;
+    padding:9px 8px!important;
+    border-radius:13px!important;
+  }
+
+  .drag-task{
+    width:20px!important;
+    height:30px!important;
+  }
+
+  .check-btn{
+    width:28px!important;
+    height:28px!important;
+    border-width:1.7px!important;
+  }
+
+  .task-input{
+    min-height:29px!important;
+    padding:3px 0!important;
+    font-size:14px!important;
+    line-height:20px!important;
+  }
+
+  .task-item-actions{
+    min-width:58px!important;
+    gap:2px!important;
+    justify-content:flex-end!important;
+  }
+
+  .task-item-actions button{
+    width:28px!important;
+    height:28px!important;
+    border-radius:8px!important;
+  }
+
+  .task-due,
+  .task-due-repeat-status,
+  .task-repeat-badge-standalone,
+  .completed-repeat-note{
+    grid-column:3 / -1!important;
+    max-width:100%!important;
+    font-size:9px!important;
+    line-height:1.25!important;
+  }
+
+  .add-task{
+    width:calc(100% - 18px)!important;
+    margin:3px 9px 10px!important;
+    min-height:46px!important;
+    border-radius:12px!important;
+    font-size:11px!important;
+  }
+
+  /* Estado vacío */
+  .empty-state{
+    padding:40px 18px!important;
+    border-radius:var(--tasky-mobile-radius)!important;
+  }
+
+  /* Modales como bottom sheets para una sensación más nativa. */
+  .modal-backdrop{
+    align-items:flex-end!important;
+    padding:8px!important;
+    padding-bottom:calc(8px + env(safe-area-inset-bottom))!important;
+  }
+
+  .modal{
+    width:100%!important;
+    max-width:none!important;
+    max-height:calc(100dvh - 18px)!important;
+    margin:0!important;
+    overflow:auto!important;
+    border-radius:24px 24px 18px 18px!important;
+    padding-left:16px!important;
+    padding-right:16px!important;
+    box-shadow:0 24px 70px rgba(0,0,0,.22)!important;
+  }
+
+  .modal-head{
+    gap:10px!important;
+    padding-top:2px!important;
+  }
+
+  .modal-head h2{
+    font-size:20px!important;
+    line-height:1.12!important;
+  }
+
+  /* FAB: más pequeño y siempre accesible sobre la zona inferior segura. */
+  #fab{
+    right:14px!important;
+    bottom:calc(16px + env(safe-area-inset-bottom))!important;
+    width:58px!important;
+    height:58px!important;
+  }
+
+  #fab .fab-main{
+    width:58px!important;
+    height:58px!important;
+    border-radius:18px!important;
+  }
+
+  #fab .fab-actions{
+    right:0!important;
+    bottom:calc(100% + 9px)!important;
+    max-width:calc(100vw - 24px)!important;
+    align-items:flex-end!important;
+  }
+
+  .fab-action{
+    min-height:40px!important;
+    padding:9px 12px!important;
+    border-radius:12px!important;
+    font-size:10px!important;
+  }
+
+  #fabTop{
+    right:14px!important;
+    bottom:calc(84px + env(safe-area-inset-bottom))!important;
+    width:43px!important;
+    height:43px!important;
+    border-radius:14px!important;
+  }
+
+  /* Evita zoom accidental en controles de formulario dentro del WebView. */
+  input,
+  textarea,
+  select,
+  button{
+    touch-action:manipulation;
+  }
+
+  /* Dark mode */
+  [data-theme="dark"] body,
+  [data-theme="dark"] .pro-main{
+    background:#111!important;
+  }
+
+  [data-theme="dark"] .pro-topbar{
+    background:rgba(17,17,18,.88)!important;
+    border-color:rgba(255,255,255,.10)!important;
+  }
+
+  [data-theme="dark"] .pro-topbar-search{
+    background:rgba(44,44,46,.86)!important;
+    border-color:rgba(255,255,255,.09)!important;
+  }
+
+  [data-theme="dark"] .pro-metric-card,
+  [data-theme="dark"] .activity-card,
+  [data-theme="dark"] .pro-task-toolbar,
+  [data-theme="dark"] .pro-hero-date-card{
+    box-shadow:0 8px 25px rgba(0,0,0,.20)!important;
+  }
+}
+
+@media (max-width:420px){
+  .pro-main{
+    padding-left:10px!important;
+    padding-right:10px!important;
+  }
+
+  .pro-hero-row{
+    gap:8px!important;
+  }
+
+  .pro-hero-date-card{
+    max-width:116px!important;
+    padding:9px 10px!important;
+  }
+
+  .pro-hero-date-value{
+    font-size:11px!important;
+  }
+
+  .pro-metrics{
+    gap:7px!important;
+  }
+
+  .pro-metric-card{
+    min-height:79px!important;
+    padding:10px!important;
+  }
+
+  .pro-metric-card strong{
+    font-size:21px!important;
+  }
+
+  .metric-icon{
+    width:33px!important;
+    height:33px!important;
+  }
+
+  .task-item{
+    grid-template-columns:19px 27px minmax(0,1fr) 54px!important;
+    column-gap:5px!important;
+    padding-left:7px!important;
+    padding-right:7px!important;
+  }
+
+  .task-item-actions{
+    min-width:54px!important;
+  }
+
+  .task-item-actions button{
+    width:26px!important;
+    height:26px!important;
+  }
+}
+
+@media (max-width:360px){
+  .pro-hero-row{
+    grid-template-columns:1fr!important;
+  }
+
+  .pro-hero-date-card{
+    max-width:none!important;
+    width:max-content!important;
+  }
+
+  .pro-toolbar-btn{
+    font-size:8.5px!important;
+  }
+
+  .task-item{
+    grid-template-columns:18px 26px minmax(0,1fr) 52px!important;
+  }
+
+  .task-item-actions{
+    min-width:52px!important;
+  }
+}
