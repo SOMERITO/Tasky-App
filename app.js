@@ -387,7 +387,10 @@
         }
       }
 
-      const total = completed + pending + deferred;
+      // Las tareas reprogramadas a una fecha futura ya NO pertenecen a hoy.
+      // Se conservan en "deferred" para mostrarlas como información, pero
+      // quedan fuera del total y del porcentaje diario.
+      const total = completed + pending;
       return {
         completed,
         pending,
@@ -1861,7 +1864,8 @@
              !isRepeatCompletedToday(t)
       ).length;
       const deferredToday = cat.tasks.filter(t => isRescheduledFromToday(t, today())).length;
-      const todayTotal = completedToday + todayPending + deferredToday;
+      // Las reprogramadas futuras no forman parte del progreso de hoy.
+      const todayTotal = completedToday + todayPending;
       const pct = todayTotal ? Math.round((completedToday / todayTotal) * 100) : 0;
 
       const card = document.createElement("article");
@@ -3131,7 +3135,8 @@
              !isRepeatCompletedToday(t)
       ).length;
       const deferredToday = cat.tasks.filter(t => isRescheduledFromToday(t, today())).length;
-      const todayTotal = completedToday + todayPending + deferredToday;
+      // Las reprogramadas futuras no forman parte del progreso de hoy.
+      const todayTotal = completedToday + todayPending;
       const pct = todayTotal ? Math.round((completedToday / todayTotal) * 100) : 0;
 
       const pendingPill = card.querySelector('.card-meta .pill:first-child');
