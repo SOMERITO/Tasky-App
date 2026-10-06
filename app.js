@@ -199,7 +199,7 @@
           String(task.text || "").trim() &&
           !completedIds.has(String(task.id || "")) &&
           task.date &&
-          task.date <= now &&
+          task.date === now &&
           !isRepeatCompletedToday(task)
         ).length;
       }, 0);
@@ -262,7 +262,7 @@
         const width = item.completed === 0 ? 0 : Math.max(5, Math.round((item.completed / max) * 100));
 
         return `
-          <article class="monthly-history-row ${isCurrent ? "is-current" : ""}" style="--month-delay:${Math.min(index, 12) * 42}ms">
+          <article class="monthly-history-row month-tone-${month} ${isCurrent ? "is-current" : ""}" style="--month-delay:${Math.min(index, 12) * 42}ms">
             <div class="monthly-history-label">
               <strong>${escapeHTML(label)}</strong>
               <span>${isCurrent ? "Mes actual" : "Registro histórico"}</span>
