@@ -7893,3 +7893,47 @@ body::before{
     min-width:52px!important;
   }
 }
+
+
+/* =========================================================
+   TASKY · VOL. 123 · MOBILE WEBVIEW SCROLL FIX
+   Fuerza desplazamiento vertical natural en Median/WebView
+   sin alterar el contenido ni la estructura de datos.
+   ========================================================= */
+@media (max-width:760px){
+  html{
+    height:auto!important;
+    min-height:100%!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+
+  body{
+    height:auto!important;
+    min-height:100dvh!important;
+    max-height:none!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+    touch-action:pan-y!important;
+  }
+
+  #app,
+  .pro-main,
+  .pro-container,
+  .pro-workspace,
+  .pro-main-column,
+  #board{
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+
+  .pro-main{
+    position:relative!important;
+    touch-action:pan-y!important;
+  }
+}
