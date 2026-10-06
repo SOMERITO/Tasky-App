@@ -8003,3 +8003,72 @@ body::before{
     touch-action:manipulation!important;
   }
 }
+
+
+/* =========================================================
+   TASKY · VOL. 125 · MOBILE SCROLL FOUNDATION
+   Vuelve al scroll natural del documento. El arrastre libre
+   de tareas ya no se registra en móvil mediante V125 JS.
+   ========================================================= */
+@media (max-width:760px){
+  html,
+  body{
+    height:auto!important;
+    min-height:100%!important;
+    max-height:none!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+
+  body{
+    position:relative!important;
+    touch-action:pan-y!important;
+  }
+
+  .pro-main{
+    position:relative!important;
+    top:auto!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:100vh!important;
+    min-height:100dvh!important;
+    max-height:none!important;
+    overflow:visible!important;
+    touch-action:pan-y!important;
+  }
+
+  .pro-main > .pro-container,
+  #app,
+  .pro-workspace,
+  .pro-main-column,
+  #board{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+
+  .board,
+  .activity-card,
+  .task-list,
+  .task-item{
+    touch-action:pan-y!important;
+  }
+
+  /* En móvil el control de arrastre de tarea no captura el gesto.
+     El orden se realiza mediante acciones explícitas. */
+  .task-item .drag-task{
+    touch-action:auto!important;
+    cursor:default!important;
+    opacity:.34!important;
+  }
+
+  .task-item .drag-task svg{
+    opacity:.55!important;
+  }
+}
