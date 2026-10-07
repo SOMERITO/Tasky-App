@@ -8294,3 +8294,82 @@ body::before{
     }
   }
 }
+
+
+/* =========================================================
+   TASKY · VOL. 127 · RUNNER DE PROGRESO · PENDIENTES LEAH 👧🏻
+   Emoji corredor que avanza proporcionalmente al progreso.
+   ========================================================= */
+
+.card-progress.leah-progress .progress-track{
+  position:relative!important;
+  overflow:visible!important;
+}
+
+.card-progress.leah-progress .progress-fill{
+  position:relative!important;
+  z-index:1!important;
+}
+
+.leah-progress-runner{
+  --leah-run-pct:0%;
+  position:absolute!important;
+  z-index:3!important;
+  left:clamp(9px, var(--leah-run-pct), calc(100% - 9px))!important;
+  top:50%!important;
+  display:block!important;
+  width:28px!important;
+  height:28px!important;
+  line-height:28px!important;
+  font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif!important;
+  font-size:22px!important;
+  text-align:center!important;
+  pointer-events:none!important;
+  user-select:none!important;
+  transform:translate(-50%,-58%)!important;
+  filter:drop-shadow(0 2px 3px rgba(15,23,42,.12))!important;
+  animation:leahRunnerBounce .62s ease-in-out infinite!important;
+  will-change:left,transform!important;
+}
+
+.card-progress.leah-progress .progress-track{
+  min-height:7px!important;
+}
+
+@keyframes leahRunnerBounce{
+  0%,100%{transform:translate(-50%,-58%) translateY(1px) rotate(-1deg)}
+  25%{transform:translate(-50%,-58%) translateY(-1px) rotate(1deg)}
+  50%{transform:translate(-50%,-58%) translateY(-3px) rotate(-1deg)}
+  75%{transform:translate(-50%,-58%) translateY(-1px) rotate(1deg)}
+}
+
+@media (max-width:760px){
+  .card-progress.leah-progress{
+    margin-top:12px!important;
+    padding-top:3px!important;
+  }
+
+  .card-progress.leah-progress .progress-track{
+    min-height:8px!important;
+    height:8px!important;
+  }
+
+  .leah-progress-runner{
+    width:31px!important;
+    height:31px!important;
+    line-height:31px!important;
+    font-size:24px!important;
+    transform:translate(-50%,-60%)!important;
+  }
+
+  @keyframes leahRunnerBounce{
+    0%,100%{transform:translate(-50%,-60%) translateY(1px) rotate(-1deg)}
+    50%{transform:translate(-50%,-60%) translateY(-4px) rotate(1deg)}
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .leah-progress-runner{
+    animation-duration:1.2s!important;
+  }
+}
