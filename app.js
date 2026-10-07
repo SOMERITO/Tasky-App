@@ -1500,6 +1500,33 @@
       });
     }
 
+    function isMovableCategory(cat) {
+      return Boolean(cat) && !isFullyRescheduledCategory(cat);
+    }
+
+    function categoryCompletionGroup(cat) {
+      if (!isMovableCategory(cat)) return 2; // Reprogramada por completo: no ocupa la frontera visible.
+      return categoryHasOpenWorkToday(cat) ? 0 : 1;
+    }
+
+    function enforceCategoryCompletionBoundary() {
+      const before = state.categories.slice();
+
+      // Partición estable:
+      // 0 = fases activas (antes de Completadas)
+      // 1 = fases terminadas (después de Completadas)
+      // 2 = fases totalmente reprogramadas (no visibles en el tablero).
+      state.categories = [...state.categories].sort((a, b) => {
+        const groupDelta = categoryCompletionGroup(a) - categoryCompletionGroup(b);
+        if (groupDelta !== 0) return groupDelta;
+        return 0;
+      });
+
+      const changed = before.some((cat, index) => cat !== state.categories[index]);
+      if (changed) normalizeCategoryOrder();
+      return changed;
+    }
+
     function categoryHasOpenWorkToday(cat) {
       if (!cat || !Array.isArray(cat.tasks)) return false;
 
@@ -1732,20 +1759,37 @@
       const orderedCategories = [...state.categories]
         .sort(compareCategoryOrder);
 
+      // La tarjeta "Completadas" es una frontera estructural:
+      // fases activas siempre arriba y fases terminadas siempre abajo.
+      const boundaryChanged = (() => {
+        const previous = state.categories.slice();
+        state.categories = orderedCategories;
+        const changed = enforceCategoryCompletionBoundary();
+        if (changed) {
+          persistLocal();
+          localDirty = true;
+        }
+        return changed || previous.some((cat, index) => cat !== state.categories[index]);
+      })();
+
+      const normalizedVisibleOrder = [...state.categories].sort(compareCategoryOrder);
+
       const needsOrderRepair =
-        orderedCategories.some(
+        normalizedVisibleOrder.some(
           (cat, index) =>
             categoryOrderValue(cat, index) !== index
         );
 
       if (needsOrderRepair) {
-        state.categories = orderedCategories;
+        state.categories = normalizedVisibleOrder;
         normalizeCategoryOrder();
         persistLocal();
         localDirty = true;
       } else {
-        state.categories = orderedCategories;
+        state.categories = normalizedVisibleOrder;
       }
+
+      enforceCategoryCompletionBoundary();
 
       const reprogrammedCategoryIds = new Set(
         state.categories
@@ -3405,53 +3449,40 @@
     }
 
     function moveCategoryBy(categoryId, delta) {
-      const index = state.categories.findIndex(cat => cat.id === categoryId);
-      if (index === -1) return;
+      const categoryIndex = state.categories.findIndex(cat => cat.id === categoryId);
+      if (categoryIndex === -1) return;
 
-      const targetIndex = index + delta;
-      if (targetIndex < 0 || targetIndex >= state.categories.length) {
+      const category = state.categories[categoryIndex];
+      const group = categoryCompletionGroup(category);
+
+      // Solo permitimos mover una fase dentro de su propio bloque.
+      const groupCategories = state.categories.filter(cat =>
+        categoryCompletionGroup(cat) === group
+      );
+      const groupIndex = groupCategories.findIndex(cat => cat.id === categoryId);
+      const targetGroupIndex = groupIndex + delta;
+
+      if (groupIndex === -1 || targetGroupIndex < 0 || targetGroupIndex >= groupCategories.length) {
         softHaptic(10);
         return;
       }
 
-      const [category] =
-        state.categories.splice(
-          index,
-          1
-        );
+      const neighbor = groupCategories[targetGroupIndex];
+      const neighborIndex = state.categories.findIndex(cat => cat.id === neighbor.id);
+      if (neighborIndex === -1) {
+        softHaptic(10);
+        return;
+      }
 
-      state.categories.splice(
-        targetIndex,
-        0,
-        category
-      );
+      [state.categories[categoryIndex], state.categories[neighborIndex]] =
+        [state.categories[neighborIndex], state.categories[categoryIndex]];
 
       normalizeCategoryOrder();
-
-      const card = document.querySelector(`.activity-card[data-category-id="${cssEscapeSafe(categoryId)}"]`);
-      const cards = [...el.board.querySelectorAll('.activity-card:not(.completed-card):not(.rescheduled-card)')];
-      const reference = cards[targetIndex];
-
-      if (card) {
-        if (delta < 0 && reference && reference !== card) {
-          el.board.insertBefore(card, reference);
-        } else if (delta > 0) {
-          const next = cards[targetIndex + 1];
-          if (next) el.board.insertBefore(card, next);
-          else {
-            const completedCard = el.board.querySelector('.completed-card');
-            if (completedCard) el.board.insertBefore(card, completedCard);
-            else el.board.appendChild(card);
-          }
-        }
-        card.classList.add('section-moved');
-        setTimeout(() => card.classList.remove('section-moved'), 240);
-      }
+      enforceCategoryCompletionBoundary();
 
       persistLocal();
       localDirty = true;
-      updateSummaryUI();
-      refreshSectionMoveControls();
+      render();
       scheduleSave(delta < 0 ? 'subir fase' : 'bajar fase');
       softHaptic(16);
       playTaskySound("move");
@@ -3459,11 +3490,34 @@
 
     function refreshSectionMoveControls() {
       const cards = [...el.board.querySelectorAll('.activity-card:not(.completed-card):not(.rescheduled-card)')];
-      cards.forEach((card, index) => {
+
+      cards.forEach(card => {
+        const cat = state.categories.find(c => c.id === card.dataset.categoryId);
+        const group = categoryCompletionGroup(cat);
+        const groupCards = cards.filter(node => {
+          const nodeCat = state.categories.find(c => c.id === node.dataset.categoryId);
+          return categoryCompletionGroup(nodeCat) === group;
+        });
+        const groupIndex = groupCards.indexOf(card);
+
         const up = card.querySelector('[data-action="move-category-up"]');
         const down = card.querySelector('[data-action="move-category-down"]');
-        if (up) up.disabled = index === 0;
-        if (down) down.disabled = index === cards.length - 1;
+
+        if (up) {
+          up.disabled = groupIndex <= 0;
+          up.setAttribute("aria-disabled", String(up.disabled));
+          up.dataset.tooltip = up.disabled
+            ? "Ya está al inicio de su bloque"
+            : "Subir fase";
+        }
+
+        if (down) {
+          down.disabled = groupIndex === -1 || groupIndex >= groupCards.length - 1;
+          down.setAttribute("aria-disabled", String(down.disabled));
+          down.dataset.tooltip = down.disabled
+            ? "No puede bajar por debajo de Completadas"
+            : "Bajar fase";
+        }
       });
     }
 
