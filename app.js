@@ -7557,13 +7557,21 @@
       document.querySelectorAll(".rescheduled-card").forEach(node => node.remove());
 
       const rescheduledCategories = state.categories.filter(cat => isFullyRescheduledCategory(cat));
+      let autoCollapseChanged = false;
 
       rescheduledCategories.forEach(cat => {
+        // Cuando TODAS las tareas de una casilla pasan a una fecha futura,
+        // la casilla deja de representar trabajo de hoy. Se colapsa
+        // automáticamente para no ocupar espacio innecesario.
+        if (!cat.collapsed) {
+          cat.collapsed = true;
+          autoCollapseChanged = true;
+        }
+
         let card = document.querySelector('.activity-card[data-category-id="' + cssEscapeSafe(cat.id) + '"]');
 
-        // render() base intentionally separates fully-rescheduled phases from
-        // active/finished phases. We create their normal category card here
-        // and then place it at the very end, preserving the original phase.
+        // render() base separa las casillas totalmente reprogramadas.
+        // Aquí las volvemos a mostrar en su bloque naranja, debajo de Completadas.
         if (!card) {
           const categoryIndex = state.categories.findIndex(item => item.id === cat.id);
           card = buildCategoryCard(cat, categoryIndex, activeSearch.trim().toLowerCase());
@@ -7572,11 +7580,21 @@
 
         if (!card) return;
 
-        card.classList.add("rescheduled-phase-card");
+        card.classList.add("rescheduled-phase-card", "is-collapsed");
+
+        const toggle = card.querySelector(".category-toggle-btn");
+        if (toggle) {
+          toggle.textContent = "▼";
+          toggle.setAttribute("aria-expanded", "false");
+          toggle.setAttribute("aria-label", "Expandir casilla");
+          toggle.dataset.tooltip = "Expandir casilla";
+          toggle.removeAttribute("title");
+        }
 
         const list = card.querySelector(".task-list");
         if (list) {
           list.innerHTML = "";
+          list.style.display = "none";
           (cat.tasks || []).forEach(task => {
             if (!task.draft && String(task.text || "").trim() && task.rescheduled && task.date > today()) {
               list.appendChild(buildTaskItem(task, activeSearch.trim().toLowerCase(), false));
@@ -7602,13 +7620,20 @@
           pills[pills.length - 1].className = "pill rescheduled-pill";
         }
 
-        // El card reprogramado siempre va debajo de las fases ya cumplidas.
+        // Las casillas totalmente reprogramadas quedan siempre debajo de Completadas.
         el.board.appendChild(card);
       });
 
+      if (autoCollapseChanged) {
+        persistLocal();
+        localDirty = true;
+        scheduleSave("colapsar casillas reprogramadas", 0);
+      }
+
       refreshIcons();
       updateTaskHeights();
-      if (typeof initTaskPointerDrag === "function") initTaskPointerDrag();
+      // En móvil el scroll tiene prioridad: no reactivamos el drag libre de tareas.
+      if (typeof initSortables === "function") initSortables();
     }
 
     const taskyV106BaseRender = render;
