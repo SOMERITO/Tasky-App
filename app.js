@@ -1908,8 +1908,13 @@
             <span class="pill ${todayTotal > 0 && pct === 100 ? "success" : "primary"}">${todayTotal > 0 ? `${pct}% hoy` : "Sin tareas hoy"}</span>
           </div>
 
-          <div class="card-progress">
-            <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+          <div class="card-progress${String(cat.title || '').trim().toLowerCase().includes('pendientes leah') ? ' leah-progress' : ''}">
+            <div class="progress-track">
+              <div class="progress-fill" style="width:${pct}%"></div>
+              ${String(cat.title || '').trim().toLowerCase().includes('pendientes leah')
+                ? '<span class="leah-progress-runner" aria-hidden="true">🏃🏻‍♂️</span>'
+                : ''}
+            </div>
             <span class="card-progress-value">${todayTotal > 0 ? `${completedToday}/${todayTotal} hoy` : '—'}</span>
           </div>
         </div>
@@ -3155,6 +3160,8 @@
       let rescheduledPill = card.querySelector('.rescheduled-pill');
       const percentPill = card.querySelector('.card-meta .pill:last-child');
       const fill = card.querySelector('.card-progress .progress-fill');
+      const progress = card.querySelector('.card-progress');
+      const progressTrack = card.querySelector('.card-progress .progress-track');
       const fraction = card.querySelector('.card-progress-value');
 
       if (pendingPill) pendingPill.textContent = `${visiblePending} pendiente${visiblePending === 1 ? '' : 's'}`;
@@ -3186,6 +3193,26 @@
         percentPill.className = `pill ${pct === 100 && todayTotal > 0 ? 'success' : 'primary'}`;
       }
       if (fill) fill.style.width = `${pct}%`;
+
+      const isLeahProgress = String(cat.title || '').trim().toLowerCase().includes('pendientes leah');
+      if (progress) progress.classList.toggle('leah-progress', isLeahProgress);
+
+      let leahRunner = card.querySelector('.leah-progress-runner');
+      if (isLeahProgress && progressTrack && !leahRunner) {
+        leahRunner = document.createElement('span');
+        leahRunner.className = 'leah-progress-runner';
+        leahRunner.setAttribute('aria-hidden', 'true');
+        leahRunner.textContent = '🏃🏻‍♂️';
+        progressTrack.appendChild(leahRunner);
+      } else if (!isLeahProgress && leahRunner) {
+        leahRunner.remove();
+        leahRunner = null;
+      }
+
+      if (leahRunner) {
+        leahRunner.style.setProperty('--leah-run-pct', `${pct}%`);
+      }
+
       if (fraction) fraction.textContent = todayTotal > 0 ? `${completedToday}/${todayTotal} hoy` : '—';
 
       card.classList.toggle('is-complete', todayTotal > 0 && pct === 100);
