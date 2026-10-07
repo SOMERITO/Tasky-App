@@ -3457,9 +3457,9 @@
         createdItem.classList.add('task-enter');
         list.appendChild(createdItem);
         refreshIcons();
-        // La tarea nueva entra directamente al DOM, así que debemos conectar
-        // su asa de arrastre sin esperar a un render completo.
-        initTaskPointerDrag();
+        // En móvil no activamos el drag de tareas: el gesto vertical
+        // pertenece al desplazamiento. En escritorio sí conectamos el drag.
+        initSortables();
         requestAnimationFrame(() => updateTaskHeights());
       }
 
