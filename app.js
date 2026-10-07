@@ -1912,7 +1912,7 @@
             <div class="progress-track">
               <div class="progress-fill" style="width:${pct}%"></div>
               ${String(cat.title || '').trim().toLowerCase().includes('pendientes leah')
-                ? `<span class="leah-progress-runner" aria-hidden="true" style="left:${pct}%">🐒</span>`
+                ? `<span class="leah-progress-runner" aria-hidden="true" style="left:${pct}% !important">🐒</span>`
                 : ''}
             </div>
             <span class="card-progress-value">${todayTotal > 0 ? `${completedToday}/${todayTotal} hoy` : '—'}</span>
@@ -3210,8 +3210,9 @@
       }
 
       if (leahRunner) {
-        // El mono usa directamente el mismo porcentaje que la barra azul.
-        leahRunner.style.left = `${pct}%`;
+        // El mono comparte exactamente el extremo de la barra azul.
+        // !important evita que el CSS base pueda conservar el 0% inicial.
+        leahRunner.style.setProperty("left", `${pct}%`, "important");
       }
 
       if (fraction) fraction.textContent = todayTotal > 0 ? `${completedToday}/${todayTotal} hoy` : '—';
