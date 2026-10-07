@@ -1912,7 +1912,7 @@
             <div class="progress-track">
               <div class="progress-fill" style="width:${pct}%"></div>
               ${String(cat.title || '').trim().toLowerCase().includes('pendientes leah')
-                ? '<span class="leah-progress-runner" aria-hidden="true">🐒</span>'
+                ? `<span class="leah-progress-runner" aria-hidden="true" style="--leah-run-pct:${pct}%">🐒</span>`
                 : ''}
             </div>
             <span class="card-progress-value">${todayTotal > 0 ? `${completedToday}/${todayTotal} hoy` : '—'}</span>
