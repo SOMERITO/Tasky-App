@@ -6,12 +6,12 @@
   <meta name="theme-color" content="#E3E9FF">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="description" content="Tasky — gestor personal de fases y tareas.">
-  <meta name="tasky-version" content="Vol. 133">
+  <meta name="description" content="Tasky — gestor personal de casillas y tareas.">
+  <meta name="tasky-version" content="Vol. 134">
   <meta name="format-detection" content="telephone=no">
 
   <title>Tasky</title>
-  <!-- TASKY · VOL. 117 · V133 · SPLIT HTML/CSS/JS · APPLE UI · POLISHED -->
+  <!-- TASKY · VOL. 117 · V134 · SPLIT HTML/CSS/JS · APPLE UI · POLISHED -->
 
   <!-- TASKY · V46 -->
     <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
@@ -80,10 +80,10 @@
 
 
 
-    <link rel="stylesheet" href="styles.css?v=133">
+    <link rel="stylesheet" href="styles.css?v=134">
 </head>
 
-<body tabindex="-1" data-tasky-version="V133" data-tasky-volume="Vol. 133">
+<body tabindex="-1" data-tasky-version="V134" data-tasky-volume="Vol. 134">
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -95,7 +95,7 @@
   <header class="pro-topbar" id="proTopbar">
     <div class="pro-topbar-search">
       <i data-lucide="search" aria-hidden="true"></i>
-      <input id="searchInput" type="search" autocomplete="off" placeholder="Buscar tareas, fases o notas…" aria-label="Buscar tareas, fases o notas">
+      <input id="searchInput" type="search" autocomplete="off" placeholder="Buscar tareas, casillas o notas…" aria-label="Buscar tareas, fases o notas">
     </div>
 
     <div class="pro-topbar-actions">
@@ -132,7 +132,7 @@
           <div id="dayProgressFill" class="pro-hidden-progress"></div>
         </article>
         <article class="pro-metric-card">
-          <div><span>Fases en ejecución</span><strong id="metricCategories">0</strong><small>Bloques activos de trabajo</small></div>
+          <div><span>Casillas en ejecución</span><strong id="metricCategories">0</strong><small>Bloques activos de trabajo</small></div>
           <div class="metric-icon purple"><i data-lucide="grid-2x2"></i></div>
         </article>
         <article class="pro-metric-card">
@@ -164,7 +164,7 @@
             <div class="empty-icon"><i data-lucide="layout-list"></i></div>
             <h2>Tu tablero está limpio ✨</h2>
             <p>Crea una fase para empezar.</p>
-            <button id="emptyAddBtn" class="pro-primary-btn" style="margin-top:16px" type="button"><i data-lucide="plus"></i> Crear primera fase</button>
+            <button id="emptyAddBtn" class="pro-primary-btn" style="margin-top:16px" type="button"><i data-lucide="plus"></i> Crear primera casilla</button>
           </section>
 
           <section id="board" class="board" aria-live="polite"></section>
@@ -188,7 +188,7 @@
     <div class="fab-actions">
       <button class="fab-action" data-action="whatsapp"><i data-lucide="message-circle"></i> Copiar a WhatsApp</button>
       <button class="fab-action" data-action="export"><i data-lucide="download"></i> Exportar respaldo</button>
-      <button class="fab-action" data-action="add-category"><i data-lucide="layers-3"></i> Nueva fase</button>
+      <button class="fab-action" data-action="add-category"><i data-lucide="layers-3"></i> Nueva casilla</button>
     </div>
     <button id="fabMain" class="fab-main" type="button" aria-label="Acciones rápidas" aria-expanded="false">
       <i data-lucide="plus"></i>
@@ -210,7 +210,7 @@
   <div id="statsModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
     <div class="modal stats-report" style="max-width:620px">
       <div class="modal-head">
-        <h2 id="statsTitle">Resumen de fase</h2>
+        <h2 id="statsTitle">Resumen de casilla</h2>
         <button class="icon-btn" type="button" data-close-modal="statsModal" aria-label="Cerrar resumen">
           <i data-lucide="x"></i>
         </button>
@@ -224,11 +224,11 @@
       <div class="tasky-confirm-orbit" aria-hidden="true"></div>
       <div class="tasky-confirm-icon" aria-hidden="true"><i data-lucide="trash-2"></i></div>
       <div class="tasky-confirm-kicker">ELIMINAR FASE</div>
-      <h2 id="deleteCategoryTitle">¿Eliminar esta fase?</h2>
-      <p id="deleteCategoryMessage">Se eliminarán la fase y todas sus tareas pendientes.</p>
+      <h2 id="deleteCategoryTitle">¿Eliminar esta casilla?</h2>
+      <p id="deleteCategoryMessage">Se eliminarán la casilla y todas sus tareas pendientes.</p>
       <div class="tasky-confirm-actions">
         <button class="soft-btn" type="button" data-action="cancel-delete-category">Cancelar</button>
-        <button class="tasky-danger-btn" type="button" data-action="confirm-delete-category"><i data-lucide="trash-2"></i><span>Eliminar fase</span></button>
+        <button class="tasky-danger-btn" type="button" data-action="confirm-delete-category"><i data-lucide="trash-2"></i><span>Eliminar casilla</span></button>
       </div>
     </div>
   </div>
@@ -430,7 +430,7 @@
   </div>
 <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
-      <script src="app.js?v=133"></script>
+      <script src="app.js?v=134"></script>
 
 
 
