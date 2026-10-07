@@ -2169,14 +2169,23 @@
       document.body.appendChild(chip);
       const chipRect = chip.getBoundingClientRect();
 
+      const category = state.categories.find(c => c.id === card.dataset.categoryId);
+      const dragGroup = categoryCompletionGroup(category);
+      const groupCards = sectionCards().filter(node => {
+        const nodeCat = state.categories.find(c => c.id === node.dataset.categoryId);
+        return categoryCompletionGroup(nodeCat) === dragGroup;
+      });
+      const groupIndex = groupCards.indexOf(card);
+
       activeSectionDrag = {
         card,
         chip,
         line: ensureSectionLine(),
         pointerId: event.pointerId,
-        fromIndex: index,
-        dropIndex: index,
-        lastIndex: index,
+        group: dragGroup,
+        fromGroupIndex: groupIndex,
+        dropGroupIndex: groupIndex,
+        lastIndex: groupIndex,
         grabX: Math.min(chipRect.width / 2, 120),
         grabY: chipRect.height / 2,
         clientX: event.clientX,
@@ -2232,7 +2241,10 @@
       const drag = activeSectionDrag;
       if (!drag) return;
 
-      const cards = sectionCards();
+      const cards = sectionCards().filter(node => {
+        const nodeCat = state.categories.find(c => c.id === node.dataset.categoryId);
+        return categoryCompletionGroup(nodeCat) === drag.group;
+      });
       const boardTop = el.board.getBoundingClientRect().top;
       let slot = cards.length;
 
@@ -2251,14 +2263,14 @@
         else y = (cards[slot - 1].getBoundingClientRect().bottom + cards[slot].getBoundingClientRect().top) / 2;
       }
 
-      const targetIndex = slot > drag.fromIndex ? slot - 1 : slot;
-      drag.dropIndex = targetIndex;
+      const targetGroupIndex = slot > drag.fromGroupIndex ? slot - 1 : slot;
+      drag.dropGroupIndex = targetGroupIndex;
 
       drag.line.style.top = (y - boardTop) + 'px';
-      drag.line.classList.toggle('is-visible', drag.moved && targetIndex !== drag.fromIndex);
+      drag.line.classList.toggle('is-visible', drag.moved && targetGroupIndex !== drag.fromGroupIndex);
 
-      if (targetIndex !== drag.lastIndex) {
-        drag.lastIndex = targetIndex;
+      if (targetGroupIndex !== drag.lastIndex) {
+        drag.lastIndex = targetGroupIndex;
         softHaptic(8);
       }
     }
@@ -2325,30 +2337,29 @@
       document.body.classList.remove('is-section-pointer-dragging');
       drag.card.classList.remove('section-drag-source');
 
-      const shouldMove = commit && drag.moved && drag.dropIndex !== drag.fromIndex;
+      const shouldMove = commit && drag.moved && drag.dropGroupIndex !== drag.fromGroupIndex;
       const landing = drag.card.getBoundingClientRect();
 
       if (shouldMove) {
-        flipSectionReorder(() => {
-          const [category] =
-            state.categories.splice(
-              drag.fromIndex,
-              1
-            );
+        const groupCategories = state.categories.filter(cat =>
+          categoryCompletionGroup(cat) === drag.group
+        );
+        const movedIndex = groupCategories.findIndex(cat => cat.id === drag.card.dataset.categoryId);
 
-          state.categories.splice(
-            drag.dropIndex,
-            0,
-            category
+        if (movedIndex !== -1) {
+          const [category] = groupCategories.splice(movedIndex, 1);
+          const safeIndex = Math.max(0, Math.min(drag.dropGroupIndex, groupCategories.length));
+          groupCategories.splice(safeIndex, 0, category);
+
+          const groupIds = new Set(groupCategories.map(cat => cat.id));
+          let cursor = 0;
+          state.categories = state.categories.map(cat =>
+            groupIds.has(cat.id) ? groupCategories[cursor++] : cat
           );
 
           normalizeCategoryOrder();
-
-          placeSectionCardAtIndex(
-            drag.card,
-            drag.dropIndex
-          );
-        }, drag.card);
+          enforceCategoryCompletionBoundary();
+        }
       }
 
       landSectionChip(drag.chip, landing);
@@ -2358,8 +2369,8 @@
       if (shouldMove) {
         persistLocal();
         localDirty = true;
-        refreshSectionMoveControls();
-        updateSummaryUI();
+        // El render vuelve a dibujar la frontera exactamente como queda en el estado.
+        render();
         scheduleSave('reordenar fases');
         softHaptic(18);
       }
