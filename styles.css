@@ -8418,3 +8418,61 @@ body::before{
     }
   }
 }
+
+
+/* =========================================================
+   TASKY · VOL. 129 · MONO CORRIENDO HACIA EL FINAL
+   El mono 🐒 representa el avance de Pendientes Leah.
+   Su movimiento es visual; el porcentaje sigue siendo el real.
+   ========================================================= */
+.leah-progress-runner{
+  /* El emoji se conserva sin espejado: el recorrido siempre es
+     hacia la derecha del track, de inicio a final. */
+  transform:translate(-50%,-58%)!important;
+  animation:leahMonkeyRunV129 .46s ease-in-out infinite!important;
+  transform-origin:50% 75%!important;
+}
+
+@keyframes leahMonkeyRunV129{
+  0%,100%{
+    transform:translate(-50%,-58%) translateY(1px) rotate(-2deg) scale(1);
+  }
+  20%{
+    transform:translate(-50%,-58%) translateY(-1px) rotate(2deg) scale(1.015);
+  }
+  40%{
+    transform:translate(-50%,-58%) translateY(-3px) rotate(-1deg) scale(1);
+  }
+  60%{
+    transform:translate(-50%,-58%) translateY(-1px) rotate(2deg) scale(1.015);
+  }
+  80%{
+    transform:translate(-50%,-58%) translateY(0) rotate(-1deg) scale(1);
+  }
+}
+
+@media (max-width:760px){
+  .leah-progress-runner{
+    width:31px!important;
+    height:31px!important;
+    line-height:31px!important;
+    font-size:25px!important;
+    transform:translate(-50%,-60%)!important;
+    animation:leahMonkeyRunMobileV129 .43s ease-in-out infinite!important;
+  }
+
+  @keyframes leahMonkeyRunMobileV129{
+    0%,100%{
+      transform:translate(-50%,-60%) translateY(1px) rotate(-2deg) scale(1);
+    }
+    25%{
+      transform:translate(-50%,-60%) translateY(-2px) rotate(2deg) scale(1.02);
+    }
+    50%{
+      transform:translate(-50%,-60%) translateY(-4px) rotate(-1deg) scale(1);
+    }
+    75%{
+      transform:translate(-50%,-60%) translateY(-2px) rotate(2deg) scale(1.02);
+    }
+  }
+}
