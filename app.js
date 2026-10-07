@@ -3837,6 +3837,7 @@
         return;
       }
 
+      const viewportAnchor = captureViewportAnchor(category.id);
       const originalDate = task.date || today();
       const tomorrow = addDays(today(), 1);
       task.rescheduled = true;
@@ -3853,6 +3854,7 @@
       syncCategoryPlacement(category.id);
       render();
       updateSummaryUI();
+      restoreViewportAnchor(viewportAnchor);
       scheduleSave('reprogramar tarea para mañana');
       softHaptic(18);
       playTaskySound('reschedule');
@@ -4460,6 +4462,7 @@
         return;
       }
 
+      const viewportAnchor = captureViewportAnchor(category.id);
       const originalDate = task.rescheduledFrom || task.date || today();
 
       task.rescheduled = true;
@@ -4474,6 +4477,7 @@
       render();
       updateSummaryUI();
       updateRescheduledCardUI();
+      restoreViewportAnchor(viewportAnchor);
       scheduleSave("reprogramar tarea para otra fecha");
 
       softHaptic(18);
@@ -5764,6 +5768,51 @@
       if (repeatChanged) scheduleSave('normalizar tareas repetitivas', 0);
     }
 
+
+    function captureViewportAnchor(categoryId) {
+      if (!categoryId) return null;
+
+      const card = document.querySelector(
+        `.activity-card[data-category-id="${cssEscapeSafe(categoryId)}"]`
+      );
+      if (!card) return null;
+
+      const rect = card.getBoundingClientRect();
+      return {
+        categoryId,
+        top: rect.top,
+        scrollTop: window.scrollY || document.scrollingElement?.scrollTop || 0
+      };
+    }
+
+    function restoreViewportAnchor(anchor) {
+      if (!anchor?.categoryId) return;
+
+      const restore = () => {
+        const card = document.querySelector(
+          `.activity-card[data-category-id="${cssEscapeSafe(anchor.categoryId)}"]`
+        );
+        if (!card) return;
+
+        const rect = card.getBoundingClientRect();
+        const delta = rect.top - anchor.top;
+        if (!Number.isFinite(delta) || Math.abs(delta) < 1) return;
+
+        const current = window.scrollY || document.scrollingElement?.scrollTop || 0;
+        const next = Math.max(0, current + delta);
+
+        try {
+          window.scrollTo({ top: next, behavior: "auto" });
+        } catch (_) {
+          try { window.scrollTo(0, next); } catch (_) {}
+        }
+      };
+
+      requestAnimationFrame(() => {
+        restore();
+        requestAnimationFrame(restore);
+      });
+    }
 
     function scrollToTopTasky() {
       const root = document.scrollingElement || document.documentElement;
