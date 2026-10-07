@@ -8373,3 +8373,48 @@ body::before{
     animation-duration:1.2s!important;
   }
 }
+
+
+/* =========================================================
+   TASKY · VOL. 128 · RUNNER ORIENTADO AL PROGRESO
+   La figura siempre mira hacia la derecha, que es la dirección
+   del avance de la barra: izquierda → derecha.
+   ========================================================= */
+.leah-progress-runner{
+  transform:translate(-50%,-58%) scaleX(-1)!important;
+  animation:leahRunnerRunV128 .54s ease-in-out infinite!important;
+}
+
+@keyframes leahRunnerRunV128{
+  0%{
+    transform:translate(-50%,-58%) translateY(1px) rotate(-2deg) scaleX(-1);
+  }
+  25%{
+    transform:translate(-50%,-58%) translateY(-1px) rotate(1deg) scaleX(-1);
+  }
+  50%{
+    transform:translate(-50%,-58%) translateY(-3px) rotate(-1deg) scaleX(-1);
+  }
+  75%{
+    transform:translate(-50%,-58%) translateY(-1px) rotate(1deg) scaleX(-1);
+  }
+  100%{
+    transform:translate(-50%,-58%) translateY(1px) rotate(-2deg) scaleX(-1);
+  }
+}
+
+@media (max-width:760px){
+  .leah-progress-runner{
+    transform:translate(-50%,-60%) scaleX(-1)!important;
+    animation:leahRunnerRunMobileV128 .50s ease-in-out infinite!important;
+  }
+
+  @keyframes leahRunnerRunMobileV128{
+    0%,100%{
+      transform:translate(-50%,-60%) translateY(1px) rotate(-2deg) scaleX(-1);
+    }
+    50%{
+      transform:translate(-50%,-60%) translateY(-4px) rotate(1deg) scaleX(-1);
+    }
+  }
+}
