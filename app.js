@@ -3837,7 +3837,11 @@
         return;
       }
 
-      const viewportAnchor = captureViewportAnchor(category.id);
+      // No reconstruimos toda la página: el botón que se pulsa queda enfocado
+      // y un render completo puede hacer que Android/WebView reajuste el viewport.
+      const activeBefore = document.activeElement;
+      if (activeBefore instanceof HTMLElement) activeBefore.blur();
+
       const originalDate = task.date || today();
       const tomorrow = addDays(today(), 1);
       task.rescheduled = true;
@@ -3851,10 +3855,12 @@
 
       persistLocal();
       localDirty = true;
+
+      // Mueve únicamente la casilla si su estado cambió; no toca el scroll.
       syncCategoryPlacement(category.id);
-      render();
+      updateCategoryUI(category.id);
       updateSummaryUI();
-      restoreViewportAnchor(viewportAnchor);
+      updateRescheduledCardUI();
       scheduleSave('reprogramar tarea para mañana');
       softHaptic(18);
       playTaskySound('reschedule');
@@ -4462,7 +4468,9 @@
         return;
       }
 
-      const viewportAnchor = captureViewportAnchor(category.id);
+      const activeBefore = document.activeElement;
+      if (activeBefore instanceof HTMLElement) activeBefore.blur();
+
       const originalDate = task.rescheduledFrom || task.date || today();
 
       task.rescheduled = true;
@@ -4473,11 +4481,13 @@
       closeModal("rescheduleDateModal");
       persistLocal();
       localDirty = true;
+
+      // Actualización incremental: evitamos reconstruir el tablero completo
+      // para que el WebView conserve exactamente la posición del usuario.
       syncCategoryPlacement(category.id);
-      render();
+      updateCategoryUI(category.id);
       updateSummaryUI();
       updateRescheduledCardUI();
-      restoreViewportAnchor(viewportAnchor);
       scheduleSave("reprogramar tarea para otra fecha");
 
       softHaptic(18);
