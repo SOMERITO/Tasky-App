@@ -3380,6 +3380,61 @@
     }
 
 
+    let newCategoryCaretTimer = null;
+
+    function stopNewCategoryCaretBlink(input = null) {
+      if (newCategoryCaretTimer !== null) {
+        clearInterval(newCategoryCaretTimer);
+        newCategoryCaretTimer = null;
+      }
+      if (input) {
+        input.classList.remove("new-category-editor");
+        input.style.removeProperty("caret-color");
+      }
+    }
+
+    function startNewCategoryCaretBlink(input) {
+      if (!input) return;
+
+      stopNewCategoryCaretBlink(input);
+      input.classList.add("new-category-editor");
+
+      const setCaret = (visible) => {
+        if (!input.isConnected || document.activeElement !== input) return;
+        input.style.setProperty(
+          "caret-color",
+          visible ? "rgb(0, 113, 227)" : "transparent",
+          "important"
+        );
+      };
+
+      // La nueva casilla empieza con el cursor visible y parpadeante.
+      setCaret(true);
+      newCategoryCaretTimer = window.setInterval(() => {
+        if (!input.isConnected || document.activeElement !== input) {
+          stopNewCategoryCaretBlink(input);
+          return;
+        }
+        const current = input.style.getPropertyValue("caret-color");
+        setCaret(current === "transparent");
+      }, 480);
+
+      const stopOnInput = () => {
+        stopNewCategoryCaretBlink(input);
+        input.removeEventListener("input", stopOnInput);
+        input.removeEventListener("blur", stopOnBlur);
+      };
+
+      const stopOnBlur = () => {
+        stopNewCategoryCaretBlink(input);
+        input.removeEventListener("input", stopOnInput);
+        input.removeEventListener("blur", stopOnBlur);
+      };
+
+      input.addEventListener("input", stopOnInput, { once: true });
+      input.addEventListener("blur", stopOnBlur, { once: true });
+    }
+
     function addCategory() {
       const maxOrder =
         state.categories.reduce(
@@ -3396,7 +3451,7 @@
 
       const category = {
         id: uid("cat"),
-        title: "Nueva fase",
+        title: "Nueva casilla",
         emoji: "",
         tasks: [],
         order: maxOrder + 1
@@ -3418,8 +3473,21 @@
       const title = card.querySelector(".activity-title");
       const focusNewCategoryTitle = () => {
         if (!title) return;
-        try { title.focus({ preventScroll: true }); } catch (_) { title.focus(); }
-        title.select();
+
+        try {
+          title.focus({ preventScroll: true });
+        } catch (_) {
+          title.focus();
+        }
+
+        // Deja el cursor al final para que el usuario vea exactamente dónde
+        // continuará escribiendo, en lugar de mantener todo el nombre seleccionado.
+        try {
+          const end = title.value.length;
+          title.setSelectionRange(end, end);
+        } catch (_) {}
+
+        startNewCategoryCaretBlink(title);
       };
 
       const revealNewCategory = () => {
