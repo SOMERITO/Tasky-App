@@ -8588,3 +8588,189 @@ body::before{
     animation-duration:1.25s!important;
   }
 }
+
+
+/* =========================================================
+   TASKY · VOL. 132 · LEAH PROGRESS RUNNER · PREMIUM POLISH
+   El 🐒 se comporta como un marcador dinámico de progreso:
+   limpio, visible y visualmente integrado con la barra.
+   ========================================================= */
+
+.card-progress.leah-progress .progress-track{
+  position:relative!important;
+  overflow:visible!important;
+  isolation:isolate!important;
+  border-radius:999px!important;
+}
+
+.card-progress.leah-progress .progress-track::before{
+  content:""!important;
+  position:absolute!important;
+  left:0!important;
+  right:0!important;
+  top:50%!important;
+  height:100%!important;
+  transform:translateY(-50%)!important;
+  border-radius:inherit!important;
+  box-shadow:inset 0 1px 2px rgba(15,23,42,.06)!important;
+  pointer-events:none!important;
+}
+
+.card-progress.leah-progress .progress-fill{
+  position:relative!important;
+  z-index:1!important;
+  border-radius:999px!important;
+  box-shadow:
+    0 2px 7px rgba(0,122,255,.18),
+    inset 0 1px 0 rgba(255,255,255,.30)!important;
+}
+
+.leah-progress-runner{
+  width:34px!important;
+  height:34px!important;
+  box-sizing:border-box!important;
+  display:grid!important;
+  place-items:center!important;
+  overflow:visible!important;
+  border:1px solid rgba(255,255,255,.95)!important;
+  border-radius:50%!important;
+  background:
+    radial-gradient(circle at 34% 28%,rgba(255,255,255,.98),rgba(248,250,253,.94) 58%,rgba(235,241,249,.93) 100%)!important;
+  box-shadow:
+    0 7px 18px rgba(15,23,42,.16),
+    0 0 0 3px rgba(255,255,255,.58),
+    0 0 0 6px rgba(0,122,255,.035)!important;
+  font-size:23px!important;
+  line-height:1!important;
+  filter:saturate(105%)!important;
+  transform:translate(-50%,-58%)!important;
+  transform-origin:50% 75%!important;
+  animation:
+    leahMonkeyRunV132 .54s ease-in-out infinite,
+    leahMonkeyGlowV132 1.8s ease-in-out infinite!important;
+  will-change:left,transform,box-shadow!important;
+}
+
+.leah-progress-runner::before{
+  content:""!important;
+  position:absolute!important;
+  left:-17px!important;
+  top:50%!important;
+  width:17px!important;
+  height:5px!important;
+  border-radius:999px!important;
+  background:linear-gradient(
+    90deg,
+    rgba(0,122,255,0),
+    rgba(0,122,255,.08)
+  )!important;
+  opacity:.85!important;
+  transform:translateY(-50%) scaleX(.75)!important;
+  transform-origin:right center!important;
+  pointer-events:none!important;
+  animation:leahRunnerTrailV132 .54s ease-in-out infinite!important;
+}
+
+.leah-progress-runner::after{
+  content:""!important;
+  position:absolute!important;
+  inset:-4px!important;
+  border-radius:50%!important;
+  border:1px solid rgba(0,122,255,.08)!important;
+  opacity:0!important;
+  pointer-events:none!important;
+  animation:leahRunnerPulseV132 1.8s ease-out infinite!important;
+}
+
+@keyframes leahMonkeyRunV132{
+  0%,100%{
+    transform:translate(-50%,-58%) translateY(1px) rotate(-2deg) scale(1);
+  }
+  18%{
+    transform:translate(-50%,-58%) translateY(-1px) rotate(1.5deg) scale(1.01);
+  }
+  36%{
+    transform:translate(-50%,-58%) translateY(-3px) rotate(-1deg) scale(1.015);
+  }
+  54%{
+    transform:translate(-50%,-58%) translateY(-1px) rotate(1.5deg) scale(1.01);
+  }
+  72%{
+    transform:translate(-50%,-58%) translateY(0) rotate(-1deg) scale(1);
+  }
+}
+
+@keyframes leahRunnerTrailV132{
+  0%,100%{opacity:.28;transform:translateY(-50%) scaleX(.55)}
+  50%{opacity:.76;transform:translateY(-50%) scaleX(1)}
+}
+
+@keyframes leahRunnerPulseV132{
+  0%{opacity:.24;transform:scale(.88)}
+  65%,100%{opacity:0;transform:scale(1.28)}
+}
+
+@keyframes leahMonkeyGlowV132{
+  0%,100%{
+    box-shadow:
+      0 7px 18px rgba(15,23,42,.16),
+      0 0 0 3px rgba(255,255,255,.58),
+      0 0 0 6px rgba(0,122,255,.035);
+  }
+  50%{
+    box-shadow:
+      0 9px 21px rgba(15,23,42,.18),
+      0 0 0 3px rgba(255,255,255,.64),
+      0 0 0 7px rgba(0,122,255,.055);
+  }
+}
+
+@media (max-width:760px){
+  .leah-progress-runner{
+    width:38px!important;
+    height:38px!important;
+    font-size:26px!important;
+    transform:translate(-50%,-60%)!important;
+    animation:
+      leahMonkeyRunMobileV132 .48s ease-in-out infinite,
+      leahMonkeyGlowV132 1.8s ease-in-out infinite!important;
+  }
+
+  .leah-progress-runner::before{
+    left:-20px!important;
+    width:20px!important;
+  }
+
+  @keyframes leahMonkeyRunMobileV132{
+    0%,100%{
+      transform:translate(-50%,-60%) translateY(1px) rotate(-2deg) scale(1);
+    }
+    25%{
+      transform:translate(-50%,-60%) translateY(-2px) rotate(1.5deg) scale(1.012);
+    }
+    50%{
+      transform:translate(-50%,-60%) translateY(-4px) rotate(-1deg) scale(1.02);
+    }
+    75%{
+      transform:translate(-50%,-60%) translateY(-2px) rotate(1.5deg) scale(1.012);
+    }
+  }
+}
+
+[data-theme="dark"] .leah-progress-runner{
+  border-color:rgba(255,255,255,.18)!important;
+  background:
+    radial-gradient(circle at 34% 28%,rgba(62,62,67,.98),rgba(34,34,38,.97) 62%,rgba(27,27,30,.96) 100%)!important;
+  box-shadow:
+    0 8px 20px rgba(0,0,0,.34),
+    0 0 0 3px rgba(35,35,38,.68),
+    0 0 0 6px rgba(96,165,250,.045)!important;
+}
+
+@media (prefers-reduced-motion:reduce){
+  .leah-progress-runner,
+  .leah-progress-runner::before,
+  .leah-progress-runner::after{
+    animation-duration:1.25s!important;
+  }
+}
