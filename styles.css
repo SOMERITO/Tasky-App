@@ -8476,3 +8476,115 @@ body::before{
     }
   }
 }
+
+
+/* =========================================================
+   TASKY · VOL. 130 · MONO DE PROGRESO PREMIUM
+   El centro del mono queda exactamente en el extremo del azul.
+   ========================================================= */
+.card-progress.leah-progress .progress-track{
+  position:relative!important;
+  overflow:visible!important;
+  isolation:isolate!important;
+}
+
+.card-progress.leah-progress .progress-fill{
+  position:relative!important;
+  z-index:1!important;
+}
+
+.leah-progress-runner{
+  --leah-run-pct:0%;
+  position:absolute!important;
+  left:var(--leah-run-pct)!important;
+  top:50%!important;
+  z-index:4!important;
+  width:32px!important;
+  height:32px!important;
+  box-sizing:border-box!important;
+  display:grid!important;
+  place-items:center!important;
+  line-height:1!important;
+  font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif!important;
+  font-size:22px!important;
+  text-align:center!important;
+  pointer-events:none!important;
+  user-select:none!important;
+  border:1px solid rgba(255,255,255,.92)!important;
+  border-radius:50%!important;
+  background:rgba(255,255,255,.94)!important;
+  box-shadow:
+    0 5px 13px rgba(15,23,42,.14),
+    0 0 0 3px rgba(255,255,255,.50)!important;
+  transform:translate(-50%,-58%)!important;
+  filter:saturate(108%)!important;
+  animation:leahMonkeyRunV130 .56s ease-in-out infinite!important;
+  will-change:left,transform!important;
+}
+
+@keyframes leahMonkeyRunV130{
+  0%,100%{
+    transform:translate(-50%,-58%) translateY(1px) rotate(-2deg) scale(1);
+  }
+  18%{
+    transform:translate(-50%,-58%) translateY(-1px) rotate(2deg) scale(1.015);
+  }
+  38%{
+    transform:translate(-50%,-58%) translateY(-3px) rotate(-1deg) scale(1);
+  }
+  58%{
+    transform:translate(-50%,-58%) translateY(-1px) rotate(2deg) scale(1.015);
+  }
+  78%{
+    transform:translate(-50%,-58%) translateY(0) rotate(-1deg) scale(1);
+  }
+}
+
+.card-progress.leah-progress .progress-fill{
+  background:linear-gradient(90deg,#007AFF,#2D8CFF)!important;
+  box-shadow:0 0 0 0 rgba(0,122,255,0)!important;
+}
+
+@media (max-width:760px){
+  .card-progress.leah-progress .progress-track{
+    height:8px!important;
+    min-height:8px!important;
+  }
+
+  .leah-progress-runner{
+    width:34px!important;
+    height:34px!important;
+    font-size:24px!important;
+    transform:translate(-50%,-60%)!important;
+    animation:leahMonkeyRunMobileV130 .48s ease-in-out infinite!important;
+  }
+
+  @keyframes leahMonkeyRunMobileV130{
+    0%,100%{
+      transform:translate(-50%,-60%) translateY(1px) rotate(-2deg) scale(1);
+    }
+    25%{
+      transform:translate(-50%,-60%) translateY(-2px) rotate(2deg) scale(1.02);
+    }
+    50%{
+      transform:translate(-50%,-60%) translateY(-4px) rotate(-1deg) scale(1);
+    }
+    75%{
+      transform:translate(-50%,-60%) translateY(-2px) rotate(2deg) scale(1.02);
+    }
+  }
+}
+
+[data-theme="dark"] .leah-progress-runner{
+  border-color:rgba(255,255,255,.18)!important;
+  background:rgba(35,35,38,.96)!important;
+  box-shadow:
+    0 5px 15px rgba(0,0,0,.30),
+    0 0 0 3px rgba(35,35,38,.58)!important;
+}
+
+@media (prefers-reduced-motion:reduce){
+  .leah-progress-runner{
+    animation-duration:1.25s!important;
+  }
+}
