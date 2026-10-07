@@ -1106,7 +1106,7 @@
 
         const category = {
           id: String(cat.id || uid("cat")),
-          title: typeof cat.title === "string" ? cat.title : ("Fase " + (index + 1)),
+          title: typeof cat.title === "string" ? cat.title : ("Casilla " + (index + 1)),
           emoji: typeof cat.emoji === "string" ? cat.emoji.slice(0, 8) : "",
           tasks: Array.isArray(cat.tasks) ? cat.tasks : [],
           order: Number.isFinite(rawOrder) ? rawOrder : index,
@@ -1734,6 +1734,12 @@
     function animateTaskySurface() {}
 
     function render() {
+      const scrollRoot = document.scrollingElement || document.documentElement;
+      const preservedScrollTop = Math.max(
+        0,
+        Number(window.scrollY || scrollRoot?.scrollTop || document.body?.scrollTop || 0)
+      );
+
       const repeatChangedOnRender = syncRepeatingTasksForToday();
       if (repeatChangedOnRender) {
         persistLocal();
@@ -1886,6 +1892,18 @@
       updateTaskViewTabs();
       syncProfessionalUI();
 
+      // Un render no debe devolver al usuario al inicio del tablero.
+      // Recuperamos la posición después del paint para que las actualizaciones
+      // de Firebase y de UI no hagan saltar la página.
+      if (preservedScrollTop > 0) {
+        requestAnimationFrame(() => {
+          try {
+            window.scrollTo({ top: preservedScrollTop, behavior: "auto" });
+          } catch (_) {
+            try { window.scrollTo(0, preservedScrollTop); } catch (_) {}
+          }
+        });
+      }
     }
 
     function buildCategoryCard(cat, index, query) {
@@ -1922,25 +1940,25 @@
       card.innerHTML = `
         <div class="card-head">
           <div class="card-title-row">
-            <button class="drag-card" type="button" title="Arrastrar para mover fase" aria-label="Arrastrar para mover fase">
+            <button class="drag-card" type="button" title="Arrastrar para mover casilla" aria-label="Arrastrar para mover casilla">
               <i data-lucide="grip-vertical"></i>
             </button>
-            <div class="section-order-controls" aria-label="Cambiar posición de fase">
-              <button class="section-order-btn" type="button" data-action="move-category-up" title="Subir fase" aria-label="Subir fase">
+            <div class="section-order-controls" aria-label="Cambiar posición de casilla">
+              <button class="section-order-btn" type="button" data-action="move-category-up" title="Subir casilla" aria-label="Subir casilla">
                 <i data-lucide="chevron-up"></i>
               </button>
-              <button class="section-order-btn" type="button" data-action="move-category-down" title="Bajar fase" aria-label="Bajar fase">
+              <button class="section-order-btn" type="button" data-action="move-category-down" title="Bajar casilla" aria-label="Bajar casilla">
                 <i data-lucide="chevron-down"></i>
               </button>
             </div>
-            <input class="activity-title" maxlength="80" value="${escapeHTML(cat.title)}" placeholder="Nombre de la fase…">
+            <input class="activity-title" maxlength="80" value="${escapeHTML(cat.title)}" placeholder="Nombre de la casilla…">
             <div class="card-actions">
               <button class="mini-btn category-toggle-btn" type="button" data-action="toggle-category" title="${cat.collapsed ? "Expandir fase" : "Contraer fase"}" aria-label="${cat.collapsed ? "Expandir fase" : "Contraer fase"}" aria-expanded="${cat.collapsed ? "false" : "true"}">${cat.collapsed ? "▼" : "▲"}</button>
               <span class="category-pending-count" title="${visiblePending} tarea${visiblePending === 1 ? "" : "s"} pendiente${visiblePending === 1 ? "" : "s"}" aria-label="${visiblePending} tareas pendientes" aria-hidden="true">${visiblePending}</span>
               <button class="mini-btn" type="button" data-action="stats" title="Ver resumen" aria-label="Ver resumen">
                 <i data-lucide="bar-chart-3"></i>
               </button>
-              <button class="mini-btn danger" type="button" data-action="delete-category" title="Eliminar fase" aria-label="Eliminar fase">
+              <button class="mini-btn danger" type="button" data-action="delete-category" title="Eliminar casilla" aria-label="Eliminar casilla">
                 <i data-lucide="trash-2"></i>
               </button>
             </div>
@@ -1974,15 +1992,24 @@
       const list = card.querySelector(".task-list");
 
       for (const task of cat.tasks) {
-        if (!task || task.draft || !String(task.text || "").trim()) continue;
+        if (!task) continue;
 
-        // El tablero principal representa el trabajo de HOY.
-        // Toda tarea futura, incluida una reprogramada, vive fuera de la fase
-        // hasta que llegue su fecha. Se muestra en "Tareas reprogramadas".
-        if (task.date !== today()) continue;
+        // Un borrador vacío es una entrada que el usuario está preparando.
+        // Debe sobrevivir a cualquier render, especialmente al cambiar de
+        // ventana con Alt+Tab, para que la casilla de nueva tarea no desaparezca.
+        if (task.draft) {
+          if (task.date !== today()) continue;
+        } else {
+          if (!String(task.text || "").trim()) continue;
 
-        // Una repetitiva ya completada hoy queda archivada en Completadas.
-        if (task.repeat && isRepeatCompletedToday(task)) continue;
+          // El tablero principal representa el trabajo de HOY.
+          // Toda tarea futura, incluida una reprogramada, vive fuera de la casilla
+          // hasta que llegue su fecha.
+          if (task.date !== today()) continue;
+
+          // Una repetitiva ya completada hoy queda archivada en Completadas.
+          if (task.repeat && isRepeatCompletedToday(task)) continue;
+        }
 
         const item = buildTaskItem(task, query, false);
         list.appendChild(item);
@@ -3395,11 +3422,23 @@
         title.select();
       };
 
-      requestAnimationFrame(focusNewCategoryTitle);
-      window.setTimeout(focusNewCategoryTitle, 60);
+      const revealNewCategory = () => {
+        if (!card?.isConnected) return;
+        try {
+          card.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+        } catch (_) {
+          try { card.scrollIntoView(); } catch (_) {}
+        }
+        window.setTimeout(() => {
+          focusNewCategoryTitle();
+        }, 180);
+      };
+
+      requestAnimationFrame(revealNewCategory);
+      window.setTimeout(revealNewCategory, 80);
 
       updateSummaryUI();
-      scheduleSave("nueva fase");
+      scheduleSave("nueva casilla");
     }
 
     function addTask(categoryId) {
@@ -3518,8 +3557,8 @@
           up.disabled = groupIndex <= 0;
           up.setAttribute("aria-disabled", String(up.disabled));
           up.dataset.tooltip = up.disabled
-            ? "Ya está al inicio de su bloque"
-            : "Subir fase";
+            ? "Ya está al inicio de sus casillas"
+            : "Subir casilla";
         }
 
         if (down) {
@@ -3527,7 +3566,7 @@
           down.setAttribute("aria-disabled", String(down.disabled));
           down.dataset.tooltip = down.disabled
             ? "No puede bajar por debajo de Completadas"
-            : "Bajar fase";
+            : "Bajar casilla";
         }
       });
     }
@@ -3834,7 +3873,7 @@
       localDirty = true;
       updateCompletedCardUI();
       updateSummaryUI();
-      scheduleSave("eliminar fase");
+      scheduleSave("eliminar casilla");
       toast("Fase eliminada", "trash-2");
     }
 
@@ -4631,7 +4670,7 @@
       cat.title = title;
       localDirty = true;
       persistLocal();
-      scheduleSave("editar fase", 700);
+      scheduleSave("editar casilla", 700);
     }
 
     function updateTask(taskId, text) {
