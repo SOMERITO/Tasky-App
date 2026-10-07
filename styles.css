@@ -8072,3 +8072,225 @@ body::before{
     opacity:.55!important;
   }
 }
+
+
+/* =========================================================
+   TASKY · VOL. 126 · MOBILE-FIRST TASK CARDS
+   Rediseño de interacción táctil:
+   - sin drag handles en el flujo móvil
+   - tarea más alta y respirada
+   - acciones en una fila independiente
+   - mayor zona segura para desplazar
+   ========================================================= */
+@media (max-width:760px){
+
+  /* La acción de arrastrar deja de competir con el scroll. */
+  .drag-card,
+  .drag-task{
+    display:none!important;
+  }
+
+  /* Cabecera de fase más limpia. */
+  .card-head{
+    padding:13px 12px 10px!important;
+  }
+
+  .card-title-row{
+    display:grid!important;
+    grid-template-columns:auto minmax(0,1fr) auto!important;
+    align-items:center!important;
+    gap:6px!important;
+  }
+
+  .section-order-controls{
+    display:flex!important;
+    order:1!important;
+  }
+
+  .activity-title{
+    order:2!important;
+    width:100%!important;
+    min-width:0!important;
+    font-size:16px!important;
+    min-height:36px!important;
+    padding:7px 4px!important;
+  }
+
+  .card-actions{
+    order:3!important;
+    display:flex!important;
+    align-items:center!important;
+  }
+
+  .section-order-btn,
+  .mini-btn{
+    width:34px!important;
+    height:34px!important;
+    border-radius:10px!important;
+  }
+
+  .card-meta{
+    padding:6px 0 0 0!important;
+    margin:0!important;
+    gap:5px!important;
+  }
+
+  .card-progress{
+    margin:9px 0 0!important;
+    padding:0!important;
+  }
+
+  /* Las tarjetas de tarea dejan una zona central grande y limpia
+     para iniciar el gesto de desplazamiento. */
+  .task-list{
+    padding:2px 8px 10px!important;
+    gap:8px!important;
+  }
+
+  .task-item:not(.completed-item){
+    display:grid!important;
+    grid-template-columns:34px minmax(0,1fr)!important;
+    grid-template-rows:auto auto auto!important;
+    grid-template-areas:
+      "check text"
+      "check due"
+      "actions actions"!important;
+    column-gap:9px!important;
+    row-gap:3px!important;
+    min-height:88px!important;
+    padding:10px 10px 8px!important;
+    border-radius:15px!important;
+    background:rgba(255,255,255,.92)!important;
+    box-shadow:0 3px 12px rgba(15,23,42,.045)!important;
+    touch-action:pan-y!important;
+  }
+
+  .task-item:not(.completed-item) .check-btn{
+    grid-area:check!important;
+    align-self:start!important;
+    width:32px!important;
+    height:32px!important;
+    margin-top:1px!important;
+    min-width:32px!important;
+    min-height:32px!important;
+    touch-action:pan-y!important;
+  }
+
+  .task-item:not(.completed-item) .task-input{
+    grid-area:text!important;
+    align-self:center!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:32px!important;
+    padding:4px 0!important;
+    font-size:15px!important;
+    line-height:21px!important;
+    touch-action:pan-y!important;
+  }
+
+  .task-item:not(.completed-item) .task-due,
+  .task-item:not(.completed-item) .task-due-repeat-status{
+    grid-area:due!important;
+    display:flex!important;
+    align-items:center!important;
+    min-width:0!important;
+    padding:0!important;
+    margin:0!important;
+    font-size:10px!important;
+    line-height:15px!important;
+  }
+
+  .task-item:not(.completed-item) .task-item-actions{
+    grid-area:actions!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:38px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:4px!important;
+    margin-top:4px!important;
+    padding-top:6px!important;
+    border-top:1px solid rgba(210,210,215,.55)!important;
+  }
+
+  .task-item:not(.completed-item) .task-item-actions button{
+    flex:0 0 34px!important;
+    width:34px!important;
+    height:34px!important;
+    min-width:34px!important;
+    min-height:34px!important;
+    border-radius:10px!important;
+    touch-action:pan-y!important;
+  }
+
+  .task-item:not(.completed-item) .task-item-actions .delete-task-btn{
+    margin-left:2px!important;
+  }
+
+  .task-item:not(.completed-item):active{
+    transform:none!important;
+  }
+
+  /* La fila para añadir tarea también queda claramente separada. */
+  .add-task{
+    min-height:50px!important;
+    margin:4px 8px 11px!important;
+    border-radius:13px!important;
+    font-size:12px!important;
+  }
+
+  /* Las tareas completadas mantienen su información, pero también ganan
+     una zona táctil amplia. */
+  .task-item.completed-item{
+    min-height:58px!important;
+    padding:10px!important;
+    border-radius:14px!important;
+    touch-action:pan-y!important;
+  }
+
+  .task-item.completed-item .check-btn{
+    min-width:30px!important;
+    min-height:30px!important;
+  }
+
+  .task-item.completed-item .task-input{
+    font-size:14px!important;
+    line-height:20px!important;
+  }
+
+  /* La pantalla deja aire entre bloques para que el desplazamiento pueda
+     comenzar sobre una superficie amplia y neutra. */
+  .board{
+    gap:11px!important;
+    padding-bottom:10px!important;
+  }
+
+  .activity-card{
+    overflow:hidden!important;
+  }
+
+  /* En móviles pequeños reducimos un poco el ancho de los controles,
+     pero nunca la zona de pulsación. */
+  @media (max-width:380px){
+    .task-item:not(.completed-item){
+      grid-template-columns:32px minmax(0,1fr)!important;
+      column-gap:8px!important;
+      min-height:86px!important;
+    }
+
+    .task-item:not(.completed-item) .check-btn{
+      width:30px!important;
+      height:30px!important;
+      min-width:30px!important;
+      min-height:30px!important;
+    }
+
+    .task-item:not(.completed-item) .task-item-actions button{
+      flex-basis:33px!important;
+      width:33px!important;
+      min-width:33px!important;
+      height:33px!important;
+    }
+  }
+}
