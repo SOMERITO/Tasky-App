@@ -5538,7 +5538,7 @@
       closeModal("menuModal");
     }
 
-    function scheduleSave(reason = "cambio", delay = 450) {
+    function scheduleSave(reason = "cambio", delay = 120) {
       if (!initialized || hydrating) return;
 
       persistLocal();
