@@ -5682,7 +5682,7 @@
             lastConfirmedRemoteHash = liveHash;
             lastConfirmedRemoteUpdatedBy = liveUpdatedBy;
             lastLocalWriteHash = liveHash;
-            saveSyncBase(remote);
+            saveSyncBase(liveRemote);
             setSyncStatus('online', 'Sincronizado');
             saveSafetyBackup('cambios remotos fusionados');
             return;
@@ -5889,6 +5889,49 @@
       const hasPendingWrites = Boolean(snapshot.metadata?.hasPendingWrites);
       const remoteUpdatedBy = String(data.updatedBy || '');
       cloudSnapshotInitialized = true;
+
+      // Primera sincronización: comparamos la copia local con la última
+      // versión remota usando una base confirmada. Así una tarea agregada
+      // en la web aparece en el celular sin que el celular pueda devolver
+      // su copia antigua a Firestore.
+      if (cloudSnapshotInitialized && !lastConfirmedRemoteHash && remoteHash !== localHash) {
+        const syncBase = lastSyncedState || state;
+        const merged = mergeTaskyStates(syncBase, state, remote);
+        const mergedHash = syncStateHash(merged);
+
+        if (!looksLikeUnexpectedDataLoss(remote) && !looksLikeUnexpectedShrink(remote, state)) {
+          if (mergedHash === remoteHash) {
+            state = remote;
+            persistLocal();
+            localDirty = false;
+            pendingRemoteState = null;
+            lastSavedHash = remoteHash;
+            lastConfirmedRemoteHash = remoteHash;
+            lastConfirmedRemoteUpdatedBy = remoteUpdatedBy;
+            saveSyncBase(remote);
+            render();
+            updateSummaryUI();
+            setSyncStatus("online", "Sincronizado");
+            hideLoading();
+            return;
+          }
+
+          state = merged;
+          persistLocal();
+          localDirty = true;
+          pendingRemoteState = null;
+          lastSavedHash = mergedHash;
+          lastConfirmedRemoteHash = remoteHash;
+          lastConfirmedRemoteUpdatedBy = remoteUpdatedBy;
+          saveSyncBase(remote);
+          render();
+          updateSummaryUI();
+          setSyncStatus("online", "Fusionando cambios…");
+          scheduleSave("sincronizar cambios iniciales", 0);
+          hideLoading();
+          return;
+        }
+      }
 
       // Firestore puede entregar un snapshot atrasado de la caché local
       // después de que nuestro propio write ya fue aceptado. Si pertenece
