@@ -116,6 +116,8 @@
     let rescheduledCollapsed = false;
     let saveInFlight = false;
     let queuedSaveReason = null;
+    let cloudSnapshotInitialized = false;
+    let lastSyncedState = null;
     let sortableCategories = null;
 
     const sortableTasks = new Map();
@@ -183,6 +185,226 @@
 
     function cloneState(obj) {
       return JSON.parse(JSON.stringify(obj));
+    }
+
+    const SYNC_BASE_KEY = "tasky_sync_base_v140";
+
+    function loadSyncBase() {
+      try {
+        const raw = safeStorage.getItem(SYNC_BASE_KEY);
+        if (!raw) return null;
+        return normalizeState(JSON.parse(raw));
+      } catch (error) {
+        console.warn("Tasky: base de sincronización inválida.", error);
+        return null;
+      }
+    }
+
+    function saveSyncBase(source = state) {
+      try {
+        const normalized = normalizeState(cloneState(source));
+        safeStorage.setItem(SYNC_BASE_KEY, serialize(normalized));
+        lastSyncedState = cloneState(normalized);
+      } catch (error) {
+        console.warn("Tasky: no se pudo guardar la base de sincronización.", error);
+      }
+    }
+
+    function valuesEqual(a, b) {
+      return serialize(a) === serialize(b);
+    }
+
+    function mergeScalarValue(baseValue, localValue, remoteValue) {
+      const localChanged = !valuesEqual(localValue, baseValue);
+      const remoteChanged = !valuesEqual(remoteValue, baseValue);
+
+      if (localChanged && !remoteChanged) return cloneState(localValue);
+      if (!localChanged && remoteChanged) return cloneState(remoteValue);
+      if (valuesEqual(localValue, remoteValue)) return cloneState(localValue);
+
+      // Si ambos tocaron el mismo campo al mismo tiempo, el cambio local
+      // conserva lo que el usuario acaba de introducir en su pantalla.
+      return cloneState(localValue);
+    }
+
+    function mergeTaskEntity(baseTask, localTask, remoteTask) {
+      if (!localTask && !remoteTask) return null;
+      if (!localTask) return cloneState(remoteTask);
+      if (!remoteTask) return cloneState(localTask);
+
+      if (!baseTask) {
+        // Mismo ID nuevo en ambos lados: fusionamos campo por campo tomando
+        // la copia local en los conflictos.
+        const merged = cloneState(remoteTask);
+        [
+          "text", "date", "draft", "repeat", "repeatDays", "repeatCount",
+          "lastCompletedAt", "lastCompletedDate",
+          "rescheduled", "rescheduledFrom", "rescheduledAt"
+        ].forEach(field => {
+          merged[field] = valuesEqual(localTask[field], remoteTask[field])
+            ? cloneState(remoteTask[field])
+            : cloneState(localTask[field]);
+        });
+        return merged;
+      }
+
+      const merged = { id: String(localTask.id || remoteTask.id || baseTask.id || uid("task")) };
+      [
+        "text", "date", "draft", "repeat", "repeatDays", "repeatCount",
+        "lastCompletedAt", "lastCompletedDate",
+        "rescheduled", "rescheduledFrom", "rescheduledAt"
+      ].forEach(field => {
+        merged[field] = mergeScalarValue(
+          baseTask[field],
+          localTask[field],
+          remoteTask[field]
+        );
+      });
+      return merged;
+    }
+
+    function mergeEntityArray(baseItems, localItems, remoteItems, mergeEntity, options = {}) {
+      const baseMap = new Map((baseItems || []).map(item => [String(item.id), item]));
+      const localMap = new Map((localItems || []).map(item => [String(item.id), item]));
+      const remoteMap = new Map((remoteItems || []).map(item => [String(item.id), item]));
+      const preserveDeletes = Boolean(options.preserveDeletes);
+
+      const orderedIds = [];
+      for (const item of localItems || []) {
+        const id = String(item.id);
+        if (!orderedIds.includes(id)) orderedIds.push(id);
+      }
+      for (const item of remoteItems || []) {
+        const id = String(item.id);
+        if (!orderedIds.includes(id)) orderedIds.push(id);
+      }
+      for (const item of baseItems || []) {
+        const id = String(item.id);
+        if (!orderedIds.includes(id)) orderedIds.push(id);
+      }
+
+      const result = [];
+
+      for (const id of orderedIds) {
+        const baseItem = baseMap.get(id);
+        const localItem = localMap.get(id);
+        const remoteItem = remoteMap.get(id);
+
+        if (!baseItem) {
+          if (localItem && remoteItem) result.push(mergeEntity(null, localItem, remoteItem));
+          else if (localItem) result.push(cloneState(localItem));
+          else if (remoteItem) result.push(cloneState(remoteItem));
+          continue;
+        }
+
+        if (!localItem && !remoteItem) continue;
+
+        if (!localItem) {
+          // Si el remoto permaneció igual a la base, el usuario local lo
+          // eliminó: respetamos esa eliminación. Si el remoto cambió,
+          // conservamos ese cambio para no perder información.
+          if (preserveDeletes) {
+            result.push(cloneState(remoteItem));
+          } else if (!valuesEqual(remoteItem, baseItem)) {
+            result.push(cloneState(remoteItem));
+          }
+          continue;
+        }
+
+        if (!remoteItem) {
+          if (preserveDeletes) {
+            result.push(cloneState(localItem));
+          } else if (!valuesEqual(localItem, baseItem)) {
+            result.push(cloneState(localItem));
+          }
+          continue;
+        }
+
+        result.push(mergeEntity(baseItem, localItem, remoteItem));
+      }
+
+      return result.filter(Boolean);
+    }
+
+    function mergeCategoryEntity(baseCategory, localCategory, remoteCategory) {
+      if (!localCategory && !remoteCategory) return null;
+      if (!localCategory) return cloneState(remoteCategory);
+      if (!remoteCategory) return cloneState(localCategory);
+
+      return {
+        id: String(localCategory.id || remoteCategory.id || baseCategory?.id || uid("cat")),
+        title: mergeScalarValue(baseCategory?.title, localCategory.title, remoteCategory.title),
+        emoji: mergeScalarValue(baseCategory?.emoji, localCategory.emoji, remoteCategory.emoji),
+        order: mergeScalarValue(baseCategory?.order, localCategory.order, remoteCategory.order),
+        collapsed: mergeScalarValue(baseCategory?.collapsed, localCategory.collapsed, remoteCategory.collapsed),
+        tasks: mergeEntityArray(
+          baseCategory?.tasks || [],
+          localCategory.tasks || [],
+          remoteCategory.tasks || [],
+          mergeTaskEntity
+        )
+      };
+    }
+
+    function mergeCompletedEntity(baseTask, localTask, remoteTask) {
+      if (!localTask && !remoteTask) return null;
+      if (!localTask) return cloneState(remoteTask);
+      if (!remoteTask) return cloneState(localTask);
+      if (!baseTask) return cloneState(localTask);
+
+      const merged = { id: String(localTask.id || remoteTask.id || baseTask.id || uid("task")) };
+      [
+        "text", "date", "originCat", "completedAt", "completedDate",
+        "completedForDate", "originIndex", "repeat", "repeatDays",
+        "repeatSourceId", "recurringOccurrence", "nextOccurrenceDate"
+      ].forEach(field => {
+        merged[field] = mergeScalarValue(
+          baseTask[field],
+          localTask[field],
+          remoteTask[field]
+        );
+      });
+      return merged;
+    }
+
+    function normalizeCategoryOrderForSync(source) {
+      if (!source || !Array.isArray(source.categories)) return;
+      source.categories = source.categories.map((category, index) => ({
+        ...category,
+        order: index
+      }));
+    }
+
+    function mergeTaskyStates(baseState, localState, remoteState) {
+      const base = normalizeState(baseState || defaultState());
+      const local = normalizeState(localState || defaultState());
+      const remote = normalizeState(remoteState || defaultState());
+      const merged = defaultState();
+
+      merged.categories = mergeEntityArray(
+        base.categories,
+        local.categories,
+        remote.categories,
+        mergeCategoryEntity
+      );
+
+      merged.completed = mergeEntityArray(
+        base.completed,
+        local.completed,
+        remote.completed,
+        mergeCompletedEntity,
+        { preserveDeletes: true }
+      );
+
+      normalizeCategoryOrderForSync(merged);
+      return merged;
+    }
+
+    function syncStateHash(source = state) {
+      return hash({
+        categories: source.categories,
+        completed: source.completed
+      });
     }
 
     function taskCountPending() {
@@ -5342,6 +5564,15 @@
         return;
       }
 
+      // Esperamos el primer snapshot antes de permitir que una copia local
+      // pueda escribir en Firestore. Así una caché antigua del celular no
+      // puede reemplazar una versión más nueva de la web al arrancar.
+      if (!cloudSnapshotInitialized) {
+        queuedSaveReason = reason;
+        setSyncStatus('online', 'Esperando sincronización…');
+        return;
+      }
+
       const allowDestructive = /delete|eliminar|vaciar|reset|importar|recuperar/i.test(reason || '');
       const currentStats = stateStats(state);
       const safetyBackup = loadSafetyBackup();
@@ -5364,7 +5595,7 @@
         return;
       }
 
-      const currentHash = hash({ categories: state.categories, completed: state.completed });
+      let currentHash = hash({ categories: state.categories, completed: state.completed });
 
       // Si ya confirmamos este mismo estado desde Firestore, no hay nada que hacer.
       if (!localDirty && currentHash === lastConfirmedRemoteHash) {
@@ -5418,28 +5649,9 @@
           lastBlockedRemoteAt = 0;
           localDirty = false;
           pendingRemoteState = null;
+          saveSyncBase(state);
           setSyncStatus('online', 'Sincronizado');
           saveSafetyBackup('estado confirmado', state);
-          return;
-        }
-
-        const baselineHash = lastConfirmedRemoteHash || lastSavedHash || liveHash;
-        const remoteChangedSinceBaseline =
-          Boolean(baselineHash) && liveHash !== baselineHash;
-
-        // Solo consideramos conflicto real cuando el estado remoto cambió
-        // y no proviene de este mismo dispositivo.
-        if (
-          remoteChangedSinceBaseline &&
-          liveHash !== currentHash &&
-          liveUpdatedBy &&
-          liveUpdatedBy !== deviceId
-        ) {
-          pendingRemoteState = liveRemote;
-          saveSafetyBackup('conflicto remoto detectado', state);
-          localDirty = true;
-          setSyncStatus('error', 'Conflicto protegido');
-          toast('Hay cambios remotos pendientes. Se conservaron tus cambios locales.', 'shield-alert', 'error');
           return;
         }
 
@@ -5450,6 +5662,43 @@
             'Se rechazó un estado remoto que parece haber perdido datos.'
           );
           return;
+        }
+
+        if (
+          liveHash !== currentHash &&
+          liveUpdatedBy &&
+          liveUpdatedBy !== deviceId
+        ) {
+          const syncBase = lastSyncedState || state;
+          const merged = mergeTaskyStates(syncBase, state, liveRemote);
+          const mergedHash = syncStateHash(merged);
+
+          if (mergedHash === liveHash) {
+            state = liveRemote;
+            persistLocal();
+            localDirty = false;
+            pendingRemoteState = null;
+            lastSavedHash = liveHash;
+            lastConfirmedRemoteHash = liveHash;
+            lastConfirmedRemoteUpdatedBy = liveUpdatedBy;
+            lastLocalWriteHash = liveHash;
+            saveSyncBase(remote);
+            setSyncStatus('online', 'Sincronizado');
+            saveSafetyBackup('cambios remotos fusionados');
+            return;
+          }
+
+          if (mergedHash !== currentHash) {
+            state = merged;
+            persistLocal();
+            localDirty = true;
+            pendingRemoteState = null;
+            currentHash = mergedHash;
+            render();
+            updateSummaryUI();
+          }
+
+          setSyncStatus('online', 'Fusionando cambios…');
         }
 
         // Snapshot ANTES de escribir para poder recuperar el último estado bueno.
@@ -5477,6 +5726,7 @@
         lastBlockedRemoteAt = 0;
         localDirty = false;
         pendingRemoteState = null;
+        saveSyncBase(state);
 
         // El servidor aceptó la escritura; la próxima instantánea de
         // onSnapshot cerrará la confirmación definitiva.
@@ -5600,8 +5850,11 @@
       const local = loadLocalState();
 
       if (!snapshot.exists) {
+        cloudSnapshotInitialized = true;
+
         if (local && (local.categories.length || local.completed.length)) {
           state = local;
+          if (!lastSyncedState) saveSyncBase(state);
           render();
           hideLoading();
           setTimeout(() => saveCloud("migración inicial"), 120);
@@ -5635,6 +5888,7 @@
       const localHash = hash({ categories: state.categories, completed: state.completed });
       const hasPendingWrites = Boolean(snapshot.metadata?.hasPendingWrites);
       const remoteUpdatedBy = String(data.updatedBy || '');
+      cloudSnapshotInitialized = true;
 
       // Firestore puede entregar un snapshot atrasado de la caché local
       // después de que nuestro propio write ya fue aceptado. Si pertenece
@@ -5670,6 +5924,7 @@
         pendingRemoteState = null;
         lastBlockedRemoteHash = "";
         lastBlockedRemoteAt = 0;
+        saveSyncBase(remote);
         setSyncStatus("online", "Sincronizado");
         hideLoading();
         return;
@@ -5698,21 +5953,48 @@
       }
 
       if (localDirty) {
-        // Si el snapshot pertenece a este mismo dispositivo, es nuestro
-        // propio ciclo de escritura (o una confirmación atrasada). No lo
-        // mostramos como conflicto y nunca sustituimos el estado local.
+        // Si proviene de este mismo dispositivo, es confirmación/eco de
+        // nuestra escritura: nunca reemplazamos el estado que está en pantalla.
         if (remoteUpdatedBy === deviceId) {
           lastSavedHash = remoteHash;
           lastConfirmedRemoteHash = remoteHash;
           lastConfirmedRemoteUpdatedBy = deviceId;
+          lastLocalWriteHash = remoteHash;
+          saveSyncBase(remote);
           hideLoading();
           return;
         }
 
-        // Si realmente proviene de otro cliente, lo retenemos sin
-        // sobrescribir los cambios locales.
-        pendingRemoteState = remote;
-        setSyncStatus("online", "Cambios remotos pendientes");
+        const syncBase = lastSyncedState || state;
+        const merged = mergeTaskyStates(syncBase, state, remote);
+        const mergedHash = syncStateHash(merged);
+
+        if (mergedHash === remoteHash) {
+          state = remote;
+          persistLocal();
+          localDirty = false;
+          pendingRemoteState = null;
+          lastSavedHash = remoteHash;
+          lastConfirmedRemoteHash = remoteHash;
+          lastConfirmedRemoteUpdatedBy = remoteUpdatedBy;
+          saveSyncBase(remote);
+          render();
+          updateSummaryUI();
+          setSyncStatus("online", "Sincronizado");
+          hideLoading();
+          return;
+        }
+
+        state = merged;
+        persistLocal();
+        localDirty = true;
+        pendingRemoteState = null;
+        lastSavedHash = mergedHash;
+        saveSyncBase(remote);
+        render();
+        updateSummaryUI();
+        setSyncStatus("online", "Fusionando cambios…");
+        scheduleSave("fusionar cambios entre dispositivos", 0);
         hideLoading();
         return;
       }
@@ -5745,6 +6027,7 @@
       lastConfirmedRemoteHash = remoteHash;
       lastConfirmedRemoteUpdatedBy = remoteUpdatedBy;
       pendingRemoteState = null;
+      saveSyncBase(remote);
       render();
       if (repeatChanged) scheduleSave('normalizar tareas repetitivas', 0);
       setSyncStatus("online", repeatChanged ? "Actualizando repetición…" : "Sincronizado");
@@ -7271,8 +7554,11 @@
         }
 
         const local = loadLocalState();
+        lastSyncedState = loadSyncBase();
+
         if (local && stateStats(local).total > 0) {
           state = local;
+          if (!lastSyncedState) saveSyncBase(state);
           render();
           if (!loadSafetyBackup() && stateStats(state).total > 0) saveSafetyBackup('inicio');
           setSyncStatus("offline", "Cargando copia local");
