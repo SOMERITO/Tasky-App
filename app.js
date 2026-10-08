@@ -407,6 +407,22 @@
       });
     }
 
+    // El estado de apertura/cierre de una casilla es estrictamente local.
+    // Nunca debe viajar a Firestore ni provocar un render remoto en otro dispositivo.
+    function preserveLocalCategoryCollapse(remoteState, localState = state) {
+      const localById = new Map(
+        (localState?.categories || []).map(category => [String(category.id), Boolean(category.collapsed)])
+      );
+
+      remoteState.categories = (remoteState.categories || []).map(category => {
+        const id = String(category.id);
+        if (!localById.has(id)) return category;
+        return { ...category, collapsed: localById.get(id) };
+      });
+
+      return remoteState;
+    }
+
     function taskCountPending() {
       const now = today();
       const completedIds = new Set(
@@ -5611,11 +5627,11 @@
 
         const liveSnapshot = await taskyDoc.get();
         const liveData = liveSnapshot.exists ? (liveSnapshot.data() || {}) : {};
-        const liveRemote = normalizeState({
+        const liveRemote = preserveLocalCategoryCollapse(normalizeState({
           version: liveData.version || APP_VERSION,
           categories: liveData.categories || [],
           completed: liveData.completed || []
-        });
+        }));
         const liveHash = hash({ categories: liveRemote.categories, completed: liveRemote.completed });
         const liveUpdatedBy = String(liveData.updatedBy || '');
 
@@ -5706,7 +5722,11 @@
 
         const payload = {
           version: APP_VERSION,
-          categories: state.categories,
+          // collapsed es una preferencia visual local: jamás se sincroniza.
+          categories: state.categories.map(category => {
+            const { collapsed, ...cloudCategory } = category;
+            return cloudCategory;
+          }),
           completed: state.completed,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
           updatedBy: deviceId
@@ -5878,11 +5898,11 @@
       }
 
       const data = snapshot.data() || {};
-      const remote = normalizeState({
+      const remote = preserveLocalCategoryCollapse(normalizeState({
         version: data.version || APP_VERSION,
         categories: data.categories || [],
         completed: data.completed || []
-      });
+      }));
 
       const remoteHash = hash({ categories: remote.categories, completed: remote.completed });
       const localHash = hash({ categories: state.categories, completed: state.completed });
@@ -6546,9 +6566,10 @@
           const category = state.categories.find(cat => cat.id === card?.dataset.categoryId);
           if (!category) return;
 
+          // El estado abierto/cerrado de una casilla pertenece solo a este dispositivo.
+          // No marcamos el tablero como "dirty" ni lo enviamos a Firestore.
           category.collapsed = !Boolean(category.collapsed);
           persistLocal();
-          localDirty = true;
 
           const list = card.querySelector('.task-list');
           const progress = card.querySelector('.card-progress');
@@ -6564,7 +6585,8 @@
           button.removeAttribute('title');
           button.setAttribute('aria-label', categoryTooltip);
           button.textContent = category.collapsed ? '▼' : '▲';
-          scheduleSave(category.collapsed ? "contraer fase" : "expandir fase");
+          // Abrir/cerrar no dispara sincronización: evita que otro dispositivo
+          // cambie su viewport al recibir un snapshot remoto.
           softHaptic(10);
           playTaskySound('click');
           return;
