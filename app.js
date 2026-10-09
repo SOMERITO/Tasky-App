@@ -1802,7 +1802,9 @@
     }
 
     function categoryCompletionGroup(cat) {
-      if (!isMovableCategory(cat)) return 2; // Reprogramada por completo: no ocupa la frontera visible.
+      // Solo el trabajo pendiente hoy permanece antes de Completadas.
+      // Una casilla con todas sus tareas reprogramadas a futuro pertenece
+      // al bloque terminado de hoy, aunque se pinte en naranja.
       return categoryHasOpenWorkToday(cat) ? 0 : 1;
     }
 
@@ -1832,8 +1834,11 @@
       return cat.tasks.some(task => {
         if (!task) return false;
 
-        // Un borrador recién creado es trabajo activo aunque todavía no
-        // tenga texto: queremos que la fase suba inmediatamente.
+        // Las tareas ya reprogramadas a una fecha futura no cuentan como
+        // pendientes de hoy, incluso si quedó un indicador temporal de borrador.
+        if (task.rescheduled && task.date && task.date > todayDate) return false;
+
+        // Un borrador nuevo sin fecha futura sigue siendo trabajo activo.
         if (task.draft) return true;
 
         if (!String(task.text || "").trim()) return false;
@@ -2094,21 +2099,13 @@
 
       enforceCategoryCompletionBoundary();
 
-      const reprogrammedCategoryIds = new Set(
-        state.categories
-          .filter(isFullyRescheduledCategory)
-          .map(cat => cat.id)
-      );
-
       const activeCategories =
-        state.categories.filter(
-          cat => !reprogrammedCategoryIds.has(cat.id) && categoryHasOpenWorkToday(cat)
-        );
+        state.categories.filter(categoryHasOpenWorkToday);
 
+      // Todas las casillas sin trabajo pendiente hoy van debajo de Completadas.
+      // Las totalmente reprogramadas se decoran después con su estilo naranja.
       const finishedCategories =
-        state.categories.filter(
-          cat => !reprogrammedCategoryIds.has(cat.id) && !categoryHasOpenWorkToday(cat)
-        );
+        state.categories.filter(cat => !categoryHasOpenWorkToday(cat));
 
       if (activeTaskView !== 'completed') {
         for (const cat of activeCategories) {
@@ -4161,6 +4158,13 @@
       updateCategoryUI(category.id);
       updateSummaryUI();
       updateRescheduledCardUI();
+
+      // Esta acción evita un render completo para no mover el viewport móvil.
+      // Decoramos/reubicamos aquí la casilla cuando acaba de quedarse sin trabajo de hoy.
+      if (typeof taskyV106DecorateRescheduledPhases === "function") {
+        taskyV106DecorateRescheduledPhases();
+      }
+
       scheduleSave('reprogramar tarea para mañana');
       softHaptic(18);
       playTaskySound('reschedule');
@@ -8065,9 +8069,9 @@
       });
 
       if (autoCollapseChanged) {
+        // El colapso es una preferencia visual de este dispositivo,
+        // por lo que se guarda localmente sin publicar un cambio en la nube.
         persistLocal();
-        localDirty = true;
-        scheduleSave("colapsar casillas reprogramadas", 0);
       }
 
       refreshIcons();
