@@ -121,6 +121,7 @@
     let sortableCategories = null;
 
     const sortableTasks = new Map();
+    const selectedTaskIds = new Set();
 
     function defaultState() {
       return {
@@ -405,6 +406,64 @@
         categories: source.categories,
         completed: source.completed
       });
+    }
+
+    function clearTaskMultiSelection() {
+      selectedTaskIds.clear();
+      syncTaskMultiSelectionUI();
+    }
+
+    function syncTaskMultiSelectionUI() {
+      const validIds = new Set();
+
+      for (const category of state.categories || []) {
+        for (const task of category.tasks || []) {
+          if (task?.id) validIds.add(String(task.id));
+        }
+      }
+      for (const task of state.completed || []) {
+        if (task?.id) validIds.add(String(task.id));
+      }
+
+      for (const id of selectedTaskIds) {
+        if (!validIds.has(String(id))) selectedTaskIds.delete(id);
+      }
+
+      document.querySelectorAll(".task-item[data-task-id]").forEach(item => {
+        const selected = selectedTaskIds.has(String(item.dataset.taskId));
+        item.classList.toggle("task-multi-selected", selected);
+        if (selected) item.setAttribute("aria-selected", "true");
+        else item.removeAttribute("aria-selected");
+      });
+
+      let indicator = document.getElementById("taskSelectionIndicator");
+      if (!selectedTaskIds.size) {
+        indicator?.remove();
+        return;
+      }
+
+      if (!indicator) {
+        indicator = document.createElement("div");
+        indicator.id = "taskSelectionIndicator";
+        indicator.className = "task-selection-indicator";
+        indicator.setAttribute("role", "status");
+        indicator.setAttribute("aria-live", "polite");
+        indicator.innerHTML =
+          '<span class="task-selection-count"></span>' +
+          '<button class="task-selection-clear" type="button">Limpiar selección</button>';
+
+        indicator.querySelector(".task-selection-clear")
+          .addEventListener("click", clearTaskMultiSelection);
+        document.body.appendChild(indicator);
+      }
+
+      const count = selectedTaskIds.size;
+      const label = indicator.querySelector(".task-selection-count");
+      if (label) {
+        label.textContent =
+          count + (count === 1 ? " tarea seleccionada" : " tareas seleccionadas") +
+          " · Ctrl+clic para añadir o quitar";
+      }
     }
 
     // El estado de apertura/cierre de una casilla es estrictamente local.
@@ -2122,6 +2181,7 @@
 
       initSortables();
       refreshSectionMoveControls();
+      syncTaskMultiSelectionUI();
 
       hydrating = false;
       updateSummaryUI();
@@ -2261,6 +2321,7 @@
       const isOverdue = !completed && task.date < today();
       item.className = "task-item" + (completed ? " completed-item" : "") + (isOverdue ? " overdue" : "");
       item.dataset.taskId = task.id;
+      if (selectedTaskIds.has(String(task.id))) item.classList.add("task-multi-selected");
       if (!completed) item.dataset.date = task.date;
 
       if (completed) {
@@ -3937,6 +3998,7 @@
       tasks.forEach((task, index) => {
         const row = document.createElement("div");
         row.className = "task-item rescheduled-task-item task-enter";
+        if (selectedTaskIds.has(String(task.id))) row.classList.add("task-multi-selected");
         row.dataset.taskId = task.id;
         row.style.setProperty("--rescheduled-delay", (index * 42) + "ms");
         row.innerHTML =
@@ -6311,6 +6373,33 @@
     }
 
     function bindEvents() {
+      // Ctrl+clic (o Cmd+clic en Mac) alterna la selección de una tarea.
+      // Se ignoran controles de acción para no completar, mover ni borrar por accidente.
+      document.addEventListener("click", event => {
+        if (!event.ctrlKey && !event.metaKey) return;
+
+        const item = event.target?.closest?.(".task-item[data-task-id]");
+        if (!item) return;
+        if (event.target.closest("button, a, input, select, .task-item-actions")) return;
+
+        const taskId = String(item.dataset.taskId || "");
+        if (!taskId) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
+        if (selectedTaskIds.has(taskId)) selectedTaskIds.delete(taskId);
+        else selectedTaskIds.add(taskId);
+
+        syncTaskMultiSelectionUI();
+      }, true);
+
+      document.addEventListener("keydown", event => {
+        if (event.key !== "Escape" || !selectedTaskIds.size) return;
+        if (document.querySelector(".modal-backdrop.open")) return;
+        clearTaskMultiSelection();
+      });
 
       if (el.fabTop) {
         let fabTopTicking = false;
