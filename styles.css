@@ -8774,3 +8774,75 @@ body::before{
     animation-duration:1.25s!important;
   }
 }
+
+
+/* =========================================================
+   TASKY V143 · selección múltiple con Ctrl/Cmd + clic
+   ========================================================= */
+.task-item.task-multi-selected{
+  position:relative;
+  outline:2px solid #2563eb!important;
+  outline-offset:-2px!important;
+  background:linear-gradient(90deg,rgba(37,99,235,.13),rgba(37,99,235,.055))!important;
+  box-shadow:inset 4px 0 0 #2563eb,0 5px 18px rgba(37,99,235,.10)!important;
+  z-index:1;
+}
+.task-item.task-multi-selected .task-input{
+  background:transparent!important;
+}
+.task-selection-indicator{
+  position:fixed;
+  left:50%;
+  bottom:calc(82px + env(safe-area-inset-bottom,0px));
+  transform:translateX(-50%);
+  z-index:18000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  width:max-content;
+  max-width:calc(100vw - 28px);
+  padding:10px 14px;
+  border:1px solid rgba(37,99,235,.24);
+  border-radius:999px;
+  color:var(--text,#101828);
+  background:var(--surface-solid,rgba(255,255,255,.96));
+  box-shadow:0 12px 34px rgba(15,23,42,.18);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  font-size:12px;
+  font-weight:750;
+  line-height:1.35;
+}
+.task-selection-count{
+  min-width:0;
+}
+.task-selection-clear{
+  flex:0 0 auto;
+  border:0;
+  border-radius:999px;
+  padding:7px 10px;
+  color:#fff;
+  background:#2563eb;
+  font:inherit;
+  font-size:11px;
+  font-weight:800;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.task-selection-clear:focus-visible{
+  outline:2px solid currentColor;
+  outline-offset:3px;
+}
+@media(max-width:520px){
+  .task-selection-indicator{
+    bottom:calc(76px + env(safe-area-inset-bottom,0px));
+    gap:8px;
+    padding:8px 10px;
+    font-size:11px;
+  }
+  .task-selection-clear{
+    padding:7px 8px;
+    font-size:10px;
+  }
+}
