@@ -3508,15 +3508,10 @@
       if (!cat) return;
 
       const visiblePending = cat.tasks.filter(t =>
-        !(
-          !t.draft &&
-          t.text.trim() &&
-          (
-            t.date < today() ||
-            (t.repeat && isRepeatCompletedToday(t)) ||
-            (t.repeat && t.date > today())
-          )
-        )
+        !t.draft &&
+        String(t.text || "").trim() &&
+        t.date === today() &&
+        !(t.repeat && isRepeatCompletedToday(t))
       ).length;
       const completedToday =
         state.completed.filter(t => t.originCat === categoryId && completedDateFor(t) === today()).length;
