@@ -1,62 +1,162 @@
 [
   {
-    "text": "No es que tengamos poco tiempo, sino que perdemos mucho.",
-    "author": "Séneca",
-    "category": "estoicismo"
+    "text": "La dicha del hombre consiste en observar las reglas y condiciones por las cuales se consigue el bien de todos los hombres.",
+    "author": "León Tolstói"
   },
   {
-    "text": "El secreto de salir adelante es simplemente empezar.",
-    "author": "Mark Twain",
-    "category": "accion"
+    "text": "No es que tengamos poco tiempo, sino que perdemos mucho.",
+    "author": "Séneca"
   },
   {
     "text": "Por cada minuto dedicado a organizar, se gana una hora.",
-    "author": "Benjamin Franklin",
-    "category": "orden"
+    "author": "Benjamin Franklin"
   },
   {
     "text": "Somos lo que hacemos repetidamente. La excelencia, entonces, no es un acto, sino un hábito.",
-    "author": "Aristóteles",
-    "category": "habitos"
+    "author": "Aristóteles"
   },
   {
     "text": "Concéntrate en cada minuto como un romano, haciendo lo que tienes delante con dignidad y precisión.",
-    "author": "Marco Aurelio",
-    "category": "estoicismo"
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "El secreto de salir adelante es simplemente empezar.",
+    "author": "Mark Twain"
   },
   {
     "text": "Primero di a ti mismo lo que serías; y luego haz lo que tengas que hacer.",
-    "author": "Epicteto",
-    "category": "estoicismo"
+    "author": "Epicteto"
   },
   {
     "text": "La simplicidad es la máxima sofisticación.",
-    "author": "Leonardo da Vinci",
-    "category": "orden"
+    "author": "Leonardo da Vinci"
   },
   {
     "text": "Tu mente es para tener ideas, no para retenerlas.",
-    "author": "David Allen",
-    "category": "orden"
+    "author": "David Allen"
   },
   {
     "text": "Lo que se mide se mejora; lo que se planifica con claridad se ejecuta con calma.",
-    "author": "Peter Drucker",
-    "category": "accion"
+    "author": "Peter Drucker"
   },
   {
     "text": "Enfocarse significa decir que no a cien buenas ideas más.",
-    "author": "Steve Jobs",
-    "category": "orden"
+    "author": "Steve Jobs"
   },
   {
     "text": "Pequeñas disciplinas repetidas con consistencia cada día conducen a grandes logros.",
-    "author": "John C. Maxwell",
-    "category": "habitos"
+    "author": "John C. Maxwell"
   },
   {
     "text": "Ningún viento es favorable para quien no sabe a qué puerto se dirige.",
-    "author": "Séneca",
-    "category": "estoicismo"
+    "author": "Séneca"
+  },
+  {
+    "text": "El orden es el placer de la razón; pero el desorden es el delicia de la imaginación.",
+    "author": "Paul Claudel"
+  },
+  {
+    "text": "Haz cada cosa en la vida como si fuera lo último que fueras a hacer.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "El futuro depende de lo que hagas hoy.",
+    "author": "Mahatma Gandhi"
+  },
+  {
+    "text": "La disciplina es el puente entre las metas y los logros.",
+    "author": "Jim Rohn"
+  },
+  {
+    "text": "No dejes que lo que no puedes hacer interfiera con lo que sí puedes hacer.",
+    "author": "John Wooden"
+  },
+  {
+    "text": "Un viaje de mil millas comienza con un solo paso.",
+    "author": "Lao-Tsé"
+  },
+  {
+    "text": "Quien tiene un porqué para vivir puede soportar casi cualquier cómo.",
+    "author": "Friedrich Nietzsche"
+  },
+  {
+    "text": "La acción es la clave fundamental de todo éxito.",
+    "author": "Pablo Picasso"
+  },
+  {
+    "text": "La mejor manera de predecir el futuro es creándolo.",
+    "author": "Peter Drucker"
+  },
+  {
+    "text": "El hombre que mueve montañas comienza cargando pequeñas piedras.",
+    "author": "Confucio"
+  },
+  {
+    "text": "No cuentes los días, haz que los días cuenten.",
+    "author": "Muhammad Ali"
+  },
+  {
+    "text": "La constancia es la virtud por la cual todas las otras virtudes dan su fruto.",
+    "author": "Arturo Graf"
+  },
+  {
+    "text": "El éxito es la suma de pequeños esfuerzos repetidos día tras día.",
+    "author": "Robert Collier"
+  },
+  {
+    "text": "La claridad precede a la maestría.",
+    "author": "Robin Sharma"
+  },
+  {
+    "text": "Nada es particularmente difícil si lo divides en pequeños trabajos.",
+    "author": "Henry Ford"
+  },
+  {
+    "text": "El sabio no se sienta a lamentarse por lo perdido, sino que se alegra de remediarlo.",
+    "author": "William Shakespeare"
+  },
+  {
+    "text": "Donde hay orden, hay tranquilidad y progreso.",
+    "author": "Cicerón"
+  },
+  {
+    "text": "La paciencia es amarga, pero su fruto es dulce.",
+    "author": "Jean-Jacques Rousseau"
+  },
+  {
+    "text": "El que domina a los otros es fuerte; el que se domina a sí mismo es poderoso.",
+    "author": "Lao-Tsé"
+  },
+  {
+    "text": "Saber qué hacer elimina el miedo.",
+    "author": "Rosa Parks"
+  },
+  {
+    "text": "La energía y la persistencia conquistan todas las cosas.",
+    "author": "Benjamin Franklin"
+  },
+  {
+    "text": "Nunca es demasiado tarde para ser lo que podrías haber sido.",
+    "author": "George Eliot"
+  },
+  {
+    "text": "Lo que hacemos ahora resuena en la eternidad.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "La buena fortuna favorece a los audaces y organizados.",
+    "author": "Virgilio"
+  },
+  {
+    "text": "Empieza donde estás, usa lo que tienes, haz lo que puedas.",
+    "author": "Arthur Ashe"
+  },
+  {
+    "text": "El tiempo es la cosa más valiosa que una persona puede gastar.",
+    "author": "Teofrasto"
+  },
+  {
+    "text": "Pensar es fácil. Actuar es difícil. Actuar siguiendo el pensamiento propio es lo más difícil del mundo.",
+    "author": "Johann Wolfgang von Goethe"
   }
 ]
