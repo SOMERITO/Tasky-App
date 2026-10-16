@@ -238,6 +238,7 @@
     selectedRepeatDays: [],
     editingBoxId: null,
     editingTaskId: null,
+    keepInlineAddOpenBoxId: null,
     confirmCallback: null,
     charts: {
       trend: null,
@@ -255,8 +256,26 @@
       .replace(/'/g, "&#039;");
   }
 
-  // Point 6: Web Audio API Sound Engine + Sound Toggle Button
+  // Point 2: Authentic iPhone / iOS Acoustic Sound Engine with Distinct Tones per Function
   let sharedAudioCtx = null;
+  function playNoteLayer(ctx, freqStart, freqEnd, delaySec, durationSec, oscType, peakGain) {
+    const start = ctx.currentTime + delaySec;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = oscType || "sine";
+    osc.frequency.setValueAtTime(freqStart, start);
+    if (freqEnd && freqEnd !== freqStart) {
+      osc.frequency.exponentialRampToValueAtTime(freqEnd, start + durationSec);
+    }
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.linearRampToValueAtTime(peakGain, start + Math.min(0.008, durationSec * 0.25));
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + durationSec);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + durationSec + 0.01);
+  }
+
   function playUiSound(type) {
     if (!appState.settings.soundsEnabled) return;
     try {
@@ -264,55 +283,73 @@
       if (!AudioCtx) return;
       if (!sharedAudioCtx) sharedAudioCtx = new AudioCtx();
       if (sharedAudioCtx.state === "suspended") sharedAudioCtx.resume();
+      const ctx = sharedAudioCtx;
 
-      const now = sharedAudioCtx.currentTime;
-      const osc = sharedAudioCtx.createOscillator();
-      const gain = sharedAudioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(sharedAudioCtx.destination);
-
-      if (type === "complete") {
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(523.25, now); // C5
-        osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.08); // E5
-        osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.16); // G5
-        osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.26); // C6
-        gain.gain.setValueAtTime(0.09, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.34);
-        osc.start(now);
-        osc.stop(now + 0.35);
-      } else if (type === "dragReady") {
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(392.00, now); // G4
-        osc.frequency.exponentialRampToValueAtTime(587.33, now + 0.11); // D5
-        gain.gain.setValueAtTime(0.07, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-        osc.start(now);
-        osc.stop(now + 0.15);
-      } else if (type === "drop") {
-        osc.type = "triangle";
-        osc.frequency.setValueAtTime(493.88, now);
-        osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.09);
-        gain.gain.setValueAtTime(0.06, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-        osc.start(now);
-        osc.stop(now + 0.13);
-      } else if (type === "delete") {
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(349.23, now);
-        osc.frequency.exponentialRampToValueAtTime(246.94, now + 0.14);
-        gain.gain.setValueAtTime(0.06, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
-        osc.start(now);
-        osc.stop(now + 0.17);
-      } else {
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(540, now);
-        osc.frequency.exponentialRampToValueAtTime(620, now + 0.05);
-        gain.gain.setValueAtTime(0.045, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.065);
-        osc.start(now);
-        osc.stop(now + 0.07);
+      switch (type) {
+        case "complete":
+          // iPhone Apple Pay / Reminders glass marimba chime
+          playNoteLayer(ctx, 587.33, 587.33, 0.00, 0.14, "sine", 0.075);
+          playNoteLayer(ctx, 880.00, 880.00, 0.055, 0.16, "sine", 0.08);
+          playNoteLayer(ctx, 1174.66, 1174.66, 0.11, 0.24, "sine", 0.095);
+          playNoteLayer(ctx, 1760.00, 1760.00, 0.16, 0.30, "triangle", 0.045);
+          break;
+        case "uncomplete":
+          // iOS soft reverse pop
+          playNoteLayer(ctx, 783.99, 523.25, 0.00, 0.11, "sine", 0.06);
+          break;
+        case "addTask":
+          // iOS New Item crisp two-tone pop
+          playNoteLayer(ctx, 659.25, 659.25, 0.00, 0.08, "sine", 0.065);
+          playNoteLayer(ctx, 987.77, 1046.50, 0.05, 0.14, "sine", 0.075);
+          break;
+        case "fold":
+          // iOS sheet collapse soft swoosh down
+          playNoteLayer(ctx, 640, 320, 0.00, 0.085, "sine", 0.055);
+          break;
+        case "unfold":
+          // iOS sheet expand soft swoosh up
+          playNoteLayer(ctx, 340, 680, 0.00, 0.085, "sine", 0.055);
+          break;
+        case "reschedule":
+          // iOS Calendar date lock chime
+          playNoteLayer(ctx, 523.25, 523.25, 0.00, 0.09, "sine", 0.06);
+          playNoteLayer(ctx, 783.99, 783.99, 0.055, 0.14, "sine", 0.07);
+          break;
+        case "repeat":
+          // iOS habit switch harmonic
+          playNoteLayer(ctx, 698.46, 698.46, 0.00, 0.08, "sine", 0.06);
+          playNoteLayer(ctx, 1046.50, 1046.50, 0.05, 0.14, "triangle", 0.055);
+          break;
+        case "dragReady":
+          // iOS Haptic Touch unlock pop
+          playNoteLayer(ctx, 290, 620, 0.00, 0.07, "sine", 0.07);
+          playNoteLayer(ctx, 930, 930, 0.04, 0.09, "triangle", 0.045);
+          break;
+        case "drop":
+          // iOS magnetic snap lock
+          playNoteLayer(ctx, 440, 740, 0.00, 0.065, "triangle", 0.065);
+          break;
+        case "delete":
+          // iOS soft trash thud
+          playNoteLayer(ctx, 310, 135, 0.00, 0.13, "sine", 0.07);
+          break;
+        case "scrollTop":
+          // iOS quick whoosh to top
+          playNoteLayer(ctx, 380, 960, 0.00, 0.11, "sine", 0.05);
+          break;
+        case "modalOpen":
+          // iOS sheet open tone
+          playNoteLayer(ctx, 480, 640, 0.00, 0.075, "sine", 0.045);
+          break;
+        case "themeSwitch":
+          // iOS appearance toggle chord
+          playNoteLayer(ctx, 523.25, 783.99, 0.00, 0.12, "sine", 0.06);
+          break;
+        default:
+          // Crisp iPhone keyboard / UI Tock
+          playNoteLayer(ctx, 1150, 310, 0.00, 0.022, "triangle", 0.06);
+          playNoteLayer(ctx, 2100, 520, 0.00, 0.014, "sine", 0.035);
+          break;
       }
     } catch (e) {}
   }
@@ -364,7 +401,26 @@
     }, duration);
   }
 
-  // Point 10: Professional Floating Tooltip System
+  // Point 3: Always capitalize first letter of every task
+  function capitalizeFirst(str) {
+    const trimmed = String(str || "").trim();
+    if (!trimmed) return "";
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  }
+
+  function autoCapitalizeInputEl(inputEl) {
+    if (!inputEl) return;
+    inputEl.addEventListener("input", () => {
+      const val = inputEl.value;
+      if (val.length > 0 && val.charAt(0) !== val.charAt(0).toUpperCase()) {
+        const pos = inputEl.selectionStart;
+        inputEl.value = val.charAt(0).toUpperCase() + val.slice(1);
+        try { inputEl.setSelectionRange(pos, pos); } catch (e) {}
+      }
+    });
+  }
+
+  // Point 4: Professional Floating Tooltip System with 1.35s Hover Delay
   function initProTooltips() {
     const tooltip = document.getElementById("pro-tooltip");
     const titleEl = document.getElementById("pro-tooltip-title-text");
@@ -372,36 +428,47 @@
     if (!tooltip || !titleEl || !descEl) return;
 
     let activeTarget = null;
+    let hoverTimer = null;
+
+    function hideTooltip() {
+      if (hoverTimer) {
+        clearTimeout(hoverTimer);
+        hoverTimer = null;
+      }
+      activeTarget = null;
+      tooltip.classList.remove("visible");
+    }
 
     document.addEventListener("mouseover", (e) => {
       const target = e.target.closest("[data-tip-title]");
       if (!target) {
-        if (activeTarget) {
-          activeTarget = null;
-          tooltip.classList.remove("visible");
-        }
+        hideTooltip();
         return;
       }
+      if (target === activeTarget) return;
+      hideTooltip();
       activeTarget = target;
-      titleEl.textContent = target.dataset.tipTitle || "";
-      descEl.textContent = target.dataset.tipDesc || "";
-      tooltip.classList.add("visible");
 
-      const rect = target.getBoundingClientRect();
-      const ttWidth = 240;
-      let left = rect.left + rect.width / 2 - ttWidth / 2;
-      left = Math.max(12, Math.min(window.innerWidth - ttWidth - 12, left));
-      let top = rect.bottom + 10;
-      if (top + 70 > window.innerHeight) {
-        top = rect.top - 68;
-      }
-      tooltip.style.left = `${left}px`;
-      tooltip.style.top = `${top}px`;
+      hoverTimer = setTimeout(() => {
+        if (!activeTarget || !document.body.contains(activeTarget)) return;
+        titleEl.textContent = activeTarget.dataset.tipTitle || "";
+        descEl.textContent = activeTarget.dataset.tipDesc || "";
+        const rect = activeTarget.getBoundingClientRect();
+        const ttWidth = 240;
+        let left = rect.left + rect.width / 2 - ttWidth / 2;
+        left = Math.max(12, Math.min(window.innerWidth - ttWidth - 12, left));
+        let top = rect.bottom + 10;
+        if (top + 70 > window.innerHeight) {
+          top = rect.top - 68;
+        }
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+        tooltip.classList.add("visible");
+      }, 1350);
     });
 
-    document.addEventListener("mousedown", () => {
-      tooltip.classList.remove("visible");
-    });
+    document.addEventListener("mousedown", hideTooltip);
+    window.addEventListener("scroll", hideTooltip, { passive: true });
   }
 
   function normalizeDataPayload(raw) {
@@ -429,7 +496,8 @@
         ...t,
         id: String(t.id || `task_${Date.now()}_${idx}`),
         boxId: String(t.boxId || (boxes[0] ? boxes[0].id : "box_casa")),
-        title: String(t.title || t.name || "Tarea").trim(),
+        title: capitalizeFirst(t.title || t.name || "Tarea"),
+        completedDate: t.completedDate ? String(t.completedDate) : (Boolean(t.done || t.completed) ? today : null),
         done: Boolean(t.done || t.completed),
         createdAt: Number(t.createdAt || Date.now()),
         dueDate: due,
@@ -515,6 +583,38 @@
     }
 
     appState.data = loaded;
+  }
+
+  // Point 10: Automatically disappear / archive completed tasks on the next day
+  function cleanupCompletedTasksFromPreviousDays() {
+    const today = getTodayISO();
+    let changed = false;
+    const remaining = [];
+
+    appState.data.tasks.forEach((task) => {
+      if (task.done && task.completedDate && task.completedDate < today) {
+        changed = true;
+        appState.data.monthlyCompletedBase = (appState.data.monthlyCompletedBase || 66) + 1;
+        const isRecurring = task.frequency !== "once" || (Array.isArray(task.repeatDays) && task.repeatDays.length > 0);
+        if (isRecurring) {
+          // Recurring tasks reset automatically for the new day
+          remaining.push({
+            ...task,
+            done: false,
+            completedDate: null,
+            dueDate: today
+          });
+        }
+        // One-time completed tasks from previous days disappear automatically
+      } else {
+        remaining.push(task);
+      }
+    });
+
+    if (changed) {
+      appState.data.tasks = remaining;
+      saveData(false);
+    }
   }
 
   function saveData(recordBackup = true, actionLabel = "Cambio guardado") {
@@ -885,7 +985,20 @@
 
     const sortedBoxes = appState.data.boxes.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    sortedBoxes.forEach((box, boxIdx) => {
+    // Point 8: Separate active boxes (with tasks) from empty boxes (0 tasks) so empty boxes appear below TAREAS COMPLETADAS
+    const activeBoxesList = [];
+    const emptyBoxesList = [];
+    sortedBoxes.forEach((b) => {
+      const count = appState.data.tasks.filter(t => t.boxId === b.id).length;
+      if (count > 0 || appState.keepInlineAddOpenBoxId === b.id) {
+        activeBoxesList.push(b);
+      } else {
+        emptyBoxesList.push(b);
+      }
+    });
+
+    function renderSingleBoxCard(box, isEmptyStandby) {
+      const boxIdx = sortedBoxes.findIndex(x => x.id === box.id);
       const boxTasksAll = appState.data.tasks
         .filter(t => t.boxId === box.id)
         .sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -914,11 +1027,16 @@
       const hasRescheduled = reschedInBox.length > 0;
 
       const card = document.createElement("section");
-      card.className = `box-card ${box.collapsed ? "collapsed" : ""} ${hasRescheduled ? "box-rescheduled-theme" : ""}`;
+      card.className = `box-card ${box.collapsed ? "collapsed" : ""} ${hasRescheduled ? "box-rescheduled-theme" : ""} ${isEmptyStandby ? "box-empty-theme" : ""}`;
       card.dataset.boxId = box.id;
 
       let badgesHtml = "";
-      if (hasRescheduled && todayInBox.length === 0) {
+      if (isEmptyStandby) {
+        badgesHtml = `
+          <span class="box-pill neutral">📭 Sin tareas registradas</span>
+          <span class="box-pill blue">Casilla disponible</span>
+        `;
+      } else if (hasRescheduled && todayInBox.length === 0) {
         badgesHtml = `
           <span class="box-pill amber">🕒 ${reschedInBox.length} reprogramada${reschedInBox.length === 1 ? "" : "s"}</span>
           <span class="box-pill amber">Fuera de hoy</span>
@@ -994,22 +1112,33 @@
         </div>
       `;
 
-      // Hold-to-Drag on Box Header (Point 7)
+      // Hold-to-Drag on Box Header (Point 7) & Double-Click to Fold/Unfold (Point 1)
       const boxTopRow = card.querySelector(".box-top-row");
       boxTopRow.addEventListener("pointerdown", (e) => {
         if (e.target.closest("button") || e.target.closest(".box-name")) return;
         beginHoldDrag("box", box.id, card, e.clientX, e.clientY);
       });
 
-      card.querySelector('[data-box-action="collapse"]').addEventListener("click", () => {
-        playUiSound("tap");
+      // Point 1: Double-clicking anywhere on the Casilla header toggles expand/collapse
+      card.addEventListener("dblclick", (e) => {
+        if (e.target.closest("button") || e.target.closest("input") || e.target.closest(".task-item")) return;
+        cancelHoldCharge();
         box.collapsed = !box.collapsed;
+        playUiSound(box.collapsed ? "fold" : "unfold");
+        saveData(false);
+        renderBoard();
+        showToast(box.collapsed ? "Casilla plegada" : "Casilla desplegada");
+      });
+
+      card.querySelector('[data-box-action="collapse"]').addEventListener("click", () => {
+        box.collapsed = !box.collapsed;
+        playUiSound(box.collapsed ? "fold" : "unfold");
         saveData(false);
         renderBoard();
       });
 
       card.querySelector(".box-name").addEventListener("click", () => {
-        playUiSound("tap");
+        playUiSound("modalOpen");
         openBoxModal(box.id);
       });
 
@@ -1038,7 +1167,7 @@
       });
 
       card.querySelector('[data-box-action="delete"]').addEventListener("click", () => {
-        playUiSound("tap");
+        playUiSound("modalOpen");
         confirmDeleteBox(box.id);
       });
 
@@ -1046,22 +1175,29 @@
       const inlineForm = card.querySelector(".inline-add-form");
       const inlineInput = card.querySelector(".inline-add-input");
 
+      // Point 3: Live auto-capitalization of first letter while typing
+      autoCapitalizeInputEl(inlineInput);
+
       addBarBtn.addEventListener("click", () => {
         playUiSound("tap");
+        appState.keepInlineAddOpenBoxId = box.id;
         addBarBtn.style.display = "none";
         inlineForm.classList.add("open");
         inlineInput.focus();
       });
 
       card.querySelector('[data-box-action="cancel-inline-add"]').addEventListener("click", () => {
+        playUiSound("tap");
+        appState.keepInlineAddOpenBoxId = null;
         inlineForm.classList.remove("open");
         addBarBtn.style.display = "flex";
         inlineInput.value = "";
       });
 
+      // Point 3: Pressing Enter saves task with capitalized first letter AND opens a new task input right below
       inlineForm.addEventListener("submit", (e) => {
         e.preventDefault();
-        const title = inlineInput.value.trim();
+        const title = capitalizeFirst(inlineInput.value);
         if (!title) {
           inlineInput.classList.add("input-invalid");
           setTimeout(() => inlineInput.classList.remove("input-invalid"), 400);
@@ -1073,6 +1209,7 @@
           boxId: box.id,
           title,
           done: false,
+          completedDate: null,
           createdAt: Date.now(),
           dueDate: getTodayISO(),
           frequency: "once",
@@ -1082,7 +1219,8 @@
           order: boxTasksAll.length
         };
         appState.data.tasks.push(newTask);
-        playUiSound("complete");
+        appState.keepInlineAddOpenBoxId = box.id;
+        playUiSound("addTask");
         saveData(true, `Añadió tarea en ${box.name}`);
         renderBoard();
         showToast("Tarea agregada");
@@ -1093,8 +1231,20 @@
         listEl.appendChild(createTaskRowElement(task, box));
       });
 
+      if (appState.keepInlineAddOpenBoxId === box.id) {
+        addBarBtn.style.display = "none";
+        inlineForm.classList.add("open");
+        setTimeout(() => {
+          inlineInput.focus();
+          inlineForm.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }, 30);
+      }
+
       container.appendChild(card);
-    });
+    }
+
+    // 1. Render Active Casillas (with tasks)
+    activeBoxesList.forEach(box => renderSingleBoxCard(box, false));
 
     // AUTOMATIC "TAREAS COMPLETADAS" BOX AT BOTTOM
     const allCompletedTasks = appState.data.tasks.filter(t => t.done && matchesSearch(t, "Tareas completadas"));
@@ -1142,6 +1292,9 @@
 
       container.appendChild(compCard);
     }
+
+    // 3. Point 8: Render Empty Casillas (with 0 tasks) below TAREAS COMPLETADAS with distinct Empty Theme
+    emptyBoxesList.forEach(box => renderSingleBoxCard(box, true));
   }
 
   function createTaskRowElement(task, box, showOriginBox = false) {
@@ -1178,6 +1331,9 @@
       </div>
 
       <div class="task-right-actions">
+        <button type="button" class="task-act-btn" data-task-action="edit" data-tip-title="✏️ Editar texto" data-tip-desc="Abre el editor para modificar el texto de esta tarea (también puedes hacer clic en el título).">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </button>
         <button type="button" class="task-act-btn ${!isResched && !task.done ? "sun-active" : ""}" data-task-action="today" data-tip-title="☀️ Enfoque Para Hoy" data-tip-desc="Asigna esta tarea directamente a tu lista de prioridades de hoy.">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
         </button>
@@ -1201,7 +1357,14 @@
 
     const checkBtn = item.querySelector(".task-check-circle");
     checkBtn.addEventListener("click", () => toggleTaskDone(task.id, checkBtn));
-    item.querySelector(".task-title").addEventListener("click", () => openEditTaskTitleModal(task.id));
+    item.querySelector(".task-title").addEventListener("click", () => {
+      playUiSound("modalOpen");
+      openEditTaskTitleModal(task.id);
+    });
+    item.querySelector('[data-task-action="edit"]').addEventListener("click", () => {
+      playUiSound("modalOpen");
+      openEditTaskTitleModal(task.id);
+    });
 
     item.querySelector('[data-task-action="today"]').addEventListener("click", () => {
       playUiSound("tap");
@@ -1238,12 +1401,14 @@
     task.done = !task.done;
     const today = getTodayISO();
     if (task.done) {
+      task.completedDate = today;
       playUiSound("complete");
       spawnCompletionParticles(checkBtnEl);
       appState.history[today] = (appState.history[today] || 0) + 1;
       showToast("Tarea completada");
     } else {
-      playUiSound("tap");
+      task.completedDate = null;
+      playUiSound("uncomplete");
       if (appState.history[today] > 0) appState.history[today]--;
       showToast("Tarea reabierta");
     }
@@ -1292,7 +1457,7 @@
     task.frequency = freqType;
     task.repeatDays = daysArray.slice().sort((a, b) => a - b);
     document.getElementById("modal-repeat-picker").classList.remove("open");
-    playUiSound("complete");
+    playUiSound("repeat");
     saveData(true, `Repetición actualizada: ${task.title}`);
     renderBoard();
     const label = formatRepeatBadgeLabel(task);
@@ -1327,7 +1492,7 @@
       showToast(`Reprogramada · ${formatSpanishDateLong(newDateIso)}`);
     }
 
-    playUiSound("tap");
+    playUiSound("reschedule");
     document.getElementById("modal-date-picker").classList.remove("open");
     saveData(true, `Reprogramó: ${task.title}`);
     renderBoard();
@@ -1767,7 +1932,7 @@
     document.getElementById("btn-theme-toggle").addEventListener("click", () => {
       appState.settings.theme = appState.settings.theme === "dark" ? "light" : "dark";
       applyThemeAndSoundUI();
-      playUiSound("tap");
+      playUiSound("themeSwitch");
       safeStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(appState.settings));
       showToast(appState.settings.theme === "dark" ? "Modo oscuro" : "Modo claro");
     });
@@ -1906,10 +2071,11 @@
     });
 
     // Edit Task Title Form Submit
+    autoCapitalizeInputEl(document.getElementById("input-edit-task-title"));
     document.getElementById("form-edit-task").addEventListener("submit", (e) => {
       e.preventDefault();
       const input = document.getElementById("input-edit-task-title");
-      const val = input.value.trim();
+      const val = capitalizeFirst(input.value);
       if (!val) {
         input.classList.add("input-invalid");
         setTimeout(() => input.classList.remove("input-invalid"), 400);
@@ -1987,13 +2153,10 @@
       fabWrapper.classList.toggle("open");
     });
 
+    // Point 6: Button above + scrolls smoothly back to the top of the page
     document.getElementById("fab-collapse-all").addEventListener("click", () => {
-      playUiSound("tap");
-      const anyExpanded = appState.data.boxes.some(b => !b.collapsed);
-      appState.data.boxes.forEach(b => { b.collapsed = anyExpanded; });
-      saveData(false);
-      renderBoard();
-      showToast(anyExpanded ? "Casillas plegadas" : "Casillas desplegadas");
+      playUiSound("scrollTop");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
     document.getElementById("fab-action-new-box").addEventListener("click", () => {
@@ -2017,6 +2180,8 @@
 
   function boot() {
     loadRegisteredData();
+    cleanupCompletedTasksFromPreviousDays();
+    setInterval(cleanupCompletedTasksFromPreviousDays, 60000);
     applyThemeAndSoundUI();
     renderHeroDate();
     renderQuote(false);
