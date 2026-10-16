@@ -116,28 +116,28 @@ body {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  background: linear-gradient(125deg, #e8f0fe 0%, #fce7f3 22%, #ede9fe 45%, #e0f2fe 68%, #fef3c7 85%, #dcfce7 100%);
+  background: linear-gradient(125deg, #f2f7ff 0%, #fdf2f8 22%, #f5f3ff 45%, #f0f9ff 68%, #fffbeb 85%, #f0fdf4 100%);
   background-size: 350% 350%;
-  animation: geminiTitleFlow 9s ease infinite;
+  animation: geminiTitleFlow 10s ease infinite;
   transition: background 0.4s var(--ease);
 }
 
 [data-theme="dark"] .gemini-aurora-bg {
-  background: linear-gradient(125deg, #090d16 0%, #1a1033 25%, #0c192c 50%, #1f1124 75%, #0b1f1c 100%);
+  background: linear-gradient(125deg, #0d1322 0%, #1d1636 25%, #102036 50%, #23162b 75%, #0f2422 100%);
   background-size: 350% 350%;
 }
 
 .aurora-orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(68px);
-  opacity: 0.68;
+  filter: blur(82px);
+  opacity: 0.52;
   will-change: transform, filter;
 }
 
 [data-theme="dark"] .aurora-orb {
-  opacity: 0.32;
-  filter: blur(90px);
+  opacity: 0.28;
+  filter: blur(95px);
 }
 
 .aurora-orb.orb-1 {
@@ -147,7 +147,7 @@ body {
   max-height: 740px;
   top: -14%;
   left: -10%;
-  background: radial-gradient(circle, #4285f4 0%, #9b72cb 50%, #ec4899 85%, transparent 100%);
+  background: radial-gradient(circle, #93c5fd 0%, #c4b5fd 50%, #f9a8d4 85%, transparent 100%);
   animation: geminiFloat1 10s ease-in-out infinite alternate, geminiHueShift 11s linear infinite;
 }
 
@@ -158,7 +158,7 @@ body {
   max-height: 680px;
   top: 14%;
   right: -12%;
-  background: radial-gradient(circle, #ff6b4a 0%, #fbbc04 50%, #ec4899 85%, transparent 100%);
+  background: radial-gradient(circle, #fda4af 0%, #fde68a 50%, #f9a8d4 85%, transparent 100%);
   animation: geminiFloat2 12s ease-in-out infinite alternate, geminiHueShift 13s linear infinite reverse;
 }
 
@@ -169,7 +169,7 @@ body {
   max-height: 700px;
   bottom: -15%;
   left: 12%;
-  background: radial-gradient(circle, #8b5cf6 0%, #06b6d4 48%, #34a853 85%, transparent 100%);
+  background: radial-gradient(circle, #d8b4fe 0%, #a5f3fc 48%, #a7f3d0 85%, transparent 100%);
   animation: geminiFloat3 11s ease-in-out infinite alternate, geminiHueShift 12s linear infinite;
 }
 
@@ -180,8 +180,8 @@ body {
   max-height: 560px;
   top: 45%;
   left: -8%;
-  background: radial-gradient(circle, #fbbc04 0%, #ea4335 48%, #6366f1 88%, transparent 100%);
-  opacity: 0.45;
+  background: radial-gradient(circle, #fde68a 0%, #fecdd3 48%, #c7d2fe 88%, transparent 100%);
+  opacity: 0.42;
   animation: geminiFloat1 13s ease-in-out infinite alternate-reverse, geminiHueShift 14s linear infinite;
 }
 
@@ -499,11 +499,11 @@ body {
   letter-spacing: -0.035em;
   line-height: 1.06;
   margin-bottom: 10px;
-  background: linear-gradient(90deg, #ff5e3a 0%, #ec4899 18%, #8b5cf6 36%, #3b82f6 54%, #06b6d4 72%, #10b981 86%, #f59e0b 100%);
+  background: linear-gradient(90deg, #fb7185 0%, #f472b6 18%, #a78bfa 36%, #60a5fa 54%, #38bdf8 72%, #34d399 86%, #fbbf24 100%);
   background-size: 300% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: geminiTitleFlow 4.5s linear infinite;
+  animation: geminiTitleFlow 5.5s linear infinite;
   display: inline-block;
 }
 
@@ -819,9 +819,12 @@ body {
   border: 1px solid var(--line);
   box-shadow: var(--shadow-sm);
   padding: 22px 24px;
-  overflow: hidden;
-  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease), border-color 0.3s var(--ease), background 0.3s var(--ease);
-  animation: fadeInSlideUp 0.38s var(--ease) both;
+  overflow: visible;
+  transition: box-shadow 0.25s var(--ease), border-color 0.25s var(--ease), background 0.25s var(--ease);
+}
+
+.box-card.boot-animate {
+  animation: fadeInSlideUp 0.36s var(--ease) both;
 }
 
 .box-card:hover {
@@ -905,28 +908,17 @@ body {
   cursor: grabbing !important;
 }
 
-/* Drop Preview Placeholder Slot (Point 7) */
-.drop-preview-slot {
-  border-radius: 16px;
-  border: 2px dashed var(--primary);
-  background: rgba(37, 99, 235, 0.08);
-  padding: 14px 18px;
-  margin: 6px 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--primary);
-  font-size: 0.84rem;
-  font-weight: 700;
-  animation: slotPulse 1.2s ease-in-out infinite;
-}
-
-.drop-preview-slot.box-slot {
-  min-height: 92px;
-  border-radius: var(--radius-xl);
-  margin: 10px 0;
-  font-size: 0.92rem;
+/* Point 9: Transparent Live Clone Preview of the Task / Casilla Being Moved */
+.drop-ghost-clone {
+  opacity: 0.44 !important;
+  filter: saturate(0.95);
+  border: 2px dashed var(--primary) !important;
+  background: var(--primary-soft) !important;
+  box-shadow: none !important;
+  transform: scale(0.992) !important;
+  pointer-events: none !important;
+  transition: none !important;
+  animation: none !important;
 }
 
 .box-top-row {
@@ -1217,17 +1209,20 @@ body {
 .task-text-wrap {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 4px;
   min-width: 0;
   flex: 1;
 }
 
 .task-title {
+  display: inline;
   font-size: 0.96rem;
   font-weight: 600;
   color: var(--text);
-  line-height: 1.38;
+  line-height: 1.42;
   word-break: break-word;
+  overflow-wrap: anywhere;
   cursor: pointer;
   transition: color 0.2s var(--ease);
 }
@@ -1384,6 +1379,11 @@ body {
   transform: scale(0.98);
 }
 
+.inline-add-wrapper {
+  position: relative;
+  width: 100%;
+}
+
 .inline-add-form {
   display: none;
   align-items: center;
@@ -1394,11 +1394,63 @@ body {
   background: var(--surface-solid);
   border: 1.5px solid var(--primary);
   box-shadow: 0 0 0 4px var(--primary-soft);
-  animation: fadeInSlideUp 0.22s var(--ease) both;
 }
 
 .inline-add-form.open {
   display: flex;
+}
+
+.task-memory-suggestions {
+  display: none;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+  padding: 7px;
+  border-radius: 14px;
+  background: var(--surface-solid);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow);
+  z-index: 45;
+  max-height: 195px;
+  overflow-y: auto;
+}
+
+.task-memory-suggestions.open {
+  display: flex;
+}
+
+.memory-suggestion-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.16s var(--ease), color 0.16s var(--ease);
+}
+
+.memory-suggestion-item:hover,
+.memory-suggestion-item.active {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.memory-suggestion-hint {
+  font-size: 0.70rem;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  flex-shrink: 0;
 }
 
 .inline-add-input {
@@ -2059,7 +2111,31 @@ body {
     right: 14px;
   }
   .app-shell {
-    padding: 18px 12px 44px;
+    padding: 16px 12px 48px;
+  }
+  .hero-title {
+    font-size: clamp(1.85rem, 7.5vw, 2.35rem);
+    margin-bottom: 6px;
+  }
+  /* Point 12: Responsive quote container on mobile so 3-4 line quotes never clip or jump */
+  .quote-inline-box {
+    height: 114px;
+    min-height: 114px;
+    max-height: 114px;
+    width: 100%;
+    padding: 2px 0;
+  }
+  .quote-text {
+    font-size: 0.87rem;
+    line-height: 1.38;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .quote-author {
+    font-size: 0.79rem;
+    margin-top: 3px;
   }
   .metrics-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -2097,15 +2173,55 @@ body {
     display: none;
   }
   .box-card {
-    padding: 15px;
+    padding: 14px 13px;
     border-radius: 20px;
   }
+  .box-top-row {
+    gap: 8px;
+  }
+  .box-name {
+    font-size: 0.98rem;
+  }
+  /* Point 12: Full-width readable task text on mobile + clean bottom action bar */
   .task-item {
-    padding: 11px;
-    flex-wrap: wrap;
+    padding: 12px 12px 10px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .task-left {
+    width: 100%;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .task-check-circle {
+    margin-top: 1px;
+  }
+  .task-text-wrap {
+    width: 100%;
+    flex: 1;
+  }
+  .task-title {
+    font-size: 0.93rem;
+    line-height: 1.42;
+    word-break: break-word;
+    overflow-wrap: anywhere;
   }
   .task-right-actions {
-    margin-left: auto;
+    width: 100%;
+    justify-content: flex-end;
+    padding-top: 6px;
+    border-top: 1px dashed var(--line);
+    gap: 8px;
+  }
+  .inline-add-form {
+    flex-wrap: wrap;
+    padding: 8px 10px;
+  }
+  .inline-add-input {
+    width: 100%;
+    flex: 1 1 100%;
+    margin-bottom: 4px;
   }
   .modal-backdrop {
     align-items: flex-end;

@@ -345,20 +345,42 @@
         <button type="button" class="modal-close-btn" data-close-modal="modal-options" aria-label="Cerrar">✕</button>
       </div>
 
-      <!-- Synchronization Details Card inside 3-Dots Modal -->
-      <div style="padding:16px 18px;border-radius:18px;background:var(--success-soft);border:1px solid rgba(22,163,74,0.28);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <span class="sync-dot" style="width:11px;height:11px;"></span>
-          <div>
-            <div style="font-weight:800;font-size:0.94rem;color:var(--text);">Sincronizado en tiempo real (`tasky_data`)</div>
-            <div style="font-size:0.78rem;color:var(--text-secondary);margin-top:2px;">
-              Última verificación: <strong id="modal-sync-last-time">Activa ahora mismo</strong>
+      <!-- Synchronization Details Card inside 3-Dots Modal (Point 13: Cloud Web <-> App Sync) -->
+      <div style="padding:16px 18px;border-radius:18px;background:var(--success-soft);border:1px solid rgba(22,163,74,0.28);margin-bottom:16px;display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="sync-dot" style="width:11px;height:11px;"></span>
+            <div>
+              <div style="font-weight:800;font-size:0.94rem;color:var(--text);">Sincronización Nube en Tiempo Real (Web Laptop ↔ App Celular)</div>
+              <div style="font-size:0.78rem;color:var(--text-secondary);margin-top:2px;">
+                Última verificación: <strong id="modal-sync-last-time">Activa ahora mismo</strong>
+              </div>
             </div>
           </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <span id="sync-diag-boxes" class="box-pill green">7 casillas</span>
+            <span id="sync-diag-tasks" class="box-pill blue">27 tareas</span>
+          </div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <span id="sync-diag-boxes" class="box-pill green">7 casillas</span>
-          <span id="sync-diag-tasks" class="box-pill blue">27 tareas</span>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(22,163,74,0.18);">
+          <span style="font-size:0.78rem;font-weight:700;color:var(--text-secondary);">Canal de sincronización entre tus dispositivos:</span>
+          <input type="text" id="input-cloud-sync-channel" class="form-input" style="max-width:220px;padding:6px 11px;font-size:0.82rem;background:var(--surface-solid);" value="tasky_somerito_jose_sync_v1" />
+          <button type="button" id="btn-cloud-sync-now" class="btn-primary" style="padding:7px 13px;font-size:0.79rem;">🔄 Sincronizar ahora</button>
+        </div>
+      </div>
+
+      <!-- Point 11: Professional Keyboard Shortcuts Reference inside 3-Dots Modal -->
+      <div style="padding:14px 16px;border-radius:16px;background:var(--surface-muted);border:1px solid var(--line);margin-bottom:16px;">
+        <div style="font-weight:800;font-size:0.86rem;margin-bottom:8px;color:var(--text);">⌨️ Atajos de Teclado Profesionales</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:7px;font-size:0.77rem;color:var(--text-secondary);">
+          <div><strong>Ctrl + Z</strong> · Deshacer última acción</div>
+          <div><strong>Ctrl + Shift + Z</strong> · Rehacer acción</div>
+          <div><strong>Ctrl + F / Cmd + K</strong> · Buscar tareas</div>
+          <div><strong>ESC</strong> · Cerrar cuadro de tarea o ventana</div>
+          <div><strong>Alt + N</strong> · Nueva tarea rápida</div>
+          <div><strong>Alt + B</strong> · Crear nueva casilla</div>
+          <div><strong>Alt + P</strong> · Abrir Mi Productividad</div>
+          <div><strong>Alt + D</strong> · Cambiar modo claro/oscuro</div>
         </div>
       </div>
 

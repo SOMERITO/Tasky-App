@@ -9,7 +9,9 @@
     BACKUPS: "tasky_backups",
     SETTINGS: "tasky_settings",
     STATS: "tasky_stats",
-    HISTORY: "tasky_history"
+    HISTORY: "tasky_history",
+    MEMORY: "tasky_task_memory",
+    CLOUD_CHANNEL: "tasky_cloud_channel"
   };
 
   const memoryStorage = new Map();
@@ -33,7 +35,7 @@
     }
   };
 
-  const QUOTES_POOL = [{"text": "La dicha del hombre consiste en observar las reglas y condiciones por las cuales se consigue el bien de todos los hombres.", "author": "León Tolstói"}, {"text": "No es que tengamos poco tiempo, sino que perdemos mucho.", "author": "Séneca"}, {"text": "Por cada minuto dedicado a organizar, se gana una hora.", "author": "Benjamin Franklin"}, {"text": "Somos lo que hacemos repetidamente. La excelencia, entonces, no es un acto, sino un hábito.", "author": "Aristóteles"}, {"text": "Concéntrate en cada minuto como un romano, haciendo lo que tienes delante con dignidad y precisión.", "author": "Marco Aurelio"}, {"text": "El secreto de salir adelante es simplemente empezar.", "author": "Mark Twain"}, {"text": "Primero di a ti mismo lo que serías; y luego haz lo que tengas que hacer.", "author": "Epicteto"}, {"text": "La simplicidad es la máxima sofisticación.", "author": "Leonardo da Vinci"}, {"text": "Tu mente es para tener ideas, no para retenerlas.", "author": "David Allen"}, {"text": "Lo que se mide se mejora; lo que se planifica con claridad se ejecuta con calma.", "author": "Peter Drucker"}, {"text": "Enfocarse significa decir que no a cien buenas ideas más.", "author": "Steve Jobs"}, {"text": "Pequeñas disciplinas repetidas con consistencia cada día conducen a grandes logros.", "author": "John C. Maxwell"}, {"text": "Ningún viento es favorable para quien no sabe a qué puerto se dirige.", "author": "Séneca"}, {"text": "El orden es el placer de la razón; pero el desorden es la delicia de la imaginación.", "author": "Paul Claudel"}, {"text": "Haz cada cosa en la vida como si fuera lo último que fueras a hacer.", "author": "Marco Aurelio"}, {"text": "El futuro depende de lo que hagas hoy.", "author": "Mahatma Gandhi"}, {"text": "La disciplina es el puente entre las metas y los logros.", "author": "Jim Rohn"}, {"text": "No dejes que lo que no puedes hacer interfiera con lo que sí puedes hacer.", "author": "John Wooden"}, {"text": "Un viaje de mil millas comienza con un solo paso.", "author": "Lao-Tsé"}, {"text": "Quien tiene un porqué para vivir puede soportar casi cualquier cómo.", "author": "Friedrich Nietzsche"}, {"text": "La acción es la clave fundamental de todo éxito.", "author": "Pablo Picasso"}, {"text": "La mejor manera de predecir el futuro es creándolo.", "author": "Peter Drucker"}, {"text": "El hombre que mueve montañas comienza cargando pequeñas piedras.", "author": "Confucio"}, {"text": "No cuentes los días, haz que los días cuenten.", "author": "Muhammad Ali"}, {"text": "La constancia es la virtud por la cual todas las otras virtudes dan su fruto.", "author": "Arturo Graf"}, {"text": "El éxito es la suma de pequeños esfuerzos repetidos día tras día.", "author": "Robert Collier"}, {"text": "La claridad precede a la maestría.", "author": "Robin Sharma"}, {"text": "Nada es particularmente difícil si lo divides en pequeños trabajos.", "author": "Henry Ford"}, {"text": "El sabio no se sienta a lamentarse por lo perdido, sino que se alegra de remediarlo.", "author": "William Shakespeare"}, {"text": "Donde hay orden, hay tranquilidad y progreso.", "author": "Cicerón"}, {"text": "La paciencia es amarga, pero su fruto es dulce.", "author": "Jean-Jacques Rousseau"}, {"text": "El que domina a los otros es fuerte; el que se domina a sí mismo es poderoso.", "author": "Lao-Tsé"}, {"text": "Saber qué hacer elimina el miedo.", "author": "Rosa Parks"}, {"text": "La energía y la persistencia conquistan todas las cosas.", "author": "Benjamin Franklin"}, {"text": "Nunca es demasiado tarde para ser lo que podrías haber sido.", "author": "George Eliot"}, {"text": "Lo que hacemos ahora resuena en la eternidad.", "author": "Marco Aurelio"}, {"text": "La buena fortuna favorece a los audaces y organizados.", "author": "Virgilio"}, {"text": "Empieza donde estás, usa lo que tienes, haz lo que puedas.", "author": "Arthur Ashe"}, {"text": "El tiempo es la cosa más valiosa que una persona puede gastar.", "author": "Teofrasto"}, {"text": "Pensar es fácil. Actuar es difícil. Actuar siguiendo el pensamiento propio es lo más difícil del mundo.", "author": "Johann Wolfgang von Goethe"}];
+  const QUOTES_POOL = [{"text": "La dicha del hombre consiste en observar las reglas y condiciones por las cuales se consigue el bien de todos los hombres.", "author": "León Tolstói"}, {"text": "No es que tengamos poco tiempo, sino que perdemos mucho.", "author": "Séneca"}, {"text": "Por cada minuto dedicado a organizar, se gana una hora.", "author": "Benjamin Franklin"}, {"text": "Somos lo que hacemos repetidamente. La excelencia, entonces, no es un acto, sino un hábito.", "author": "Aristóteles"}, {"text": "Concéntrate en cada minuto como un romano, haciendo lo que tienes delante con dignidad y precisión.", "author": "Marco Aurelio"}, {"text": "El secreto de salir adelante es simplemente empezar.", "author": "Mark Twain"}, {"text": "Primero di a ti mismo lo que serías; y luego haz lo que tengas que hacer.", "author": "Epicteto"}, {"text": "La simplicidad es la máxima sofisticación.", "author": "Leonardo da Vinci"}, {"text": "Tu mente es para tener ideas, no para retenerlas.", "author": "David Allen"}, {"text": "Lo que se mide se mejora; lo que se planifica con claridad se ejecuta con calma.", "author": "Peter Drucker"}, {"text": "Enfocarse significa decir que no a cien buenas ideas más.", "author": "Steve Jobs"}, {"text": "Pequeñas disciplinas repetidas con consistencia cada día conducen a grandes logros.", "author": "John C. Maxwell"}, {"text": "Ningún viento es favorable para quien no sabe a qué puerto se dirige.", "author": "Séneca"}, {"text": "El orden es el placer de la razón; pero el desorden es la delicia de la imaginación.", "author": "Paul Claudel"}, {"text": "Haz cada cosa en la vida como si fuera lo último que fueras a hacer.", "author": "Marco Aurelio"}, {"text": "El futuro depende de lo que hagas hoy.", "author": "Mahatma Gandhi"}, {"text": "La disciplina es el puente entre las metas y los logros.", "author": "Jim Rohn"}, {"text": "No dejes que lo que no puedes hacer interfiera con lo que sí puedes hacer.", "author": "John Wooden"}, {"text": "Un viaje de mil millas comienza con un solo paso.", "author": "Lao-Tsé"}, {"text": "Quien tiene un porqué para vivir puede soportar casi cualquier cómo.", "author": "Friedrich Nietzsche"}, {"text": "La acción es la clave fundamental de todo éxito.", "author": "Pablo Picasso"}, {"text": "La mejor manera de predecir el futuro es creándolo.", "author": "Peter Drucker"}, {"text": "El hombre que mueve montañas comienza cargando pequeñas piedras.", "author": "Confucio"}, {"text": "No cuentes los días, haz que los días cuenten.", "author": "Muhammad Ali"}, {"text": "La constancia es la virtud por la cual todas las otras virtudes dan su fruto.", "author": "Arturo Graf"}, {"text": "El éxito es la suma de pequeños esfuerzos repetidos día tras día.", "author": "Robert Collier"}, {"text": "La claridad precede a la maestría.", "author": "Robin Sharma"}, {"text": "Nada es particularmente difícil si lo divides en pequeños trabajos.", "author": "Henry Ford"}, {"text": "El sabio no se sienta a lamentarse por lo perdido, sino que se alegra de remediarlo.", "author": "William Shakespeare"}, {"text": "Donde hay orden, hay tranquilidad y progreso.", "author": "Cicerón"}, {"text": "La paciencia es amarga, pero su fruto es dulce.", "author": "Jean-Jacques Rousseau"}, {"text": "El que domina a los otros es fuerte; el que se domina a sí mismo es poderoso.", "author": "Lao-Tsé"}, {"text": "Saber qué hacer elimina el miedo.", "author": "Rosa Parks"}, {"text": "La energía y la persistencia conquistan todas las cosas.", "author": "Benjamin Franklin"}, {"text": "Nunca es demasiado tarde para ser lo que podrías haber sido.", "author": "George Eliot"}, {"text": "Lo que hacemos ahora resuena en la eternidad.", "author": "Marco Aurelio"}, {"text": "La buena fortuna favorece a los audaces y organizados.", "author": "Virgilio"}, {"text": "Empieza donde estás, usa lo que tienes, haz lo que puedas.", "author": "Arthur Ashe"}, {"text": "El tiempo es la cosa más valiosa que una persona puede gastar.", "author": "Teofrasto"}, {"text": "Pensar es fácil. Actuar es difícil. Actuar siguiendo el pensamiento propio es lo más difícil del mundo.", "author": "Johann Wolfgang von Goethe"}, {"text": "Al hombre se le puede arrebatar todo salvo una cosa: la última de las libertades humanas, la elección de la actitud personal ante cualquier circunstancia.", "author": "Viktor Frankl"}, {"text": "Cuando ya no podemos cambiar una situación, tenemos el desafío de cambiarnos a nosotros mismos.", "author": "Viktor Frankl"}, {"text": "Siempre parece imposible hasta que se hace.", "author": "Nelson Mandela"}, {"text": "No me juzgues por mis éxitos, júzgame por las veces que me caí y volví a levantarme.", "author": "Nelson Mandela"}, {"text": "Soy el amo de mi destino, soy el capitán de mi alma.", "author": "Nelson Mandela"}, {"text": "Pies, ¿para qué los quiero si tengo alas pa' volar?", "author": "Frida Kahlo"}, {"text": "Al final del día, podemos soportar mucho más de lo que creemos que podemos.", "author": "Frida Kahlo"}, {"text": "Si no puedes volar, corre; si no puedes correr, camina; si no puedes caminar, gatea, pero sigue avanzando hacia tu meta.", "author": "Martin Luther King Jr."}, {"text": "La oscuridad no puede expulsar a la oscuridad; solo la luz puede hacer eso.", "author": "Martin Luther King Jr."}, {"text": "Aunque el mundo está lleno de sufrimiento, también está lleno de la superación del mismo.", "author": "Helen Keller"}, {"text": "El optimismo es la fe que conduce al logro; nada puede hacerse sin esperanza y confianza.", "author": "Helen Keller"}, {"text": "Nunca dobles la cabeza. Mantenla siempre alta. Mira al mundo directamente a los ojos.", "author": "Helen Keller"}, {"text": "Por muy difícil que parezca la vida, siempre hay algo que puedes hacer y en lo que puedes tener éxito.", "author": "Stephen Hawking"}, {"text": "La inteligencia es la capacidad de adaptarse al cambio.", "author": "Stephen Hawking"}, {"text": "Si no puedes conseguir un milagro, conviértete en uno.", "author": "Nick Vujicic"}, {"text": "El miedo es una discapacidad mayor que no tener brazos ni piernas.", "author": "Nick Vujicic"}, {"text": "Si me caigo cien veces, me intentaré levantar cien veces más.", "author": "Nick Vujicic"}, {"text": "Un niño, un profesor, un libro y una pluma pueden cambiar el mundo.", "author": "Malala Yousafzai"}, {"text": "Nos damos cuenta de la importancia de nuestra voz solo cuando somos silenciados.", "author": "Malala Yousafzai"}, {"text": "Convierte tus heridas en sabiduría.", "author": "Oprah Winfrey"}, {"text": "Donde no hay lucha, no hay fuerza.", "author": "Oprah Winfrey"}, {"text": "La mayor descubrimiento de todos los tiempos es que una persona puede cambiar su futuro simplemente cambiando su actitud.", "author": "Oprah Winfrey"}, {"text": "El fondo de la roca se convirtió en la base sólida sobre la cual reconstruí mi vida.", "author": "J.K. Rowling"}, {"text": "Es imposible vivir sin fracasar en algo, a menos que vivas tan cautelosamente que bien podrías no haber vivido en absoluto.", "author": "J.K. Rowling"}, {"text": "Nuestra mayor gloria no está en no caer nunca, sino en levantarnos cada vez que caemos.", "author": "Confucio"}, {"text": "El obstáculo en el camino se convierte en el camino. Nunca olvides que dentro de cada obstáculo hay una oportunidad para mejorar.", "author": "Marco Aurelio"}, {"text": "Tienes poder sobre tu mente, no sobre los acontecimientos externos. Date cuenta de esto y encontrarás la fuerza.", "author": "Marco Aurelio"}, {"text": "El fuego prueba el oro; la adversidad prueba a los hombres fuertes.", "author": "Séneca"}, {"text": "A veces incluso vivir es un acto de coraje.", "author": "Séneca"}, {"text": "No es lo que te sucede, sino cómo reaccionas a ello lo que importa.", "author": "Epicteto"}, {"text": "Las dificultades son las cosas que muestran lo que son los hombres.", "author": "Epicteto"}, {"text": "En medio del invierno aprendí por fin que había en mí un verano invencible.", "author": "Albert Camus"}, {"text": "El éxito consiste en ir de fracaso en fracaso sin perder el entusiasmo.", "author": "Winston Churchill"}, {"text": "Si estás atravesando un infierno, sigue caminando.", "author": "Winston Churchill"}, {"text": "Las cometas se elevan más alto contra el viento, no a favor de él.", "author": "Winston Churchill"}, {"text": "En medio de la dificultad reside la oportunidad.", "author": "Albert Einstein"}, {"text": "Hay una fuerza motriz más poderosa que el vapor, la electricidad y la energía atómica: la voluntad.", "author": "Albert Einstein"}, {"text": "La vida es como montar en bicicleta. Para mantener el equilibrio, debes seguir moviéndote.", "author": "Albert Einstein"}, {"text": "He fallado una y otra y otra vez en mi vida. Y es por eso que tengo éxito.", "author": "Michael Jordan"}, {"text": "Los obstáculos no tienen que detenerte. Si te encuentras con un muro, no te des la vuelta; descubre cómo escalarlo.", "author": "Michael Jordan"}, {"text": "Lo más importante es intentar inspirar a las personas para que puedan ser grandes en lo que sea que quieran hacer.", "author": "Kobe Bryant"}, {"text": "Todo lo negativo —la presión, los desafíos— es una oportunidad para mí de levantarme.", "author": "Kobe Bryant"}, {"text": "Odié cada minuto de entrenamiento, pero dije: 'No renuncies. Sufre ahora y vive el resto de tu vida como un campeón'.", "author": "Muhammad Ali"}, {"text": "Imposible es solo una palabra grande lanzada por hombres pequeños que encuentran más fácil vivir en el mundo que se les ha dado.", "author": "Muhammad Ali"}, {"text": "En la vida no hay nada que temer, solo hay que comprender.", "author": "Marie Curie"}, {"text": "La vida no es fácil para ninguno de nosotros. Pero ¡qué importa! Hay que perseverar y, sobre todo, tener confianza en uno mismo.", "author": "Marie Curie"}, {"text": "El fracaso es simplemente la oportunidad de comenzar de nuevo, esta vez de forma más inteligente.", "author": "Henry Ford"}, {"text": "Tanto si piensas que puedes, como si piensas que no puedes, estás en lo cierto.", "author": "Henry Ford"}, {"text": "No he fracasado. Simplemente he encontrado diez mil maneras que no funcionan.", "author": "Thomas Alva Edison"}, {"text": "Nuestra mayor debilidad radica en renunciar. La forma más segura de tener éxito es intentarlo una vez más.", "author": "Thomas Alva Edison"}, {"text": "El mundo rompe a todos, y después, muchos son fuertes en los lugares rotos.", "author": "Ernest Hemingway"}, {"text": "Pero el hombre no está hecho para la derrota. Un hombre puede ser destruido, pero no derrotado.", "author": "Ernest Hemingway"}, {"text": "Caer siete veces y levantarse ocho.", "author": "Proverbio Japonés"}, {"text": "El bambú que se dobla es más fuerte que el roble que resiste.", "author": "Proverbio Japonés"}, {"text": "Podrán encontrarme derrotada muchas veces, pero nunca reducida.", "author": "Maya Angelou"}, {"text": "Si no te gusta algo, cámbialo. Si no puedes cambiarlo, cambia tu actitud.", "author": "Maya Angelou"}, {"text": "Nada puede apagar la luz que brilla desde el interior.", "author": "Maya Angelou"}, {"text": "No soy producto de mis circunstancias. Soy producto de mis decisiones.", "author": "Stephen R. Covey"}, {"text": "Lo principal es mantener lo principal como lo principal.", "author": "Stephen R. Covey"}, {"text": "Tú no subes al nivel de tus metas. Caes al nivel de tus sistemas.", "author": "James Clear"}, {"text": "Cada acción que realizas es un voto por el tipo de persona en la que deseas convertirte.", "author": "James Clear"}, {"text": "Los hábitos son el interés compuesto de la superación personal.", "author": "James Clear"}, {"text": "La claridad sobre lo que importa proporciona claridad sobre lo que no importa.", "author": "Cal Newport"}, {"text": "Los esfuerzos profundos producen valor duradero y serenidad mental.", "author": "Cal Newport"}, {"text": "Si gastas tu tiempo persiguiendo mariposas, ellas volarán; si construyes un hermoso jardín, las mariposas vendrán a ti.", "author": "Mario Quintana"}, {"text": "Un marinero experto no se hace en mares tranquilos.", "author": "Franklin D. Roosevelt"}, {"text": "Lo único a lo que debemos temer es al miedo mismo.", "author": "Franklin D. Roosevelt"}, {"text": "Haz lo que puedas, con lo que tengas, donde estés.", "author": "Theodore Roosevelt"}, {"text": "Cree que puedes y ya estarás a medio camino.", "author": "Theodore Roosevelt"}, {"text": "No es el crítico quien cuenta, sino el hombre que realmente está en la arena y se esfuerza valientemente.", "author": "Theodore Roosevelt"}, {"text": "La resiliencia es aceptar tu nueva realidad, incluso si es menos buena que la que tenías antes.", "author": "Elizabeth Edwards"}, {"text": "El dolor es inevitable, pero el sufrimiento es opcional.", "author": "Haruki Murakami"}, {"text": "Cuando salgas de la tormenta, no serás la misma persona que entró en ella.", "author": "Haruki Murakami"}, {"text": "La cicatriz demuestra que la herida sanó y que tú fuiste más fuerte que aquello que intentó detenerte.", "author": "Viktor Frankl"}, {"text": "La verdadera medida de un hombre no se ve en momentos de comodidad, sino en momentos de desafío.", "author": "Martin Luther King Jr."}, {"text": "La perseverancia no es una carrera larga; son muchas carreras cortas una tras otra.", "author": "Walter Elliot"}, {"text": "Cambia tus pensamientos y cambiarás tu mundo.", "author": "Norman Vincent Peale"}, {"text": "El coraje no siempre ruge. A veces el coraje es la pequeña voz al final del día que dice: lo intentaré de nuevo mañana.", "author": "Mary Anne Radmacher"}, {"text": "Primero hacemos nuestros hábitos, y luego nuestros hábitos nos hacen a nosotros.", "author": "John Dryden"}, {"text": "La motivación es lo que te pone en marcha, y el hábito es lo que hace que sigas avanzando.", "author": "Jim Ryun"}];
   const DAY_SHORT_NAMES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
   const DAY_FULL_NAMES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
@@ -220,7 +222,9 @@
     data: {
       boxes: [],
       tasks: [],
-      monthlyCompletedBase: 66
+      monthlyCompletedBase: 66,
+      completedBoxCollapsed: false,
+      updatedAt: 0
     },
     settings: {
       theme: "light",
@@ -228,6 +232,13 @@
     },
     backups: [],
     history: {},
+    taskMemory: [],
+    undoStack: [],
+    redoStack: [],
+    cloudChannel: "tasky_somerito_jose_sync_v1",
+    deviceId: "dev_" + Math.random().toString(36).slice(2, 10),
+    cloudEventSource: null,
+    hasBootRendered: false,
     activeTab: "all",
     searchQuery: "",
     quotes: QUOTES_POOL.slice(),
@@ -256,24 +267,49 @@
       .replace(/'/g, "&#039;");
   }
 
-  // Point 2: Authentic iPhone / iOS Acoustic Sound Engine with Distinct Tones per Function
+  // Point 6: Studio-Grade Warm Acoustic Marimba / Celeste Sound Engine (Things 3 / Apple Design Award Style)
   let sharedAudioCtx = null;
   function playNoteLayer(ctx, freqStart, freqEnd, delaySec, durationSec, oscType, peakGain) {
     const start = ctx.currentTime + delaySec;
     const osc = ctx.createOscillator();
+    const subOsc = ctx.createOscillator();
+    const filter = ctx.createBiquadFilter();
     const gain = ctx.createGain();
+
     osc.type = oscType || "sine";
+    subOsc.type = "sine";
+
     osc.frequency.setValueAtTime(freqStart, start);
+    subOsc.frequency.setValueAtTime(freqStart * 2, start);
+
     if (freqEnd && freqEnd !== freqStart) {
       osc.frequency.exponentialRampToValueAtTime(freqEnd, start + durationSec);
+      subOsc.frequency.exponentialRampToValueAtTime(freqEnd * 2, start + durationSec);
     }
+
+    // Warm acoustic low-pass filter removes harsh digital overtones
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(2200, start);
+    filter.frequency.exponentialRampToValueAtTime(680, start + durationSec);
+
     gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.linearRampToValueAtTime(peakGain, start + Math.min(0.008, durationSec * 0.25));
+    gain.gain.linearRampToValueAtTime(peakGain, start + Math.min(0.012, durationSec * 0.18));
     gain.gain.exponentialRampToValueAtTime(0.0001, start + durationSec);
-    osc.connect(gain);
+
+    const subGain = ctx.createGain();
+    subGain.gain.setValueAtTime(peakGain * 0.18, start);
+    subGain.gain.exponentialRampToValueAtTime(0.0001, start + durationSec * 0.65);
+
+    osc.connect(filter);
+    subOsc.connect(subGain);
+    subGain.connect(filter);
+    filter.connect(gain);
     gain.connect(ctx.destination);
+
     osc.start(start);
-    osc.stop(start + durationSec + 0.01);
+    subOsc.start(start);
+    osc.stop(start + durationSec + 0.015);
+    subOsc.stop(start + durationSec + 0.015);
   }
 
   function playUiSound(type) {
@@ -287,68 +323,76 @@
 
       switch (type) {
         case "complete":
-          // iPhone Apple Pay / Reminders glass marimba chime
-          playNoteLayer(ctx, 587.33, 587.33, 0.00, 0.14, "sine", 0.075);
-          playNoteLayer(ctx, 880.00, 880.00, 0.055, 0.16, "sine", 0.08);
-          playNoteLayer(ctx, 1174.66, 1174.66, 0.11, 0.24, "sine", 0.095);
-          playNoteLayer(ctx, 1760.00, 1760.00, 0.16, 0.30, "triangle", 0.045);
+          // Warm acoustic Celeste / Marimba Major-9th arpeggio (C5 - E5 - G5 - B5 - D6)
+          playNoteLayer(ctx, 523.25, 523.25, 0.00, 0.22, "sine", 0.055);
+          playNoteLayer(ctx, 659.25, 659.25, 0.045, 0.24, "sine", 0.058);
+          playNoteLayer(ctx, 783.99, 783.99, 0.09, 0.28, "sine", 0.062);
+          playNoteLayer(ctx, 1046.50, 1046.50, 0.135, 0.36, "sine", 0.068);
           break;
         case "uncomplete":
-          // iOS soft reverse pop
-          playNoteLayer(ctx, 783.99, 523.25, 0.00, 0.11, "sine", 0.06);
+          // Soft wooden marimba two-note step down (G5 -> E5)
+          playNoteLayer(ctx, 783.99, 783.99, 0.00, 0.13, "sine", 0.045);
+          playNoteLayer(ctx, 659.25, 659.25, 0.05, 0.16, "sine", 0.042);
           break;
         case "addTask":
-          // iOS New Item crisp two-tone pop
-          playNoteLayer(ctx, 659.25, 659.25, 0.00, 0.08, "sine", 0.065);
-          playNoteLayer(ctx, 987.77, 1046.50, 0.05, 0.14, "sine", 0.075);
+          // Warm Kalimba / Rhodes fifth interval (F5 -> C6)
+          playNoteLayer(ctx, 698.46, 698.46, 0.00, 0.14, "sine", 0.05);
+          playNoteLayer(ctx, 1046.50, 1046.50, 0.045, 0.20, "sine", 0.055);
           break;
         case "fold":
-          // iOS sheet collapse soft swoosh down
-          playNoteLayer(ctx, 640, 320, 0.00, 0.085, "sine", 0.055);
+          // Gentle warm wooden kalimba note down (E5 -> C5)
+          playNoteLayer(ctx, 659.25, 659.25, 0.00, 0.10, "sine", 0.038);
+          playNoteLayer(ctx, 523.25, 523.25, 0.035, 0.13, "sine", 0.036);
           break;
         case "unfold":
-          // iOS sheet expand soft swoosh up
-          playNoteLayer(ctx, 340, 680, 0.00, 0.085, "sine", 0.055);
+          // Gentle warm wooden kalimba note up (C5 -> E5)
+          playNoteLayer(ctx, 523.25, 523.25, 0.00, 0.10, "sine", 0.038);
+          playNoteLayer(ctx, 659.25, 659.25, 0.035, 0.13, "sine", 0.04);
           break;
         case "reschedule":
-          // iOS Calendar date lock chime
-          playNoteLayer(ctx, 523.25, 523.25, 0.00, 0.09, "sine", 0.06);
-          playNoteLayer(ctx, 783.99, 783.99, 0.055, 0.14, "sine", 0.07);
+          // Warm Rhodes sunrise chord (D5 -> F#5 -> A5)
+          playNoteLayer(ctx, 587.33, 587.33, 0.00, 0.15, "sine", 0.048);
+          playNoteLayer(ctx, 739.99, 739.99, 0.04, 0.18, "sine", 0.048);
+          playNoteLayer(ctx, 880.00, 880.00, 0.08, 0.22, "sine", 0.052);
           break;
         case "repeat":
-          // iOS habit switch harmonic
-          playNoteLayer(ctx, 698.46, 698.46, 0.00, 0.08, "sine", 0.06);
-          playNoteLayer(ctx, 1046.50, 1046.50, 0.05, 0.14, "triangle", 0.055);
+          // Soft harmonic bell chime (A5 -> E6)
+          playNoteLayer(ctx, 880.00, 880.00, 0.00, 0.14, "sine", 0.045);
+          playNoteLayer(ctx, 1318.51, 1318.51, 0.045, 0.20, "sine", 0.042);
           break;
         case "dragReady":
-          // iOS Haptic Touch unlock pop
-          playNoteLayer(ctx, 290, 620, 0.00, 0.07, "sine", 0.07);
-          playNoteLayer(ctx, 930, 930, 0.04, 0.09, "triangle", 0.045);
+          // Subtle tactile wooden marimba lift (D5 -> A5)
+          playNoteLayer(ctx, 587.33, 587.33, 0.00, 0.09, "sine", 0.042);
+          playNoteLayer(ctx, 880.00, 880.00, 0.03, 0.12, "sine", 0.045);
           break;
         case "drop":
-          // iOS magnetic snap lock
-          playNoteLayer(ctx, 440, 740, 0.00, 0.065, "triangle", 0.065);
+          // Warm acoustic settle chord (G4 -> D5)
+          playNoteLayer(ctx, 392.00, 392.00, 0.00, 0.10, "sine", 0.045);
+          playNoteLayer(ctx, 587.33, 587.33, 0.025, 0.14, "sine", 0.048);
           break;
         case "delete":
-          // iOS soft trash thud
-          playNoteLayer(ctx, 310, 135, 0.00, 0.13, "sine", 0.07);
+          // Soft muted low marimba note (A4 -> D4)
+          playNoteLayer(ctx, 440.00, 440.00, 0.00, 0.10, "sine", 0.042);
+          playNoteLayer(ctx, 293.66, 293.66, 0.04, 0.15, "sine", 0.045);
           break;
         case "scrollTop":
-          // iOS quick whoosh to top
-          playNoteLayer(ctx, 380, 960, 0.00, 0.11, "sine", 0.05);
+          // Soft harp glissando (C5 -> G5 -> C6)
+          playNoteLayer(ctx, 523.25, 523.25, 0.00, 0.10, "sine", 0.035);
+          playNoteLayer(ctx, 783.99, 783.99, 0.03, 0.12, "sine", 0.038);
+          playNoteLayer(ctx, 1046.50, 1046.50, 0.06, 0.16, "sine", 0.04);
           break;
         case "modalOpen":
-          // iOS sheet open tone
-          playNoteLayer(ctx, 480, 640, 0.00, 0.075, "sine", 0.045);
+          // Subtle glass bell note (E5)
+          playNoteLayer(ctx, 659.25, 659.25, 0.00, 0.12, "sine", 0.036);
           break;
         case "themeSwitch":
-          // iOS appearance toggle chord
-          playNoteLayer(ctx, 523.25, 783.99, 0.00, 0.12, "sine", 0.06);
+          // Warm Rhodes sixth interval (C5 -> A5)
+          playNoteLayer(ctx, 523.25, 523.25, 0.00, 0.14, "sine", 0.045);
+          playNoteLayer(ctx, 880.00, 880.00, 0.045, 0.18, "sine", 0.048);
           break;
         default:
-          // Crisp iPhone keyboard / UI Tock
-          playNoteLayer(ctx, 1150, 310, 0.00, 0.022, "triangle", 0.06);
-          playNoteLayer(ctx, 2100, 520, 0.00, 0.014, "sine", 0.035);
+          // Delicate wooden marimba tap (G5)
+          playNoteLayer(ctx, 783.99, 783.99, 0.00, 0.055, "sine", 0.035);
           break;
       }
     } catch (e) {}
@@ -513,8 +557,292 @@
       ...raw,
       boxes,
       tasks,
-      monthlyCompletedBase: typeof raw.monthlyCompletedBase === "number" ? raw.monthlyCompletedBase : 66
+      monthlyCompletedBase: typeof raw.monthlyCompletedBase === "number" ? raw.monthlyCompletedBase : 66,
+      completedBoxCollapsed: Boolean(raw.completedBoxCollapsed),
+      updatedAt: Number(raw.updatedAt || Date.now())
     };
+  }
+
+  // ==========================================================================
+  // POINT 1: TASK MEMORY & INTELLIGENT AUTOCOMPLETE ENGINE
+  // ==========================================================================
+  function rebuildTaskMemoryFromTasks() {
+    const rawMem = safeStorage.getItem(STORAGE_KEYS.MEMORY);
+    let memList = [];
+    if (rawMem) {
+      try {
+        const parsed = JSON.parse(rawMem);
+        if (Array.isArray(parsed)) memList = parsed;
+      } catch (e) {}
+    }
+
+    const seen = new Set(memList.map(m => String(m).trim().toLowerCase()));
+    appState.data.tasks.forEach(t => {
+      const clean = capitalizeFirst(t.title);
+      if (clean && !seen.has(clean.toLowerCase())) {
+        seen.add(clean.toLowerCase());
+        memList.push(clean);
+      }
+    });
+
+    // Also include baseline common household/errand/office tasks in memory
+    const baselineIdeas = buildRestoredUserDataset().tasks.map(t => t.title);
+    baselineIdeas.forEach(idea => {
+      const clean = capitalizeFirst(idea);
+      if (clean && !seen.has(clean.toLowerCase())) {
+        seen.add(clean.toLowerCase());
+        memList.push(clean);
+      }
+    });
+
+    appState.taskMemory = memList.slice(0, 250);
+    safeStorage.setItem(STORAGE_KEYS.MEMORY, JSON.stringify(appState.taskMemory));
+  }
+
+  function learnTaskTitle(title) {
+    const clean = capitalizeFirst(title);
+    if (!clean || clean.length < 2) return;
+    const lower = clean.toLowerCase();
+    appState.taskMemory = [
+      clean,
+      ...appState.taskMemory.filter(item => String(item).toLowerCase() !== lower)
+    ].slice(0, 250);
+    safeStorage.setItem(STORAGE_KEYS.MEMORY, JSON.stringify(appState.taskMemory));
+  }
+
+  function getTaskSuggestions(queryText, boxId) {
+    const q = String(queryText || "").trim().toLowerCase();
+    if (!q) return [];
+
+    // Prioritize tasks previously used or matching prefix first, then substring
+    const prefixMatches = [];
+    const containsMatches = [];
+    const seen = new Set();
+
+    appState.taskMemory.forEach(item => {
+      const text = String(item || "").trim();
+      const lower = text.toLowerCase();
+      if (!text || lower === q || seen.has(lower)) return;
+      if (lower.startsWith(q)) {
+        seen.add(lower);
+        prefixMatches.push(text);
+      } else if (lower.includes(q)) {
+        seen.add(lower);
+        containsMatches.push(text);
+      }
+    });
+
+    return [...prefixMatches, ...containsMatches].slice(0, 5);
+  }
+
+  // ==========================================================================
+  // POINT 11: UNDO / REDO HISTORY ENGINE (Ctrl + Z / Ctrl + Shift + Z)
+  // ==========================================================================
+  function pushUndoSnapshot(actionLabel = "Acción") {
+    try {
+      const snap = JSON.stringify(appState.data);
+      if (appState.undoStack.length > 0 && appState.undoStack[appState.undoStack.length - 1].snap === snap) {
+        return;
+      }
+      appState.undoStack.push({ label: actionLabel, snap });
+      if (appState.undoStack.length > 35) appState.undoStack.shift();
+      appState.redoStack = [];
+    } catch (e) {}
+  }
+
+  function performUndo() {
+    if (!appState.undoStack.length) {
+      showToast("No hay acciones para deshacer");
+      return;
+    }
+    const last = appState.undoStack.pop();
+    appState.redoStack.push({
+      label: last.label,
+      snap: JSON.stringify(appState.data)
+    });
+    appState.data = normalizeDataPayload(JSON.parse(last.snap));
+    appState.data.updatedAt = Date.now();
+    playUiSound("uncomplete");
+    saveData(false, "Deshizo acción");
+    renderBoard();
+    showToast(`Deshecho: ${last.label}`);
+  }
+
+  function performRedo() {
+    if (!appState.redoStack.length) {
+      showToast("No hay acciones para rehacer");
+      return;
+    }
+    const next = appState.redoStack.pop();
+    appState.undoStack.push({
+      label: next.label,
+      snap: JSON.stringify(appState.data)
+    });
+    appState.data = normalizeDataPayload(JSON.parse(next.snap));
+    appState.data.updatedAt = Date.now();
+    playUiSound("complete");
+    saveData(false, "Rehizo acción");
+    renderBoard();
+    showToast(`Rehecho: ${next.label}`);
+  }
+
+  // ==========================================================================
+  // POINT 13: REAL-TIME CROSS-DEVICE CLOUD SYNC (WEB LAPTOP <-> MOBILE APP)
+  // ==========================================================================
+  let syncBroadcastChannel = null;
+  try {
+    if (typeof window.BroadcastChannel !== "undefined") {
+      syncBroadcastChannel = new window.BroadcastChannel("tasky_realtime_sync_bus");
+      syncBroadcastChannel.onmessage = (ev) => {
+        if (ev.data && ev.data.payload && ev.data.deviceId !== appState.deviceId) {
+          applyIncomingSyncPayload(ev.data.payload, false);
+        }
+      };
+    }
+  } catch (e) {}
+
+  window.addEventListener("storage", (ev) => {
+    if (ev.key === STORAGE_KEYS.DATA && ev.newValue) {
+      try {
+        const parsed = JSON.parse(ev.newValue);
+        applyIncomingSyncPayload(parsed, false);
+      } catch (e) {}
+    }
+  });
+
+  function isCloudNetworkAllowed() {
+    // Only run cloud fetch on http/https when online
+    return (
+      typeof window.fetch === "function" &&
+      (window.location.protocol === "https:" || window.location.protocol === "http:") &&
+      navigator.onLine !== false
+    );
+  }
+
+  function getCloudTopicUrl(suffix = "") {
+    const ch = String(appState.cloudChannel || "tasky_somerito_jose_sync_v1")
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]/g, "_");
+    return `https://ntfy.sh/${ch}${suffix}`;
+  }
+
+  function applyIncomingSyncPayload(incomingRaw, showNotification = false) {
+    const norm = normalizeDataPayload(incomingRaw);
+    if (!norm || !Array.isArray(norm.boxes) || !norm.boxes.length) return false;
+    const incomingTime = Number(norm.updatedAt || 0);
+    const localTime = Number(appState.data.updatedAt || 0);
+
+    // Accept if incoming is newer or has different task/box count from another device
+    const currentSig = JSON.stringify({ b: appState.data.boxes, t: appState.data.tasks });
+    const nextSig = JSON.stringify({ b: norm.boxes, t: norm.tasks });
+    if (currentSig === nextSig) return false;
+
+    if (incomingTime >= localTime || localTime === 0) {
+      appState.data = norm;
+      safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
+      rebuildTaskMemoryFromTasks();
+      renderBoard();
+      if (showNotification) {
+        showToast("Sincronizado con tus dispositivos");
+      }
+      return true;
+    }
+    return false;
+  }
+
+  let cloudPushTimer = null;
+  function pushCloudSync() {
+    if (syncBroadcastChannel) {
+      try {
+        syncBroadcastChannel.postMessage({
+          deviceId: appState.deviceId,
+          payload: appState.data
+        });
+      } catch (e) {}
+    }
+    if (!isCloudNetworkAllowed()) return;
+    if (cloudPushTimer) clearTimeout(cloudPushTimer);
+    cloudPushTimer = setTimeout(() => {
+      try {
+        const envelope = JSON.stringify({
+          deviceId: appState.deviceId,
+          updatedAt: appState.data.updatedAt || Date.now(),
+          tasky_data: appState.data
+        });
+        window.fetch(getCloudTopicUrl(""), {
+          method: "POST",
+          body: envelope
+        }).catch(() => {});
+      } catch (e) {}
+    }, 250);
+  }
+
+  function pullCloudSync(manual = false) {
+    if (!isCloudNetworkAllowed()) {
+      if (manual) showToast("Sincronización local verificada");
+      return;
+    }
+    try {
+      window.fetch(getCloudTopicUrl("/json?poll=1&since=48h"))
+        .then(res => res.text())
+        .then(text => {
+          if (!text) {
+            if (manual) showToast("Dispositivos al día");
+            return;
+          }
+          const lines = text.trim().split("\n");
+          let latestEnv = null;
+          for (let i = lines.length - 1; i >= 0; i--) {
+            try {
+              const msg = JSON.parse(lines[i]);
+              if (msg && msg.event === "message" && msg.message) {
+                const parsed = JSON.parse(msg.message);
+                if (parsed && parsed.tasky_data) {
+                  latestEnv = parsed;
+                  break;
+                }
+              }
+            } catch (err) {}
+          }
+          if (latestEnv && latestEnv.tasky_data) {
+            const updated = applyIncomingSyncPayload(latestEnv.tasky_data, manual);
+            if (!updated && manual) {
+              pushCloudSync();
+              showToast("Sincronizado en la nube");
+            }
+          } else {
+            // No cloud state yet: push current state so mobile/web immediately receives it
+            pushCloudSync();
+            if (manual) showToast(" Estado subido a la nube");
+          }
+        })
+        .catch(() => {
+          if (manual) showToast("Sincronización local activa");
+        });
+    } catch (e) {}
+  }
+
+  function startCloudSyncStream() {
+    if (!isCloudNetworkAllowed() || typeof window.EventSource === "undefined") return;
+    try {
+      if (appState.cloudEventSource) {
+        appState.cloudEventSource.close();
+      }
+      const es = new window.EventSource(getCloudTopicUrl("/sse"));
+      es.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg && msg.message) {
+            const parsed = JSON.parse(msg.message);
+            if (parsed && parsed.deviceId !== appState.deviceId && parsed.tasky_data) {
+              applyIncomingSyncPayload(parsed.tasky_data, true);
+            }
+          }
+        } catch (err) {}
+      };
+      es.onerror = () => {};
+      appState.cloudEventSource = es;
+    } catch (e) {}
   }
 
   function loadRegisteredData() {
@@ -582,7 +910,12 @@
       safeStorage.setItem("tasky_restored_v143_full", "true");
     }
 
+    const savedChannel = safeStorage.getItem(STORAGE_KEYS.CLOUD_CHANNEL);
+    if (savedChannel) {
+      appState.cloudChannel = savedChannel;
+    }
     appState.data = loaded;
+    rebuildTaskMemoryFromTasks();
   }
 
   // Point 10: Automatically disappear / archive completed tasks on the next day
@@ -618,8 +951,10 @@
   }
 
   function saveData(recordBackup = true, actionLabel = "Cambio guardado") {
+    appState.data.updatedAt = Date.now();
     const payloadStr = JSON.stringify(appState.data);
     const ok = safeStorage.setItem(STORAGE_KEYS.DATA, payloadStr);
+    pushCloudSync();
 
     if (recordBackup) {
       const snapshot = {
@@ -800,7 +1135,8 @@
     autoScrollRaf: null,
     autoScrollVelocity: 0,
     startX: 0,
-    startY: 0
+    startY: 0,
+    justDragged: false
   };
 
   function cancelHoldCharge() {
@@ -844,26 +1180,28 @@
       dragEngine.activeType = type;
       dragEngine.activeId = id;
       dragEngine.activeEl = element;
+      dragEngine.justDragged = true;
 
       element.classList.add("is-held-dragging");
       playUiSound("dragReady");
 
-      // Create live Drop Preview Slot right after the active element
-      const slot = document.createElement("div");
-      slot.className = `drop-preview-slot ${type === "box" ? "box-slot" : ""}`;
-      slot.innerHTML = `<span>✨ Vista previa: Soltar aquí para ubicar ${type === "box" ? "la casilla" : "la tarea"}</span>`;
-      dragEngine.previewSlot = slot;
-      element.parentNode.insertBefore(slot, element.nextSibling);
+      // Point 9: Transparent live clone of the exact task or Casilla being dragged
+      const clone = element.cloneNode(true);
+      clone.classList.remove("is-held-dragging", "is-charging", "boot-animate");
+      clone.classList.add("drop-ghost-clone");
+      clone.removeAttribute("data-task-id");
+      clone.removeAttribute("data-box-id");
+      dragEngine.previewSlot = clone;
+      element.parentNode.insertBefore(clone, element.nextSibling);
 
       runAutoScrollLoop();
-    }, 380);
+    }, 360);
   }
 
   function handleGlobalPointerMove(e) {
     const clientX = e.clientX;
     const clientY = e.clientY;
 
-    // If still charging hold, cancel if user moved finger/mouse more than 12px (scrolling)
     if (dragEngine.holdTimer) {
       const dist = Math.hypot(clientX - dragEngine.startX, clientY - dragEngine.startY);
       if (dist > 12) {
@@ -874,7 +1212,6 @@
 
     if (!dragEngine.activeId || !dragEngine.previewSlot) return;
 
-    // Auto-scroll when pointer is near top or bottom of viewport (Point 7)
     const edgeThreshold = 95;
     if (clientY < edgeThreshold) {
       dragEngine.autoScrollVelocity = -Math.max(4, Math.round((edgeThreshold - clientY) / 5));
@@ -887,18 +1224,22 @@
     const hitElements = document.elementsFromPoint(clientX, clientY);
 
     if (dragEngine.activeType === "task") {
-      const overTask = hitElements.find(el => el.classList && el.classList.contains("task-item") && el !== dragEngine.activeEl);
+      const overTask = hitElements.find(
+        el => el.classList && el.classList.contains("task-item") && !el.classList.contains("drop-ghost-clone") && el !== dragEngine.activeEl
+      );
       if (overTask && overTask.parentNode) {
         const rect = overTask.getBoundingClientRect();
         const insertBefore = clientY < rect.top + rect.height / 2;
-        overTask.parentNode.insertBefore(
-          dragEngine.previewSlot,
-          insertBefore ? overTask : overTask.nextSibling
-        );
+        const targetNode = insertBefore ? overTask : overTask.nextSibling;
+        if (dragEngine.previewSlot.nextSibling !== targetNode) {
+          overTask.parentNode.insertBefore(dragEngine.previewSlot, targetNode);
+        }
         return;
       }
 
-      const overBox = hitElements.find(el => el.classList && el.classList.contains("box-card") && el.dataset.boxId);
+      const overBox = hitElements.find(
+        el => el.classList && el.classList.contains("box-card") && !el.classList.contains("drop-ghost-clone") && el.dataset.boxId
+      );
       if (overBox) {
         const listEl = overBox.querySelector(".tasks-list");
         if (listEl && !listEl.contains(dragEngine.previewSlot)) {
@@ -907,15 +1248,15 @@
       }
     } else if (dragEngine.activeType === "box") {
       const overBox = hitElements.find(
-        el => el.classList && el.classList.contains("box-card") && el.dataset.boxId && el !== dragEngine.activeEl
+        el => el.classList && el.classList.contains("box-card") && !el.classList.contains("drop-ghost-clone") && el.dataset.boxId && el !== dragEngine.activeEl
       );
       if (overBox && overBox.parentNode) {
         const rect = overBox.getBoundingClientRect();
         const insertBefore = clientY < rect.top + rect.height / 2;
-        overBox.parentNode.insertBefore(
-          dragEngine.previewSlot,
-          insertBefore ? overBox : overBox.nextSibling
-        );
+        const targetNode = insertBefore ? overBox : overBox.nextSibling;
+        if (dragEngine.previewSlot.nextSibling !== targetNode) {
+          overBox.parentNode.insertBefore(dragEngine.previewSlot, targetNode);
+        }
       }
     }
   }
@@ -934,27 +1275,33 @@
         const listEl = previewSlot.closest(".tasks-list");
         const targetBoxId = listEl ? listEl.dataset.boxList : null;
         if (targetBoxId) {
-          // Determine the new order inside targetBoxId based on previewSlot position
           const task = appState.data.tasks.find(t => t.id === activeId);
           if (task) {
+            pushUndoSnapshot(`Mover tarea: ${task.title}`);
+            const boxChanged = task.boxId !== targetBoxId;
             task.boxId = targetBoxId;
-            // Place activeEl at previewSlot position to read exact order
             previewSlot.parentNode.insertBefore(activeEl, previewSlot);
             previewSlot.remove();
-            const siblingIds = Array.from(listEl.querySelectorAll(".task-item")).map(el => el.dataset.taskId);
+            const siblingIds = Array.from(listEl.querySelectorAll(".task-item[data-task-id]")).map(el => el.dataset.taskId);
             siblingIds.forEach((id, idx) => {
               const tObj = appState.data.tasks.find(x => x.id === id);
               if (tObj) tObj.order = idx;
             });
             playUiSound("drop");
             saveData(true, `Movió tarea: ${task.title}`);
-            renderBoard();
+            // Point 9: Zero-flash update on drop (only re-render board if moved across different Casillas)
+            if (boxChanged) {
+              renderBoard();
+            } else {
+              updateMetrics();
+            }
             showToast("Tarea reubicada");
           }
         }
       } else if (activeType === "box") {
         const container = document.getElementById("boxes-container");
         if (container && previewSlot.parentNode === container) {
+          pushUndoSnapshot("Reordenar casillas");
           container.insertBefore(activeEl, previewSlot);
           previewSlot.remove();
           const boxIds = Array.from(container.querySelectorAll(".box-card[data-box-id]")).map(el => el.dataset.boxId);
@@ -964,12 +1311,16 @@
           });
           playUiSound("drop");
           saveData(true, "Reordenó casillas");
-          renderBoard();
+          updateMetrics();
           showToast("Casilla reubicada");
         }
       }
       if (previewSlot.parentNode) previewSlot.remove();
     }
+
+    setTimeout(() => {
+      dragEngine.justDragged = false;
+    }, 80);
 
     dragEngine.activeType = null;
     dragEngine.activeId = null;
@@ -1027,7 +1378,7 @@
       const hasRescheduled = reschedInBox.length > 0;
 
       const card = document.createElement("section");
-      card.className = `box-card ${box.collapsed ? "collapsed" : ""} ${hasRescheduled ? "box-rescheduled-theme" : ""} ${isEmptyStandby ? "box-empty-theme" : ""}`;
+      card.className = `box-card ${!appState.hasBootRendered ? "boot-animate" : ""} ${box.collapsed ? "collapsed" : ""} ${hasRescheduled ? "box-rescheduled-theme" : ""} ${isEmptyStandby ? "box-empty-theme" : ""}`;
       card.dataset.boxId = box.id;
 
       let badgesHtml = "";
@@ -1104,11 +1455,14 @@
         <div class="box-body">
           <div class="tasks-list" data-box-list="${escapeHtml(box.id)}"></div>
           <button type="button" class="add-task-BarBtn" data-box-action="show-inline-add" data-tip-title="➕ Añadir nueva tarea" data-tip-desc="Abre el campo rápido para registrar una tarea directamente en esta casilla.">+ Añadir tarea</button>
-          <form class="inline-add-form" data-box-form="${escapeHtml(box.id)}">
-            <input type="text" class="inline-add-input" placeholder="Escribe la tarea y presiona Enter..." maxlength="180" />
-            <button type="submit" class="btn-primary" style="padding:7px 14px;font-size:0.8rem;">Guardar</button>
-            <button type="button" class="btn-secondary" data-box-action="cancel-inline-add" style="padding:7px 11px;font-size:0.8rem;">✕</button>
-          </form>
+          <div class="inline-add-wrapper">
+            <form class="inline-add-form" data-box-form="${escapeHtml(box.id)}">
+              <input type="text" class="inline-add-input" placeholder="Escribe la tarea y presiona Enter (ESC para salir)..." maxlength="180" autocomplete="off" />
+              <button type="submit" class="btn-primary" style="padding:7px 14px;font-size:0.8rem;">Guardar</button>
+              <button type="button" class="btn-secondary" data-box-action="cancel-inline-add" style="padding:7px 11px;font-size:0.8rem;">✕</button>
+            </form>
+            <div class="task-memory-suggestions" aria-label="Sugerencias de tareas"></div>
+          </div>
         </div>
       `;
 
@@ -1119,22 +1473,22 @@
         beginHoldDrag("box", box.id, card, e.clientX, e.clientY);
       });
 
-      // Point 1: Double-clicking anywhere on the Casilla header toggles expand/collapse
+      // Point 2: Zero-Flash In-Place Fold/Unfold on Casilla (No DOM rebuild or flicker)
       card.addEventListener("dblclick", (e) => {
         if (e.target.closest("button") || e.target.closest("input") || e.target.closest(".task-item")) return;
         cancelHoldCharge();
         box.collapsed = !box.collapsed;
+        card.classList.toggle("collapsed", box.collapsed);
         playUiSound(box.collapsed ? "fold" : "unfold");
         saveData(false);
-        renderBoard();
         showToast(box.collapsed ? "Casilla plegada" : "Casilla desplegada");
       });
 
       card.querySelector('[data-box-action="collapse"]').addEventListener("click", () => {
         box.collapsed = !box.collapsed;
+        card.classList.toggle("collapsed", box.collapsed);
         playUiSound(box.collapsed ? "fold" : "unfold");
         saveData(false);
-        renderBoard();
       });
 
       card.querySelector(".box-name").addEventListener("click", () => {
@@ -1174,9 +1528,83 @@
       const addBarBtn = card.querySelector('[data-box-action="show-inline-add"]');
       const inlineForm = card.querySelector(".inline-add-form");
       const inlineInput = card.querySelector(".inline-add-input");
+      const suggestionsBox = card.querySelector(".task-memory-suggestions");
+      let activeSuggestionIdx = -1;
 
-      // Point 3: Live auto-capitalization of first letter while typing
       autoCapitalizeInputEl(inlineInput);
+
+      function closeInlineAddBox() {
+        appState.keepInlineAddOpenBoxId = null;
+        inlineForm.classList.remove("open");
+        suggestionsBox.classList.remove("open");
+        suggestionsBox.innerHTML = "";
+        addBarBtn.style.display = "flex";
+        inlineInput.value = "";
+        inlineInput.blur();
+      }
+
+      function renderInlineSuggestions() {
+        const matches = getTaskSuggestions(inlineInput.value, box.id);
+        activeSuggestionIdx = -1;
+        if (!matches.length) {
+          suggestionsBox.classList.remove("open");
+          suggestionsBox.innerHTML = "";
+          return;
+        }
+        suggestionsBox.innerHTML = "";
+        matches.forEach((suggestionText, sIdx) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "memory-suggestion-item";
+          btn.innerHTML = `
+            <span>💡 ${escapeHtml(suggestionText)}</span>
+            <span class="memory-suggestion-hint">Clic o Tab</span>
+          `;
+          btn.addEventListener("mousedown", (ev) => {
+            ev.preventDefault();
+            playUiSound("tap");
+            inlineInput.value = suggestionText;
+            suggestionsBox.classList.remove("open");
+            inlineInput.focus();
+          });
+          suggestionsBox.appendChild(btn);
+        });
+        suggestionsBox.classList.add("open");
+      }
+
+      inlineInput.addEventListener("input", renderInlineSuggestions);
+
+      // Point 4 & Point 1: ESC closes the task input box; Tab / ArrowDown navigates memory suggestions
+      inlineInput.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape") {
+          ev.preventDefault();
+          ev.stopPropagation();
+          playUiSound("fold");
+          closeInlineAddBox();
+          return;
+        }
+        const items = Array.from(suggestionsBox.querySelectorAll(".memory-suggestion-item"));
+        if (!items.length || !suggestionsBox.classList.contains("open")) return;
+
+        if (ev.key === "ArrowDown") {
+          ev.preventDefault();
+          activeSuggestionIdx = (activeSuggestionIdx + 1) % items.length;
+          items.forEach((el, idx) => el.classList.toggle("active", idx === activeSuggestionIdx));
+        } else if (ev.key === "ArrowUp") {
+          ev.preventDefault();
+          activeSuggestionIdx = (activeSuggestionIdx - 1 + items.length) % items.length;
+          items.forEach((el, idx) => el.classList.toggle("active", idx === activeSuggestionIdx));
+        } else if (ev.key === "Tab") {
+          ev.preventDefault();
+          const chosenIdx = activeSuggestionIdx >= 0 ? activeSuggestionIdx : 0;
+          const matches = getTaskSuggestions(inlineInput.value, box.id);
+          if (matches[chosenIdx]) {
+            playUiSound("tap");
+            inlineInput.value = matches[chosenIdx];
+            suggestionsBox.classList.remove("open");
+          }
+        }
+      });
 
       addBarBtn.addEventListener("click", () => {
         playUiSound("tap");
@@ -1188,15 +1616,21 @@
 
       card.querySelector('[data-box-action="cancel-inline-add"]').addEventListener("click", () => {
         playUiSound("tap");
-        appState.keepInlineAddOpenBoxId = null;
-        inlineForm.classList.remove("open");
-        addBarBtn.style.display = "flex";
-        inlineInput.value = "";
+        closeInlineAddBox();
       });
 
-      // Point 3: Pressing Enter saves task with capitalized first letter AND opens a new task input right below
       inlineForm.addEventListener("submit", (e) => {
         e.preventDefault();
+        const items = Array.from(suggestionsBox.querySelectorAll(".memory-suggestion-item"));
+        if (activeSuggestionIdx >= 0 && items[activeSuggestionIdx]) {
+          const matches = getTaskSuggestions(inlineInput.value, box.id);
+          if (matches[activeSuggestionIdx]) {
+            inlineInput.value = matches[activeSuggestionIdx];
+            suggestionsBox.classList.remove("open");
+            activeSuggestionIdx = -1;
+            return;
+          }
+        }
         const title = capitalizeFirst(inlineInput.value);
         if (!title) {
           inlineInput.classList.add("input-invalid");
@@ -1204,6 +1638,8 @@
           showToast("Escribe el nombre de la tarea", true);
           return;
         }
+        pushUndoSnapshot(`Añadir tarea: ${title}`);
+        learnTaskTitle(title);
         const newTask = {
           id: `task_${Date.now()}`,
           boxId: box.id,
@@ -1246,11 +1682,12 @@
     // 1. Render Active Casillas (with tasks)
     activeBoxesList.forEach(box => renderSingleBoxCard(box, false));
 
-    // AUTOMATIC "TAREAS COMPLETADAS" BOX AT BOTTOM
+    // Point 10: AUTOMATIC "TAREAS COMPLETADAS" BOX WITH FOLD / UNFOLD SUPPORT
     const allCompletedTasks = appState.data.tasks.filter(t => t.done && matchesSearch(t, "Tareas completadas"));
     if (allCompletedTasks.length > 0 && appState.activeTab !== "completed") {
+      const isCompCollapsed = Boolean(appState.data.completedBoxCollapsed);
       const compCard = document.createElement("section");
-      compCard.className = "box-card box-completed-theme";
+      compCard.className = `box-card box-completed-theme ${!appState.hasBootRendered ? "boot-animate" : ""} ${isCompCollapsed ? "collapsed" : ""}`;
       compCard.innerHTML = `
         <div class="box-top-row">
           <div class="box-title-left">
@@ -1258,7 +1695,7 @@
               <span style="color:var(--success);display:inline-flex;align-items:center;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
               </span>
-              <h2 class="box-name" style="color:var(--success);cursor:default;">TAREAS COMPLETADAS</h2>
+              <h2 class="box-name" style="color:var(--success);cursor:pointer;">TAREAS COMPLETADAS</h2>
             </div>
             <div class="box-badges-row">
               <span class="box-pill green">✓ ${allCompletedTasks.length} completada${allCompletedTasks.length === 1 ? "" : "s"} hoy</span>
@@ -1266,12 +1703,34 @@
           </div>
           <div class="box-header-actions">
             <button type="button" class="btn-secondary" id="btn-clear-completed-inline" style="padding:6px 12px;font-size:0.78rem;" data-tip-title="🧹 Archivar completadas" data-tip-desc="Limpia de la vista las tareas ya finalizadas conservando tu historial mensual.">Limpiar completadas</button>
+            <button type="button" class="box-ctrl-btn collapse-right-btn" data-comp-action="collapse" data-tip-title="⌄ Plegar o desplegar completadas" data-tip-desc="Oculta o muestra tus tareas completadas del día.">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
           </div>
         </div>
         <div class="box-body">
           <div class="tasks-list" id="completed-box-tasks-list"></div>
         </div>
       `;
+
+      function toggleCompletedBoxCollapse(showMsg) {
+        appState.data.completedBoxCollapsed = !appState.data.completedBoxCollapsed;
+        compCard.classList.toggle("collapsed", appState.data.completedBoxCollapsed);
+        playUiSound(appState.data.completedBoxCollapsed ? "fold" : "unfold");
+        saveData(false);
+        if (showMsg) {
+          showToast(appState.data.completedBoxCollapsed ? "Completadas plegadas" : "Completadas desplegadas");
+        }
+      }
+
+      compCard.querySelector('[data-comp-action="collapse"]').addEventListener("click", () => {
+        toggleCompletedBoxCollapse(false);
+      });
+
+      compCard.addEventListener("dblclick", (e) => {
+        if (e.target.closest("button") || e.target.closest(".task-item")) return;
+        toggleCompletedBoxCollapse(true);
+      });
 
       const compList = compCard.querySelector("#completed-box-tasks-list");
       allCompletedTasks.forEach((task) => {
@@ -1282,6 +1741,7 @@
       const clearBtn = compCard.querySelector("#btn-clear-completed-inline");
       if (clearBtn) {
         clearBtn.addEventListener("click", () => {
+          pushUndoSnapshot("Limpiar tareas completadas");
           playUiSound("delete");
           appState.data.tasks = appState.data.tasks.filter(t => !t.done);
           saveData(true, "Limpió tareas completadas");
@@ -1295,6 +1755,7 @@
 
     // 3. Point 8: Render Empty Casillas (with 0 tasks) below TAREAS COMPLETADAS with distinct Empty Theme
     emptyBoxesList.forEach(box => renderSingleBoxCard(box, true));
+    appState.hasBootRendered = true;
   }
 
   function createTaskRowElement(task, box, showOriginBox = false) {
@@ -1334,7 +1795,7 @@
         <button type="button" class="task-act-btn" data-task-action="edit" data-tip-title="✏️ Editar texto" data-tip-desc="Abre el editor para modificar el texto de esta tarea (también puedes hacer clic en el título).">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         </button>
-        <button type="button" class="task-act-btn ${!isResched && !task.done ? "sun-active" : ""}" data-task-action="today" data-tip-title="☀️ Enfoque Para Hoy" data-tip-desc="Asigna esta tarea directamente a tu lista de prioridades de hoy.">
+        <button type="button" class="task-act-btn ${isResched ? "sun-active" : ""}" data-task-action="today" data-tip-title="☀️ Pasar para Mañana" data-tip-desc="Pasa inmediatamente esta tarea para el día de mañana (+1 día).">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
         </button>
         <button type="button" class="task-act-btn ${isResched ? "calendar-active" : ""}" data-task-action="reschedule" data-tip-title="📅 Reprogramar Fecha" data-tip-desc="Elige una nueva fecha en el calendario para postergar o planificar esta tarea.">
@@ -1349,15 +1810,16 @@
       </div>
     `;
 
-    // Point 7: Hold-to-Drag with loading bar on Task Row
+    // Point 8: Hold-to-Drag works on any blank space of the task or even holding on the row
     item.addEventListener("pointerdown", (e) => {
-      if (e.target.closest("button") || e.target.closest(".task-title")) return;
+      if (e.target.closest("button") || e.target.closest("input")) return;
       beginHoldDrag("task", task.id, item, e.clientX, e.clientY);
     });
 
     const checkBtn = item.querySelector(".task-check-circle");
     checkBtn.addEventListener("click", () => toggleTaskDone(task.id, checkBtn));
     item.querySelector(".task-title").addEventListener("click", () => {
+      if (dragEngine.justDragged) return;
       playUiSound("modalOpen");
       openEditTaskTitleModal(task.id);
     });
@@ -1366,14 +1828,17 @@
       openEditTaskTitleModal(task.id);
     });
 
+    // Point 3: Sun button on task row passes the task to Tomorrow (Mañana)
     item.querySelector('[data-task-action="today"]').addEventListener("click", () => {
-      playUiSound("tap");
-      task.dueDate = getTodayISO();
-      task.isRescheduled = false;
-      task.rescheduledCount = 0;
-      saveData(true, `Movió a hoy: ${task.title}`);
+      pushUndoSnapshot(`Pasar para mañana: ${task.title}`);
+      playUiSound("reschedule");
+      const tomorrowIso = addDaysISO(getTodayISO(), 1);
+      task.dueDate = tomorrowIso;
+      task.isRescheduled = true;
+      task.rescheduledCount = (task.rescheduledCount || 0) + 1;
+      saveData(true, `Pasó para mañana: ${task.title}`);
       renderBoard();
-      showToast("Movida para hoy");
+      showToast("Pasada para mañana ☀️");
     });
 
     item.querySelector('[data-task-action="reschedule"]').addEventListener("click", () => {
@@ -1398,6 +1863,7 @@
   function toggleTaskDone(taskId, checkBtnEl) {
     const task = appState.data.tasks.find(t => t.id === taskId);
     if (!task) return;
+    pushUndoSnapshot(`${task.done ? "Reabrir" : "Completar"}: ${task.title}`);
     task.done = !task.done;
     const today = getTodayISO();
     if (task.done) {
@@ -1419,6 +1885,7 @@
   function deleteTask(taskId) {
     const idx = appState.data.tasks.findIndex(t => t.id === taskId);
     if (idx === -1) return;
+    pushUndoSnapshot(`Eliminar: ${appState.data.tasks[idx].title}`);
     const removed = appState.data.tasks.splice(idx, 1)[0];
     saveData(true, `Eliminó: ${removed.title}`);
     renderBoard();
@@ -1478,6 +1945,7 @@
   function applyTaskRescheduleDate(newDateIso, moveToToday = false) {
     const task = appState.data.tasks.find(t => t.id === appState.reschedulingTaskId);
     if (!task) return;
+    pushUndoSnapshot(`Reprogramar: ${task.title}`);
     const today = getTodayISO();
 
     if (moveToToday || newDateIso <= today) {
@@ -1901,13 +2369,81 @@
       renderBoard();
     });
 
-    // Direct Ctrl+F and Cmd+K search focus
+    // Point 4 & Point 11: Professional Keyboard Shortcuts (Ctrl+F/Cmd+K, Ctrl+Z Undo, Ctrl+Shift+Z/Ctrl+Y Redo, ESC, Alt+N/B/P/D)
     document.addEventListener("keydown", (e) => {
+      const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : "";
+      const isTyping = activeTag === "input" || activeTag === "textarea" || activeTag === "select";
+
       if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "f" || e.key.toLowerCase() === "k")) {
         e.preventDefault();
         searchInput.focus();
         searchInput.select();
-      } else if (e.key === "Escape") {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "z") {
+        if (!isTyping) {
+          e.preventDefault();
+          if (e.shiftKey) {
+            performRedo();
+          } else {
+            performUndo();
+          }
+          return;
+        }
+      }
+
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "y") {
+        if (!isTyping) {
+          e.preventDefault();
+          performRedo();
+          return;
+        }
+      }
+
+      if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        const k = e.key.toLowerCase();
+        if (k === "n") {
+          e.preventDefault();
+          const firstAddBtn = document.querySelector('[data-box-action="show-inline-add"]');
+          if (firstAddBtn) firstAddBtn.click();
+          return;
+        } else if (k === "b") {
+          e.preventDefault();
+          openBoxModal(null);
+          return;
+        } else if (k === "p") {
+          e.preventDefault();
+          openProductivityModal();
+          return;
+        } else if (k === "d") {
+          e.preventDefault();
+          document.getElementById("btn-theme-toggle").click();
+          return;
+        }
+      }
+
+      if (e.key === "Escape") {
+        // Point 4: Close any open inline add-task input box
+        const openForms = document.querySelectorAll(".inline-add-form.open");
+        if (openForms.length > 0) {
+          appState.keepInlineAddOpenBoxId = null;
+          openForms.forEach(formEl => {
+            formEl.classList.remove("open");
+            const cardEl = formEl.closest(".box-card");
+            if (cardEl) {
+              const barBtn = cardEl.querySelector('[data-box-action="show-inline-add"]');
+              if (barBtn) barBtn.style.display = "flex";
+              const sugg = cardEl.querySelector(".task-memory-suggestions");
+              if (sugg) sugg.classList.remove("open");
+            }
+            const inp = formEl.querySelector(".inline-add-input");
+            if (inp) {
+              inp.value = "";
+              inp.blur();
+            }
+          });
+        }
         document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
         document.getElementById("fab-wrapper").classList.remove("open");
       }
@@ -2083,7 +2619,11 @@
         return;
       }
       const task = appState.data.tasks.find(t => t.id === appState.editingTaskId);
-      if (task) task.title = val;
+      if (task) {
+        pushUndoSnapshot(`Editar: ${task.title}`);
+        task.title = val;
+        learnTaskTitle(val);
+      }
       playUiSound("tap");
       saveData(true, `Editó: ${val}`);
       document.getElementById("modal-edit-task").classList.remove("open");
@@ -2098,6 +2638,31 @@
         appState.confirmCallback = null;
       }
     });
+
+    // Point 13: Cloud Sync controls inside 3-Dots Options Modal
+    const syncChannelInput = document.getElementById("input-cloud-sync-channel");
+    if (syncChannelInput) {
+      syncChannelInput.value = appState.cloudChannel;
+      syncChannelInput.addEventListener("change", () => {
+        const val = syncChannelInput.value.trim() || "tasky_somerito_jose_sync_v1";
+        appState.cloudChannel = val;
+        safeStorage.setItem(STORAGE_KEYS.CLOUD_CHANNEL, val);
+        startCloudSyncStream();
+        pullCloudSync(true);
+      });
+    }
+    const syncNowBtn = document.getElementById("btn-cloud-sync-now");
+    if (syncNowBtn) {
+      syncNowBtn.addEventListener("click", () => {
+        playUiSound("tap");
+        if (syncChannelInput && syncChannelInput.value.trim()) {
+          appState.cloudChannel = syncChannelInput.value.trim();
+          safeStorage.setItem(STORAGE_KEYS.CLOUD_CHANNEL, appState.cloudChannel);
+        }
+        pushCloudSync();
+        pullCloudSync(true);
+      });
+    }
 
     // Options Modal Buttons
     document.getElementById("btn-export-json").addEventListener("click", exportJsonBackup);
@@ -2190,6 +2755,17 @@
     initEvents();
     renderBoard();
     document.documentElement.classList.remove("tasky-booting");
+
+    // Point 13: Start cross-device cloud sync (Web Laptop <-> Mobile App)
+    setTimeout(() => {
+      pullCloudSync(false);
+      startCloudSyncStream();
+    }, 400);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        pullCloudSync(false);
+      }
+    });
   }
 
   if (document.readyState === "loading") {
