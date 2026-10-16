@@ -19,7 +19,7 @@
 </head>
 <body>
 
-  <!-- Living Gemini / Google Color-Shifting Aurora Background (Point 6) -->
+  <!-- Living Gemini / Google Color-Shifting Aurora Background -->
   <div class="gemini-aurora-bg" aria-hidden="true">
     <div class="aurora-orb orb-1"></div>
     <div class="aurora-orb orb-2"></div>
@@ -27,13 +27,22 @@
     <div class="aurora-orb orb-4"></div>
   </div>
 
-  <!-- Fast, Minimal Top-Right Action Pill (Point 10) -->
+  <!-- Point 10: Custom Floating Glassmorphic Pro Tooltip -->
+  <div id="pro-tooltip" class="pro-tooltip" role="tooltip">
+    <div class="pro-tooltip-title">
+      <span class="pro-tooltip-dot"></span>
+      <span id="pro-tooltip-title-text">Acción</span>
+    </div>
+    <div id="pro-tooltip-desc-text" class="pro-tooltip-desc">Descripción</div>
+  </div>
+
+  <!-- Point 4: Fast, Minimal Notification Pill Positioned Below Top Navbar -->
   <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
 
-  <!-- Top Navigation & Search Bar (Points 1 & 2) -->
+  <!-- Top Navigation & Search Bar -->
   <header class="top-navbar">
     <div class="brand-cluster">
-      <div class="brand-logo" title="Tasky App">
+      <div class="brand-logo" data-tip-title="Tasky Pro" data-tip-desc="Tu plataforma personal de enfoque, casillas y productividad diaria.">
         <img src="data:image/png;base64,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" alt="Tasky" class="brand-logo-img" />
       </div>
     </div>
@@ -44,16 +53,22 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </span>
         <input type="search" id="search-input" class="search-input" placeholder="Buscar tareas, casillas o notas..." aria-label="Buscar tareas, casillas o notas" />
-        <button type="button" id="search-clear-btn" class="search-clear-btn" title="Limpiar búsqueda">×</button>
+        <button type="button" id="search-clear-btn" class="search-clear-btn" aria-label="Limpiar búsqueda">×</button>
       </div>
 
       <div class="top-actions">
-        <button type="button" id="sync-pill-btn" class="sync-pill" title="Sincronizado en almacenamiento local">
+        <!-- Point 5: Sincronizado as static text, NOT a button -->
+        <div id="sync-status-indicator" class="sync-status-static">
           <span class="sync-dot"></span>
           <span id="sync-status-text">Sincronizado</span>
-        </button>
-        <button type="button" id="btn-theme-toggle" class="icon-btn" title="Cambiar tema Claro / Oscuro" aria-label="Tema"></button>
-        <button type="button" id="btn-more-options" class="icon-btn" title="Más opciones y respaldos" aria-label="Más opciones">
+        </div>
+
+        <!-- Point 6: Restored Sound Toggle Button -->
+        <button type="button" id="btn-sound-toggle" class="icon-btn" aria-label="Sonidos" data-tip-title="🔊 Efectos de Sonido" data-tip-desc="Activa o silencia las confirmaciones acústicas al completar o mover tareas."></button>
+
+        <button type="button" id="btn-theme-toggle" class="icon-btn" aria-label="Tema" data-tip-title="🌗 Apariencia Visual" data-tip-desc="Alterna entre el modo claro luminoso y el modo oscuro profundo."></button>
+
+        <button type="button" id="btn-more-options" class="icon-btn" aria-label="Más opciones" data-tip-title="••• Estado de Sincronización y Copias" data-tip-desc="Consulta los detalles de sincronización, copias automáticas e importación/exportación JSON.">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
         </button>
       </div>
@@ -61,11 +76,11 @@
   </header>
 
   <div class="app-shell">
-    <!-- Clean Hero Section without Removed Labels (Points 4 & 5) -->
+    <!-- Hero Section -->
     <section class="hero-header">
       <div class="hero-left">
         <h1 class="hero-title">Tu día, tu orden.</h1>
-        <div id="quote-container" class="quote-inline-box" title="Clic para mostrar otra frase">
+        <div id="quote-container" class="quote-inline-box" data-tip-title="✨ Inspiración Diaria" data-tip-desc="Cambia automáticamente cada minuto o haz clic para descubrir una nueva reflexión.">
           <p id="quote-text" class="quote-text">La dicha del hombre consiste en observar las reglas y condiciones por las cuales se consigue el bien de todos los hombres.</p>
           <span id="quote-author" class="quote-author">— León Tolstói</span>
         </div>
@@ -98,7 +113,7 @@
           <span id="metric-boxes-sub" class="metric-sub">Bloques activos de trabajo</span>
         </div>
         <div class="metric-icon-box" style="background:var(--primary-soft);color:var(--primary);">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
         </div>
       </div>
 
@@ -109,7 +124,7 @@
           <span id="metric-pending-sub" class="metric-sub">Lo que aún requiere atención</span>
         </div>
         <div class="metric-icon-box" style="background:var(--danger-soft);color:var(--danger);">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         </div>
       </div>
 
@@ -120,7 +135,7 @@
           <span class="metric-sub">Tareas logradas este mes</span>
         </div>
         <div class="metric-icon-box" style="background:var(--success-soft);color:var(--success);">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
         </div>
       </div>
     </section>
@@ -128,21 +143,21 @@
     <!-- Navigation Filters & Quick Actions -->
     <nav class="controls-bar" aria-label="Filtros de tareas">
       <div class="tabs-group">
-        <button type="button" class="tab-btn active" data-tab="all">Todas</button>
-        <button type="button" class="tab-btn" data-tab="today">Para hoy</button>
-        <button type="button" class="tab-btn" data-tab="completed">Completadas</button>
+        <button type="button" class="tab-btn active" data-tab="all" data-tip-title="📋 Vista Completa" data-tip-desc="Muestra todas tus casillas y tareas registradas.">Todas</button>
+        <button type="button" class="tab-btn" data-tab="today" data-tip-title="☀️ Enfoque de Hoy" data-tip-desc="Filtra únicamente las tareas programadas para ejecutarse hoy.">Para hoy</button>
+        <button type="button" class="tab-btn" data-tab="completed" data-tip-title="✅ Tareas Cumplidas" data-tip-desc="Revisa las tareas que ya has completado en cada casilla.">Completadas</button>
       </div>
 
       <div class="quick-pills">
-        <button type="button" id="btn-open-productivity" class="pill-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <button type="button" id="btn-open-productivity" class="pill-btn" data-tip-title="📊 Analítica de Productividad" data-tip-desc="Abre el panel ejecutivo con gráficos de evolución, distribución y métricas de avance.">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           <span>Mi productividad</span>
         </button>
-        <button type="button" id="btn-filter-rescheduled" class="pill-btn pill-rescheduled">
+        <button type="button" id="btn-filter-rescheduled" class="pill-btn pill-rescheduled" data-tip-title="☀️ Gestión de Reprogramadas" data-tip-desc="Consulta las tareas postergadas a fechas futuras o tráelas de vuelta al día de hoy.">
           <span>☀️ Tareas reprogramadas</span>
           <span id="badge-rescheduled-count" class="pill-badge-circle">3</span>
         </button>
-        <button type="button" id="btn-filter-overdue" class="pill-btn pill-overdue">
+        <button type="button" id="btn-filter-overdue" class="pill-btn pill-overdue" data-tip-title="⚠️ Control de Atrasadas" data-tip-desc="Verifica si existen tareas con fecha vencida pendientes de atención.">
           <span>⚠️ Atrasadas</span>
           <span id="badge-overdue-count">0</span>
         </button>
@@ -153,22 +168,22 @@
     <main id="boxes-container" class="boxes-container"></main>
   </div>
 
-  <!-- Bottom-Right Floating Action Buttons (Matching Screenshot 3) -->
+  <!-- Bottom-Right Floating Action Buttons -->
   <div id="fab-wrapper" class="fab-wrapper">
     <div class="fab-menu">
-      <button type="button" id="fab-action-whatsapp" class="fab-item">📲 Copiar a WhatsApp</button>
-      <button type="button" id="fab-action-backup" class="fab-item">💾 Exportar respaldo</button>
-      <button type="button" id="fab-action-new-box" class="fab-item">🗂️ Nueva casilla</button>
+      <button type="button" id="fab-action-whatsapp" class="fab-item" data-tip-title="📲 Resumen para WhatsApp" data-tip-desc="Genera y copia en el portapapeles tu reporte diario formateado.">📲 Copiar a WhatsApp</button>
+      <button type="button" id="fab-action-backup" class="fab-item" data-tip-title="💾 Descargar Respaldo" data-tip-desc="Exporta un archivo .json con todas tus casillas y tareas.">💾 Exportar respaldo</button>
+      <button type="button" id="fab-action-new-box" class="fab-item" data-tip-title="🗂️ Crear Casilla" data-tip-desc="Añade un nuevo bloque temático a tu tablero.">🗂️ Nueva casilla</button>
     </div>
-    <button type="button" id="fab-collapse-all" class="fab-secondary-circle" title="Colapsar o expandir todas las casillas" aria-label="Colapsar o expandir casillas">
+    <button type="button" id="fab-collapse-all" class="fab-secondary-circle" aria-label="Plegar o desplegar casillas" data-tip-title="⌄ Plegar / Desplegar Todo" data-tip-desc="Compacta o expande todas las casillas del tablero simultáneamente.">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </button>
-    <button type="button" id="fab-main-trigger" class="fab-main-btn" title="Acciones rápidas" aria-label="Menú de acciones rápidas">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <button type="button" id="fab-main-trigger" class="fab-main-btn" aria-label="Menú de acciones rápidas" data-tip-title="⚡ Acciones Rápidas" data-tip-desc="Despliega accesos directos para crear casilla, exportar respaldo o copiar a WhatsApp.">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
   </div>
 
-  <!-- MODAL 1: "Tareas reprogramadas" (Exact Match to Screenshot 2) -->
+  <!-- MODAL 1: "Tareas reprogramadas" -->
   <div id="modal-rescheduled-list" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="resched-modal-title">
     <div class="modal-dialog wide">
       <div class="modal-header">
@@ -184,12 +199,12 @@
 
   <!-- MODAL 2: Reprogramar / Cambiar Fecha de Tarea -->
   <div id="modal-date-picker" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="date-modal-title">
-    <div class="modal-dialog" style="max-width:440px;">
+    <div class="modal-dialog" style="max-width:460px;">
       <div class="modal-header">
         <div>
           <div class="modal-eyebrow">📅 PLANIFICAR FECHA</div>
           <h3 id="date-modal-title" class="modal-title">Reprogramar tarea</h3>
-          <p id="resched-task-name" style="font-size:0.82rem;color:var(--muted);margin-top:4px;"></p>
+          <p id="resched-task-name" style="font-size:0.84rem;color:var(--muted);margin-top:4px;"></p>
         </div>
         <button type="button" class="modal-close-btn" data-close-modal="modal-date-picker" aria-label="Cerrar">✕</button>
       </div>
@@ -197,19 +212,19 @@
       <div class="date-presets-grid">
         <button type="button" class="preset-date-btn" data-date-preset="today">
           <span>☀️ Para hoy</span>
-          <span style="font-size:0.72rem;color:var(--muted);">Mover al tablero de hoy</span>
+          <span style="font-size:0.73rem;color:var(--muted);">Mover al tablero de hoy</span>
         </button>
         <button type="button" class="preset-date-btn" data-date-preset="tomorrow">
           <span>🌤️ Mañana</span>
-          <span style="font-size:0.72rem;color:var(--muted);">+1 día</span>
+          <span style="font-size:0.73rem;color:var(--muted);">+1 día</span>
         </button>
         <button type="button" class="preset-date-btn" data-date-preset="monday">
           <span>📅 Próximo lunes</span>
-          <span style="font-size:0.72rem;color:var(--muted);">Inicio de semana</span>
+          <span style="font-size:0.73rem;color:var(--muted);">Inicio de semana</span>
         </button>
         <button type="button" class="preset-date-btn" data-date-preset="saturday">
           <span>🗓️ Próximo sábado</span>
-          <span style="font-size:0.72rem;color:var(--muted);">Fin de semana</span>
+          <span style="font-size:0.73rem;color:var(--muted);">Fin de semana</span>
         </button>
       </div>
 
@@ -223,6 +238,57 @@
           <button type="submit" class="btn-primary">Guardar fecha</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2B: Point 8 — Configurar Repetición (Todos los días, algunos días, o un día de la semana) -->
+  <div id="modal-repeat-picker" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="repeat-modal-title">
+    <div class="modal-dialog" style="max-width:480px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-eyebrow">🔁 HÁBITO Y REPETICIÓN</div>
+          <h3 id="repeat-modal-title" class="modal-title">Frecuencia de la tarea</h3>
+          <p id="repeat-task-name" style="font-size:0.84rem;color:var(--muted);margin-top:4px;"></p>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal="modal-repeat-picker" aria-label="Cerrar">✕</button>
+      </div>
+
+      <div class="date-presets-grid">
+        <button type="button" class="preset-date-btn" data-repeat-preset="daily">
+          <span>🔁 Todos los días</span>
+          <span style="font-size:0.73rem;color:var(--muted);">Lunes a Domingo</span>
+        </button>
+        <button type="button" class="preset-date-btn" data-repeat-preset="weekdays">
+          <span>💼 Lunes a viernes</span>
+          <span style="font-size:0.73rem;color:var(--muted);">Días laborables</span>
+        </button>
+        <button type="button" class="preset-date-btn" data-repeat-preset="weekends">
+          <span>🌴 Fines de semana</span>
+          <span style="font-size:0.73rem;color:var(--muted);">Sábado y Domingo</span>
+        </button>
+        <button type="button" class="preset-date-btn" data-repeat-preset="once">
+          <span>⏹️ Sin repetición</span>
+          <span style="font-size:0.73rem;color:var(--muted);">Ejecutar solo una vez</span>
+        </button>
+      </div>
+
+      <div>
+        <span class="form-label">O selecciona qué día(s) específico(s) deseas repetirla:</span>
+        <div id="repeat-weekdays-grid" class="weekdays-selector">
+          <button type="button" class="weekday-chip" data-day="1">L</button>
+          <button type="button" class="weekday-chip" data-day="2">M</button>
+          <button type="button" class="weekday-chip" data-day="3">Mi</button>
+          <button type="button" class="weekday-chip" data-day="4">J</button>
+          <button type="button" class="weekday-chip" data-day="5">V</button>
+          <button type="button" class="weekday-chip" data-day="6">S</button>
+          <button type="button" class="weekday-chip" data-day="0">D</button>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" data-close-modal="modal-repeat-picker">Cancelar</button>
+        <button type="button" id="btn-save-custom-repeat" class="btn-primary">Guardar días seleccionados</button>
+      </div>
     </div>
   </div>
 
@@ -266,21 +332,38 @@
     </div>
   </div>
 
-  <!-- MODAL 5: Options & Backups -->
+  <!-- MODAL 5: Point 5 — 3-Dots Button with Synchronization Details & Backups -->
   <div id="modal-options" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-options-title">
     <div class="modal-dialog wide">
       <div class="modal-header">
         <div>
-          <div class="modal-eyebrow">⚙️ CONFIGURACIÓN</div>
-          <h3 id="modal-options-title" class="modal-title">Respaldos y Datos</h3>
+          <div class="modal-eyebrow">🟢 ESTADO DE SINCRONIZACIÓN Y SEGURIDAD</div>
+          <h3 id="modal-options-title" class="modal-title">Sincronización Local y Respaldos</h3>
         </div>
         <button type="button" class="modal-close-btn" data-close-modal="modal-options" aria-label="Cerrar">✕</button>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+      <!-- Synchronization Details Card inside 3-Dots Modal -->
+      <div style="padding:16px 18px;border-radius:18px;background:var(--success-soft);border:1px solid rgba(22,163,74,0.28);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span class="sync-dot" style="width:11px;height:11px;"></span>
+          <div>
+            <div style="font-weight:800;font-size:0.94rem;color:var(--text);">Sincronizado en tiempo real (`tasky_data`)</div>
+            <div style="font-size:0.78rem;color:var(--text-secondary);margin-top:2px;">
+              Última verificación: <strong id="modal-sync-last-time">Activa ahora mismo</strong>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <span id="sync-diag-boxes" class="box-pill green">7 casillas</span>
+          <span id="sync-diag-tasks" class="box-pill blue">27 tareas</span>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:16px;">
         <div style="padding:16px;border-radius:16px;background:var(--surface-muted);border:1px solid var(--line);">
-          <div style="font-weight:700;font-size:0.9rem;margin-bottom:6px;">Exportar / Importar Respaldo</div>
-          <p style="font-size:0.78rem;color:var(--muted);margin-bottom:12px;">Guarda o restaura tus casillas y tareas en formato JSON.</p>
+          <div style="font-weight:700;font-size:0.92rem;margin-bottom:6px;">Exportar / Importar Respaldo</div>
+          <p style="font-size:0.79rem;color:var(--muted);margin-bottom:12px;">Descarga una copia portátil en archivo `.json` o importa un respaldo previo.</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button type="button" id="btn-export-json" class="btn-primary">Exportar JSON</button>
             <label class="btn-secondary" style="cursor:pointer;">
@@ -291,10 +374,18 @@
         </div>
 
         <div style="padding:16px;border-radius:16px;background:var(--surface-muted);border:1px solid var(--line);">
-          <div style="font-weight:700;font-size:0.9rem;margin-bottom:6px;">Recuperación de Registros</div>
-          <p style="font-size:0.78rem;color:var(--muted);margin-bottom:12px;">Restaura todas tus casillas y tareas registradas (CASA, MERCADO, Pendientes José, Leah, Abuela Rosa, Bombero y OFICINA).</p>
+          <div style="font-weight:700;font-size:0.92rem;margin-bottom:6px;">Recuperación de Registros Base</div>
+          <p style="font-size:0.79rem;color:var(--muted);margin-bottom:12px;">Restaura el conjunto completo de tus 7 casillas y 27 tareas registradas.</p>
           <button type="button" id="btn-restore-initial-records" class="btn-secondary">Restaurar registros completos</button>
         </div>
+      </div>
+
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span class="form-label" style="margin:0;">Puntos de restauración automáticos</span>
+          <span id="backup-slots-count" class="box-pill neutral">0 / 20 copias automáticas</span>
+        </div>
+        <div id="backups-list-container" class="backup-slots-list"></div>
       </div>
 
       <div class="modal-footer">
@@ -303,41 +394,83 @@
     </div>
   </div>
 
-  <!-- MODAL 6: Productivity Analytics -->
+  <!-- MODAL 6: Point 3 — Executive Productivity Analytics Dashboard -->
   <div id="modal-productivity" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-prod-title">
     <div class="modal-dialog wide">
       <div class="modal-header">
         <div>
-          <div class="modal-eyebrow">📊 ESTADÍSTICAS</div>
-          <h3 id="modal-prod-title" class="modal-title">Mi productividad</h3>
+          <div class="modal-eyebrow">📊 CENTRO DE RENDIMIENTO EJECUTIVO</div>
+          <h3 id="modal-prod-title" class="modal-title">Mi productividad y métricas de avance</h3>
         </div>
         <button type="button" class="modal-close-btn" data-close-modal="modal-productivity" aria-label="Cerrar">✕</button>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
-        <div style="padding:12px;border-radius:14px;background:var(--surface-muted);border:1px solid var(--line);text-align:center;">
-          <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">Progreso hoy</div>
-          <div id="prod-kpi-rate" style="font-size:1.4rem;font-weight:800;color:var(--primary);margin-top:4px;">0%</div>
+      <!-- 6 Executive KPIs -->
+      <div class="prod-kpi-grid">
+        <div class="prod-kpi-card">
+          <span style="font-size:0.74rem;color:var(--muted);font-weight:600;">Eficiencia de hoy</span>
+          <div id="prod-kpi-rate" style="font-size:1.65rem;font-weight:900;color:var(--primary);">0%</div>
+          <span style="font-size:0.71rem;color:var(--muted);">Cumplimiento sobre el plan diario</span>
         </div>
-        <div style="padding:12px;border-radius:14px;background:var(--surface-muted);border:1px solid var(--line);text-align:center;">
-          <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">Completadas mes</div>
-          <div id="prod-kpi-done" style="font-size:1.4rem;font-weight:800;color:var(--success);margin-top:4px;">66</div>
+        <div class="prod-kpi-card">
+          <span style="font-size:0.74rem;color:var(--muted);font-weight:600;">Completadas en el mes</span>
+          <div id="prod-kpi-done" style="font-size:1.65rem;font-weight:900;color:var(--success);">66</div>
+          <span style="font-size:0.71rem;color:var(--muted);">Acumulado mensual activo</span>
         </div>
-        <div style="padding:12px;border-radius:14px;background:var(--surface-muted);border:1px solid var(--line);text-align:center;">
-          <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">Reprogramadas</div>
-          <div id="prod-kpi-resched" style="font-size:1.4rem;font-weight:800;color:var(--warning);margin-top:4px;">3</div>
+        <div class="prod-kpi-card">
+          <span style="font-size:0.74rem;color:var(--muted);font-weight:600;">Índice de enfoque</span>
+          <div id="prod-kpi-focus" style="font-size:1.65rem;font-weight:900;color:#8b5cf6;">89%</div>
+          <span style="font-size:0.71rem;color:var(--muted);">Tareas en fecha vs. postergadas</span>
+        </div>
+        <div class="prod-kpi-card">
+          <span style="font-size:0.74rem;color:var(--muted);font-weight:600;">Hábitos recurrentes</span>
+          <div id="prod-kpi-recurring" style="font-size:1.5rem;font-weight:800;color:var(--primary-2);">1</div>
+          <span style="font-size:0.71rem;color:var(--muted);">Rutinas programadas activas</span>
+        </div>
+        <div class="prod-kpi-card">
+          <span style="font-size:0.74rem;color:var(--muted);font-weight:600;">Tareas reprogramadas</span>
+          <div id="prod-kpi-resched" style="font-size:1.5rem;font-weight:800;color:var(--warning);">3</div>
+          <span style="font-size:0.71rem;color:var(--muted);">Planificadas para próximos días</span>
+        </div>
+        <div class="prod-kpi-card">
+          <span style="font-size:0.74rem;color:var(--muted);font-weight:600;">Mayor carga activa</span>
+          <div id="prod-kpi-topbox" style="font-size:1.2rem;font-weight:800;color:var(--text);margin-top:4px;">CASA (12)</div>
+          <span style="font-size:0.71rem;color:var(--muted);">Casilla con más actividades</span>
         </div>
       </div>
 
-      <div style="padding:15px;border-radius:16px;background:var(--surface-muted);border:1px solid var(--line);">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:10px;">Distribución de tareas por casilla</div>
-        <div style="position:relative;height:210px;">
-          <canvas id="chart-box-distribution"></canvas>
+      <!-- 2 Top Charts: 7-Day Velocity + Box Distribution -->
+      <div class="prod-charts-grid">
+        <div class="prod-chart-card">
+          <div style="font-size:0.84rem;font-weight:800;margin-bottom:10px;color:var(--text);">Ritmo de tareas completadas (Últimos 7 días)</div>
+          <div style="position:relative;height:210px;">
+            <canvas id="chart-productivity-trend"></canvas>
+          </div>
         </div>
+        <div class="prod-chart-card">
+          <div style="font-size:0.84rem;font-weight:800;margin-bottom:10px;color:var(--text);">Distribución de carga por casilla</div>
+          <div style="position:relative;height:210px;">
+            <canvas id="chart-box-distribution"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart 3: Execution Balance -->
+      <div class="prod-chart-card" style="margin-bottom:18px;">
+        <div style="font-size:0.84rem;font-weight:800;margin-bottom:10px;color:var(--text);">Balance operativo del tablero</div>
+        <div style="position:relative;height:165px;">
+          <canvas id="chart-execution-balance"></canvas>
+        </div>
+      </div>
+
+      <!-- Per-Box Progress Breakdown -->
+      <div>
+        <div style="font-size:0.84rem;font-weight:800;margin-bottom:8px;color:var(--text);">Desglose de avance por casilla</div>
+        <div id="prod-boxes-breakdown" class="prod-breakdown-list"></div>
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn-secondary" data-close-modal="modal-productivity">Cerrar</button>
+        <button type="button" class="btn-secondary" data-close-modal="modal-productivity">Cerrar panel</button>
       </div>
     </div>
   </div>
@@ -349,7 +482,7 @@
         <h3 id="confirm-modal-title" class="modal-title">Confirmar</h3>
         <button type="button" class="modal-close-btn" data-close-modal="modal-confirm" aria-label="Cerrar">✕</button>
       </div>
-      <p id="confirm-modal-msg" style="font-size:0.9rem;color:var(--text-secondary);line-height:1.5;"></p>
+      <p id="confirm-modal-msg" style="font-size:0.92rem;color:var(--text-secondary);line-height:1.5;"></p>
       <div class="modal-footer">
         <button type="button" class="btn-secondary" data-close-modal="modal-confirm">Cancelar</button>
         <button type="button" id="btn-confirm-proceed" class="btn-primary" style="background:var(--danger);">Eliminar</button>
