@@ -1,438 +1,447 @@
 <!DOCTYPE html>
 <html lang="es" class="tasky-booting">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#E3E9FF">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="description" content="Tasky — gestor personal de casillas y tareas.">
-  <meta name="tasky-version" content="Vol. 139">
-  <meta name="format-detection" content="telephone=no">
-
-  <title>Tasky</title>
-  <!-- TASKY · VOL. 117 · V139 · SPLIT HTML/CSS/JS · APPLE UI · POLISHED -->
-
-  <!-- TASKY · V46 -->
-    <!-- V46 · Fix renderizado, almacenamiento seguro y frases con autor -->
-
-  <!-- Reemplaza estas URLs por tus propios archivos si ya los tienes publicados. -->
-  <link rel="icon" type="image/png" href="https://somerito.github.io/Tasky-App/icon.png?v=48">
-  <link rel="apple-touch-icon" href="https://somerito.github.io/Tasky-App/icon.png?v=41">
-  <link rel="manifest" href="https://somerito.github.io/Tasky-App/manifest.json?v=48">
-
-  <!-- Dependencias con versiones fijadas para evitar cambios inesperados. -->
-  <!-- V62: dependencias diferidas. No bloquean el primer render. -->
-  <link rel="preconnect" href="https://www.gstatic.com/" crossorigin>
-  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    <link rel="stylesheet" href="styles.css?v=143">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="tasky-version" content="Vol. 141 Pro" />
+  <title>Tasky — Tu día, tu orden</title>
+  <link rel="icon" type="image/png" href="https://somerito.github.io/Tasky-App/icon.png?v=48" />
+  <link rel="shortcut icon" type="image/png" href="https://somerito.github.io/Tasky-App/icon.png?v=48" />
+  <link rel="apple-touch-icon" href="https://somerito.github.io/Tasky-App/icon.png?v=41" />
+  <link rel="manifest" href="https://somerito.github.io/Tasky-App/manifest.json?v=48" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
+<body>
 
-<body tabindex="-1" data-tasky-version="V145" data-tasky-volume="Vol. 145">
-  <div id="loadingScreen" class="loading-screen">
-    <div class="loading-box">
-      <div class="spinner" aria-hidden="true"></div>
-      <strong id="loadingTitle">Cargando Tasky…</strong>
-      <span id="loadingMessage">Preparando tu espacio personal</span>
-    </div>
-  </div>
+  <!-- Stacked Diagnostic Toast Notifications -->
+  <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
 
-  <header class="pro-topbar" id="proTopbar">
-    <div class="pro-topbar-search">
-      <i data-lucide="search" aria-hidden="true"></i>
-      <input id="searchInput" type="search" autocomplete="off" placeholder="Buscar tareas, casillas o notas…" aria-label="Buscar tareas, fases o notas">
-    </div>
-
-    <div class="pro-topbar-actions">
-      <div id="syncStatus" class="sync-label" title="Estado de sincronización"><span class="sync-dot"></span> Preparando…</div>
-      <button id="themeBtn" class="pro-icon-btn" type="button" aria-label="Cambiar tema" title="Cambiar tema"><i data-lucide="sun"></i></button>
-      <button id="menuBtn" class="pro-icon-btn" type="button" aria-label="Abrir menú" title="Más opciones"><i data-lucide="ellipsis"></i></button>
-    </div>
-  </header>
-
-
-
-  <main class="pro-main" id="app">
-    <div class="pro-container">
-      <section class="pro-hero-block">
-        <div class="pro-hero-row">
-          <div>
-            <h1 id="heroTitle" class="pro-hero-title">Tu día, tu orden.</h1>
-            <div class="hero-quote-wrap">
-              <p id="heroSubtitle" class="pro-hero-quote is-loading" aria-live="polite">Preparando una nueva frase…</p>
-              <div id="heroQuoteAuthor" class="pro-hero-author" aria-live="polite"></div>
-            </div>
-          </div>
-          <div class="pro-hero-date-card">
-            <div class="pro-hero-date-value"><span id="proDateText">—</span></div>
-            <div class="pro-hero-status"><span></span> Espacio listo</div>
-          </div>
+  <div class="app-shell">
+    <!-- Top Control & Search Bar -->
+    <header class="top-bar animate-enter">
+      <div class="brand-cluster">
+        <div class="brand-logo" title="Tasky App">
+          <img src="https://somerito.github.io/Tasky-App/icon.png?v=48" alt="Tasky Icon" class="brand-logo-img" />
         </div>
-      </section>
+        <div>
+          <div style="font-weight:800;font-size:0.98rem;letter-spacing:-0.02em;">Tasky</div>
+          <div style="font-size:0.7rem;color:var(--muted);font-weight:600;">Tu día, tu orden</div>
+        </div>
+      </div>
 
-      <section class="pro-metrics" aria-label="Resumen diario">
-        <article class="pro-metric-card">
-          <div><span>Progreso diario</span><strong><b id="dayPercent">0%</b></strong><small><span id="dayCompleted">0</span> de <span id="dayTotal">0</span> tareas listas</small></div>
-          <div class="pro-ring"><svg viewBox="0 0 36 36" aria-hidden="true"><path class="ring-track" d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831a15.9155 15.9155 0 0 1 0-31.831"></path><path id="proDayRing" class="ring-value" d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831a15.9155 15.9155 0 0 1 0-31.831" stroke-dasharray="0,100"></path></svg><span class="pro-ring-check" aria-hidden="true">✓</span></div>
-          <div id="dayProgressFill" class="pro-hidden-progress"></div>
-        </article>
-        <article class="pro-metric-card">
-          <div><span>Casillas en ejecución</span><strong id="metricCategories">0</strong><small>Bloques activos de trabajo</small></div>
-          <div class="metric-icon purple"><i data-lucide="grid-2x2"></i></div>
-        </article>
-        <article class="pro-metric-card">
-          <div><span>Tareas pendientes</span><strong id="metricPending">0</strong><small>Lo que todavía requiere atención</small></div>
-          <div class="metric-icon red"><i data-lucide="bell-ring"></i></div>
-        </article>
-        <article class="pro-metric-card">
-          <div><span>Completadas</span><strong id="metricCompleted">0</strong><small>Completadas este mes</small></div>
-          <div class="metric-icon green"><i data-lucide="trending-up"></i></div>
-        </article>
-      </section>
+      <div class="search-wrapper">
+        <span class="search-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
+        <input type="search" id="search-input" class="search-input" placeholder="Buscar tareas, casillas o notas..." aria-label="Buscar tareas, casillas o notas" />
+        <span id="search-kbd-hint" class="search-kbd">⌘K</span>
+        <button type="button" id="search-clear-btn" class="search-clear-btn" title="Limpiar búsqueda">×</button>
+      </div>
 
-      <div class="pro-workspace">
-        <section class="pro-main-column">
-          <div class="pro-task-toolbar">
-            <div class="pro-task-tabs" role="tablist" aria-label="Vistas de tareas">
-              <button class="pro-task-tab active" type="button" id="allTaskTab">Todas</button>
-              <button class="pro-task-tab" type="button" id="todayTaskTab">Para hoy</button>
-              <button class="pro-task-tab" type="button" id="completedTaskTab">Completadas</button>
-            </div>
-            <div class="pro-toolbar-actions">
-              <button id="productivityBtn" class="pro-toolbar-btn" type="button"><i data-lucide="gauge"></i><span>Mi productividad</span></button>
-              <button id="rescheduledBtn" class="pro-toolbar-btn rescheduled-toolbar-btn" type="button" title="Ver tareas reprogramadas"><i data-lucide="sun"></i><span>Tareas reprogramadas</span><b id="rescheduledCount" class="toolbar-count">0</b></button>
-              <button id="overdueBtn" class="pro-toolbar-btn danger" type="button" hidden><i data-lucide="triangle-alert"></i><span>Atrasadas</span><strong id="overdueCount">0</strong></button>
-            </div>
-          </div>
+      <div class="top-actions">
+        <button type="button" id="sync-pill-btn" class="sync-pill" title="Estado de sincronización y copias locales">
+          <span class="sync-dot"></span>
+          <span id="sync-status-text">Sincronizado</span>
+        </button>
+        <button type="button" id="btn-mobile-preview" class="icon-btn" title="Alternar vista de celular (Smartphone Preview)" aria-label="Vista celular">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        </button>
+        <button type="button" id="btn-sound-toggle" class="icon-btn" title="Alternar sonidos de interfaz" aria-label="Sonidos"></button>
+        <button type="button" id="btn-theme-toggle" class="icon-btn" title="Cambiar tema Claro / Oscuro" aria-label="Tema"></button>
+        <button type="button" id="btn-more-options" class="icon-btn" title="Centro de seguridad, respaldos y más opciones" aria-label="Más opciones">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </button>
+      </div>
+    </header>
 
-          <section id="emptyState" class="empty-state">
-            <div class="empty-icon"><i data-lucide="layout-list"></i></div>
-            <h2>Tu tablero está limpio ✨</h2>
-            <p>Crea una fase para empezar.</p>
-            <button id="emptyAddBtn" class="pro-primary-btn" style="margin-top:16px" type="button"><i data-lucide="plus"></i> Crear primera casilla</button>
-          </section>
+    <!-- Hero & Daily Philosophy Section -->
+    <section class="hero-section animate-enter">
+      <div class="hero-card">
+        <div>
+          <span class="version-pill">VOL. 141 · APPLE UI PRO · MOBILE READY</span>
+          <h1 class="hero-title">Tu día, tu orden.</h1>
+        </div>
+        <div class="hero-date-line">
+          <span id="current-date-display">Jueves, 15 de octubre</span>
+          <span>·</span>
+          <span class="ready-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Espacio listo
+          </span>
+        </div>
+      </div>
 
-          <section id="board" class="board" aria-live="polite"></section>
+      <div class="quote-card" id="quote-container">
+        <div class="quote-header">
+          <span>Enfoque del día</span>
+          <button type="button" id="btn-next-quote" class="box-icon-btn" title="Cambiar frase motivacional">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </button>
+        </div>
+        <p id="quote-text" class="quote-text">“Por cada minuto dedicado a organizar, se gana una hora.”</p>
+        <div class="quote-footer">
+          <span id="quote-author">— Benjamin Franklin</span>
+          <span style="font-size:0.72rem;opacity:0.8;">Filosofía práctica</span>
+        </div>
+      </div>
+    </section>
 
-        </section>
+    <!-- 4-Card Metrics Grid (2x2 Bento on Mobile Phones) -->
+    <section class="metrics-grid animate-enter" aria-label="Métricas de productividad">
+      <div class="metric-card">
+        <div class="metric-info">
+          <span class="metric-label">Progreso diario</span>
+          <span id="metric-daily-pct" class="metric-value">0%</span>
+          <span id="metric-daily-sub" class="metric-sub">0 de 1 completadas</span>
+        </div>
+        <div class="ring-container">
+          <svg class="ring-svg" viewBox="0 0 54 54">
+            <circle class="ring-bg" cx="27" cy="27" r="22"></circle>
+            <circle id="daily-progress-ring" class="ring-progress" cx="27" cy="27" r="22"></circle>
+          </svg>
+        </div>
+      </div>
 
+      <div class="metric-card">
+        <div class="metric-info">
+          <span class="metric-label">Casillas en ejecución</span>
+          <span id="metric-boxes-count" class="metric-value">1</span>
+          <span id="metric-boxes-sub" class="metric-sub">1 en ejecución activa</span>
+        </div>
+        <div class="metric-icon-box" style="background:var(--primary-soft);color:var(--primary);">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-info">
+          <span class="metric-label">Tareas pendientes</span>
+          <span id="metric-pending-count" class="metric-value">1</span>
+          <span id="metric-pending-sub" class="metric-sub">Al día sin atrasos</span>
+        </div>
+        <div class="metric-icon-box" style="background:var(--warning-soft);color:var(--warning);">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-info">
+          <span class="metric-label">Completadas</span>
+          <span id="metric-completed-count" class="metric-value">0</span>
+          <span class="metric-sub">Acumulado activo</span>
+        </div>
+        <div class="metric-icon-box" style="background:var(--success-soft);color:var(--success);">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Navigation Filters & Quick Actions -->
+    <nav class="controls-bar animate-enter" aria-label="Filtros de tareas">
+      <div class="tabs-group">
+        <button type="button" class="tab-btn active" data-tab="all">
+          <span>Todas</span>
+          <span id="tab-count-all" class="tab-count">1</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="today">
+          <span>Para hoy</span>
+          <span id="tab-count-today" class="tab-count">1</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="completed">
+          <span>Completadas</span>
+          <span id="tab-count-completed" class="tab-count">0</span>
+        </button>
+      </div>
+
+      <div class="quick-pills">
+        <button type="button" id="btn-open-productivity" class="pill-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span>Mi productividad</span>
+        </button>
+        <button type="button" id="btn-filter-rescheduled" class="pill-btn">
+          <span>Tareas reprogramadas</span>
+          <span id="badge-rescheduled-count" class="pill-badge warning">0</span>
+        </button>
+        <button type="button" id="btn-filter-overdue" class="pill-btn">
+          <span>Atrasadas</span>
+          <span id="badge-overdue-count" class="pill-badge danger">0</span>
+        </button>
+        <select id="select-sort-by" class="quick-freq-select" aria-label="Ordenar tareas">
+          <option value="order">Orden manual</option>
+          <option value="dueDate">Por vencimiento</option>
+          <option value="rescheduled">Más reprogramadas</option>
+          <option value="alpha">Orden A-Z</option>
+        </select>
+      </div>
+    </nav>
+
+    <!-- Main Workspace Header -->
+    <div class="workspace-header animate-enter">
+      <div class="workspace-title-group">
+        <h2 class="workspace-title">Casillas de enfoque</h2>
+      </div>
+      <div class="workspace-actions">
+        <button type="button" id="btn-new-box-top" class="btn-secondary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          <span>Nueva casilla</span>
+        </button>
+        <button type="button" id="btn-new-task-top" class="btn-primary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>Nueva tarea</span>
+        </button>
       </div>
     </div>
-  </main>
 
-  <button id="fabTop"
-          class="fab-top"
-          type="button"
-          aria-label="Volver arriba"
-          title="Volver arriba"
-          aria-hidden="true">
-    <i data-lucide="chevron-up"></i>
-  </button>
+    <!-- Dynamic Boxes & Tasks Container -->
+    <main id="boxes-container" class="boxes-container"></main>
+  </div>
 
-  <div id="fab" class="fab">
-    <div class="fab-actions">
-      <button class="fab-action" data-action="whatsapp"><i data-lucide="message-circle"></i> Copiar a WhatsApp</button>
-      <button class="fab-action" data-action="export"><i data-lucide="download"></i> Exportar respaldo</button>
-      <button class="fab-action" data-action="add-category"><i data-lucide="layers-3"></i> Nueva casilla</button>
+  <!-- Ergonomic Mobile Bottom Navigation Dock (for Smartphones) -->
+  <nav class="mobile-bottom-nav" aria-label="Navegación móvil inferior">
+    <button type="button" class="mobile-nav-item active" data-mobile-tab="all">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Todas</span>
+    </button>
+    <button type="button" class="mobile-nav-item" data-mobile-tab="today">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>Para hoy</span>
+    </button>
+    <button type="button" id="mob-nav-new-task" class="mobile-nav-add" aria-label="Crear nueva tarea">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+    <button type="button" id="mob-nav-productivity" class="mobile-nav-item">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>Métricas</span>
+    </button>
+    <button type="button" id="mob-nav-options" class="mobile-nav-item">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span>Respaldos</span>
+    </button>
+  </nav>
+
+  <!-- Floating Action Button (FAB) -->
+  <div id="fab-wrapper" class="fab-wrapper">
+    <div class="fab-menu">
+      <button type="button" id="fab-action-whatsapp" class="fab-item">
+        <span>📲 Copiar a WhatsApp</span>
+      </button>
+      <button type="button" id="fab-action-backup" class="fab-item">
+        <span>💾 Exportar respaldo</span>
+      </button>
+      <button type="button" id="fab-action-new-box" class="fab-item">
+        <span>🗂️ Nueva casilla</span>
+      </button>
+      <button type="button" id="fab-action-new-task" class="fab-item">
+        <span>✨ Nueva tarea</span>
+      </button>
     </div>
-    <button id="fabMain" class="fab-main" type="button" aria-label="Acciones rápidas" aria-expanded="false">
-      <i data-lucide="plus"></i>
+    <button type="button" id="fab-main-trigger" class="fab-main-btn" title="Acciones rápidas" aria-label="Menú de acciones rápidas">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
   </div>
 
-  <div id="dailyProductivityModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="dailyProductivityTitle">
-    <div class="modal stats-report daily-report">
-      <div class="modal-head">
-        <h2 id="dailyProductivityTitle">Mi productividad de hoy</h2>
-        <button class="icon-btn" type="button" data-close-modal="dailyProductivityModal" aria-label="Cerrar productividad">
-          <i data-lucide="x"></i>
-        </button>
+  <!-- MODAL 1: Create / Edit Box (Casilla) -->
+  <div id="modal-box" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-box-title">
+    <div class="modal-dialog">
+      <div class="sheet-handle"></div>
+      <div class="modal-header">
+        <h3 id="modal-box-title" class="modal-title">Nueva casilla de trabajo</h3>
+        <button type="button" class="box-icon-btn" data-close-modal="modal-box" aria-label="Cerrar">✕</button>
       </div>
-      <div id="dailyProductivityContent"></div>
-    </div>
-  </div>
-
-  <div id="statsModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
-    <div class="modal stats-report" style="max-width:620px">
-      <div class="modal-head">
-        <h2 id="statsTitle">Resumen de casilla</h2>
-        <button class="icon-btn" type="button" data-close-modal="statsModal" aria-label="Cerrar resumen">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-      <div id="statsReportContent"></div>
-    </div>
-  </div>
-
-  <div id="deleteCategoryModal" class="modal-backdrop tasky-confirm-backdrop" role="dialog" aria-modal="true" aria-labelledby="deleteCategoryTitle">
-    <div class="modal tasky-confirm-modal">
-      <div class="tasky-confirm-orbit" aria-hidden="true"></div>
-      <div class="tasky-confirm-icon" aria-hidden="true"><i data-lucide="trash-2"></i></div>
-      <div class="tasky-confirm-kicker">ELIMINAR FASE</div>
-      <h2 id="deleteCategoryTitle">¿Eliminar esta casilla?</h2>
-      <p id="deleteCategoryMessage">Se eliminarán la casilla y todas sus tareas pendientes.</p>
-      <div class="tasky-confirm-actions">
-        <button class="soft-btn" type="button" data-action="cancel-delete-category">Cancelar</button>
-        <button class="tasky-danger-btn" type="button" data-action="confirm-delete-category"><i data-lucide="trash-2"></i><span>Eliminar casilla</span></button>
-      </div>
-    </div>
-  </div>
-
-  <div id="rescheduledModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="rescheduledTitle">
-    <div class="modal rescheduled-modal">
-      <div class="modal-head">
-        <div>
-          <div class="rescheduled-kicker"><i data-lucide="sun"></i> PLANIFICACIÓN</div>
-          <h2 id="rescheduledTitle">Tareas reprogramadas</h2>
+      <form id="form-box" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="input-box-name">Nombre de la casilla *</label>
+          <input type="text" id="input-box-name" class="form-input" placeholder="Ej. CASA, TRABAJO, PROYECTOS" maxlength="45" />
+          <div id="error-box-name" class="field-error-banner"></div>
         </div>
-        <button class="icon-btn" type="button" data-close-modal="rescheduledModal" aria-label="Cerrar tareas reprogramadas"><i data-lucide="x"></i></button>
-      </div>
-      <div id="rescheduledList" class="modal-list"></div>
-    </div>
-  </div>
-
-  <div id="rescheduleDateModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="rescheduleDateTitle">
-    <div class="modal reschedule-date-modal planning-modal">
-      <div class="modal-head planning-modal-head">
-        <div>
-          <div class="reschedule-date-kicker"><i data-lucide="calendar-plus"></i> PLANIFICACIÓN</div>
-          <h2 id="rescheduleDateTitle">Elegir nueva fecha</h2>
+        <div class="form-group">
+          <label class="form-label" for="input-box-note">Descripción o propósito (opcional)</label>
+          <input type="text" id="input-box-note" class="form-input" placeholder="Ej. Tareas prioritarias del hogar" maxlength="110" />
         </div>
-        <button class="icon-btn" type="button" data-close-modal="rescheduleDateModal" aria-label="Cerrar planificación">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-
-      <input id="rescheduleDateTaskId" type="hidden" value="">
-
-      <div class="reschedule-date-task planning-task-preview">
-        <div class="reschedule-date-task-icon"><i data-lucide="calendar-days"></i></div>
-        <div>
-          <small>TAREA</small>
-          <strong id="rescheduleDateTaskName">Tarea sin nombre</strong>
-        </div>
-      </div>
-
-      <div class="planning-selection-banner">
-        <div class="planning-selection-copy">
-          <span>FECHA SELECCIONADA</span>
-          <strong id="planningSelectionLabel">Selecciona una fecha</strong>
-        </div>
-        <div class="planning-selection-icon"><i data-lucide="calendar-check-2"></i></div>
-      </div>
-
-      <div class="planning-calendar-shell">
-        <div class="planning-calendar-top">
-          <button class="planning-month-btn" type="button" data-action="planning-prev-month" aria-label="Mes anterior" data-tooltip="Mes anterior">
-            <span class="planning-arrow-symbol" aria-hidden="true">←</span>
-          </button>
-          <div class="planning-month-copy">
-            <strong id="planningMonthLabel">—</strong>
-            <span>Elige cualquier fecha a partir de mañana</span>
-          </div>
-          <button class="planning-month-btn" type="button" data-action="planning-next-month" aria-label="Mes siguiente" data-tooltip="Mes siguiente">
-            <span class="planning-arrow-symbol" aria-hidden="true">→</span>
-          </button>
-        </div>
-
-        <div class="planning-weekdays" aria-hidden="true">
-          <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
-        </div>
-
-        <div id="planningCalendarGrid" class="planning-calendar-grid" aria-label="Calendario de planificación">
-          <div class="planning-calendar-note">
-            <i data-lucide="calendar-days"></i>
-            <span>Selecciona una fecha futura en el calendario del dispositivo.</span>
+        <div class="form-group">
+          <label class="form-label">Color identificador</label>
+          <div id="box-color-swatches" class="color-swatches">
+            <button type="button" class="color-swatch selected" data-color="#2563eb" style="background:#2563eb" aria-label="Azul"></button>
+            <button type="button" class="color-swatch" data-color="#4f46e5" style="background:#4f46e5" aria-label="Índigo"></button>
+            <button type="button" class="color-swatch" data-color="#0d9488" style="background:#0d9488" aria-label="Turquesa"></button>
+            <button type="button" class="color-swatch" data-color="#16a34a" style="background:#16a34a" aria-label="Verde"></button>
+            <button type="button" class="color-swatch" data-color="#d97706" style="background:#d97706" aria-label="Ámbar"></button>
+            <button type="button" class="color-swatch" data-color="#e11d48" style="background:#e11d48" aria-label="Carmesí"></button>
+            <button type="button" class="color-swatch" data-color="#7c3aed" style="background:#7c3aed" aria-label="Violeta"></button>
+            <button type="button" class="color-swatch" data-color="#475569" style="background:#475569" aria-label="Pizarra"></button>
           </div>
         </div>
-
-        <div class="planning-shortcuts">
-          <button type="button" class="planning-shortcut-btn" data-planning-shortcut="tomorrow">
-            <i data-lucide="sun"></i>
-            <span>Mañana</span>
-          </button>
-          <button type="button" class="planning-shortcut-btn" data-planning-shortcut="monday">
-            <i data-lucide="calendar-days"></i>
-            <span>Próximo lunes</span>
-          </button>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" data-close-modal="modal-box">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar casilla</button>
         </div>
-      </div>
-
-      <label class="planning-date-field">
-        <span>Fecha personalizada</span>
-        <input id="rescheduleDateInput" type="date" min="" aria-label="Nueva fecha de la tarea">
-      </label>
-      <div id="rescheduleDateHint" class="reschedule-date-hint" aria-live="polite">Selecciona una fecha futura.</div>
-
-      <div class="reschedule-date-note">
-        <i data-lucide="info"></i>
-        <span>La tarea saldrá de tu día actual y quedará reservada para la fecha que elijas.</span>
-      </div>
-
-      <div class="reschedule-date-actions">
-        <button class="soft-btn" type="button" data-close-modal="rescheduleDateModal">Cancelar</button>
-        
-      </div>
+      </form>
     </div>
   </div>
 
-  <div id="milestoneModal" class="modal-backdrop milestone-backdrop" role="dialog" aria-modal="true" aria-labelledby="milestoneTitle">
-    <div class="modal milestone-modal">
-      <div class="milestone-confetti" aria-hidden="true">
-        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+  <!-- MODAL 2: Create / Edit Task (Tarea) -->
+  <div id="modal-task" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-task-header">
+    <div class="modal-dialog">
+      <div class="sheet-handle"></div>
+      <div class="modal-header">
+        <h3 id="modal-task-header" class="modal-title">Registrar nueva tarea</h3>
+        <button type="button" class="box-icon-btn" data-close-modal="modal-task" aria-label="Cerrar">✕</button>
       </div>
-      <div class="milestone-icon"><i data-lucide="trophy"></i></div>
-      <div class="milestone-kicker">LOGRO DESBLOQUEADO</div>
-      <h2 id="milestoneTitle">¡Primer logro del día!</h2>
-      <p id="milestoneText">Ya completaste 5 tareas. Cada bloque cerrado hace que tu día avance de verdad.</p>
-      <div class="milestone-score"><strong id="milestoneCount">5</strong><span>tareas completadas hoy</span></div>
-      <button class="pro-primary-btn milestone-close-btn" type="button" data-action="close-milestone"><i data-lucide="sparkles"></i> Seguir avanzando</button>
+      <form id="form-task" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="input-task-title">Título de la tarea *</label>
+          <input type="text" id="input-task-title" class="form-input" placeholder="Ej. Lavar los servicios" maxlength="160" />
+          <div id="error-task-title" class="field-error-banner"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="input-task-note">Nota o detalle adicional (opcional)</label>
+          <textarea id="input-task-note" class="form-textarea" rows="2" placeholder="Pasos, enlaces o recordatorios clave..."></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group">
+            <label class="form-label" for="select-task-box">Casilla asignada</label>
+            <select id="select-task-box" class="form-select"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="select-task-freq">Frecuencia</label>
+            <select id="select-task-freq" class="form-select">
+              <option value="daily">Todos los días</option>
+              <option value="once">Una vez</option>
+              <option value="weekly">Semanal</option>
+              <option value="monthly">Mensual</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="input-task-date">Fecha programada</label>
+          <input type="date" id="input-task-date" class="form-input" />
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" data-close-modal="modal-task">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar tarea</button>
+        </div>
+      </form>
     </div>
   </div>
 
-  <div id="repeatModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="repeatModalTitle">
-    <div class="modal repeat-editor-modal">
-      <div class="modal-head">
+  <!-- MODAL 3: Security, Backups & Options -->
+  <div id="modal-options" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-options-title">
+    <div class="modal-dialog wide">
+      <div class="sheet-handle"></div>
+      <div class="modal-header">
         <div>
-          <div class="repeat-modal-kicker"><i data-lucide="repeat-2"></i> REPETICIÓN</div>
-          <h2 id="repeatModalTitle">Programar tarea</h2>
+          <h3 id="modal-options-title" class="modal-title">Centro de Seguridad de Datos y Respaldos</h3>
+          <p style="font-size:0.8rem;color:var(--muted);margin-top:2px;">Protección continua compatible con tus registros locales de Tasky (`tasky_data`).</p>
         </div>
-        <button class="icon-btn" type="button" data-close-modal="repeatModal" aria-label="Cerrar repetición">
-          <i data-lucide="x"></i>
-        </button>
+        <button type="button" class="box-icon-btn" data-close-modal="modal-options" aria-label="Cerrar">✕</button>
       </div>
 
-      <input id="repeatTaskId" type="hidden" value="">
-      <div class="repeat-editor-card">
-        <div class="repeat-editor-task-icon"><i data-lucide="list-checks"></i></div>
-        <div class="repeat-editor-task-copy">
-          <small>TAREA</small>
-          <strong id="repeatTaskName">Tarea sin nombre</strong>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:18px;">
+        <div style="padding:16px;border-radius:16px;background:var(--surface-muted);border:1px solid var(--line);">
+          <div style="font-weight:700;font-size:0.9rem;margin-bottom:6px;">Exportar e Importar JSON</div>
+          <p style="font-size:0.78rem;color:var(--muted);margin-bottom:12px;">Descarga una copia portátil o restaura un archivo `.json` desde tu celular o PC.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" id="btn-export-json" class="btn-primary" style="font-size:0.8rem;padding:8px 13px;">Descargar .JSON</button>
+            <label class="btn-secondary" style="font-size:0.8rem;padding:8px 13px;cursor:pointer;">
+              <span>Importar .JSON</span>
+              <input type="file" id="input-import-json" accept=".json,application/json" style="display:none;" />
+            </label>
+          </div>
+          <div id="error-import-json" class="field-error-banner"></div>
+        </div>
+
+        <div style="padding:16px;border-radius:16px;background:var(--surface-muted);border:1px solid var(--line);">
+          <div style="font-weight:700;font-size:0.9rem;margin-bottom:6px;">Mantenimiento del Tablero</div>
+          <p style="font-size:0.78rem;color:var(--muted);margin-bottom:12px;">Depura las tareas ya finalizadas conservando intactas tus casillas y pendientes.</p>
+          <button type="button" id="btn-clear-completed" class="btn-secondary" style="font-size:0.8rem;padding:8px 13px;">Limpiar tareas completadas</button>
         </div>
       </div>
 
-      <div class="repeat-editor-instruction">Elige los días en los que quieres que esta tarea vuelva a aparecer automáticamente.</div>
-
-      <div class="repeat-editor-days" role="group" aria-label="Días de repetición">
-        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="1"><span>L</span></label>
-        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="2"><span>M</span></label>
-        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="3"><span>X</span></label>
-        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="4"><span>J</span></label>
-        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="5"><span>V</span></label>
-        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="6"><span>S</span></label>
-        <label class="repeat-day-option"><input type="checkbox" name="repeat-day" value="7"><span>D</span></label>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span class="form-label" style="margin:0;">Historial de respaldos automáticos</span>
+          <span id="backup-slots-count" class="box-stat-badge">0 / 20 ranuras</span>
+        </div>
+        <div id="backups-list-container" class="backup-slots-list"></div>
       </div>
 
-      <div id="repeatSummary" class="repeat-editor-summary" aria-live="polite">Se repetirá: Todos los días.</div>
-
-      <div class="repeat-editor-note"><i data-lucide="info"></i><span>La tarea se mostrará en cada día seleccionado. Cuando la completes, Tasky programará automáticamente la siguiente ocurrencia.</span></div>
-
-      <div class="repeat-editor-actions">
-        <button class="soft-btn" type="button" data-close-modal="repeatModal">Cancelar</button>
-        <button id="saveRepeatBtn" class="pro-primary-btn repeat-save-btn" type="button"><i data-lucide="check"></i> Guardar repetición</button>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" data-close-modal="modal-options">Cerrar panel</button>
       </div>
     </div>
   </div>
 
-  <div id="overdueModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="overdueTitle">
-    <div class="modal">
-      <div class="modal-head">
-        <h2 id="overdueTitle">Tareas atrasadas</h2>
-        <button class="icon-btn" type="button" data-close-modal="overdueModal" aria-label="Cerrar">
-          <i data-lucide="x"></i>
-        </button>
+  <!-- MODAL 4: Productivity Analytics -->
+  <div id="modal-productivity" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-prod-title">
+    <div class="modal-dialog wide">
+      <div class="sheet-handle"></div>
+      <div class="modal-header">
+        <div>
+          <h3 id="modal-prod-title" class="modal-title">Mi Productividad y Rendimiento</h3>
+          <p style="font-size:0.8rem;color:var(--muted);margin-top:2px;">Métricas en tiempo real sobre tus casillas y cumplimiento diario.</p>
+        </div>
+        <button type="button" class="box-icon-btn" data-close-modal="modal-productivity" aria-label="Cerrar">✕</button>
       </div>
-      <div id="overdueList" class="modal-list"></div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">
+        <div style="padding:12px;border-radius:14px;background:var(--surface-muted);border:1px solid var(--line);text-align:center;">
+          <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">Cumplimiento</div>
+          <div id="prod-kpi-rate" style="font-size:1.4rem;font-weight:800;color:var(--primary);margin-top:4px;">0%</div>
+        </div>
+        <div style="padding:12px;border-radius:14px;background:var(--surface-muted);border:1px solid var(--line);text-align:center;">
+          <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">Logradas</div>
+          <div id="prod-kpi-done" style="font-size:1.4rem;font-weight:800;color:var(--success);margin-top:4px;">0</div>
+        </div>
+        <div style="padding:12px;border-radius:14px;background:var(--surface-muted);border:1px solid var(--line);text-align:center;">
+          <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">Reprogramadas</div>
+          <div id="prod-kpi-resched" style="font-size:1.4rem;font-weight:800;color:var(--warning);margin-top:4px;">0</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;">
+        <div style="padding:15px;border-radius:16px;background:var(--surface-muted);border:1px solid var(--line);">
+          <div style="font-size:0.82rem;font-weight:700;margin-bottom:10px;">Actividad de los últimos 7 días</div>
+          <div style="position:relative;height:200px;">
+            <canvas id="chart-productivity-trend"></canvas>
+          </div>
+        </div>
+        <div style="padding:15px;border-radius:16px;background:var(--surface-muted);border:1px solid var(--line);">
+          <div style="font-size:0.82rem;font-weight:700;margin-bottom:10px;">Distribución por casilla</div>
+          <div style="position:relative;height:200px;">
+            <canvas id="chart-box-distribution"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" data-close-modal="modal-productivity">Cerrar estadísticas</button>
+      </div>
     </div>
   </div>
 
-  <div id="menuModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
-    <div class="modal">
-      <div class="modal-head">
-        <h2 id="menuTitle">Más opciones</h2>
-        <button class="icon-btn" type="button" data-close-modal="menuModal" aria-label="Cerrar">
-          <i data-lucide="x"></i>
-        </button>
+  <!-- MODAL 5: Confirmation Dialog -->
+  <div id="modal-confirm" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+    <div class="modal-dialog" style="max-width:440px;">
+      <div class="sheet-handle"></div>
+      <div class="modal-header">
+        <h3 id="confirm-modal-title" class="modal-title">Confirmar acción</h3>
+        <button type="button" class="box-icon-btn" data-close-modal="modal-confirm" aria-label="Cerrar">✕</button>
       </div>
-
-      <div class="modal-list">
-        <div class="soft-btn" style="cursor:default;justify-content:flex-start;opacity:.9"><i data-lucide="shield-check"></i><span>Protección de datos activa · 20 respaldos locales</span></div>
-        <button class="soft-btn" id="soundToggleBtn" data-menu-action="toggle-sound" aria-pressed="true">
-          <i data-lucide="volume-2"></i>
-          <span id="soundToggleLabel">Sonidos: Activados</span>
-        </button>
-        <button class="soft-btn" data-menu-action="export"><i data-lucide="download"></i> Exportar respaldo JSON</button>
-        <label class="soft-btn" style="cursor:pointer">
-          <i data-lucide="upload"></i>
-          Importar respaldo JSON
-          <input id="importInput" type="file" accept="application/json,.json" hidden>
-        </label>
-        <button class="soft-btn" data-menu-action="recover"><i data-lucide="shield-check"></i> Recuperar último respaldo seguro</button>
-        <button class="soft-btn" data-menu-action="export-safety"><i data-lucide="archive"></i> Exportar historial de respaldos</button>
-        <button class="soft-btn" data-menu-action="reset"><i data-lucide="trash-2"></i> Vaciar tablero</button>
+      <p id="confirm-modal-msg" style="font-size:0.9rem;color:var(--text-secondary);line-height:1.5;"></p>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" data-close-modal="modal-confirm">Cancelar</button>
+        <button type="button" id="btn-confirm-proceed" class="btn-primary" style="background:var(--danger);">Confirmar</button>
       </div>
     </div>
   </div>
-<div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
-      <script src="app.js?v=145"></script>
-
-
-
+  <script src="app.js"></script>
 </body>
 </html>

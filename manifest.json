@@ -1,0 +1,21 @@
+{
+  "name": "Tasky App — Tu día, tu orden",
+  "short_name": "Tasky",
+  "description": "Plataforma profesional de gestión de tareas, casillas de enfoque y productividad diaria.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "https://somerito.github.io/Tasky-App/icon.png?v=48",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://somerito.github.io/Tasky-App/icon.png?v=48",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
