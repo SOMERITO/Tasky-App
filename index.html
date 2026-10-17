@@ -199,6 +199,21 @@
     </div>
   </div>
 
+  <!-- MODAL 1A: "Tareas atrasadas" -->
+  <div id="modal-overdue-list" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="overdue-modal-title">
+    <div class="modal-dialog wide">
+      <div class="modal-header">
+        <div>
+          <div class="modal-eyebrow">⚠️ CONTROL DE ATRASADAS</div>
+          <h3 id="overdue-modal-title" class="modal-title">Tareas atrasadas</h3>
+          <p id="overdue-modal-summary" style="font-size:0.84rem;color:var(--muted);margin-top:4px;"></p>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal="modal-overdue-list" aria-label="Cerrar">✕</button>
+      </div>
+      <div id="overdue-modal-items" class="resched-modal-list"></div>
+    </div>
+  </div>
+
   <!-- MODAL 2: Reprogramar / Cambiar Fecha de Tarea con Calendario Visual Profesional al lado (Point 4) -->
   <div id="modal-date-picker" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="date-modal-title">
     <div class="modal-dialog wide" style="max-width:790px;">
