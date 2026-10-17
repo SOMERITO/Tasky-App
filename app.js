@@ -214,7 +214,10 @@
     return {
       boxes,
       tasks,
-      monthlyCompletedBase: 66
+      monthlyCompletedBase: 66,
+      completedBoxCollapsed: false,
+      taskMemoryByBox: {},
+      updatedAt: 0
     };
   }
 
@@ -559,67 +562,109 @@
       tasks,
       monthlyCompletedBase: typeof raw.monthlyCompletedBase === "number" ? raw.monthlyCompletedBase : 66,
       completedBoxCollapsed: Boolean(raw.completedBoxCollapsed),
-      updatedAt: Number(raw.updatedAt || Date.now())
+      taskMemoryByBox: (raw.taskMemoryByBox && typeof raw.taskMemoryByBox === "object" && !Array.isArray(raw.taskMemoryByBox)) ? raw.taskMemoryByBox : {},
+      updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : 0
     };
   }
 
   // ==========================================================================
-  // POINT 1: TASK MEMORY & INTELLIGENT AUTOCOMPLETE ENGINE
+  // POINT 2: PER-CASILLA TASK MEMORY ENGINE (Strictly isolated per Box!)
   // ==========================================================================
+  function getBoxMemoryKey(boxId) {
+    if (!boxId) return "default_box";
+    const box = appState.data.boxes.find(b => b.id === boxId);
+    if (box && box.name) {
+      return `box_mem_${box.name.trim().toUpperCase()}`;
+    }
+    return String(boxId);
+  }
+
   function rebuildTaskMemoryFromTasks() {
+    let memMap = {};
     const rawMem = safeStorage.getItem(STORAGE_KEYS.MEMORY);
-    let memList = [];
     if (rawMem) {
       try {
         const parsed = JSON.parse(rawMem);
-        if (Array.isArray(parsed)) memList = parsed;
+        // Only accept object map keyed by box (ignore legacy flat array!)
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          memMap = { ...parsed };
+        }
       } catch (e) {}
     }
 
-    const seen = new Set(memList.map(m => String(m).trim().toLowerCase()));
+    if (appState.data.taskMemoryByBox && typeof appState.data.taskMemoryByBox === "object" && !Array.isArray(appState.data.taskMemoryByBox)) {
+      Object.keys(appState.data.taskMemoryByBox).forEach(k => {
+        const arr = Array.isArray(appState.data.taskMemoryByBox[k]) ? appState.data.taskMemoryByBox[k] : [];
+        const existing = Array.isArray(memMap[k]) ? memMap[k] : [];
+        const merged = [...existing];
+        arr.forEach(item => {
+          const clean = capitalizeFirst(item);
+          if (clean && !merged.some(x => String(x).toLowerCase() === clean.toLowerCase())) {
+            merged.push(clean);
+          }
+        });
+        memMap[k] = merged;
+      });
+    }
+
+    // Seed each box ONLY with its own tasks
     appState.data.tasks.forEach(t => {
+      const key = getBoxMemoryKey(t.boxId);
+      if (!Array.isArray(memMap[key])) memMap[key] = [];
       const clean = capitalizeFirst(t.title);
-      if (clean && !seen.has(clean.toLowerCase())) {
-        seen.add(clean.toLowerCase());
-        memList.push(clean);
+      if (clean && !memMap[key].some(x => String(x).toLowerCase() === clean.toLowerCase())) {
+        memMap[key].push(clean);
       }
     });
 
-    // Also include baseline common household/errand/office tasks in memory
-    const baselineIdeas = buildRestoredUserDataset().tasks.map(t => t.title);
-    baselineIdeas.forEach(idea => {
-      const clean = capitalizeFirst(idea);
-      if (clean && !seen.has(clean.toLowerCase())) {
-        seen.add(clean.toLowerCase());
-        memList.push(clean);
+    // Also seed baseline tasks strictly into their matching Casilla
+    const baseline = buildRestoredUserDataset();
+    baseline.tasks.forEach(bt => {
+      const baseBox = baseline.boxes.find(b => b.id === bt.boxId);
+      const key = baseBox ? `box_mem_${baseBox.name.trim().toUpperCase()}` : String(bt.boxId);
+      if (!Array.isArray(memMap[key])) memMap[key] = [];
+      const clean = capitalizeFirst(bt.title);
+      if (clean && !memMap[key].some(x => String(x).toLowerCase() === clean.toLowerCase())) {
+        memMap[key].push(clean);
       }
     });
 
-    appState.taskMemory = memList.slice(0, 250);
-    safeStorage.setItem(STORAGE_KEYS.MEMORY, JSON.stringify(appState.taskMemory));
+    appState.taskMemory = memMap;
+    appState.data.taskMemoryByBox = memMap;
+    safeStorage.setItem(STORAGE_KEYS.MEMORY, JSON.stringify(memMap));
   }
 
-  function learnTaskTitle(title) {
+  function learnTaskTitle(title, boxId) {
     const clean = capitalizeFirst(title);
-    if (!clean || clean.length < 2) return;
+    if (!clean || clean.length < 2 || !boxId) return;
+    if (!appState.taskMemory || typeof appState.taskMemory !== "object" || Array.isArray(appState.taskMemory)) {
+      appState.taskMemory = {};
+    }
+    const key = getBoxMemoryKey(boxId);
+    const currentList = Array.isArray(appState.taskMemory[key]) ? appState.taskMemory[key] : [];
     const lower = clean.toLowerCase();
-    appState.taskMemory = [
+    appState.taskMemory[key] = [
       clean,
-      ...appState.taskMemory.filter(item => String(item).toLowerCase() !== lower)
-    ].slice(0, 250);
+      ...currentList.filter(item => String(item).toLowerCase() !== lower)
+    ].slice(0, 120);
+    appState.data.taskMemoryByBox = appState.taskMemory;
     safeStorage.setItem(STORAGE_KEYS.MEMORY, JSON.stringify(appState.taskMemory));
   }
 
   function getTaskSuggestions(queryText, boxId) {
     const q = String(queryText || "").trim().toLowerCase();
-    if (!q) return [];
+    if (!q || !boxId) return [];
 
-    // Prioritize tasks previously used or matching prefix first, then substring
+    const key = getBoxMemoryKey(boxId);
+    const boxList = (appState.taskMemory && Array.isArray(appState.taskMemory[key]))
+      ? appState.taskMemory[key]
+      : [];
+
     const prefixMatches = [];
     const containsMatches = [];
     const seen = new Set();
 
-    appState.taskMemory.forEach(item => {
+    boxList.forEach(item => {
       const text = String(item || "").trim();
       const lower = text.toLowerCase();
       if (!text || lower === q || seen.has(lower)) return;
@@ -687,7 +732,7 @@
   }
 
   // ==========================================================================
-  // POINT 13: REAL-TIME CROSS-DEVICE CLOUD SYNC (WEB LAPTOP <-> MOBILE APP)
+  // POINT 3: COMPACT (<1.6KB) REAL-TIME CLOUD SYNC (WEB <-> INCOGNITO <-> APP)
   // ==========================================================================
   let syncBroadcastChannel = null;
   try {
@@ -711,7 +756,6 @@
   });
 
   function isCloudNetworkAllowed() {
-    // Only run cloud fetch on http/https when online
     return (
       typeof window.fetch === "function" &&
       (window.location.protocol === "https:" || window.location.protocol === "http:") &&
@@ -726,22 +770,90 @@
     return `https://ntfy.sh/${ch}${suffix}`;
   }
 
+  // Pack appState.data into a ~1.5KB JSON string so ntfy.sh ALWAYS stores it inline (never as >4KB attachment)
+  function packCompactEnvelope() {
+    const d = appState.data;
+    return JSON.stringify({
+      v: 2,
+      d: appState.deviceId,
+      u: Number(d.updatedAt || Date.now()),
+      m: Number(d.monthlyCompletedBase || 66),
+      cc: d.completedBoxCollapsed ? 1 : 0,
+      b: d.boxes.map(x => [x.id, x.name, x.color || "#2563eb", x.collapsed ? 1 : 0, x.order || 0]),
+      t: d.tasks.map(x => [
+        x.id,
+        x.boxId,
+        x.title,
+        x.done ? 1 : 0,
+        x.completedDate || "",
+        x.dueDate || "",
+        x.frequency || "once",
+        Array.isArray(x.repeatDays) ? x.repeatDays : [],
+        x.rescheduledCount || 0,
+        x.isRescheduled ? 1 : 0,
+        x.order || 0
+      ])
+    });
+  }
+
+  function unpackCompactEnvelope(parsed) {
+    if (!parsed || typeof parsed !== "object") return null;
+    if (parsed.tasky_data) {
+      return normalizeDataPayload(parsed.tasky_data);
+    }
+    if (parsed.v === 2 && Array.isArray(parsed.b) && Array.isArray(parsed.t)) {
+      const boxes = parsed.b.map((arr, idx) => ({
+        id: arr[0],
+        name: arr[1],
+        color: arr[2] || "#2563eb",
+        collapsed: Boolean(arr[3]),
+        order: typeof arr[4] === "number" ? arr[4] : idx
+      }));
+      const tasks = parsed.t.map((arr, idx) => ({
+        id: arr[0],
+        boxId: arr[1],
+        title: arr[2],
+        done: Boolean(arr[3]),
+        completedDate: arr[4] || null,
+        dueDate: arr[5] || getTodayISO(),
+        frequency: arr[6] || "once",
+        repeatDays: Array.isArray(arr[7]) ? arr[7] : [],
+        rescheduledCount: Number(arr[8] || 0),
+        isRescheduled: Boolean(arr[9]),
+        order: typeof arr[10] === "number" ? arr[10] : idx
+      }));
+      return normalizeDataPayload({
+        boxes,
+        tasks,
+        monthlyCompletedBase: Number(parsed.m || 66),
+        completedBoxCollapsed: Boolean(parsed.cc),
+        updatedAt: Number(parsed.u || Date.now())
+      });
+    }
+    return null;
+  }
+
   function applyIncomingSyncPayload(incomingRaw, showNotification = false) {
     const norm = normalizeDataPayload(incomingRaw);
     if (!norm || !Array.isArray(norm.boxes) || !norm.boxes.length) return false;
     const incomingTime = Number(norm.updatedAt || 0);
     const localTime = Number(appState.data.updatedAt || 0);
 
-    // Accept if incoming is newer or has different task/box count from another device
     const currentSig = JSON.stringify({ b: appState.data.boxes, t: appState.data.tasks });
     const nextSig = JSON.stringify({ b: norm.boxes, t: norm.tasks });
-    if (currentSig === nextSig) return false;
+    if (currentSig === nextSig) {
+      if (incomingTime > localTime) appState.data.updatedAt = incomingTime;
+      return false;
+    }
 
-    if (incomingTime >= localTime || localTime === 0) {
+    // If local data is default/untouched (localTime === 0) OR incoming cloud data is newer, apply it!
+    if (localTime === 0 || incomingTime >= localTime) {
       appState.data = norm;
       safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
       rebuildTaskMemoryFromTasks();
       renderBoard();
+      const syncText = document.getElementById("sync-status-text");
+      if (syncText) syncText.textContent = "Sincronizado";
       if (showNotification) {
         showToast("Sincronizado con tus dispositivos");
       }
@@ -764,17 +876,18 @@
     if (cloudPushTimer) clearTimeout(cloudPushTimer);
     cloudPushTimer = setTimeout(() => {
       try {
-        const envelope = JSON.stringify({
-          deviceId: appState.deviceId,
-          updatedAt: appState.data.updatedAt || Date.now(),
-          tasky_data: appState.data
-        });
+        const bodyStr = packCompactEnvelope();
         window.fetch(getCloudTopicUrl(""), {
           method: "POST",
-          body: envelope
+          headers: {
+            "Content-Type": "text/plain;charset=UTF-8",
+            "Cache": "yes"
+          },
+          body: bodyStr,
+          keepalive: true
         }).catch(() => {});
       } catch (e) {}
-    }, 250);
+    }, 80);
   }
 
   function pullCloudSync(manual = false) {
@@ -783,37 +896,44 @@
       return;
     }
     try {
-      window.fetch(getCloudTopicUrl("/json?poll=1&since=48h"))
+      window.fetch(getCloudTopicUrl(`/json?poll=1&since=all&_t=${Date.now()}`), {
+        cache: "no-store"
+      })
         .then(res => res.text())
         .then(text => {
-          if (!text) {
-            if (manual) showToast("Dispositivos al día");
+          if (!text || !text.trim()) {
+            if (Number(appState.data.updatedAt || 0) > 0) {
+              pushCloudSync();
+            }
+            if (manual) showToast("Sincronizado en la nube");
             return;
           }
           const lines = text.trim().split("\n");
-          let latestEnv = null;
+          let latestData = null;
+          let latestTs = -1;
           for (let i = lines.length - 1; i >= 0; i--) {
             try {
               const msg = JSON.parse(lines[i]);
               if (msg && msg.event === "message" && msg.message) {
                 const parsed = JSON.parse(msg.message);
-                if (parsed && parsed.tasky_data) {
-                  latestEnv = parsed;
+                const unpacked = unpackCompactEnvelope(parsed);
+                if (unpacked && Number(unpacked.updatedAt || 0) >= latestTs) {
+                  latestTs = Number(unpacked.updatedAt || 0);
+                  latestData = unpacked;
                   break;
                 }
               }
             } catch (err) {}
           }
-          if (latestEnv && latestEnv.tasky_data) {
-            const updated = applyIncomingSyncPayload(latestEnv.tasky_data, manual);
-            if (!updated && manual) {
+          if (latestData) {
+            const updated = applyIncomingSyncPayload(latestData, manual);
+            if (!updated && Number(appState.data.updatedAt || 0) > latestTs) {
               pushCloudSync();
-              showToast("Sincronizado en la nube");
             }
-          } else {
-            // No cloud state yet: push current state so mobile/web immediately receives it
+            if (manual && !updated) showToast("Dispositivos sincronizados");
+          } else if (Number(appState.data.updatedAt || 0) > 0) {
             pushCloudSync();
-            if (manual) showToast(" Estado subido a la nube");
+            if (manual) showToast("Estado sincronizado en la nube");
           }
         })
         .catch(() => {
@@ -834,8 +954,11 @@
           const msg = JSON.parse(ev.data);
           if (msg && msg.message) {
             const parsed = JSON.parse(msg.message);
-            if (parsed && parsed.deviceId !== appState.deviceId && parsed.tasky_data) {
-              applyIncomingSyncPayload(parsed.tasky_data, true);
+            if (parsed && parsed.d !== appState.deviceId && parsed.deviceId !== appState.deviceId) {
+              const unpacked = unpackCompactEnvelope(parsed);
+              if (unpacked) {
+                applyIncomingSyncPayload(unpacked, true);
+              }
             }
           }
         } catch (err) {}
@@ -918,13 +1041,18 @@
     rebuildTaskMemoryFromTasks();
   }
 
-  // Point 10: Automatically disappear / archive completed tasks on the next day
+  // Point 10 & Point 1: Archive yesterday's completed tasks AND automatically return rescheduled tasks to their Casilla when their scheduled date arrives
   function cleanupCompletedTasksFromPreviousDays() {
     const today = getTodayISO();
     let changed = false;
     const remaining = [];
 
     appState.data.tasks.forEach((task) => {
+      // Point 1: If a rescheduled task's scheduled date has arrived (dueDate <= today), reactivate it in its Casilla!
+      if (!task.done && task.isRescheduled && task.dueDate && task.dueDate <= today) {
+        task.isRescheduled = false;
+        changed = true;
+      }
       if (task.done && task.completedDate && task.completedDate < today) {
         changed = true;
         appState.data.monthlyCompletedBase = (appState.data.monthlyCompletedBase || 66) + 1;
@@ -1045,7 +1173,7 @@
 
   function isTaskRescheduledFuture(task) {
     const today = getTodayISO();
-    return !task.done && Boolean(task.isRescheduled || (task.dueDate && task.dueDate > today));
+    return !task.done && Boolean(task.dueDate && task.dueDate > today);
   }
 
   function isTaskOverdue(task) {
@@ -1357,13 +1485,12 @@
       const pendingBoxTasks = boxTasksAll.filter(t => !t.done);
       const doneBoxTasks = boxTasksAll.filter(t => t.done);
 
+      // Point 1: Rescheduled tasks disappear from the Casilla and live in Tareas Reprogramadas until their dueDate arrives
       let visibleTasks = [];
       if (appState.activeTab === "completed") {
         visibleTasks = doneBoxTasks.filter(t => matchesSearch(t, box.name));
-      } else if (appState.activeTab === "today") {
-        visibleTasks = pendingBoxTasks.filter(t => isTaskForToday(t) && matchesSearch(t, box.name));
       } else {
-        visibleTasks = pendingBoxTasks.filter(t => matchesSearch(t, box.name));
+        visibleTasks = pendingBoxTasks.filter(t => isTaskForToday(t) && matchesSearch(t, box.name));
       }
 
       if (appState.searchQuery && visibleTasks.length === 0 && !box.name.toLowerCase().includes(appState.searchQuery.toLowerCase())) {
@@ -1375,10 +1502,11 @@
       const totalTodayBox = todayInBox.length + doneBoxTasks.length;
       const pctTodayBox = totalTodayBox > 0 ? Math.round((doneBoxTasks.length / totalTodayBox) * 100) : 0;
 
-      const hasRescheduled = reschedInBox.length > 0;
+      // Point 1: Never turn a Casilla orange when it has active tasks for today or only a single rescheduled task
+      const isAllMultipleRescheduled = false;
 
       const card = document.createElement("section");
-      card.className = `box-card ${!appState.hasBootRendered ? "boot-animate" : ""} ${box.collapsed ? "collapsed" : ""} ${hasRescheduled ? "box-rescheduled-theme" : ""} ${isEmptyStandby ? "box-empty-theme" : ""}`;
+      card.className = `box-card ${!appState.hasBootRendered ? "boot-animate" : ""} ${box.collapsed ? "collapsed" : ""} ${isAllMultipleRescheduled ? "box-rescheduled-theme" : ""} ${isEmptyStandby ? "box-empty-theme" : ""}`;
       card.dataset.boxId = box.id;
 
       let badgesHtml = "";
@@ -1387,16 +1515,16 @@
           <span class="box-pill neutral">📭 Sin tareas registradas</span>
           <span class="box-pill blue">Casilla disponible</span>
         `;
-      } else if (hasRescheduled && todayInBox.length === 0) {
+      } else if (todayInBox.length === 0 && doneBoxTasks.length === 0 && reschedInBox.length > 0) {
         badgesHtml = `
-          <span class="box-pill amber">🕒 ${reschedInBox.length} reprogramada${reschedInBox.length === 1 ? "" : "s"}</span>
-          <span class="box-pill amber">Fuera de hoy</span>
+          <span class="box-pill amber">🕒 ${reschedInBox.length} en Tareas reprogramadas</span>
+          <span class="box-pill neutral">Sin tareas para hoy</span>
         `;
-      } else if (hasRescheduled && todayInBox.length > 0) {
+      } else if (reschedInBox.length > 0 && todayInBox.length > 0) {
         badgesHtml = `
           <span class="box-pill neutral">${todayInBox.length} pendiente${todayInBox.length === 1 ? "" : "s"}</span>
-          <span class="box-pill amber">🕒 ${reschedInBox.length} reprogramada${reschedInBox.length === 1 ? "" : "s"}</span>
           <span class="box-pill blue">${pctTodayBox}% hoy</span>
+          <span class="box-pill amber">🕒 ${reschedInBox.length} reprogramada${reschedInBox.length === 1 ? "" : "s"}</span>
         `;
       } else if (totalTodayBox === 0) {
         badgesHtml = `
@@ -1410,11 +1538,11 @@
         `;
       }
 
-      const rightLabel = hasRescheduled && todayInBox.length === 0
+      const rightLabel = (todayInBox.length === 0 && doneBoxTasks.length === 0)
         ? "—"
-        : (totalTodayBox === 0 ? "—" : `${doneBoxTasks.length}/${totalTodayBox} hoy`);
+        : `${doneBoxTasks.length}/${totalTodayBox} hoy`;
 
-      const barFillWidth = hasRescheduled && todayInBox.length === 0 ? 100 : pctTodayBox;
+      const barFillWidth = isAllMultipleRescheduled ? 100 : pctTodayBox;
 
       // Point 9: Up/Down buttons on LEFT side, Collapse/Expand on RIGHT side, and NO alphabetical sort button
       card.innerHTML = `
@@ -1639,7 +1767,7 @@
           return;
         }
         pushUndoSnapshot(`Añadir tarea: ${title}`);
-        learnTaskTitle(title);
+        learnTaskTitle(title, box.id);
         const newTask = {
           id: `task_${Date.now()}`,
           boxId: box.id,
@@ -1931,14 +2059,133 @@
     showToast(label ? label.replace("🔁 ", "Repetición: ") : "Sin repetición");
   }
 
+  // Point 4: Interactive Professional Visual Calendar State & Renderer
+  const calState = {
+    viewYear: new Date().getFullYear(),
+    viewMonth: new Date().getMonth(),
+    selectedIso: ""
+  };
+
+  function renderProVisualCalendar() {
+    const grid = document.getElementById("pro-cal-days-grid");
+    const monthLabel = document.getElementById("pro-cal-month-label");
+    const selectedText = document.getElementById("pro-cal-selected-text");
+    if (!grid || !monthLabel) return;
+
+    const monthsCap = [
+      "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ];
+    monthLabel.textContent = `${monthsCap[calState.viewMonth]} ${calState.viewYear}`;
+
+    if (selectedText) {
+      selectedText.textContent = calState.selectedIso
+        ? `📅 ${formatSpanishDateLong(calState.selectedIso)}`
+        : "📅 Selecciona un día";
+    }
+
+    const todayIso = getTodayISO();
+    const firstDayOfMonth = new Date(calState.viewYear, calState.viewMonth, 1);
+    // Convert Sunday=0..Saturday=6 into Monday=0..Sunday=6
+    const startWeekday = (firstDayOfMonth.getDay() + 6) % 7;
+    const daysInMonth = new Date(calState.viewYear, calState.viewMonth + 1, 0).getDate();
+    const daysInPrevMonth = new Date(calState.viewYear, calState.viewMonth, 0).getDate();
+
+    // Count scheduled tasks per date to display workload dots
+    const taskCountByDate = {};
+    appState.data.tasks.forEach(t => {
+      if (!t.done && t.dueDate) {
+        taskCountByDate[t.dueDate] = (taskCountByDate[t.dueDate] || 0) + 1;
+      }
+    });
+
+    grid.innerHTML = "";
+
+    const totalCells = 42;
+    for (let i = 0; i < totalCells; i++) {
+      let cellYear = calState.viewYear;
+      let cellMonth = calState.viewMonth;
+      let dayNum = 1;
+      let isOtherMonth = false;
+
+      if (i < startWeekday) {
+        isOtherMonth = true;
+        dayNum = daysInPrevMonth - startWeekday + i + 1;
+        cellMonth = calState.viewMonth - 1;
+        if (cellMonth < 0) {
+          cellMonth = 11;
+          cellYear--;
+        }
+      } else if (i >= startWeekday + daysInMonth) {
+        isOtherMonth = true;
+        dayNum = i - (startWeekday + daysInMonth) + 1;
+        cellMonth = calState.viewMonth + 1;
+        if (cellMonth > 11) {
+          cellMonth = 0;
+          cellYear++;
+        }
+      } else {
+        dayNum = i - startWeekday + 1;
+      }
+
+      const iso = `${cellYear}-${String(cellMonth + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      const isToday = iso === todayIso;
+      const isSelected = iso === calState.selectedIso;
+      const isPast = iso < todayIso;
+      const countOnDay = taskCountByDate[iso] || 0;
+
+      btn.className = [
+        "pro-cal-day",
+        isOtherMonth ? "other-month" : "",
+        isToday ? "is-today" : "",
+        isSelected ? "is-selected" : "",
+        isPast ? "is-past" : ""
+      ].filter(Boolean).join(" ");
+
+      btn.innerHTML = `
+        <span>${dayNum}</span>
+        ${countOnDay > 0 ? `<span class="pro-cal-task-dot" title="${countOnDay} tarea(s) en esta fecha"></span>` : ""}
+      `;
+
+      btn.addEventListener("click", () => {
+        playUiSound("tap");
+        calState.selectedIso = iso;
+        calState.viewYear = cellYear;
+        calState.viewMonth = cellMonth;
+        const dateInput = document.getElementById("input-resched-date");
+        if (dateInput) dateInput.value = iso;
+        renderProVisualCalendar();
+      });
+
+      btn.addEventListener("dblclick", () => {
+        calState.selectedIso = iso;
+        const dateInput = document.getElementById("input-resched-date");
+        if (dateInput) dateInput.value = iso;
+        applyTaskRescheduleDate(iso, iso <= todayIso);
+      });
+
+      grid.appendChild(btn);
+    }
+  }
+
   // Date Picker / Reschedule Modal
   function openDatePickerModal(taskId) {
     const task = appState.data.tasks.find(t => t.id === taskId);
     if (!task) return;
     appState.reschedulingTaskId = taskId;
     document.getElementById("resched-task-name").textContent = task.title;
+    const defaultIso = task.dueDate && task.dueDate > getTodayISO() ? task.dueDate : addDaysISO(getTodayISO(), 1);
     const dateInput = document.getElementById("input-resched-date");
-    dateInput.value = task.dueDate && task.dueDate > getTodayISO() ? task.dueDate : addDaysISO(getTodayISO(), 1);
+    dateInput.value = defaultIso;
+
+    const parts = defaultIso.split("-");
+    calState.viewYear = Number(parts[0]) || new Date().getFullYear();
+    calState.viewMonth = (Number(parts[1]) || (new Date().getMonth() + 1)) - 1;
+    calState.selectedIso = defaultIso;
+    renderProVisualCalendar();
+
     document.getElementById("modal-date-picker").classList.add("open");
   }
 
@@ -2565,14 +2812,56 @@
       });
     });
 
+    // Point 4: Visual Calendar navigation controls & input sync
+    document.getElementById("btn-cal-prev-month").addEventListener("click", () => {
+      playUiSound("tap");
+      calState.viewMonth--;
+      if (calState.viewMonth < 0) {
+        calState.viewMonth = 11;
+        calState.viewYear--;
+      }
+      renderProVisualCalendar();
+    });
+
+    document.getElementById("btn-cal-next-month").addEventListener("click", () => {
+      playUiSound("tap");
+      calState.viewMonth++;
+      if (calState.viewMonth > 11) {
+        calState.viewMonth = 0;
+        calState.viewYear++;
+      }
+      renderProVisualCalendar();
+    });
+
+    document.getElementById("btn-cal-today-jump").addEventListener("click", () => {
+      playUiSound("tap");
+      const now = new Date();
+      calState.viewYear = now.getFullYear();
+      calState.viewMonth = now.getMonth();
+      calState.selectedIso = getTodayISO();
+      document.getElementById("input-resched-date").value = calState.selectedIso;
+      renderProVisualCalendar();
+    });
+
+    document.getElementById("input-resched-date").addEventListener("input", (e) => {
+      const val = e.target.value;
+      if (val && val.split("-").length === 3) {
+        const parts = val.split("-");
+        calState.viewYear = Number(parts[0]);
+        calState.viewMonth = Number(parts[1]) - 1;
+        calState.selectedIso = val;
+        renderProVisualCalendar();
+      }
+    });
+
     document.getElementById("form-date-picker").addEventListener("submit", (e) => {
       e.preventDefault();
-      const val = document.getElementById("input-resched-date").value;
+      const val = document.getElementById("input-resched-date").value || calState.selectedIso;
       if (!val) {
         showToast("Selecciona una fecha válida", true);
         return;
       }
-      applyTaskRescheduleDate(val, false);
+      applyTaskRescheduleDate(val, val <= getTodayISO());
     });
 
     // Box Form Submit
@@ -2622,7 +2911,7 @@
       if (task) {
         pushUndoSnapshot(`Editar: ${task.title}`);
         task.title = val;
-        learnTaskTitle(val);
+        learnTaskTitle(val, task.boxId);
       }
       playUiSound("tap");
       saveData(true, `Editó: ${val}`);
@@ -2756,11 +3045,15 @@
     renderBoard();
     document.documentElement.classList.remove("tasky-booting");
 
-    // Point 13: Start cross-device cloud sync (Web Laptop <-> Mobile App)
-    setTimeout(() => {
+    // Point 3: Start real-time cross-device & incognito cloud sync (Web <-> Incognito <-> Mobile App)
+    pullCloudSync(false);
+    startCloudSyncStream();
+    setInterval(() => {
       pullCloudSync(false);
-      startCloudSyncStream();
-    }, 400);
+    }, 6000);
+    window.addEventListener("focus", () => {
+      pullCloudSync(false);
+    });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         pullCloudSync(false);

@@ -199,9 +199,9 @@
     </div>
   </div>
 
-  <!-- MODAL 2: Reprogramar / Cambiar Fecha de Tarea -->
+  <!-- MODAL 2: Reprogramar / Cambiar Fecha de Tarea con Calendario Visual Profesional al lado (Point 4) -->
   <div id="modal-date-picker" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="date-modal-title">
-    <div class="modal-dialog" style="max-width:460px;">
+    <div class="modal-dialog wide" style="max-width:790px;">
       <div class="modal-header">
         <div>
           <div class="modal-eyebrow">📅 PLANIFICAR FECHA</div>
@@ -211,35 +211,69 @@
         <button type="button" class="modal-close-btn" data-close-modal="modal-date-picker" aria-label="Cerrar">✕</button>
       </div>
 
-      <div class="date-presets-grid">
-        <button type="button" class="preset-date-btn" data-date-preset="today">
-          <span>☀️ Para hoy</span>
-          <span style="font-size:0.73rem;color:var(--muted);">Mover al tablero de hoy</span>
-        </button>
-        <button type="button" class="preset-date-btn" data-date-preset="tomorrow">
-          <span>🌤️ Mañana</span>
-          <span style="font-size:0.73rem;color:var(--muted);">+1 día</span>
-        </button>
-        <button type="button" class="preset-date-btn" data-date-preset="monday">
-          <span>📅 Próximo lunes</span>
-          <span style="font-size:0.73rem;color:var(--muted);">Inicio de semana</span>
-        </button>
-        <button type="button" class="preset-date-btn" data-date-preset="saturday">
-          <span>🗓️ Próximo sábado</span>
-          <span style="font-size:0.73rem;color:var(--muted);">Fin de semana</span>
-        </button>
-      </div>
+      <div class="resched-split-layout">
+        <!-- Left Pane: Quick Presets + Date Input Form -->
+        <div class="resched-left-pane">
+          <div class="date-presets-grid">
+            <button type="button" class="preset-date-btn" data-date-preset="today">
+              <span>☀️ Para hoy</span>
+              <span style="font-size:0.73rem;color:var(--muted);">Mover al tablero de hoy</span>
+            </button>
+            <button type="button" class="preset-date-btn" data-date-preset="tomorrow">
+              <span>🌤️ Mañana</span>
+              <span style="font-size:0.73rem;color:var(--muted);">+1 día</span>
+            </button>
+            <button type="button" class="preset-date-btn" data-date-preset="monday">
+              <span>📅 Próximo lunes</span>
+              <span style="font-size:0.73rem;color:var(--muted);">Inicio de semana</span>
+            </button>
+            <button type="button" class="preset-date-btn" data-date-preset="saturday">
+              <span>🗓️ Próximo sábado</span>
+              <span style="font-size:0.73rem;color:var(--muted);">Fin de semana</span>
+            </button>
+          </div>
 
-      <form id="form-date-picker">
-        <div class="form-group">
-          <label class="form-label" for="input-resched-date">O elegir fecha específica en calendario</label>
-          <input type="date" id="input-resched-date" class="form-input" />
+          <form id="form-date-picker">
+            <div class="form-group">
+              <label class="form-label" for="input-resched-date">O elegir fecha específica en calendario</label>
+              <input type="date" id="input-resched-date" class="form-input" />
+            </div>
+            <div class="modal-footer" style="margin-top:14px;">
+              <button type="button" class="btn-secondary" data-close-modal="modal-date-picker">Cancelar</button>
+              <button type="submit" class="btn-primary">Guardar fecha</button>
+            </div>
+          </form>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary" data-close-modal="modal-date-picker">Cancelar</button>
-          <button type="submit" class="btn-primary">Guardar fecha</button>
+
+        <!-- Right Pane: Interactive Professional Visual Calendar -->
+        <div class="pro-calendar-widget" aria-label="Calendario interactivo">
+          <div class="pro-cal-header">
+            <span id="pro-cal-month-label" class="pro-cal-month-title">Octubre 2026</span>
+            <div class="pro-cal-nav">
+              <button type="button" id="btn-cal-prev-month" class="pro-cal-nav-btn" aria-label="Mes anterior">‹</button>
+              <button type="button" id="btn-cal-today-jump" class="pro-cal-nav-btn">Hoy</button>
+              <button type="button" id="btn-cal-next-month" class="pro-cal-nav-btn" aria-label="Mes siguiente">›</button>
+            </div>
+          </div>
+
+          <div class="pro-cal-weekdays">
+            <span class="pro-cal-weekday">Lu</span>
+            <span class="pro-cal-weekday">Ma</span>
+            <span class="pro-cal-weekday">Mi</span>
+            <span class="pro-cal-weekday">Ju</span>
+            <span class="pro-cal-weekday">Vi</span>
+            <span class="pro-cal-weekday">Sá</span>
+            <span class="pro-cal-weekday">Do</span>
+          </div>
+
+          <div id="pro-cal-days-grid" class="pro-cal-days-grid"></div>
+
+          <div id="pro-cal-selected-banner" class="pro-cal-selected-banner">
+            <span id="pro-cal-selected-text">📅 Fecha seleccionada</span>
+            <span style="font-size:0.71rem;opacity:0.85;">Doble clic para guardar directo</span>
+          </div>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 
