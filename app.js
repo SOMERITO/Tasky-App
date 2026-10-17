@@ -2214,6 +2214,10 @@
     if (document.getElementById("modal-rescheduled-list").classList.contains("open")) {
       renderRescheduledModalList();
     }
+    const overdueModal = document.getElementById("modal-overdue-list");
+    if (overdueModal && overdueModal.classList.contains("open")) {
+      renderOverdueModalList();
+    }
   }
 
   function openRescheduledModal() {
@@ -2268,6 +2272,68 @@
       });
 
       card.querySelector(".resched-cal-btn").addEventListener("click", () => {
+        playUiSound("tap");
+        openDatePickerModal(task.id);
+      });
+
+      container.appendChild(card);
+    });
+  }
+
+  function openOverdueModal() {
+    renderOverdueModalList();
+    document.getElementById("modal-overdue-list").classList.add("open");
+  }
+
+  function renderOverdueModalList() {
+    const container = document.getElementById("overdue-modal-items");
+    if (!container) return;
+
+    const summary = document.getElementById("overdue-modal-summary");
+    const today = getTodayISO();
+    const overdueTasks = appState.data.tasks
+      .filter((task) => isTaskOverdue(task))
+      .sort((a, b) => {
+        const dateCompare = String(a.dueDate || "").localeCompare(String(b.dueDate || ""));
+        if (dateCompare !== 0) return dateCompare;
+        return (Number(a.order) || 0) - (Number(b.order) || 0);
+      });
+
+    if (summary) {
+      summary.textContent = overdueTasks.length === 1
+        ? "1 tarea pendiente con fecha vencida."
+        : `${overdueTasks.length} tareas pendientes con fecha vencida.`;
+    }
+
+    if (overdueTasks.length === 0) {
+      container.innerHTML = `
+        <div style="padding:28px 16px;text-align:center;color:var(--muted);font-size:0.9rem;">
+          No tienes tareas atrasadas actualmente.
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = "";
+    overdueTasks.forEach((task) => {
+      const box = appState.data.boxes.find((item) => item.id === task.boxId);
+      const boxName = box ? box.name : "CASILLA";
+      const card = document.createElement("div");
+      card.className = "resched-modal-card";
+      card.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;">
+          <div aria-hidden="true" style="width:38px;height:38px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:12px;background:rgba(239,68,68,.10);color:#ef4444;font-size:1.1rem;">⚠️</div>
+          <div style="min-width:0;flex:1;">
+            <div style="font-weight:700;font-size:0.92rem;color:var(--text);line-height:1.35;">${escapeHtml(task.title)}</div>
+            <div style="font-size:0.78rem;color:var(--muted);margin-top:3px;">${escapeHtml(boxName)} · Venció el ${escapeHtml(formatSpanishDateLong(task.dueDate))}</div>
+          </div>
+        </div>
+        <button type="button" class="resched-cal-btn overdue-reschedule-btn" aria-label="Reprogramar ${escapeHtml(task.title)}" title="Reprogramar fecha">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </button>
+      `;
+
+      card.querySelector(".overdue-reschedule-btn").addEventListener("click", () => {
         playUiSound("tap");
         openDatePickerModal(task.id);
       });
@@ -2917,12 +2983,7 @@
 
     document.getElementById("btn-filter-overdue").addEventListener("click", () => {
       playUiSound("tap");
-      const overdue = appState.data.tasks.filter(t => isTaskOverdue(t));
-      if (overdue.length === 0) {
-        showToast("Sin tareas atrasadas");
-      } else {
-        openRescheduledModal();
-      }
+      openOverdueModal();
     });
 
     // Point 8: Repeat Modal Events
