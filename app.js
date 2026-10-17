@@ -2357,7 +2357,7 @@
     }
   }
 
-  function exportJsonBackup() {
+  async function exportJsonBackup() {
     const exportPayload = {
       version: "Tasky Pro Vol. 144",
       exportedAt: new Date().toISOString(),
@@ -2365,16 +2365,186 @@
       boxes: appState.data.boxes,
       tasks: appState.data.tasks
     };
-    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `tasky-backup-${getTodayISO()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast("Respaldo exportado");
+    const jsonText = JSON.stringify(exportPayload, null, 2);
+    const fileName = `tasky-backup-${getTodayISO()}.json`;
+    const blob = new Blob([jsonText], { type: "application/json;charset=utf-8" });
+    const isMedianApp = Boolean(window.median || window.gonative);
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+
+    // En móviles compatibles, compartir un File permite elegir una app nativa
+    // para guardar el respaldo. No se pasa un blob: URL a Median, porque su
+    // API de descarga necesita una URL pública.
+    if ((isMedianApp || isMobile) &&
+        typeof navigator.share === "function" &&
+        typeof navigator.canShare === "function" &&
+        typeof File !== "undefined") {
+      try {
+        const file = new File([jsonText], fileName, { type: "application/json" });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: "Respaldo de Tasky",
+            text: "Copia de seguridad de tus tareas de Tasky."
+          });
+          showToast("Respaldo enviado al menú para compartir");
+          return;
+        }
+      } catch (error) {
+        if (error && error.name === "AbortError") {
+          showToast("Exportación cancelada");
+          return;
+        }
+        console.warn("No se pudo compartir el archivo JSON; se ofrecerá una alternativa.", error);
+      }
+    }
+
+    // En escritorio se conserva la descarga normal. En móvil se ofrece además
+    // una alternativa manual, porque algunos WebView no gestionan el atributo
+    // download para enlaces blob.
+    const startDownload = () => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.rel = "noopener";
+      a.style.position = "fixed";
+      a.style.left = "-9999px";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      // No revocar la URL en el mismo ciclo del click: Android/WebView puede
+      // necesitar tiempo para comenzar a leer el blob.
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+      showToast("Se solicitó la descarga del respaldo");
+    };
+
+    if (!(isMedianApp || isMobile)) {
+      startDownload();
+      return;
+    }
+
+    const previous = document.getElementById("tasky-export-fallback-modal");
+    if (previous) previous.remove();
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "tasky-export-fallback-modal";
+    backdrop.setAttribute("role", "dialog");
+    backdrop.setAttribute("aria-modal", "true");
+    backdrop.setAttribute("aria-label", "Exportar respaldo de Tasky");
+    Object.assign(backdrop.style, {
+      position: "fixed",
+      inset: "0",
+      zIndex: "2147483000",
+      background: "rgba(15, 23, 42, 0.72)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "16px",
+      boxSizing: "border-box"
+    });
+
+    const panel = document.createElement("div");
+    Object.assign(panel.style, {
+      width: "min(100%, 620px)",
+      maxHeight: "90dvh",
+      overflow: "auto",
+      background: "var(--surface-solid, #ffffff)",
+      color: "var(--text, #172033)",
+      borderRadius: "18px",
+      padding: "18px",
+      boxSizing: "border-box",
+      boxShadow: "0 20px 60px rgba(0,0,0,.3)"
+    });
+
+    const title = document.createElement("h2");
+    title.textContent = "Respaldo de Tasky";
+    Object.assign(title.style, { margin: "0 0 8px", fontSize: "1.15rem" });
+
+    const description = document.createElement("p");
+    description.textContent = "Si el archivo no se descarga en tu celular, copia el contenido completo y pégalo en un editor de texto. Guarda el archivo con el nombre " + fileName + ". No cierres Tasky hasta comprobar que el respaldo se haya guardado.";
+    Object.assign(description.style, { fontSize: ".9rem", lineHeight: "1.45", margin: "0 0 12px" });
+
+    const textarea = document.createElement("textarea");
+    textarea.value = jsonText;
+    textarea.readOnly = true;
+    textarea.setAttribute("aria-label", "Contenido íntegro del respaldo JSON");
+    Object.assign(textarea.style, {
+      display: "block",
+      width: "100%",
+      height: "min(42dvh, 340px)",
+      resize: "vertical",
+      boxSizing: "border-box",
+      padding: "10px",
+      border: "1px solid var(--border, #cbd5e1)",
+      borderRadius: "10px",
+      background: "var(--surface, #f8fafc)",
+      color: "var(--text, #172033)",
+      fontSize: "12px",
+      fontFamily: "monospace",
+      whiteSpace: "pre"
+    });
+
+    const buttons = document.createElement("div");
+    Object.assign(buttons.style, {
+      display: "flex",
+      gap: "8px",
+      flexWrap: "wrap",
+      marginTop: "12px"
+    });
+
+    const makeButton = (label, primary, handler) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = label;
+      Object.assign(button.style, {
+        flex: "1 1 140px",
+        minHeight: "42px",
+        padding: "10px 12px",
+        borderRadius: "10px",
+        border: primary ? "0" : "1px solid var(--border, #cbd5e1)",
+        background: primary ? "var(--primary, #2563eb)" : "var(--surface, #f8fafc)",
+        color: primary ? "#ffffff" : "var(--text, #172033)",
+        fontWeight: "700",
+        cursor: "pointer"
+      });
+      button.addEventListener("click", handler);
+      return button;
+    };
+
+    const copyButton = makeButton("Copiar JSON", true, async () => {
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+          await navigator.clipboard.writeText(jsonText);
+          showToast("Respaldo copiado. Pégalo en un editor y guárdalo como .json");
+          return;
+        }
+        throw new Error("Clipboard API no disponible");
+      } catch (error) {
+        textarea.focus();
+        textarea.select();
+        try {
+          const copied = document.execCommand("copy");
+          if (copied) {
+            showToast("Respaldo copiado. Pégalo en un editor y guárdalo como .json");
+            return;
+          }
+        } catch (copyError) {}
+        showToast("Selecciona todo el texto y cópialo manualmente");
+      }
+    });
+
+    const downloadButton = makeButton("Intentar descargar JSON", false, startDownload);
+    const closeButton = makeButton("Cerrar", false, () => backdrop.remove());
+
+    buttons.append(copyButton, downloadButton, closeButton);
+    panel.append(title, description, textarea, buttons);
+    backdrop.appendChild(panel);
+    backdrop.addEventListener("click", (event) => {
+      if (event.target === backdrop) backdrop.remove();
+    });
+    document.body.appendChild(backdrop);
+    showToast("Elige cómo guardar tu respaldo");
   }
 
   // Point 5: Synchronization & Backups details inside the 3-dots Options Modal
