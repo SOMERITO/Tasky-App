@@ -199,21 +199,6 @@
     </div>
   </div>
 
-  <!-- MODAL 1A: "Tareas atrasadas" -->
-  <div id="modal-overdue-list" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="overdue-modal-title">
-    <div class="modal-dialog wide">
-      <div class="modal-header">
-        <div>
-          <div class="modal-eyebrow">⚠️ CONTROL DE ATRASADAS</div>
-          <h3 id="overdue-modal-title" class="modal-title">Tareas atrasadas</h3>
-          <p id="overdue-modal-summary" style="font-size:0.84rem;color:var(--muted);margin-top:4px;"></p>
-        </div>
-        <button type="button" class="modal-close-btn" data-close-modal="modal-overdue-list" aria-label="Cerrar">✕</button>
-      </div>
-      <div id="overdue-modal-items" class="resched-modal-list"></div>
-    </div>
-  </div>
-
   <!-- MODAL 2: Reprogramar / Cambiar Fecha de Tarea con Calendario Visual Profesional al lado (Point 4) -->
   <div id="modal-date-picker" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="date-modal-title">
     <div class="modal-dialog wide" style="max-width:790px;">
@@ -230,13 +215,17 @@
         <!-- Left Pane: Quick Presets + Date Input Form -->
         <div class="resched-left-pane">
           <div class="date-presets-grid">
-            <button type="button" class="preset-date-btn" data-date-preset="today">
+            <button type="button" class="preset-date-btn" data-date-preset="today" style="display:none;" aria-hidden="true">
               <span>☀️ Para hoy</span>
               <span style="font-size:0.73rem;color:var(--muted);">Mover al tablero de hoy</span>
             </button>
             <button type="button" class="preset-date-btn" data-date-preset="tomorrow">
               <span>🌤️ Mañana</span>
               <span style="font-size:0.73rem;color:var(--muted);">+1 día</span>
+            </button>
+            <button type="button" class="preset-date-btn" data-date-preset="dayafter">
+              <span>📆 Pasado mañana</span>
+              <span style="font-size:0.73rem;color:var(--muted);">+2 días</span>
             </button>
             <button type="button" class="preset-date-btn" data-date-preset="monday">
               <span>📅 Próximo lunes</span>

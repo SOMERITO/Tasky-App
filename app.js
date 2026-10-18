@@ -83,8 +83,8 @@
     const boxes = [
       { id: "box_casa", name: "CASA", color: "#2563eb", collapsed: false, order: 0 },
       { id: "box_mercado", name: "MERCADO", color: "#2563eb", collapsed: false, order: 1 },
-      { id: "box_jose", name: "Pendientes José 🧔🏻", color: "#2563eb", collapsed: false, order: 2 },
-      { id: "box_leah", name: "Pendientes Leah 👧🏻", color: "#2563eb", collapsed: false, order: 3 },
+      { id: "box_jose", name: "PENDIENTES JOSÉ 🧔🏻", color: "#2563eb", collapsed: false, order: 2 },
+      { id: "box_leah", name: "PENDIENTES LEAH 👧🏻", color: "#2563eb", collapsed: false, order: 3 },
       { id: "box_abuela", name: "CASA DE ABUELA ROSA", color: "#2563eb", collapsed: false, order: 4 },
       { id: "box_bombero", name: "COMO BOMBERO 🚒", color: "#2563eb", collapsed: false, order: 5 },
       { id: "box_oficina", name: "OFICINA", color: "#f59e0b", collapsed: false, order: 6 }
@@ -527,7 +527,7 @@
     const boxes = boxesRaw.map((b, idx) => ({
       ...b,
       id: String(b.id || `box_${Date.now()}_${idx}`),
-      name: String(b.name || b.title || "CASILLA").trim(),
+      name: String(b.name || b.title || "CASILLA").trim().toUpperCase(),
       color: String(b.color || "#2563eb"),
       collapsed: Boolean(b.collapsed),
       order: typeof b.order === "number" ? b.order : idx
@@ -1037,23 +1037,52 @@
     if (savedChannel) {
       appState.cloudChannel = savedChannel;
     }
+    // Point 4: Ensure all existing Casilla titles in storage are strictly UPPERCASE
+    let boxesUppercased = false;
+    loaded.boxes.forEach((b) => {
+      const upper = String(b.name || "CASILLA").trim().toUpperCase();
+      if (b.name !== upper) {
+        b.name = upper;
+        boxesUppercased = true;
+      }
+    });
+    if (!loaded.lastRolloverDate) {
+      loaded.lastRolloverDate = getTodayISO();
+    }
     appState.data = loaded;
+    appState.currentDayISO = getTodayISO();
+    if (boxesUppercased) {
+      safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(loaded));
+    }
     rebuildTaskMemoryFromTasks();
   }
 
-  // Point 10 & Point 1: Archive yesterday's completed tasks AND automatically return rescheduled tasks to their Casilla when their scheduled date arrives
+  // Point 6 & Point 1: Automatic Midnight (12:00 AM) Rollover & Cleanup without Ctrl + R
+  let midnightTimeoutId = null;
+
   function cleanupCompletedTasksFromPreviousDays() {
     const today = getTodayISO();
+    const prevTrackedDay = appState.currentDayISO || appState.data.lastRolloverDate || today;
+    const dayRolledOver = prevTrackedDay < today;
+
     let changed = false;
     const remaining = [];
 
     appState.data.tasks.forEach((task) => {
-      // Point 1: If a rescheduled task's scheduled date has arrived (dueDate <= today), reactivate it in its Casilla!
+      // If a rescheduled task's scheduled date has arrived (dueDate <= today), reactivate it in its Casilla!
       if (!task.done && task.isRescheduled && task.dueDate && task.dueDate <= today) {
         task.isRescheduled = false;
         changed = true;
       }
-      if (task.done && task.completedDate && task.completedDate < today) {
+
+      // If a task is marked done and either its completedDate is before today OR midnight just rolled over
+      const completedOnPastDay = task.done && (
+        (task.completedDate && task.completedDate < today) ||
+        (!task.completedDate && dayRolledOver) ||
+        dayRolledOver
+      );
+
+      if (completedOnPastDay) {
         changed = true;
         appState.data.monthlyCompletedBase = (appState.data.monthlyCompletedBase || 66) + 1;
         const isRecurring = task.frequency !== "once" || (Array.isArray(task.repeatDays) && task.repeatDays.length > 0);
@@ -1066,16 +1095,43 @@
             dueDate: today
           });
         }
-        // One-time completed tasks from previous days disappear automatically
+        // One-time completed tasks from previous days disappear automatically at 12:00 AM
       } else {
+        if (task.done && !task.completedDate) {
+          task.completedDate = today;
+        }
         remaining.push(task);
       }
     });
 
-    if (changed) {
-      appState.data.tasks = remaining;
-      saveData(false);
+    if (dayRolledOver || appState.data.lastRolloverDate !== today) {
+      appState.currentDayISO = today;
+      appState.data.lastRolloverDate = today;
     }
+
+    if (changed || dayRolledOver) {
+      appState.data.tasks = remaining;
+      saveData(false, "Actualización automática de medianoche");
+      renderHeroDate();
+      renderBoard();
+      if (document.getElementById("modal-rescheduled-list") && document.getElementById("modal-rescheduled-list").classList.contains("open")) {
+        renderRescheduledModalList();
+      }
+      if (dayRolledOver) {
+        showToast("🌙 Nuevo día actualizado automáticamente");
+      }
+    }
+  }
+
+  function scheduleExactMidnightRollover() {
+    if (midnightTimeoutId) clearTimeout(midnightTimeoutId);
+    const now = new Date();
+    const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 60);
+    const msUntilMidnight = Math.max(500, nextMidnight.getTime() - now.getTime());
+    midnightTimeoutId = setTimeout(() => {
+      cleanupCompletedTasksFromPreviousDays();
+      scheduleExactMidnightRollover();
+    }, msUntilMidnight);
   }
 
   function saveData(recordBackup = true, actionLabel = "Cambio guardado") {
@@ -1464,15 +1520,28 @@
 
     const sortedBoxes = appState.data.boxes.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    // Point 8: Separate active boxes (with tasks) from empty boxes (0 tasks) so empty boxes appear below TAREAS COMPLETADAS
+    // Point 3: Partition boxes into:
+    // 1. activeBoxesList (has tasks for today or completed today)
+    // 2. emptyBoxesList (has 0 tasks registered, e.g., COMO BOMBERO 🚒)
+    // 3. allRescheduledBoxesList (has tasks, and ALL of them are rescheduled, e.g., OFICINA -> full orange, rendered below empty boxes!)
     const activeBoxesList = [];
     const emptyBoxesList = [];
+    const allRescheduledBoxesList = [];
+
     sortedBoxes.forEach((b) => {
-      const count = appState.data.tasks.filter(t => t.boxId === b.id).length;
-      if (count > 0 || appState.keepInlineAddOpenBoxId === b.id) {
-        activeBoxesList.push(b);
-      } else {
+      const bTasks = appState.data.tasks.filter(t => t.boxId === b.id);
+      if (bTasks.length === 0) {
         emptyBoxesList.push(b);
+      } else {
+        const bPending = bTasks.filter(t => !t.done);
+        const bDone = bTasks.filter(t => t.done);
+        const bResched = bPending.filter(t => isTaskRescheduledFuture(t));
+        const bToday = bPending.filter(t => isTaskForToday(t));
+        if (bToday.length === 0 && bDone.length === 0 && bResched.length > 0) {
+          allRescheduledBoxesList.push(b);
+        } else {
+          activeBoxesList.push(b);
+        }
       }
     });
 
@@ -1485,7 +1554,7 @@
       const pendingBoxTasks = boxTasksAll.filter(t => !t.done);
       const doneBoxTasks = boxTasksAll.filter(t => t.done);
 
-      // Point 1: Rescheduled tasks disappear from the Casilla and live in Tareas Reprogramadas until their dueDate arrives
+      // Rescheduled tasks disappear from the Casilla and live in Tareas Reprogramadas until their dueDate arrives
       let visibleTasks = [];
       if (appState.activeTab === "completed") {
         visibleTasks = doneBoxTasks.filter(t => matchesSearch(t, box.name));
@@ -1502,38 +1571,36 @@
       const totalTodayBox = todayInBox.length + doneBoxTasks.length;
       const pctTodayBox = totalTodayBox > 0 ? Math.round((doneBoxTasks.length / totalTodayBox) * 100) : 0;
 
-      // Point 1: Never turn a Casilla orange when it has active tasks for today or only a single rescheduled task
-      const isAllMultipleRescheduled = false;
+      // Point 3: Casillas that have ALL of their tasks rescheduled get the full orange color (box-rescheduled-theme)
+      const isAllTasksRescheduled = boxTasksAll.length > 0 && todayInBox.length === 0 && doneBoxTasks.length === 0 && reschedInBox.length > 0;
 
       const card = document.createElement("section");
-      card.className = `box-card ${!appState.hasBootRendered ? "boot-animate" : ""} ${box.collapsed ? "collapsed" : ""} ${isAllMultipleRescheduled ? "box-rescheduled-theme" : ""} ${isEmptyStandby ? "box-empty-theme" : ""}`;
+      card.className = `box-card ${!appState.hasBootRendered ? "boot-animate" : ""} ${box.collapsed ? "collapsed" : ""} ${isAllTasksRescheduled ? "box-rescheduled-theme" : ""} ${isEmptyStandby ? "box-empty-theme" : ""}`;
       card.dataset.boxId = box.id;
 
+      // Point 2: No "X pendientes" pill in badgesHtml — replaced by the 34x34 colored number square in .box-header-actions!
       let badgesHtml = "";
       if (isEmptyStandby) {
         badgesHtml = `
           <span class="box-pill neutral">📭 Sin tareas registradas</span>
           <span class="box-pill blue">Casilla disponible</span>
         `;
-      } else if (todayInBox.length === 0 && doneBoxTasks.length === 0 && reschedInBox.length > 0) {
+      } else if (isAllTasksRescheduled) {
         badgesHtml = `
-          <span class="box-pill amber">🕒 ${reschedInBox.length} en Tareas reprogramadas</span>
-          <span class="box-pill neutral">Sin tareas para hoy</span>
+          <span class="box-pill amber">🕒 ${reschedInBox.length} reprogramada${reschedInBox.length === 1 ? "" : "s"}</span>
+          <span class="box-pill amber">Fuera de hoy</span>
         `;
       } else if (reschedInBox.length > 0 && todayInBox.length > 0) {
         badgesHtml = `
-          <span class="box-pill neutral">${todayInBox.length} pendiente${todayInBox.length === 1 ? "" : "s"}</span>
           <span class="box-pill blue">${pctTodayBox}% hoy</span>
           <span class="box-pill amber">🕒 ${reschedInBox.length} reprogramada${reschedInBox.length === 1 ? "" : "s"}</span>
         `;
       } else if (totalTodayBox === 0) {
         badgesHtml = `
-          <span class="box-pill neutral">0 pendientes</span>
           <span class="box-pill blue">Sin tareas hoy</span>
         `;
       } else {
         badgesHtml = `
-          <span class="box-pill neutral">${todayInBox.length} pendiente${todayInBox.length === 1 ? "" : "s"}</span>
           <span class="box-pill blue">${pctTodayBox}% hoy</span>
         `;
       }
@@ -1542,9 +1609,19 @@
         ? "—"
         : `${doneBoxTasks.length}/${totalTodayBox} hoy`;
 
-      const barFillWidth = isAllMultipleRescheduled ? 100 : pctTodayBox;
+      const barFillWidth = isAllTasksRescheduled ? 100 : pctTodayBox;
 
-      // Point 9: Up/Down buttons on LEFT side, Collapse/Expand on RIGHT side, and NO alphabetical sort button
+      // Point 2: Colored 34x34px square badge showing ONLY the pending count number, same size as collapse/delete buttons
+      const countSquareClass = isAllTasksRescheduled
+        ? "box-pending-count-box orange-count"
+        : (todayInBox.length === 0 ? "box-pending-count-box zero-count" : "box-pending-count-box");
+      const countSquareNumber = todayInBox.length;
+      const countSquareTipTitle = `📌 ${countSquareNumber} tarea${countSquareNumber === 1 ? "" : "s"} pendiente${countSquareNumber === 1 ? "" : "s"}`;
+      const countSquareTipDesc = isAllTasksRescheduled
+        ? `Todas las tareas de esta casilla (${reschedInBox.length}) están reprogramadas para otros días.`
+        : `Número de tareas pendientes para hoy en ${box.name.toUpperCase()}.`;
+
+      // Point 9: Up/Down buttons on LEFT side, Colored Pending Number Square + Collapse/Expand + Delete on RIGHT side
       card.innerHTML = `
         <div class="hold-charge-bar"><div class="hold-charge-fill"></div></div>
         <div class="box-top-row">
@@ -1558,12 +1635,13 @@
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
                 </button>
               </div>
-              <h2 class="box-name" data-tip-title="✏️ Renombrar casilla" data-tip-desc="Haz clic para modificar el nombre de esta casilla de trabajo.">${escapeHtml(box.name)}</h2>
+              <h2 class="box-name" data-tip-title="✏️ Renombrar casilla" data-tip-desc="Haz clic para modificar el nombre de esta casilla de trabajo.">${escapeHtml(box.name.toUpperCase())}</h2>
             </div>
             <div class="box-badges-row">${badgesHtml}</div>
           </div>
 
           <div class="box-header-actions">
+            <span class="${countSquareClass}" data-tip-title="${escapeHtml(countSquareTipTitle)}" data-tip-desc="${escapeHtml(countSquareTipDesc)}">${countSquareNumber}</span>
             <button type="button" class="box-ctrl-btn collapse-right-btn" data-box-action="collapse" data-tip-title="⌄ Plegar o desplegar casilla" data-tip-desc="Oculta o muestra el listado de tareas de este bloque para despejar tu vista.">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
@@ -1881,8 +1959,12 @@
       container.appendChild(compCard);
     }
 
-    // 3. Point 8: Render Empty Casillas (with 0 tasks) below TAREAS COMPLETADAS with distinct Empty Theme
+    // 3. Render Empty Casillas (with 0 tasks, e.g., COMO BOMBERO 🚒) below TAREAS COMPLETADAS
     emptyBoxesList.forEach(box => renderSingleBoxCard(box, true));
+
+    // 4. Point 3: Render Casillas with ALL tasks rescheduled (e.g., OFICINA in full orange) BELOW Empty Casillas!
+    allRescheduledBoxesList.forEach(box => renderSingleBoxCard(box, false));
+
     appState.hasBootRendered = true;
   }
 
@@ -2133,38 +2215,40 @@
       btn.type = "button";
       const isToday = iso === todayIso;
       const isSelected = iso === calState.selectedIso;
-      const isPast = iso < todayIso;
+      const isPastOrToday = iso <= todayIso;
       const countOnDay = taskCountByDate[iso] || 0;
 
       btn.className = [
         "pro-cal-day",
         isOtherMonth ? "other-month" : "",
         isToday ? "is-today" : "",
-        isSelected ? "is-selected" : "",
-        isPast ? "is-past" : ""
+        isSelected && !isPastOrToday ? "is-selected" : "",
+        isPastOrToday ? "is-disabled-day" : ""
       ].filter(Boolean).join(" ");
+
+      // Point 1: Do not allow rescheduling a task for today or past dates in the Reschedule Calendar
+      if (isPastOrToday) {
+        btn.disabled = true;
+        btn.setAttribute("aria-disabled", "true");
+        btn.title = isToday ? "Hoy (elige otro día para reprogramar)" : "Fecha pasada no disponible";
+      }
 
       btn.innerHTML = `
         <span>${dayNum}</span>
         ${countOnDay > 0 ? `<span class="pro-cal-task-dot" title="${countOnDay} tarea(s) en esta fecha"></span>` : ""}
       `;
 
-      btn.addEventListener("click", () => {
-        playUiSound("tap");
-        calState.selectedIso = iso;
-        calState.viewYear = cellYear;
-        calState.viewMonth = cellMonth;
-        const dateInput = document.getElementById("input-resched-date");
-        if (dateInput) dateInput.value = iso;
-        renderProVisualCalendar();
-      });
-
-      btn.addEventListener("dblclick", () => {
-        calState.selectedIso = iso;
-        const dateInput = document.getElementById("input-resched-date");
-        if (dateInput) dateInput.value = iso;
-        applyTaskRescheduleDate(iso, iso <= todayIso);
-      });
+      // Point 1: Clicking a new future date automatically selects that date and closes the pop-up immediately!
+      if (!isPastOrToday) {
+        btn.addEventListener("click", () => {
+          calState.selectedIso = iso;
+          calState.viewYear = cellYear;
+          calState.viewMonth = cellMonth;
+          const dateInput = document.getElementById("input-resched-date");
+          if (dateInput) dateInput.value = iso;
+          applyTaskRescheduleDate(iso, false);
+        });
+      }
 
       grid.appendChild(btn);
     }
@@ -2176,8 +2260,10 @@
     if (!task) return;
     appState.reschedulingTaskId = taskId;
     document.getElementById("resched-task-name").textContent = task.title;
-    const defaultIso = task.dueDate && task.dueDate > getTodayISO() ? task.dueDate : addDaysISO(getTodayISO(), 1);
+    const tomorrowIso = addDaysISO(getTodayISO(), 1);
+    const defaultIso = task.dueDate && task.dueDate > getTodayISO() ? task.dueDate : tomorrowIso;
     const dateInput = document.getElementById("input-resched-date");
+    dateInput.min = tomorrowIso;
     dateInput.value = defaultIso;
 
     const parts = defaultIso.split("-");
@@ -2192,10 +2278,17 @@
   function applyTaskRescheduleDate(newDateIso, moveToToday = false) {
     const task = appState.data.tasks.find(t => t.id === appState.reschedulingTaskId);
     if (!task) return;
-    pushUndoSnapshot(`Reprogramar: ${task.title}`);
     const today = getTodayISO();
 
-    if (moveToToday || newDateIso <= today) {
+    // Point 1: Reschedule modal cannot reprogram a task for today or earlier
+    if (!moveToToday && (!newDateIso || newDateIso <= today)) {
+      showToast("Elige una fecha futura (desde mañana) para reprogramar", true);
+      return;
+    }
+
+    pushUndoSnapshot(`Reprogramar: ${task.title}`);
+
+    if (moveToToday) {
       task.dueDate = today;
       task.isRescheduled = false;
       task.rescheduledCount = 0;
@@ -2213,10 +2306,6 @@
     renderBoard();
     if (document.getElementById("modal-rescheduled-list").classList.contains("open")) {
       renderRescheduledModalList();
-    }
-    const overdueModal = document.getElementById("modal-overdue-list");
-    if (overdueModal && overdueModal.classList.contains("open")) {
-      renderOverdueModalList();
     }
   }
 
@@ -2280,68 +2369,6 @@
     });
   }
 
-  function openOverdueModal() {
-    renderOverdueModalList();
-    document.getElementById("modal-overdue-list").classList.add("open");
-  }
-
-  function renderOverdueModalList() {
-    const container = document.getElementById("overdue-modal-items");
-    if (!container) return;
-
-    const summary = document.getElementById("overdue-modal-summary");
-    const today = getTodayISO();
-    const overdueTasks = appState.data.tasks
-      .filter((task) => isTaskOverdue(task))
-      .sort((a, b) => {
-        const dateCompare = String(a.dueDate || "").localeCompare(String(b.dueDate || ""));
-        if (dateCompare !== 0) return dateCompare;
-        return (Number(a.order) || 0) - (Number(b.order) || 0);
-      });
-
-    if (summary) {
-      summary.textContent = overdueTasks.length === 1
-        ? "1 tarea pendiente con fecha vencida."
-        : `${overdueTasks.length} tareas pendientes con fecha vencida.`;
-    }
-
-    if (overdueTasks.length === 0) {
-      container.innerHTML = `
-        <div style="padding:28px 16px;text-align:center;color:var(--muted);font-size:0.9rem;">
-          No tienes tareas atrasadas actualmente.
-        </div>
-      `;
-      return;
-    }
-
-    container.innerHTML = "";
-    overdueTasks.forEach((task) => {
-      const box = appState.data.boxes.find((item) => item.id === task.boxId);
-      const boxName = box ? box.name : "CASILLA";
-      const card = document.createElement("div");
-      card.className = "resched-modal-card";
-      card.innerHTML = `
-        <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;">
-          <div aria-hidden="true" style="width:38px;height:38px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:12px;background:rgba(239,68,68,.10);color:#ef4444;font-size:1.1rem;">⚠️</div>
-          <div style="min-width:0;flex:1;">
-            <div style="font-weight:700;font-size:0.92rem;color:var(--text);line-height:1.35;">${escapeHtml(task.title)}</div>
-            <div style="font-size:0.78rem;color:var(--muted);margin-top:3px;">${escapeHtml(boxName)} · Venció el ${escapeHtml(formatSpanishDateLong(task.dueDate))}</div>
-          </div>
-        </div>
-        <button type="button" class="resched-cal-btn overdue-reschedule-btn" aria-label="Reprogramar ${escapeHtml(task.title)}" title="Reprogramar fecha">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        </button>
-      `;
-
-      card.querySelector(".overdue-reschedule-btn").addEventListener("click", () => {
-        playUiSound("tap");
-        openDatePickerModal(task.id);
-      });
-
-      container.appendChild(card);
-    });
-  }
-
   function openEditTaskTitleModal(taskId) {
     const task = appState.data.tasks.find(t => t.id === taskId);
     if (!task) return;
@@ -2362,7 +2389,7 @@
       const box = appState.data.boxes.find(b => b.id === boxId);
       if (!box) return;
       titleEl.textContent = "Renombrar casilla";
-      nameInput.value = box.name;
+      nameInput.value = box.name.toUpperCase();
     } else {
       titleEl.textContent = "Nueva casilla";
       nameInput.value = "";
@@ -2423,7 +2450,7 @@
     }
   }
 
-  async function exportJsonBackup() {
+  function exportJsonBackup() {
     const exportPayload = {
       version: "Tasky Pro Vol. 144",
       exportedAt: new Date().toISOString(),
@@ -2431,186 +2458,16 @@
       boxes: appState.data.boxes,
       tasks: appState.data.tasks
     };
-    const jsonText = JSON.stringify(exportPayload, null, 2);
-    const fileName = `tasky-backup-${getTodayISO()}.json`;
-    const blob = new Blob([jsonText], { type: "application/json;charset=utf-8" });
-    const isMedianApp = Boolean(window.median || window.gonative);
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
-
-    // En móviles compatibles, compartir un File permite elegir una app nativa
-    // para guardar el respaldo. No se pasa un blob: URL a Median, porque su
-    // API de descarga necesita una URL pública.
-    if ((isMedianApp || isMobile) &&
-        typeof navigator.share === "function" &&
-        typeof navigator.canShare === "function" &&
-        typeof File !== "undefined") {
-      try {
-        const file = new File([jsonText], fileName, { type: "application/json" });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: "Respaldo de Tasky",
-            text: "Copia de seguridad de tus tareas de Tasky."
-          });
-          showToast("Respaldo enviado al menú para compartir");
-          return;
-        }
-      } catch (error) {
-        if (error && error.name === "AbortError") {
-          showToast("Exportación cancelada");
-          return;
-        }
-        console.warn("No se pudo compartir el archivo JSON; se ofrecerá una alternativa.", error);
-      }
-    }
-
-    // En escritorio se conserva la descarga normal. En móvil se ofrece además
-    // una alternativa manual, porque algunos WebView no gestionan el atributo
-    // download para enlaces blob.
-    const startDownload = () => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      a.rel = "noopener";
-      a.style.position = "fixed";
-      a.style.left = "-9999px";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-
-      // No revocar la URL en el mismo ciclo del click: Android/WebView puede
-      // necesitar tiempo para comenzar a leer el blob.
-      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
-      showToast("Se solicitó la descarga del respaldo");
-    };
-
-    if (!(isMedianApp || isMobile)) {
-      startDownload();
-      return;
-    }
-
-    const previous = document.getElementById("tasky-export-fallback-modal");
-    if (previous) previous.remove();
-
-    const backdrop = document.createElement("div");
-    backdrop.id = "tasky-export-fallback-modal";
-    backdrop.setAttribute("role", "dialog");
-    backdrop.setAttribute("aria-modal", "true");
-    backdrop.setAttribute("aria-label", "Exportar respaldo de Tasky");
-    Object.assign(backdrop.style, {
-      position: "fixed",
-      inset: "0",
-      zIndex: "2147483000",
-      background: "rgba(15, 23, 42, 0.72)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "16px",
-      boxSizing: "border-box"
-    });
-
-    const panel = document.createElement("div");
-    Object.assign(panel.style, {
-      width: "min(100%, 620px)",
-      maxHeight: "90dvh",
-      overflow: "auto",
-      background: "var(--surface-solid, #ffffff)",
-      color: "var(--text, #172033)",
-      borderRadius: "18px",
-      padding: "18px",
-      boxSizing: "border-box",
-      boxShadow: "0 20px 60px rgba(0,0,0,.3)"
-    });
-
-    const title = document.createElement("h2");
-    title.textContent = "Respaldo de Tasky";
-    Object.assign(title.style, { margin: "0 0 8px", fontSize: "1.15rem" });
-
-    const description = document.createElement("p");
-    description.textContent = "Si el archivo no se descarga en tu celular, copia el contenido completo y pégalo en un editor de texto. Guarda el archivo con el nombre " + fileName + ". No cierres Tasky hasta comprobar que el respaldo se haya guardado.";
-    Object.assign(description.style, { fontSize: ".9rem", lineHeight: "1.45", margin: "0 0 12px" });
-
-    const textarea = document.createElement("textarea");
-    textarea.value = jsonText;
-    textarea.readOnly = true;
-    textarea.setAttribute("aria-label", "Contenido íntegro del respaldo JSON");
-    Object.assign(textarea.style, {
-      display: "block",
-      width: "100%",
-      height: "min(42dvh, 340px)",
-      resize: "vertical",
-      boxSizing: "border-box",
-      padding: "10px",
-      border: "1px solid var(--border, #cbd5e1)",
-      borderRadius: "10px",
-      background: "var(--surface, #f8fafc)",
-      color: "var(--text, #172033)",
-      fontSize: "12px",
-      fontFamily: "monospace",
-      whiteSpace: "pre"
-    });
-
-    const buttons = document.createElement("div");
-    Object.assign(buttons.style, {
-      display: "flex",
-      gap: "8px",
-      flexWrap: "wrap",
-      marginTop: "12px"
-    });
-
-    const makeButton = (label, primary, handler) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = label;
-      Object.assign(button.style, {
-        flex: "1 1 140px",
-        minHeight: "42px",
-        padding: "10px 12px",
-        borderRadius: "10px",
-        border: primary ? "0" : "1px solid var(--border, #cbd5e1)",
-        background: primary ? "var(--primary, #2563eb)" : "var(--surface, #f8fafc)",
-        color: primary ? "#ffffff" : "var(--text, #172033)",
-        fontWeight: "700",
-        cursor: "pointer"
-      });
-      button.addEventListener("click", handler);
-      return button;
-    };
-
-    const copyButton = makeButton("Copiar JSON", true, async () => {
-      try {
-        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-          await navigator.clipboard.writeText(jsonText);
-          showToast("Respaldo copiado. Pégalo en un editor y guárdalo como .json");
-          return;
-        }
-        throw new Error("Clipboard API no disponible");
-      } catch (error) {
-        textarea.focus();
-        textarea.select();
-        try {
-          const copied = document.execCommand("copy");
-          if (copied) {
-            showToast("Respaldo copiado. Pégalo en un editor y guárdalo como .json");
-            return;
-          }
-        } catch (copyError) {}
-        showToast("Selecciona todo el texto y cópialo manualmente");
-      }
-    });
-
-    const downloadButton = makeButton("Intentar descargar JSON", false, startDownload);
-    const closeButton = makeButton("Cerrar", false, () => backdrop.remove());
-
-    buttons.append(copyButton, downloadButton, closeButton);
-    panel.append(title, description, textarea, buttons);
-    backdrop.appendChild(panel);
-    backdrop.addEventListener("click", (event) => {
-      if (event.target === backdrop) backdrop.remove();
-    });
-    document.body.appendChild(backdrop);
-    showToast("Elige cómo guardar tu respaldo");
+    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `tasky-backup-${getTodayISO()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("Respaldo exportado");
   }
 
   // Point 5: Synchronization & Backups details inside the 3-dots Options Modal
@@ -2983,7 +2840,12 @@
 
     document.getElementById("btn-filter-overdue").addEventListener("click", () => {
       playUiSound("tap");
-      openOverdueModal();
+      const overdue = appState.data.tasks.filter(t => isTaskOverdue(t));
+      if (overdue.length === 0) {
+        showToast("Sin tareas atrasadas");
+      } else {
+        openRescheduledModal();
+      }
     });
 
     // Point 8: Repeat Modal Events
@@ -3026,13 +2888,13 @@
       }
     });
 
-    // Date Picker Modal Events
+    // Date Picker Modal Events (Point 1: Only future dates allowed, auto-select & close modal immediately)
     document.querySelectorAll("[data-date-preset]").forEach(btn => {
       btn.addEventListener("click", () => {
         const preset = btn.dataset.datePreset;
         const today = getTodayISO();
-        if (preset === "today") {
-          applyTaskRescheduleDate(today, true);
+        if (preset === "today" || preset === "dayafter") {
+          applyTaskRescheduleDate(addDaysISO(today, 2), false);
         } else if (preset === "tomorrow") {
           applyTaskRescheduleDate(addDaysISO(today, 1), false);
         } else if (preset === "monday") {
@@ -3043,7 +2905,7 @@
       });
     });
 
-    // Point 4: Visual Calendar navigation controls & input sync
+    // Visual Calendar navigation controls & automatic selection on date change
     document.getElementById("btn-cal-prev-month").addEventListener("click", () => {
       playUiSound("tap");
       calState.viewMonth--;
@@ -3066,40 +2928,58 @@
 
     document.getElementById("btn-cal-today-jump").addEventListener("click", () => {
       playUiSound("tap");
-      const now = new Date();
-      calState.viewYear = now.getFullYear();
-      calState.viewMonth = now.getMonth();
-      calState.selectedIso = getTodayISO();
-      document.getElementById("input-resched-date").value = calState.selectedIso;
+      const tomorrowIso = addDaysISO(getTodayISO(), 1);
+      const parts = tomorrowIso.split("-");
+      calState.viewYear = Number(parts[0]);
+      calState.viewMonth = Number(parts[1]) - 1;
+      calState.selectedIso = tomorrowIso;
+      document.getElementById("input-resched-date").value = tomorrowIso;
       renderProVisualCalendar();
     });
 
-    document.getElementById("input-resched-date").addEventListener("input", (e) => {
+    document.getElementById("input-resched-date").addEventListener("change", (e) => {
       const val = e.target.value;
+      const today = getTodayISO();
       if (val && val.split("-").length === 3) {
-        const parts = val.split("-");
-        calState.viewYear = Number(parts[0]);
-        calState.viewMonth = Number(parts[1]) - 1;
+        if (val <= today) {
+          const tomorrowIso = addDaysISO(today, 1);
+          e.target.value = tomorrowIso;
+          showToast("No puedes reprogramar para hoy; elige desde mañana", true);
+          return;
+        }
         calState.selectedIso = val;
-        renderProVisualCalendar();
+        applyTaskRescheduleDate(val, false);
       }
     });
 
     document.getElementById("form-date-picker").addEventListener("submit", (e) => {
       e.preventDefault();
       const val = document.getElementById("input-resched-date").value || calState.selectedIso;
-      if (!val) {
-        showToast("Selecciona una fecha válida", true);
+      if (!val || val <= getTodayISO()) {
+        showToast("Selecciona una fecha futura (desde mañana)", true);
         return;
       }
-      applyTaskRescheduleDate(val, val <= getTodayISO());
+      applyTaskRescheduleDate(val, false);
     });
+
+    // Point 4: Live uppercase enforcement on Casilla Name input & submit
+    const boxNameInputEl = document.getElementById("input-box-name");
+    if (boxNameInputEl) {
+      boxNameInputEl.addEventListener("input", () => {
+        const upper = boxNameInputEl.value.toUpperCase();
+        if (boxNameInputEl.value !== upper) {
+          const pos = boxNameInputEl.selectionStart;
+          boxNameInputEl.value = upper;
+          try { boxNameInputEl.setSelectionRange(pos, pos); } catch (e) {}
+        }
+      });
+    }
 
     // Box Form Submit
     document.getElementById("form-box").addEventListener("submit", (e) => {
       e.preventDefault();
       const nameInput = document.getElementById("input-box-name");
-      const name = nameInput.value.trim();
+      const name = nameInput.value.trim().toUpperCase();
       if (!name) {
         nameInput.classList.add("input-invalid");
         setTimeout(() => nameInput.classList.remove("input-invalid"), 400);
@@ -3266,7 +3146,8 @@
   function boot() {
     loadRegisteredData();
     cleanupCompletedTasksFromPreviousDays();
-    setInterval(cleanupCompletedTasksFromPreviousDays, 60000);
+    scheduleExactMidnightRollover();
+    setInterval(cleanupCompletedTasksFromPreviousDays, 5000);
     applyThemeAndSoundUI();
     renderHeroDate();
     renderQuote(false);
@@ -3276,17 +3157,19 @@
     renderBoard();
     document.documentElement.classList.remove("tasky-booting");
 
-    // Point 3: Start real-time cross-device & incognito cloud sync (Web <-> Incognito <-> Mobile App)
+    // Start real-time cross-device & incognito cloud sync (Web <-> Incognito <-> Mobile App)
     pullCloudSync(false);
     startCloudSyncStream();
     setInterval(() => {
       pullCloudSync(false);
     }, 6000);
     window.addEventListener("focus", () => {
+      cleanupCompletedTasksFromPreviousDays();
       pullCloudSync(false);
     });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
+        cleanupCompletedTasksFromPreviousDays();
         pullCloudSync(false);
       }
     });
