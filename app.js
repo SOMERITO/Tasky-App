@@ -1022,10 +1022,37 @@
 
     const leftTime = Number(left.updatedAt || 0);
     const rightTime = Number(right.updatedAt || 0);
-    const primary = (leftTime <= 0 && rightTime > 0) ? right
+    let primary = (leftTime <= 0 && rightTime > 0) ? right
       : (rightTime <= 0 && leftTime > 0) ? left
       : (rightTime >= leftTime ? right : left);
-    const secondary = primary === left ? right : left;
+    let secondary = primary === left ? right : left;
+
+    const leftDeletedTaskIds = new Set(left.deletedTaskIds || []);
+    const rightDeletedTaskIds = new Set(right.deletedTaskIds || []);
+    const leftDeletedBoxIds = new Set(left.deletedBoxIds || []);
+    const rightDeletedBoxIds = new Set(right.deletedBoxIds || []);
+    const leftTaskIds = new Set(left.tasks.map(task => String(task.id)));
+    const rightTaskIds = new Set(right.tasks.map(task => String(task.id)));
+    const leftBoxIds = new Set(left.boxes.map(box => String(box.id)));
+    const rightBoxIds = new Set(right.boxes.map(box => String(box.id)));
+
+    // A snapshot missing records that the other side still has, without explicit deletion tombstones,
+    // is structurally incomplete. Do not let its newer device clock overwrite shared task fields.
+    const leftMissingKnownData =
+      right.tasks.some(task => !leftTaskIds.has(String(task.id)) && !leftDeletedTaskIds.has(String(task.id))) ||
+      right.boxes.some(box => !leftBoxIds.has(String(box.id)) && !leftDeletedBoxIds.has(String(box.id)));
+    const rightMissingKnownData =
+      left.tasks.some(task => !rightTaskIds.has(String(task.id)) && !rightDeletedTaskIds.has(String(task.id))) ||
+      left.boxes.some(box => !rightBoxIds.has(String(box.id)) && !rightDeletedBoxIds.has(String(box.id)));
+
+    if (leftMissingKnownData && !rightMissingKnownData) {
+      primary = right;
+      secondary = left;
+    } else if (rightMissingKnownData && !leftMissingKnownData) {
+      primary = left;
+      secondary = right;
+    }
+
     const ignoreUnversionedSecondary = Number(primary.updatedAt || 0) > 0 && Number(secondary.updatedAt || 0) <= 0;
     const primaryIsSeed = Boolean(primary.bootstrapSeedData);
     const secondaryIsSeed = Boolean(secondary.bootstrapSeedData);
