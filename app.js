@@ -15,6 +15,10 @@
     FIREBASE_CONFIG: "tasky_firebase_config_v1"
   };
 
+  // SAFETY PAUSE: prevent cross-device/cloud overwrites while Tasky backups are reconciled.
+  // Keep local editing and local backups available. Do not enable until merge is validated.
+  const CLOUD_SYNC_PAUSED_FOR_RECONCILIATION = true;
+
   const memoryStorage = new Map();
 
   const safeStorage = {
@@ -748,7 +752,7 @@
   // ==========================================================================
   let syncBroadcastChannel = null;
   try {
-    if (typeof window.BroadcastChannel !== "undefined") {
+    if (!CLOUD_SYNC_PAUSED_FOR_RECONCILIATION && typeof window.BroadcastChannel !== "undefined") {
       syncBroadcastChannel = new window.BroadcastChannel("tasky_firebase_realtime_bus");
       syncBroadcastChannel.onmessage = (ev) => {
         if (ev.data && ev.data.payload && ev.data.deviceId !== appState.deviceId) {
@@ -759,6 +763,7 @@
   } catch (e) {}
 
   window.addEventListener("storage", (ev) => {
+    if (CLOUD_SYNC_PAUSED_FOR_RECONCILIATION) return;
     if (ev.key === STORAGE_KEYS.DATA && ev.newValue) {
       try {
         const parsed = JSON.parse(ev.newValue);
@@ -769,6 +774,7 @@
 
   function isCloudNetworkAllowed() {
     return (
+      !CLOUD_SYNC_PAUSED_FOR_RECONCILIATION &&
       typeof window.fetch === "function" &&
       (window.location.protocol === "https:" || window.location.protocol === "http:") &&
       navigator.onLine !== false
@@ -968,6 +974,14 @@
 
   let cloudPushTimer = null;
   function pushCloudSync(forceImmediateToast = false) {
+    if (CLOUD_SYNC_PAUSED_FOR_RECONCILIATION) {
+      const syncText = document.getElementById("sync-status-text");
+      if (syncText) syncText.textContent = "Nube pausada · datos locales";
+      const modalSyncTime = document.getElementById("modal-sync-last-time");
+      if (modalSyncTime) modalSyncTime.textContent = "Sincronización pausada para proteger los datos durante la conciliación.";
+      if (forceImmediateToast) showToast("Sincronización en nube pausada para proteger tus datos.");
+      return;
+    }
     if (syncBroadcastChannel) {
       try {
         syncBroadcastChannel.postMessage({
@@ -1051,6 +1065,14 @@
   }
 
   async function pullCloudSync(manual = false) {
+    if (CLOUD_SYNC_PAUSED_FOR_RECONCILIATION) {
+      const syncText = document.getElementById("sync-status-text");
+      if (syncText) syncText.textContent = "Nube pausada · datos locales";
+      const modalSyncTime = document.getElementById("modal-sync-last-time");
+      if (modalSyncTime) modalSyncTime.textContent = "Sincronización pausada para proteger los datos durante la conciliación.";
+      if (manual) showToast("Sincronización en nube pausada. Tus datos locales se conservan en este dispositivo.");
+      return;
+    }
     if (!isCloudNetworkAllowed()) {
       if (manual) showToast("Modo local activo");
       return;
@@ -3430,6 +3452,10 @@
     if (syncNowBtn) {
       syncNowBtn.addEventListener("click", () => {
         playUiSound("tap");
+        if (CLOUD_SYNC_PAUSED_FOR_RECONCILIATION) {
+          showToast("Sincronización pausada para proteger tus datos durante la conciliación.");
+          return;
+        }
         saveFirebaseSettingsFromInputs();
         pushCloudSync(false);
         pullCloudSync(true);
@@ -3440,6 +3466,10 @@
     if (rescueMigrateBtn) {
       rescueMigrateBtn.addEventListener("click", () => {
         playUiSound("complete");
+        if (CLOUD_SYNC_PAUSED_FOR_RECONCILIATION) {
+          showToast("La migración a Firebase está pausada hasta validar los respaldos.");
+          return;
+        }
         saveFirebaseSettingsFromInputs();
         appState.data.updatedAt = Date.now();
         saveData(true, "Rescate y migración completa a Firebase");
@@ -3540,7 +3570,14 @@
     renderBoard();
     document.documentElement.classList.remove("tasky-booting");
 
-    // Start real-time cross-device & incognito cloud sync (Web <-> Incognito <-> Mobile App)
+    if (CLOUD_SYNC_PAUSED_FOR_RECONCILIATION) {
+      const syncText = document.getElementById("sync-status-text");
+      if (syncText) syncText.textContent = "Nube pausada · datos locales";
+      const modalSyncTime = document.getElementById("modal-sync-last-time");
+      if (modalSyncTime) modalSyncTime.textContent = "Sincronización pausada para proteger los datos durante la conciliación.";
+    }
+
+    // Cloud sync intentionally paused until both device backups are reconciled.
     pullCloudSync(false);
     startCloudSyncStream();
     setInterval(() => {
