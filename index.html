@@ -60,7 +60,7 @@
         <!-- Point 5: Sincronizado as static text, NOT a button -->
         <div id="sync-status-indicator" class="sync-status-static">
           <span class="sync-dot"></span>
-          <span id="sync-status-text">Sincronizado</span>
+          <span id="sync-status-text">Verificando nube…</span>
         </div>
 
         <!-- Point 6: Restored Sound Toggle Button -->
@@ -400,14 +400,14 @@
       </div>
 
       <!-- Point 2: Native Firebase Cloud Synchronization & Full Data Rescue Card (0% JSONBin) -->
-      <div style="padding:18px 20px;border-radius:18px;background:var(--success-soft);border:1px solid rgba(22,163,74,0.32);margin-bottom:16px;display:flex;flex-direction:column;gap:12px;">
+      <div style="padding:18px 20px;border-radius:18px;background:var(--surface-muted);border:1px solid var(--line);margin-bottom:16px;display:flex;flex-direction:column;gap:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
           <div style="display:flex;align-items:center;gap:12px;">
-            <span class="sync-dot" style="width:11px;height:11px;"></span>
+            <span class="sync-dot" style="width:11px;height:11px;opacity:0.55;"></span>
             <div>
-              <div style="font-weight:800;font-size:0.95rem;color:var(--text);">🔥 Base de Datos Firebase Activa (100% Firebase · 0% JSONBin)</div>
+              <div style="font-weight:800;font-size:0.95rem;color:var(--text);">☁️ Estado de sincronización y seguridad</div>
               <div style="font-size:0.78rem;color:var(--text-secondary);margin-top:2px;">
-                Estado: <strong id="modal-sync-last-time">Todas tus tareas y casillas rescatadas en Firebase</strong>
+                Estado: <strong id="modal-sync-last-time">Pendiente de verificar una copia remota</strong>
               </div>
             </div>
           </div>
