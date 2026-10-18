@@ -60,7 +60,7 @@
         <!-- Point 5: Sincronizado as static text, NOT a button -->
         <div id="sync-status-indicator" class="sync-status-static">
           <span class="sync-dot"></span>
-          <span id="sync-status-text">Sincronizado</span>
+          <span id="sync-status-text">Nube pausada · datos locales</span>
         </div>
 
         <!-- Point 6: Restored Sound Toggle Button -->
@@ -400,14 +400,14 @@
       </div>
 
       <!-- Point 2: Native Firebase Cloud Synchronization & Full Data Rescue Card (0% JSONBin) -->
-      <div style="padding:18px 20px;border-radius:18px;background:var(--success-soft);border:1px solid rgba(22,163,74,0.32);margin-bottom:16px;display:flex;flex-direction:column;gap:12px;">
+      <div style="padding:18px 20px;border-radius:18px;background:rgba(245,158,11,0.10);border:1px solid rgba(217,119,6,0.42);margin-bottom:16px;display:flex;flex-direction:column;gap:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
           <div style="display:flex;align-items:center;gap:12px;">
-            <span class="sync-dot" style="width:11px;height:11px;"></span>
+            <span class="sync-dot" style="width:11px;height:11px;background:#d97706;"></span>
             <div>
-              <div style="font-weight:800;font-size:0.95rem;color:var(--text);">🔥 Base de Datos Firebase Activa (100% Firebase · 0% JSONBin)</div>
+              <div style="font-weight:800;font-size:0.95rem;color:var(--text);">⏸️ Sincronización en la nube pausada temporalmente</div>
               <div style="font-size:0.78rem;color:var(--text-secondary);margin-top:2px;">
-                Estado: <strong id="modal-sync-last-time">Todas tus tareas y casillas rescatadas en Firebase</strong>
+                Estado: <strong id="modal-sync-last-time">Pausada para proteger los datos mientras conciliamos los respaldos.</strong>
               </div>
             </div>
           </div>
@@ -435,8 +435,8 @@
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:4px;">
           <input type="text" id="input-firebase-raw-paste" class="form-input" style="flex:1;min-width:220px;padding:7px 11px;font-size:0.80rem;background:var(--surface-solid);" placeholder="O pega aquí tu bloque firebaseConfig = { apiKey, projectId, ... } para conectar otro proyecto..." />
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button type="button" id="btn-firebase-rescue-migrate" class="btn-primary" style="padding:8px 14px;font-size:0.80rem;background:linear-gradient(135deg,#f59e0b,#ea580c);">🔥 Rescatar y Subir Todo a Firebase</button>
-            <button type="button" id="btn-cloud-sync-now" class="btn-primary" style="padding:8px 14px;font-size:0.80rem;">🔄 Sincronizar ahora</button>
+            <button type="button" id="btn-firebase-rescue-migrate" class="btn-primary" disabled title="Pausado hasta validar los respaldos" style="padding:8px 14px;font-size:0.80rem;background:#9ca3af;cursor:not-allowed;opacity:0.8;">🛡️ Rescate pausado</button>
+            <button type="button" id="btn-cloud-sync-now" class="btn-primary" disabled title="Pausado hasta validar los respaldos" style="padding:8px 14px;font-size:0.80rem;background:#9ca3af;cursor:not-allowed;opacity:0.8;">⏸️ Sincronización pausada</button>
           </div>
         </div>
       </div>
@@ -586,6 +586,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=20261018-sync-pause"></script>
 </body>
 </html>
