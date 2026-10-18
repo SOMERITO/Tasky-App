@@ -1036,21 +1036,32 @@
     const leftBoxIds = new Set(left.boxes.map(box => String(box.id)));
     const rightBoxIds = new Set(right.boxes.map(box => String(box.id)));
 
-    // A snapshot missing records that the other side still has, without explicit deletion tombstones,
-    // is structurally incomplete. Do not let its newer device clock overwrite shared task fields.
-    const leftMissingKnownData =
-      right.tasks.some(task => !leftTaskIds.has(String(task.id)) && !leftDeletedTaskIds.has(String(task.id))) ||
-      right.boxes.some(box => !leftBoxIds.has(String(box.id)) && !leftDeletedBoxIds.has(String(box.id)));
-    const rightMissingKnownData =
-      left.tasks.some(task => !rightTaskIds.has(String(task.id)) && !rightDeletedTaskIds.has(String(task.id))) ||
-      left.boxes.some(box => !rightBoxIds.has(String(box.id)) && !rightDeletedBoxIds.has(String(box.id)));
+    // Count records each snapshot lacks, excluding IDs explicitly deleted in that snapshot.
+    const leftMissingCount =
+      left.tasks.filter(task => !rightTaskIds.has(String(task.id)) && !rightDeletedTaskIds.has(String(task.id))).length +
+      left.boxes.filter(box => !rightBoxIds.has(String(box.id)) && !rightDeletedBoxIds.has(String(box.id))).length;
+    const rightMissingCount =
+      right.tasks.filter(task => !leftTaskIds.has(String(task.id)) && !leftDeletedTaskIds.has(String(task.id))).length +
+      right.boxes.filter(box => !leftBoxIds.has(String(box.id)) && !leftDeletedBoxIds.has(String(box.id))).length;
 
-    if (leftMissingKnownData && !rightMissingKnownData) {
-      primary = right;
-      secondary = left;
-    } else if (rightMissingKnownData && !leftMissingKnownData) {
+    // A much smaller snapshot may be partial even if it also contains one device-only task.
+    // Preserve fields from the substantially more complete snapshot, regardless of the device clock.
+    if (leftMissingCount > rightMissingCount + 3) {
       primary = left;
       secondary = right;
+    } else if (rightMissingCount > leftMissingCount + 3) {
+      primary = right;
+      secondary = left;
+    } else {
+      const leftMissingKnownData = rightMissingCount > 0;
+      const rightMissingKnownData = leftMissingCount > 0;
+      if (leftMissingKnownData && !rightMissingKnownData) {
+        primary = right;
+        secondary = left;
+      } else if (rightMissingKnownData && !leftMissingKnownData) {
+        primary = left;
+        secondary = right;
+      }
     }
 
     const ignoreUnversionedSecondary = Number(primary.updatedAt || 0) > 0 && Number(secondary.updatedAt || 0) <= 0;
@@ -1339,6 +1350,12 @@
 
       cloudSyncReady = true;
       cloudSyncReadyConfig = getCloudSyncConfigKey();
+      const syncText = document.getElementById("sync-status-text");
+      if (syncText) syncText.textContent = "Nube verificada · conciliando datos";
+      const modalSyncTime = document.getElementById("modal-sync-last-time");
+      if (modalSyncTime) {
+        modalSyncTime.textContent = `Copia remota verificada a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}; conciliando los dispositivos.`;
+      }
       applyIncomingSyncPayload(cloudCandidate, manual);
 
       const localNow = normalizeDataPayload(appState.data);
