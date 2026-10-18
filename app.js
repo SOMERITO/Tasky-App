@@ -212,12 +212,18 @@
       });
     });
 
+    boxes.forEach(box => { box.bootstrapSeed = true; });
+    tasks.forEach(task => { task.bootstrapSeed = true; });
     return {
       boxes,
       tasks,
       monthlyCompletedBase: 66,
       completedBoxCollapsed: false,
       taskMemoryByBox: {},
+      deletedTaskIds: [],
+      deletedBoxIds: [],
+      syncSchemaVersion: 1,
+      bootstrapSeedData: true,
       updatedAt: 0
     };
   }
@@ -610,6 +616,10 @@
       monthlyCompletedBase: typeof raw.monthlyCompletedBase === "number" ? raw.monthlyCompletedBase : 66,
       completedBoxCollapsed: Boolean(raw.completedBoxCollapsed),
       taskMemoryByBox: (raw.taskMemoryByBox && typeof raw.taskMemoryByBox === "object" && !Array.isArray(raw.taskMemoryByBox)) ? raw.taskMemoryByBox : {},
+      deletedTaskIds: Array.isArray(raw.deletedTaskIds) ? Array.from(new Set(raw.deletedTaskIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
+      deletedBoxIds: Array.isArray(raw.deletedBoxIds) ? Array.from(new Set(raw.deletedBoxIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
+      syncSchemaVersion: Number(raw.syncSchemaVersion || 0),
+      bootstrapSeedData: Boolean(raw.bootstrapSeedData),
       updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : 0
     };
   }
@@ -782,6 +792,9 @@
   // POINT 2: NATIVE FIREBASE CLOUD ENGINE (FIRESTORE + REALTIME DB) & FULL DATA RESCUE
   // Zero JSONBin reliance — rescues 100% of web tasks, Casillas, memory & history into Firebase
   // ==========================================================================
+  let cloudSyncReady = false;
+  let cloudSyncReadyConfig = "";
+  let cloudPullInFlight = false;
   let syncBroadcastChannel = null;
   try {
     if (typeof window.BroadcastChannel !== "undefined") {
@@ -809,6 +822,15 @@
       (window.location.protocol === "https:" || window.location.protocol === "http:") &&
       navigator.onLine !== false
     );
+  }
+
+  function getCloudSyncConfigKey() {
+    const cfg = appState.firebaseConfig || {};
+    return JSON.stringify({
+      projectId: String(cfg.projectId || "").trim(),
+      databaseURL: String(cfg.databaseURL || "").trim().replace(/\/+$/, ""),
+      docPath: String(cfg.docPath || "").trim().replace(/^\/+|\/+$/g, "")
+    });
   }
 
   function loadSavedFirebaseConfig() {
@@ -913,6 +935,9 @@
       u: Number(d.updatedAt || Date.now()),
       m: Number(d.monthlyCompletedBase || 66),
       cc: d.completedBoxCollapsed ? 1 : 0,
+      sv: 1,
+      dt: Array.isArray(d.deletedTaskIds) ? d.deletedTaskIds : [],
+      db: Array.isArray(d.deletedBoxIds) ? d.deletedBoxIds : [],
       b: d.boxes.map(x => [x.id, String(x.name || "").toUpperCase(), x.color || "#2563eb", x.collapsed ? 1 : 0, x.order || 0]),
       t: d.tasks.map(x => [
         x.id,
@@ -964,46 +989,156 @@
         tasks,
         monthlyCompletedBase: Number(parsed.m || 66),
         completedBoxCollapsed: Boolean(parsed.cc),
-        updatedAt: Number(parsed.u || Date.now())
+        deletedTaskIds: Array.isArray(parsed.dt) ? parsed.dt : [],
+        deletedBoxIds: Array.isArray(parsed.db) ? parsed.db : [],
+        syncSchemaVersion: Number(parsed.sv || 0),
+        updatedAt: Number(parsed.u || 0)
       });
     }
     return null;
   }
 
+  function syncFingerprint(raw) {
+    const d = normalizeDataPayload(raw);
+    if (!d) return "";
+    return JSON.stringify({
+      boxes: d.boxes,
+      tasks: d.tasks,
+      deletedTaskIds: d.deletedTaskIds.slice().sort(),
+      deletedBoxIds: d.deletedBoxIds.slice().sort(),
+      monthlyCompletedBase: d.monthlyCompletedBase,
+      completedBoxCollapsed: d.completedBoxCollapsed,
+      taskMemoryByBox: d.taskMemoryByBox || {},
+      history: d.history || {},
+      settings: d.settings || {}
+    });
+  }
+
+  function mergeSyncDatasets(leftRaw, rightRaw) {
+    const left = normalizeDataPayload(leftRaw);
+    const right = normalizeDataPayload(rightRaw);
+    if (!left) return right;
+    if (!right) return left;
+
+    const leftTime = Number(left.updatedAt || 0);
+    const rightTime = Number(right.updatedAt || 0);
+    const primary = (leftTime <= 0 && rightTime > 0) ? right
+      : (rightTime <= 0 && leftTime > 0) ? left
+      : (rightTime >= leftTime ? right : left);
+    const secondary = primary === left ? right : left;
+    const ignoreUnversionedSecondary = Number(primary.updatedAt || 0) > 0 && Number(secondary.updatedAt || 0) <= 0;
+    const primaryIsSeed = Boolean(primary.bootstrapSeedData);
+    const secondaryIsSeed = Boolean(secondary.bootstrapSeedData);
+
+    const deletedTaskIds = Array.from(new Set([
+      ...(left.deletedTaskIds || []), ...(right.deletedTaskIds || [])
+    ])).filter(Boolean);
+    const deletedBoxIds = Array.from(new Set([
+      ...(left.deletedBoxIds || []), ...(right.deletedBoxIds || [])
+    ])).filter(Boolean);
+    const deletedTasks = new Set(deletedTaskIds);
+    const deletedBoxes = new Set(deletedBoxIds);
+
+    function combineById(primaryItems, secondaryItems, tombstones, idKey, extraFilter) {
+      const byId = new Map();
+      const secondaryById = new Map((Array.isArray(secondaryItems) ? secondaryItems : [])
+        .filter(item => item && item[idKey] != null).map(item => [String(item[idKey]), item]));
+      (Array.isArray(primaryItems) ? primaryItems : []).forEach(item => {
+        if (!item || item[idKey] == null) return;
+        const id = String(item[idKey]);
+        if (tombstones.has(id)) return;
+        const matchedOther = secondaryById.has(id);
+        const otherItem = secondaryById.get(id);
+        const suppressSeed = item.bootstrapSeed === true && !secondaryIsSeed && !matchedOther;
+        const useOtherAuthoritativeItem = item.bootstrapSeed === true && otherItem && otherItem.bootstrapSeed !== true && !secondaryIsSeed;
+        const chosenItem = useOtherAuthoritativeItem ? otherItem : item;
+        if (!suppressSeed && (!extraFilter || extraFilter(chosenItem))) byId.set(id, chosenItem);
+      });
+      if (!ignoreUnversionedSecondary) {
+        (Array.isArray(secondaryItems) ? secondaryItems : []).forEach(item => {
+          if (!item || item[idKey] == null) return;
+          const id = String(item[idKey]);
+          if (tombstones.has(id) || byId.has(id)) return;
+          const matchedOther = (Array.isArray(primaryItems) ? primaryItems : []).some(entry => entry && String(entry[idKey]) === id);
+          const suppressSeed = item.bootstrapSeed === true && !primaryIsSeed && !matchedOther;
+          if (!suppressSeed && (!extraFilter || extraFilter(item))) byId.set(id, item);
+        });
+      }
+      return Array.from(byId.values());
+    }
+
+    const taskItems = combineById(primary.tasks, secondary.tasks, deletedTasks, "id",
+      task => !deletedBoxes.has(String(task.boxId)));
+    const nonSeedTaskBoxIds = new Set(taskItems
+      .filter(task => !(task.bootstrapSeed === true && (primaryIsSeed || secondaryIsSeed)))
+      .map(task => String(task.boxId)));
+    const boxes = combineById(primary.boxes, secondary.boxes, deletedBoxes, "id",
+      box => nonSeedTaskBoxIds.has(String(box.id)) || !box.bootstrapSeed || secondaryHasBox(secondary.boxes, box.id));
+    function secondaryHasBox(items, boxId) {
+      return (Array.isArray(items) ? items : []).some(box => box && String(box.id) === String(boxId));
+    }
+
+    const tasks = taskItems.filter(task => !deletedBoxes.has(String(task.boxId)));
+    const merged = {
+      ...primary,
+      boxes,
+      tasks,
+      deletedTaskIds,
+      deletedBoxIds,
+      taskMemoryByBox: { ...(secondary.taskMemoryByBox || {}), ...(primary.taskMemoryByBox || {}) },
+      history: { ...(secondary.history || {}), ...(primary.history || {}) },
+      settings: { ...(secondary.settings || {}), ...(primary.settings || {}) },
+      bootstrapSeedData: primaryIsSeed && secondaryIsSeed,
+      syncSchemaVersion: 1,
+      updatedAt: Math.max(leftTime, rightTime)
+    };
+    if (!merged.bootstrapSeedData) {
+      merged.boxes.forEach(box => { delete box.bootstrapSeed; });
+      merged.tasks.forEach(task => { delete task.bootstrapSeed; });
+    }
+
+    if (syncFingerprint(merged) !== syncFingerprint(primary)) {
+      merged.updatedAt = Math.max(Date.now(), Math.max(leftTime, rightTime) + 1);
+    }
+    return merged;
+  }
+
   function applyIncomingSyncPayload(incomingRaw, showNotification = false) {
     const norm = normalizeDataPayload(incomingRaw);
     if (!norm || !Array.isArray(norm.boxes) || !norm.boxes.length) return false;
-    const incomingTime = Number(norm.updatedAt || 0);
-    const localTime = Number(appState.data.updatedAt || 0);
+    const local = normalizeDataPayload(appState.data);
+    const merged = mergeSyncDatasets(local, norm);
+    if (!merged) return false;
 
-    const currentSig = JSON.stringify({ b: appState.data.boxes, t: appState.data.tasks });
-    const nextSig = JSON.stringify({ b: norm.boxes, t: norm.tasks });
+    const currentSig = syncFingerprint(local);
+    const nextSig = syncFingerprint(merged);
     if (currentSig === nextSig) {
-      if (incomingTime > localTime) appState.data.updatedAt = incomingTime;
+      if (Number(merged.updatedAt || 0) > Number(appState.data.updatedAt || 0)) {
+        appState.data.updatedAt = merged.updatedAt;
+        appState.data.syncSchemaVersion = 1;
+        safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
+      }
+      if (syncFingerprint(merged) !== syncFingerprint(norm)) pushCloudSync(false);
       return false;
     }
 
-    if (localTime === 0 || incomingTime >= localTime) {
-      if (norm.taskMemoryByBox && Object.keys(norm.taskMemoryByBox).length > 0) {
-        appState.taskMemory = { ...appState.taskMemory, ...norm.taskMemoryByBox };
-        safeStorage.setItem(STORAGE_KEYS.MEMORY, JSON.stringify(appState.taskMemory));
-      }
-      appState.data = norm;
-      safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
-      rebuildTaskMemoryFromTasks();
-      renderBoard();
-      const syncText = document.getElementById("sync-status-text");
-      if (syncText) syncText.textContent = "Firebase Activo";
-      if (showNotification) {
-        showToast("🔥 Sincronizado con Firebase");
-      }
-      return true;
-    }
-    return false;
+    appState.data = merged;
+    safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
+    rebuildTaskMemoryFromTasks();
+    renderBoard();
+    const syncText = document.getElementById("sync-status-text");
+    if (syncText) syncText.textContent = "Firebase conciliando datos";
+    if (syncFingerprint(merged) !== syncFingerprint(norm)) pushCloudSync(false);
+    if (showNotification) showToast("🔄 Datos fusionados sin perder tareas");
+    return true;
   }
 
   let cloudPushTimer = null;
   function pushCloudSync(forceImmediateToast = false) {
+    if (!cloudSyncReady || cloudSyncReadyConfig !== getCloudSyncConfigKey()) {
+      if (forceImmediateToast) showToast("Sincronización bloqueada por seguridad: primero hay que verificar la nube o usar «Rescatar y Subir Todo a Firebase».");
+      return;
+    }
     if (syncBroadcastChannel) {
       try {
         syncBroadcastChannel.postMessage({
@@ -1020,6 +1155,9 @@
     cloudPushTimer = setTimeout(async () => {
       const fullPayload = {
         ...appState.data,
+        syncSchemaVersion: 1,
+        deletedTaskIds: Array.isArray(appState.data.deletedTaskIds) ? appState.data.deletedTaskIds : [],
+        deletedBoxIds: Array.isArray(appState.data.deletedBoxIds) ? appState.data.deletedBoxIds : [],
         taskMemoryByBox: appState.taskMemory,
         history: appState.history,
         settings: appState.settings,
@@ -1091,86 +1229,89 @@
       if (manual) showToast("Modo local activo");
       return;
     }
+    if (cloudPullInFlight) return;
+    cloudPullInFlight = true;
 
-    let latestCandidate = null;
-    let latestTs = -1;
-
-    // 1. Pull from Cloud Firestore Document
     try {
-      const fsUrl = getFirebaseFirestoreUrl();
-      const res = await window.fetch(fsUrl, { cache: "no-store" });
-      if (res && res.ok) {
-        const docJson = await res.json();
-        if (docJson && docJson.fields) {
-          const rawStr = docJson.fields.payloadJson && docJson.fields.payloadJson.stringValue;
+      const candidates = [];
+
+      try {
+        const fsUrl = getFirebaseFirestoreUrl();
+        const res = await window.fetch(fsUrl, { cache: "no-store" });
+        if (res && res.ok) {
+          const docJson = await res.json();
+          const rawStr = docJson && docJson.fields && docJson.fields.payloadJson && docJson.fields.payloadJson.stringValue;
           if (rawStr) {
-            const parsed = JSON.parse(rawStr);
-            const norm = normalizeDataPayload(parsed);
-            if (norm && Number(norm.updatedAt || 0) > latestTs) {
-              latestTs = Number(norm.updatedAt || 0);
-              latestCandidate = norm;
-            }
+            const norm = normalizeDataPayload(JSON.parse(rawStr));
+            if (norm && norm.boxes.length && Number(norm.updatedAt || 0) > 0) candidates.push(norm);
           }
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
 
-    // 2. Pull from Firebase Realtime Database
-    try {
-      const rtdbUrl = getFirebaseRtdbUrl();
-      if (rtdbUrl) {
-        const resRt = await window.fetch(rtdbUrl, { cache: "no-store" });
-        if (resRt && resRt.ok) {
-          const parsedRt = await resRt.json();
-          if (parsedRt && typeof parsedRt === "object") {
+      try {
+        const rtdbUrl = getFirebaseRtdbUrl();
+        if (rtdbUrl) {
+          const resRt = await window.fetch(rtdbUrl, { cache: "no-store" });
+          if (resRt && resRt.ok) {
+            const parsedRt = await resRt.json();
             const normRt = unpackCompactEnvelope(parsedRt);
-            if (normRt && Number(normRt.updatedAt || 0) > latestTs) {
-              latestTs = Number(normRt.updatedAt || 0);
-              latestCandidate = normRt;
-            }
+            if (normRt && normRt.boxes.length && Number(normRt.updatedAt || 0) > 0) candidates.push(normRt);
           }
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
 
-    // 3. Also check instant stream channel for any newer in-flight updates
-    try {
-      const resStream = await window.fetch(getCloudTopicUrl(`/json?poll=1&since=all&_t=${Date.now()}`), { cache: "no-store" });
-      if (resStream && resStream.ok) {
-        const text = await resStream.text();
-        if (text && text.trim()) {
-          const lines = text.trim().split("\\n");
+      // ntfy is a transport/history stream, not the authority. Merge its newest valid message with durable snapshots.
+      try {
+        const resStream = await window.fetch(getCloudTopicUrl(`/json?poll=1&since=all&_t=${Date.now()}`), { cache: "no-store" });
+        if (resStream && resStream.ok) {
+          const responseText = await resStream.text();
+          const lines = responseText ? responseText.trim().split(/\\r?\\n/) : [];
           for (let i = lines.length - 1; i >= 0; i--) {
             try {
               const msg = JSON.parse(lines[i]);
-              if (msg && msg.event === "message" && msg.message) {
-                const parsed = JSON.parse(msg.message);
-                const unpacked = unpackCompactEnvelope(parsed);
-                if (unpacked && Number(unpacked.updatedAt || 0) > latestTs) {
-                  latestTs = Number(unpacked.updatedAt || 0);
-                  latestCandidate = unpacked;
-                }
+              if (!msg || msg.event !== "message" || !msg.message) continue;
+              const parsed = JSON.parse(msg.message);
+              const unpacked = unpackCompactEnvelope(parsed);
+              if (unpacked && unpacked.boxes.length && Number(unpacked.updatedAt || 0) > 0) {
+                candidates.push(unpacked);
                 break;
               }
             } catch (err) {}
           }
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
 
-    if (latestCandidate) {
-      const applied = applyIncomingSyncPayload(latestCandidate, manual);
-      if (!applied && Number(appState.data.updatedAt || 0) > latestTs) {
-        pushCloudSync(manual);
-      } else if (manual && !applied) {
-        showToast("🔥 Firebase ya está actualizado con tus últimos cambios");
+      if (!candidates.length) {
+        const syncText = document.getElementById("sync-status-text");
+        if (syncText) syncText.textContent = "Datos locales protegidos · nube no verificada";
+        const modalSyncTime = document.getElementById("modal-sync-last-time");
+        if (modalSyncTime) modalSyncTime.textContent = "No se encontró una copia remota verificable. No se subieron datos automáticamente.";
+        if (manual) showToast("No se pudo verificar la nube. Tus datos locales se conservaron y no se subió ninguna copia automáticamente.", true);
+        return;
       }
-    } else {
-      // Nothing in Firebase yet -> rescue and upload all current data immediately!
-      if (Number(appState.data.updatedAt || 0) === 0) {
-        appState.data.updatedAt = Date.now();
+
+      let cloudCandidate = candidates[0];
+      for (let i = 1; i < candidates.length; i++) {
+        cloudCandidate = mergeSyncDatasets(cloudCandidate, candidates[i]);
       }
-      pushCloudSync(manual);
+      const cloudNeedsRepair = candidates.some(candidate => syncFingerprint(candidate) !== syncFingerprint(cloudCandidate));
+
+      cloudSyncReady = true;
+      cloudSyncReadyConfig = getCloudSyncConfigKey();
+      applyIncomingSyncPayload(cloudCandidate, manual);
+
+      const localNow = normalizeDataPayload(appState.data);
+      if (
+        cloudNeedsRepair ||
+        syncFingerprint(localNow) !== syncFingerprint(cloudCandidate) ||
+        Number(localNow.updatedAt || 0) > Number(cloudCandidate.updatedAt || 0)
+      ) {
+        pushCloudSync(false);
+      } else if (manual) {
+        showToast("🔄 Sincronización verificada; los datos se conciliaron sin reemplazar tareas faltantes.");
+      }
+    } finally {
+      cloudPullInFlight = false;
     }
   }
 
@@ -1252,7 +1393,8 @@
         );
         const baseTasksForBox = baseline.tasks.filter(t => t.boxId === baseBox.id);
         baseTasksForBox.forEach((bt) => {
-          if (!existingTitlesInBox.has(bt.title.trim().toLowerCase())) {
+          if (!existingTitlesInBox.has(bt.title.trim().toLowerCase()) &&
+              !(Array.isArray(loaded.deletedTaskIds) && loaded.deletedTaskIds.includes(String(bt.id)))) {
             loaded.tasks.push({
               ...bt,
               boxId: targetBox.id,
@@ -1368,7 +1510,47 @@
   }
 
   function saveData(recordBackup = true, actionLabel = "Cambio guardado") {
-    appState.data.updatedAt = Date.now();
+    let previousData = null;
+    try {
+      const previousRaw = safeStorage.getItem(STORAGE_KEYS.DATA);
+      if (previousRaw) previousData = JSON.parse(previousRaw);
+    } catch (e) {}
+
+    const previousTasksById = new Map((Array.isArray(previousData && previousData.tasks) ? previousData.tasks : [])
+      .filter(task => task && task.id != null).map(task => [String(task.id), task]));
+    const previousBoxesById = new Map((Array.isArray(previousData && previousData.boxes) ? previousData.boxes : [])
+      .filter(box => box && box.id != null).map(box => [String(box.id), box]));
+    (appState.data.tasks || []).forEach(task => {
+      const previous = previousTasksById.get(String(task.id));
+      if (task.bootstrapSeed && previous && JSON.stringify(task) !== JSON.stringify(previous)) delete task.bootstrapSeed;
+    });
+    (appState.data.boxes || []).forEach(box => {
+      const previous = previousBoxesById.get(String(box.id));
+      if (box.bootstrapSeed && previous && JSON.stringify(box) !== JSON.stringify(previous)) delete box.bootstrapSeed;
+    });
+
+    const currentTaskIds = new Set((appState.data.tasks || []).map(task => String(task.id)));
+    const currentBoxIds = new Set((appState.data.boxes || []).map(box => String(box.id)));
+    const deletedTasks = new Set([
+      ...(Array.isArray(previousData && previousData.deletedTaskIds) ? previousData.deletedTaskIds : []),
+      ...(Array.isArray(appState.data.deletedTaskIds) ? appState.data.deletedTaskIds : []),
+      ...((Array.isArray(previousData && previousData.tasks) ? previousData.tasks : [])
+        .filter(task => task && task.id != null && !currentTaskIds.has(String(task.id)))
+        .map(task => String(task.id)))
+    ]);
+    const deletedBoxes = new Set([
+      ...(Array.isArray(previousData && previousData.deletedBoxIds) ? previousData.deletedBoxIds : []),
+      ...(Array.isArray(appState.data.deletedBoxIds) ? appState.data.deletedBoxIds : []),
+      ...((Array.isArray(previousData && previousData.boxes) ? previousData.boxes : [])
+        .filter(box => box && box.id != null && !currentBoxIds.has(String(box.id)))
+        .map(box => String(box.id)))
+    ]);
+    currentTaskIds.forEach(id => deletedTasks.delete(id));
+    currentBoxIds.forEach(id => deletedBoxes.delete(id));
+    appState.data.deletedTaskIds = Array.from(deletedTasks);
+    appState.data.deletedBoxIds = Array.from(deletedBoxes);
+    appState.data.syncSchemaVersion = 1;
+    appState.data.updatedAt = Math.max(Date.now(), Number(appState.data.updatedAt || 0) + 1);
     const payloadStr = JSON.stringify(appState.data);
     const ok = safeStorage.setItem(STORAGE_KEYS.DATA, payloadStr);
     pushCloudSync();
@@ -3526,6 +3708,8 @@
         safeStorage.setItem(STORAGE_KEYS.CLOUD_CHANNEL, appState.cloudChannel);
       }
       safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(appState.firebaseConfig));
+      cloudSyncReady = false;
+      cloudSyncReadyConfig = "";
       startCloudSyncStream();
     }
 
@@ -3534,7 +3718,6 @@
       syncNowBtn.addEventListener("click", () => {
         playUiSound("tap");
         saveFirebaseSettingsFromInputs();
-        pushCloudSync(false);
         pullCloudSync(true);
       });
     }
@@ -3544,7 +3727,12 @@
       rescueMigrateBtn.addEventListener("click", () => {
         playUiSound("complete");
         saveFirebaseSettingsFromInputs();
-        appState.data.updatedAt = Date.now();
+        cloudSyncReady = true;
+        cloudSyncReadyConfig = getCloudSyncConfigKey();
+        appState.data.updatedAt = Math.max(Date.now(), Number(appState.data.updatedAt || 0) + 1);
+        appState.data.bootstrapSeedData = false;
+        (appState.data.tasks || []).forEach(task => { delete task.bootstrapSeed; });
+        (appState.data.boxes || []).forEach(box => { delete box.bootstrapSeed; });
         saveData(true, "Rescate y migración completa a Firebase");
         pushCloudSync(true);
       });
@@ -3555,6 +3743,9 @@
     document.getElementById("btn-restore-initial-records").addEventListener("click", () => {
       playUiSound("complete");
       appState.data = buildRestoredUserDataset();
+      appState.data.bootstrapSeedData = false;
+      (appState.data.tasks || []).forEach(task => { delete task.bootstrapSeed; });
+      (appState.data.boxes || []).forEach(box => { delete box.bootstrapSeed; });
       saveData(true, "Restauró registros originales");
       document.getElementById("modal-options").classList.remove("open");
       renderBoard();
