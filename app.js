@@ -15,10 +15,6 @@
     FIREBASE_CONFIG: "tasky_firebase_config_v1"
   };
 
-  // SAFETY PAUSE: prevent cross-device/cloud overwrites while Tasky backups are reconciled.
-  // Keep local editing and local backups available. Do not enable until merge is validated.
-  const CLOUD_SYNC_PAUSED_FOR_RECONCILIATION = true;
-
   const memoryStorage = new Map();
 
   const safeStorage = {
@@ -463,6 +459,42 @@
     }, duration);
   }
 
+  function copyTextToClipboard(text, toastMessage = "📋 Copiado al portapapeles", btnEl = null) {
+    const cleanText = String(text || "");
+    const triggerFeedback = () => {
+      playUiSound("tap");
+      if (btnEl) {
+        btnEl.classList.add("copy-success-flash");
+        setTimeout(() => btnEl.classList.remove("copy-success-flash"), 850);
+      }
+      showToast(toastMessage);
+    };
+
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      navigator.clipboard.writeText(cleanText).then(triggerFeedback).catch(() => {
+        const ta = document.createElement("textarea");
+        ta.value = cleanText;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta);
+        triggerFeedback();
+      });
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = cleanText;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(ta);
+      triggerFeedback();
+    }
+  }
+
   // Point 3: Always capitalize first letter of every task
   function capitalizeFirst(str) {
     const trimmed = String(str || "").trim();
@@ -752,7 +784,7 @@
   // ==========================================================================
   let syncBroadcastChannel = null;
   try {
-    if (!CLOUD_SYNC_PAUSED_FOR_RECONCILIATION && typeof window.BroadcastChannel !== "undefined") {
+    if (typeof window.BroadcastChannel !== "undefined") {
       syncBroadcastChannel = new window.BroadcastChannel("tasky_firebase_realtime_bus");
       syncBroadcastChannel.onmessage = (ev) => {
         if (ev.data && ev.data.payload && ev.data.deviceId !== appState.deviceId) {
@@ -763,7 +795,6 @@
   } catch (e) {}
 
   window.addEventListener("storage", (ev) => {
-    if (CLOUD_SYNC_PAUSED_FOR_RECONCILIATION) return;
     if (ev.key === STORAGE_KEYS.DATA && ev.newValue) {
       try {
         const parsed = JSON.parse(ev.newValue);
@@ -774,7 +805,6 @@
 
   function isCloudNetworkAllowed() {
     return (
-      !CLOUD_SYNC_PAUSED_FOR_RECONCILIATION &&
       typeof window.fetch === "function" &&
       (window.location.protocol === "https:" || window.location.protocol === "http:") &&
       navigator.onLine !== false
@@ -974,14 +1004,6 @@
 
   let cloudPushTimer = null;
   function pushCloudSync(forceImmediateToast = false) {
-    if (CLOUD_SYNC_PAUSED_FOR_RECONCILIATION) {
-      const syncText = document.getElementById("sync-status-text");
-      if (syncText) syncText.textContent = "Nube pausada · datos locales";
-      const modalSyncTime = document.getElementById("modal-sync-last-time");
-      if (modalSyncTime) modalSyncTime.textContent = "Sincronización pausada para proteger los datos durante la conciliación.";
-      if (forceImmediateToast) showToast("Sincronización en nube pausada para proteger tus datos.");
-      return;
-    }
     if (syncBroadcastChannel) {
       try {
         syncBroadcastChannel.postMessage({
@@ -1065,14 +1087,6 @@
   }
 
   async function pullCloudSync(manual = false) {
-    if (CLOUD_SYNC_PAUSED_FOR_RECONCILIATION) {
-      const syncText = document.getElementById("sync-status-text");
-      if (syncText) syncText.textContent = "Nube pausada · datos locales";
-      const modalSyncTime = document.getElementById("modal-sync-last-time");
-      if (modalSyncTime) modalSyncTime.textContent = "Sincronización pausada para proteger los datos durante la conciliación.";
-      if (manual) showToast("Sincronización en nube pausada. Tus datos locales se conservan en este dispositivo.");
-      return;
-    }
     if (!isCloudNetworkAllowed()) {
       if (manual) showToast("Modo local activo");
       return;
@@ -1627,6 +1641,20 @@
     const hitElements = document.elementsFromPoint(clientX, clientY);
 
     if (dragEngine.activeType === "task") {
+      // Point 3: Auto-expand any collapsed Casilla when dragging a task over it so the user can see where to position the task
+      const collapsedOverBox = hitElements.find(
+        el => el.classList && el.classList.contains("box-card") && el.classList.contains("collapsed") && !el.classList.contains("drop-ghost-clone") && el.dataset.boxId
+      );
+      if (collapsedOverBox) {
+        collapsedOverBox.classList.remove("collapsed");
+        const targetBoxObj = appState.data.boxes.find(b => b.id === collapsedOverBox.dataset.boxId);
+        if (targetBoxObj) {
+          targetBoxObj.collapsed = false;
+        }
+        playUiSound("unfold");
+        showToast(`📂 ${targetBoxObj ? targetBoxObj.name.toUpperCase() : "Casilla"} desplegada`);
+      }
+
       const overTask = hitElements.find(
         el => el.classList && el.classList.contains("task-item") && !el.classList.contains("drop-ghost-clone") && el !== dragEngine.activeEl
       );
@@ -1861,6 +1889,9 @@
 
           <div class="box-header-actions">
             <span class="${countSquareClass}" data-tip-title="${escapeHtml(countSquareTipTitle)}" data-tip-desc="${escapeHtml(countSquareTipDesc)}">${countSquareNumber}</span>
+            <button type="button" class="box-ctrl-btn copy-box-btn" data-box-action="copy-box" aria-label="Copiar casilla y tareas" data-tip-title="📋 Copiar casilla y tareas" data-tip-desc="Copia el título de esta casilla y todas las tareas registradas en ella al portapapeles.">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
             <button type="button" class="box-ctrl-btn collapse-right-btn" data-box-action="collapse" data-tip-title="⌄ Plegar o desplegar casilla" data-tip-desc="Oculta o muestra el listado de tareas de este bloque para despejar tu vista.">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
@@ -1908,6 +1939,28 @@
         saveData(false);
         showToast(box.collapsed ? "Casilla plegada" : "Casilla desplegada");
       });
+
+      const copyBoxBtn = card.querySelector('[data-box-action="copy-box"]');
+      if (copyBoxBtn) {
+        copyBoxBtn.addEventListener("click", () => {
+          const allRegisteredInBox = appState.data.tasks
+            .filter(t => t.boxId === box.id)
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+          const lines = [box.name.toUpperCase()];
+          if (allRegisteredInBox.length === 0) {
+            lines.push("(Sin tareas registradas)");
+          } else {
+            allRegisteredInBox.forEach((t) => {
+              lines.push(`• ${t.title}`);
+            });
+          }
+          copyTextToClipboard(
+            lines.join("\n"),
+            `📋 Copiado: ${box.name.toUpperCase()} (${allRegisteredInBox.length} tarea${allRegisteredInBox.length === 1 ? "" : "s"})`,
+            copyBoxBtn
+          );
+        });
+      }
 
       card.querySelector('[data-box-action="collapse"]').addEventListener("click", () => {
         box.collapsed = !box.collapsed;
@@ -2128,6 +2181,9 @@
           </div>
           <div class="box-header-actions">
             <button type="button" class="btn-secondary" id="btn-clear-completed-inline" style="padding:6px 12px;font-size:0.78rem;" data-tip-title="🧹 Archivar completadas" data-tip-desc="Limpia de la vista las tareas ya finalizadas conservando tu historial mensual.">Limpiar completadas</button>
+            <button type="button" class="box-ctrl-btn copy-box-btn" data-comp-action="copy-completed" aria-label="Copiar tareas completadas" data-tip-title="📋 Copiar completadas" data-tip-desc="Copia el título TAREAS COMPLETADAS y el listado de tareas logradas hoy.">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
             <button type="button" class="box-ctrl-btn collapse-right-btn" data-comp-action="collapse" data-tip-title="⌄ Plegar o desplegar completadas" data-tip-desc="Oculta o muestra tus tareas completadas del día.">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
@@ -2146,6 +2202,21 @@
         if (showMsg) {
           showToast(appState.data.completedBoxCollapsed ? "Completadas plegadas" : "Completadas desplegadas");
         }
+      }
+
+      const copyCompBtn = compCard.querySelector('[data-comp-action="copy-completed"]');
+      if (copyCompBtn) {
+        copyCompBtn.addEventListener("click", () => {
+          const lines = ["TAREAS COMPLETADAS"];
+          allCompletedTasks.forEach((t) => {
+            lines.push(`• ${t.title}`);
+          });
+          copyTextToClipboard(
+            lines.join("\n"),
+            `📋 Copiado: TAREAS COMPLETADAS (${allCompletedTasks.length})`,
+            copyCompBtn
+          );
+        });
       }
 
       compCard.querySelector('[data-comp-action="collapse"]').addEventListener("click", () => {
@@ -2224,6 +2295,9 @@
       </div>
 
       <div class="task-right-actions">
+        <button type="button" class="task-act-btn" data-task-action="copy" aria-label="Copiar tarea" data-tip-title="📋 Copiar tarea" data-tip-desc="Copia el texto de esta tarea al portapapeles.">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
         <button type="button" class="task-act-btn" data-task-action="edit" data-tip-title="✏️ Editar texto" data-tip-desc="Abre el editor para modificar el texto de esta tarea (también puedes hacer clic en el título).">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         </button>
@@ -2255,6 +2329,13 @@
       playUiSound("modalOpen");
       openEditTaskTitleModal(task.id);
     });
+    const copyTaskBtn = item.querySelector('[data-task-action="copy"]');
+    if (copyTaskBtn) {
+      copyTaskBtn.addEventListener("click", () => {
+        copyTextToClipboard(task.title, "📋 Tarea copiada al portapapeles", copyTaskBtn);
+      });
+    }
+
     item.querySelector('[data-task-action="edit"]').addEventListener("click", () => {
       playUiSound("modalOpen");
       openEditTaskTitleModal(task.id);
@@ -3452,10 +3533,6 @@
     if (syncNowBtn) {
       syncNowBtn.addEventListener("click", () => {
         playUiSound("tap");
-        if (CLOUD_SYNC_PAUSED_FOR_RECONCILIATION) {
-          showToast("Sincronización pausada para proteger tus datos durante la conciliación.");
-          return;
-        }
         saveFirebaseSettingsFromInputs();
         pushCloudSync(false);
         pullCloudSync(true);
@@ -3466,10 +3543,6 @@
     if (rescueMigrateBtn) {
       rescueMigrateBtn.addEventListener("click", () => {
         playUiSound("complete");
-        if (CLOUD_SYNC_PAUSED_FOR_RECONCILIATION) {
-          showToast("La migración a Firebase está pausada hasta validar los respaldos.");
-          return;
-        }
         saveFirebaseSettingsFromInputs();
         appState.data.updatedAt = Date.now();
         saveData(true, "Rescate y migración completa a Firebase");
@@ -3531,8 +3604,17 @@
       fabWrapper.classList.toggle("open");
     });
 
-    // Point 6: Button above + scrolls smoothly back to the top of the page
-    document.getElementById("fab-collapse-all").addEventListener("click", () => {
+    // Point 1: Scroll-to-top button activates only after scrolling down a bit (not visible at the very top)
+    const fabScrollTopBtn = document.getElementById("fab-collapse-all");
+    function updateScrollTopButtonVisibility() {
+      if (!fabScrollTopBtn) return;
+      const scrolledY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      fabScrollTopBtn.classList.toggle("is-visible", scrolledY > 160);
+    }
+    window.addEventListener("scroll", updateScrollTopButtonVisibility, { passive: true });
+    updateScrollTopButtonVisibility();
+
+    fabScrollTopBtn.addEventListener("click", () => {
       playUiSound("scrollTop");
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
@@ -3570,14 +3652,7 @@
     renderBoard();
     document.documentElement.classList.remove("tasky-booting");
 
-    if (CLOUD_SYNC_PAUSED_FOR_RECONCILIATION) {
-      const syncText = document.getElementById("sync-status-text");
-      if (syncText) syncText.textContent = "Nube pausada · datos locales";
-      const modalSyncTime = document.getElementById("modal-sync-last-time");
-      if (modalSyncTime) modalSyncTime.textContent = "Sincronización pausada para proteger los datos durante la conciliación.";
-    }
-
-    // Cloud sync intentionally paused until both device backups are reconciled.
+    // Start real-time cross-device & incognito cloud sync (Web <-> Incognito <-> Mobile App)
     pullCloudSync(false);
     startCloudSyncStream();
     setInterval(() => {
