@@ -1212,14 +1212,19 @@
       } catch (e) {}
 
       const syncText = document.getElementById("sync-status-text");
-      if (syncText) syncText.textContent = "Firebase Activo";
+      if (syncText) syncText.textContent = firebaseSaved ? "Firebase sincronizado" : "Nube no confirmada · datos locales protegidos";
       const modalSyncTime = document.getElementById("modal-sync-last-time");
       if (modalSyncTime) {
         const now = new Date();
-        modalSyncTime.textContent = `${now.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} (Firebase ${appState.firebaseConfig.projectId || "Cloud"} sincronizado)`;
+        modalSyncTime.textContent = firebaseSaved
+          ? `${now.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} (escritura confirmada en Firebase ${appState.firebaseConfig.projectId || "Cloud"})`
+          : "No se confirmó la escritura remota; los datos locales se conservaron.";
       }
       if (forceImmediateToast) {
-        showToast(firebaseSaved ? "🔥 Todas tus tareas y casillas están en Firebase" : "🔥 Datos respaldados y sincronizados");
+        showToast(
+          firebaseSaved ? "🔥 Escritura confirmada en Firebase" : "⚠️ No se confirmó el guardado remoto; tus datos locales se conservaron.",
+          !firebaseSaved
+        );
       }
     }, forceImmediateToast ? 10 : 80);
   }
@@ -1234,6 +1239,7 @@
 
     try {
       const candidates = [];
+      let durableCandidateCount = 0;
 
       try {
         const fsUrl = getFirebaseFirestoreUrl();
@@ -1243,7 +1249,10 @@
           const rawStr = docJson && docJson.fields && docJson.fields.payloadJson && docJson.fields.payloadJson.stringValue;
           if (rawStr) {
             const norm = normalizeDataPayload(JSON.parse(rawStr));
-            if (norm && norm.boxes.length && Number(norm.updatedAt || 0) > 0) candidates.push(norm);
+            if (norm && norm.boxes.length && Number(norm.updatedAt || 0) > 0) {
+              candidates.push(norm);
+              durableCandidateCount++;
+            }
           }
         }
       } catch (e) {}
@@ -1255,7 +1264,10 @@
           if (resRt && resRt.ok) {
             const parsedRt = await resRt.json();
             const normRt = unpackCompactEnvelope(parsedRt);
-            if (normRt && normRt.boxes.length && Number(normRt.updatedAt || 0) > 0) candidates.push(normRt);
+            if (normRt && normRt.boxes.length && Number(normRt.updatedAt || 0) > 0) {
+              candidates.push(normRt);
+              durableCandidateCount++;
+            }
           }
         }
       } catch (e) {}
@@ -1265,7 +1277,7 @@
         const resStream = await window.fetch(getCloudTopicUrl(`/json?poll=1&since=all&_t=${Date.now()}`), { cache: "no-store" });
         if (resStream && resStream.ok) {
           const responseText = await resStream.text();
-          const lines = responseText ? responseText.trim().split(/\\r?\\n/) : [];
+          const lines = responseText ? responseText.trim().split(/\r?\n/) : [];
           for (let i = lines.length - 1; i >= 0; i--) {
             try {
               const msg = JSON.parse(lines[i]);
@@ -1281,7 +1293,9 @@
         }
       } catch (e) {}
 
-      if (!candidates.length) {
+      if (durableCandidateCount === 0 || !candidates.length) {
+        cloudSyncReady = false;
+        cloudSyncReadyConfig = "";
         const syncText = document.getElementById("sync-status-text");
         if (syncText) syncText.textContent = "Datos locales protegidos · nube no verificada";
         const modalSyncTime = document.getElementById("modal-sync-last-time");
@@ -1329,7 +1343,7 @@
             const parsed = JSON.parse(msg.message);
             if (parsed && parsed.d !== appState.deviceId && parsed.deviceId !== appState.deviceId) {
               const unpacked = unpackCompactEnvelope(parsed);
-              if (unpacked) {
+              if (unpacked && cloudSyncReady && cloudSyncReadyConfig === getCloudSyncConfigKey()) {
                 applyIncomingSyncPayload(unpacked, true);
               }
             }
