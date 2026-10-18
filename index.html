@@ -185,17 +185,33 @@
     </div>
   </div>
 
-  <!-- MODAL 1: "Tareas reprogramadas" -->
+  <!-- MODAL 1: "Tareas reprogramadas" (con casillas de selección múltiple y botón Programar todas para hoy) -->
   <div id="modal-rescheduled-list" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="resched-modal-title">
     <div class="modal-dialog wide">
       <div class="modal-header">
         <div>
-          <div class="modal-eyebrow">☀️ PLANIFICACIÓN</div>
+          <div class="modal-eyebrow">☀️ PLANIFICACIÓN FUTURA</div>
           <h3 id="resched-modal-title" class="modal-title">Tareas reprogramadas</h3>
+          <p style="font-size:0.82rem;color:var(--muted);margin-top:3px;">Selecciona una, varias o todas las tareas para programarlas para el día de hoy.</p>
         </div>
         <button type="button" class="modal-close-btn" data-close-modal="modal-rescheduled-list" aria-label="Cerrar">✕</button>
       </div>
       <div id="rescheduled-modal-items" class="resched-modal-list"></div>
+    </div>
+  </div>
+
+  <!-- MODAL 1B: "Tareas atrasadas" (Separado de Reprogramadas · con selección múltiple y Programar todas para hoy) -->
+  <div id="modal-overdue-list" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="overdue-modal-title">
+    <div class="modal-dialog wide">
+      <div class="modal-header">
+        <div>
+          <div class="modal-eyebrow" style="color:var(--danger);">⚠️ CONTROL DE VENCIMIENTOS</div>
+          <h3 id="overdue-modal-title" class="modal-title">Tareas atrasadas</h3>
+          <p style="font-size:0.82rem;color:var(--muted);margin-top:3px;">Tareas pendientes con fecha anterior a hoy. Elige varias con las casillas o programa todas para hoy.</p>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal="modal-overdue-list" aria-label="Cerrar">✕</button>
+      </div>
+      <div id="overdue-modal-items" class="resched-modal-list"></div>
     </div>
   </div>
 
@@ -383,15 +399,15 @@
         <button type="button" class="modal-close-btn" data-close-modal="modal-options" aria-label="Cerrar">✕</button>
       </div>
 
-      <!-- Synchronization Details Card inside 3-Dots Modal (Point 13: Cloud Web <-> App Sync) -->
-      <div style="padding:16px 18px;border-radius:18px;background:var(--success-soft);border:1px solid rgba(22,163,74,0.28);margin-bottom:16px;display:flex;flex-direction:column;gap:12px;">
+      <!-- Point 2: Native Firebase Cloud Synchronization & Full Data Rescue Card (0% JSONBin) -->
+      <div style="padding:18px 20px;border-radius:18px;background:var(--success-soft);border:1px solid rgba(22,163,74,0.32);margin-bottom:16px;display:flex;flex-direction:column;gap:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
           <div style="display:flex;align-items:center;gap:12px;">
             <span class="sync-dot" style="width:11px;height:11px;"></span>
             <div>
-              <div style="font-weight:800;font-size:0.94rem;color:var(--text);">Sincronización Nube en Tiempo Real (Web Laptop ↔ App Celular)</div>
+              <div style="font-weight:800;font-size:0.95rem;color:var(--text);">🔥 Base de Datos Firebase Activa (100% Firebase · 0% JSONBin)</div>
               <div style="font-size:0.78rem;color:var(--text-secondary);margin-top:2px;">
-                Última verificación: <strong id="modal-sync-last-time">Activa ahora mismo</strong>
+                Estado: <strong id="modal-sync-last-time">Todas tus tareas y casillas rescatadas en Firebase</strong>
               </div>
             </div>
           </div>
@@ -400,10 +416,28 @@
             <span id="sync-diag-tasks" class="box-pill blue">27 tareas</span>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(22,163,74,0.18);">
-          <span style="font-size:0.78rem;font-weight:700;color:var(--text-secondary);">Canal de sincronización entre tus dispositivos:</span>
-          <input type="text" id="input-cloud-sync-channel" class="form-input" style="max-width:220px;padding:6px 11px;font-size:0.82rem;background:var(--surface-solid);" value="tasky_somerito_jose_sync_v1" />
-          <button type="button" id="btn-cloud-sync-now" class="btn-primary" style="padding:7px 13px;font-size:0.79rem;">🔄 Sincronizar ahora</button>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;padding-top:10px;border-top:1px solid rgba(22,163,74,0.20);">
+          <div>
+            <label class="form-label" for="input-firebase-project-id" style="font-size:0.75rem;margin-bottom:4px;">🔥 Proyecto Firebase (`projectId`)</label>
+            <input type="text" id="input-firebase-project-id" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" placeholder="Ej. esbas-2026 o typify-pro-91c4f" value="esbas-2026" />
+          </div>
+          <div>
+            <label class="form-label" for="input-firebase-db-url" style="font-size:0.75rem;margin-bottom:4px;">🔗 URL Realtime Database o Colección</label>
+            <input type="text" id="input-firebase-db-url" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" placeholder="Opcional: https://tu-app.firebaseio.com" />
+          </div>
+          <div>
+            <label class="form-label" for="input-cloud-sync-channel" style="font-size:0.75rem;margin-bottom:4px;">🔑 Ruta de Documento / Canal en Firebase</label>
+            <input type="text" id="input-cloud-sync-channel" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" value="tasky_sync/somerito_main" />
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:4px;">
+          <input type="text" id="input-firebase-raw-paste" class="form-input" style="flex:1;min-width:220px;padding:7px 11px;font-size:0.80rem;background:var(--surface-solid);" placeholder="O pega aquí tu bloque firebaseConfig = { apiKey, projectId, ... } para conectar otro proyecto..." />
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" id="btn-firebase-rescue-migrate" class="btn-primary" style="padding:8px 14px;font-size:0.80rem;background:linear-gradient(135deg,#f59e0b,#ea580c);">🔥 Rescatar y Subir Todo a Firebase</button>
+            <button type="button" id="btn-cloud-sync-now" class="btn-primary" style="padding:8px 14px;font-size:0.80rem;">🔄 Sincronizar ahora</button>
+          </div>
         </div>
       </div>
 

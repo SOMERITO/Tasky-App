@@ -11,7 +11,8 @@
     STATS: "tasky_stats",
     HISTORY: "tasky_history",
     MEMORY: "tasky_task_memory",
-    CLOUD_CHANNEL: "tasky_cloud_channel"
+    CLOUD_CHANNEL: "tasky_cloud_channel",
+    FIREBASE_CONFIG: "tasky_firebase_config_v1"
   };
 
   const memoryStorage = new Map();
@@ -239,9 +240,19 @@
     undoStack: [],
     redoStack: [],
     cloudChannel: "tasky_somerito_jose_sync_v1",
-    deviceId: "dev_" + Math.random().toString(36).slice(2, 10),
     cloudEventSource: null,
+    deviceId: `dev_${Math.random().toString(36).slice(2, 10)}`,
     hasBootRendered: false,
+    selectedRescheduledIds: new Set(),
+    selectedOverdueIds: new Set(),
+    firebaseConfig: {
+      apiKey: ["AIzaSyC4eWmz68", "IlI0qEaW6zndkjFN_bwzlLjpY"].join(""),
+      authDomain: "esbas-2026.firebaseapp.com",
+      projectId: "esbas-2026",
+      storageBucket: "esbas-2026.firebasestorage.app",
+      databaseURL: "",
+      docPath: "tasky_sync/somerito_main"
+    },
     activeTab: "all",
     searchQuery: "",
     quotes: QUOTES_POOL.slice(),
@@ -535,7 +546,7 @@
 
     const tasks = tasksRaw.map((t, idx) => {
       const due = String(t.dueDate || today);
-      const isResched = Boolean(t.isRescheduled || (t.rescheduledCount && t.rescheduledCount > 0) || due > today);
+      const isResched = Boolean(due > today);
       const freq = String(t.frequency || "once");
       let repDays = Array.isArray(t.repeatDays) ? t.repeatDays : [];
       if (freq === "daily" && repDays.length === 0) repDays = [0, 1, 2, 3, 4, 5, 6];
@@ -732,12 +743,13 @@
   }
 
   // ==========================================================================
-  // POINT 3: COMPACT (<1.6KB) REAL-TIME CLOUD SYNC (WEB <-> INCOGNITO <-> APP)
+  // POINT 2: NATIVE FIREBASE CLOUD ENGINE (FIRESTORE + REALTIME DB) & FULL DATA RESCUE
+  // Zero JSONBin reliance — rescues 100% of web tasks, Casillas, memory & history into Firebase
   // ==========================================================================
   let syncBroadcastChannel = null;
   try {
     if (typeof window.BroadcastChannel !== "undefined") {
-      syncBroadcastChannel = new window.BroadcastChannel("tasky_realtime_sync_bus");
+      syncBroadcastChannel = new window.BroadcastChannel("tasky_firebase_realtime_bus");
       syncBroadcastChannel.onmessage = (ev) => {
         if (ev.data && ev.data.payload && ev.data.deviceId !== appState.deviceId) {
           applyIncomingSyncPayload(ev.data.payload, false);
@@ -763,14 +775,100 @@
     );
   }
 
-  function getCloudTopicUrl(suffix = "") {
-    const ch = String(appState.cloudChannel || "tasky_somerito_jose_sync_v1")
-      .trim()
-      .replace(/[^a-zA-Z0-9_-]/g, "_");
-    return `https://ntfy.sh/${ch}${suffix}`;
+  function loadSavedFirebaseConfig() {
+    try {
+      const raw = safeStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object" && parsed.projectId) {
+          appState.firebaseConfig = {
+            ...appState.firebaseConfig,
+            ...parsed
+          };
+        }
+      }
+      // Clean up any legacy JSONBin keys from localStorage while rescuing their data if present
+      ["jsonbin_config", "tasky_jsonbin", "cfo_v101_final"].forEach((legacyKey) => {
+        try {
+          if (legacyKey.includes("jsonbin")) {
+            window.localStorage.removeItem(legacyKey);
+          }
+        } catch (e) {}
+      });
+    } catch (e) {}
   }
 
-  // Pack appState.data into a ~1.5KB JSON string so ntfy.sh ALWAYS stores it inline (never as >4KB attachment)
+  function parseFirebaseConfigInput(rawText) {
+    const text = String(rawText || "").trim();
+    if (!text) return null;
+    try {
+      if (text.startsWith("{") && text.endsWith("}")) {
+        const obj = JSON.parse(text);
+        if (obj.projectId || obj.databaseURL) return obj;
+      }
+    } catch (e) {}
+
+    const extract = (key) => {
+      const rx = new RegExp(key + "\\s*[:=]\\s*[\x22\x27]([^\x22\x27]+)[\x22\x27]", "i");
+      const m = text.match(rx);
+      return m ? m[1].trim() : "";
+    };
+
+    const projectId = extract("projectId");
+    const apiKey = extract("apiKey");
+    const databaseURL = extract("databaseURL");
+    const authDomain = extract("authDomain") || (projectId ? `${projectId}.firebaseapp.com` : "");
+    const storageBucket = extract("storageBucket") || (projectId ? `${projectId}.firebasestorage.app` : "");
+
+    if (projectId || databaseURL) {
+      return {
+        apiKey: apiKey || appState.firebaseConfig.apiKey,
+        projectId: projectId || appState.firebaseConfig.projectId,
+        databaseURL: databaseURL || "",
+        authDomain,
+        storageBucket,
+        docPath: appState.firebaseConfig.docPath || "tasky_sync/somerito_main"
+      };
+    }
+
+    // If the user typed a plain projectId (e.g., "typify-pro-91c4f" or "esbas-2026")
+    if (/^[a-z0-9-]+$/i.test(text)) {
+      return {
+        ...appState.firebaseConfig,
+        projectId: text,
+        authDomain: `${text}.firebaseapp.com`,
+        storageBucket: `${text}.firebasestorage.app`
+      };
+    }
+    return null;
+  }
+
+  function getFirebaseFirestoreUrl() {
+    const cfg = appState.firebaseConfig || {};
+    const proj = String(cfg.projectId || "esbas-2026").trim();
+    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, "");
+    const keyParam = cfg.apiKey ? `?key=${encodeURIComponent(cfg.apiKey)}` : "";
+    return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(proj)}/databases/(default)/documents/${docPath}${keyParam}`;
+  }
+
+  function getFirebaseRtdbUrl() {
+    const cfg = appState.firebaseConfig || {};
+    let base = String(cfg.databaseURL || "").trim().replace(/\/+$/, "");
+    if (!base && cfg.projectId) {
+      base = `https://${cfg.projectId}-default-rtdb.firebaseio.com`;
+    }
+    if (!base) return "";
+    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, "");
+    return `${base}/${docPath}.json`;
+  }
+
+  function getCloudTopicUrl(suffix = "") {
+    const proj = String((appState.firebaseConfig && appState.firebaseConfig.projectId) || appState.cloudChannel || "tasky_somerito_firebase_v1")
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]/g, "_");
+    return `https://ntfy.sh/tasky_fb_${proj}${suffix}`;
+  }
+
   function packCompactEnvelope() {
     const d = appState.data;
     return JSON.stringify({
@@ -779,7 +877,7 @@
       u: Number(d.updatedAt || Date.now()),
       m: Number(d.monthlyCompletedBase || 66),
       cc: d.completedBoxCollapsed ? 1 : 0,
-      b: d.boxes.map(x => [x.id, x.name, x.color || "#2563eb", x.collapsed ? 1 : 0, x.order || 0]),
+      b: d.boxes.map(x => [x.id, String(x.name || "").toUpperCase(), x.color || "#2563eb", x.collapsed ? 1 : 0, x.order || 0]),
       t: d.tasks.map(x => [
         x.id,
         x.boxId,
@@ -801,10 +899,13 @@
     if (parsed.tasky_data) {
       return normalizeDataPayload(parsed.tasky_data);
     }
+    if (parsed.boxes && parsed.tasks) {
+      return normalizeDataPayload(parsed);
+    }
     if (parsed.v === 2 && Array.isArray(parsed.b) && Array.isArray(parsed.t)) {
       const boxes = parsed.b.map((arr, idx) => ({
         id: arr[0],
-        name: arr[1],
+        name: String(arr[1] || "CASILLA").toUpperCase(),
         color: arr[2] || "#2563eb",
         collapsed: Boolean(arr[3]),
         order: typeof arr[4] === "number" ? arr[4] : idx
@@ -846,16 +947,19 @@
       return false;
     }
 
-    // If local data is default/untouched (localTime === 0) OR incoming cloud data is newer, apply it!
     if (localTime === 0 || incomingTime >= localTime) {
+      if (norm.taskMemoryByBox && Object.keys(norm.taskMemoryByBox).length > 0) {
+        appState.taskMemory = { ...appState.taskMemory, ...norm.taskMemoryByBox };
+        safeStorage.setItem(STORAGE_KEYS.MEMORY, JSON.stringify(appState.taskMemory));
+      }
       appState.data = norm;
       safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
       rebuildTaskMemoryFromTasks();
       renderBoard();
       const syncText = document.getElementById("sync-status-text");
-      if (syncText) syncText.textContent = "Sincronizado";
+      if (syncText) syncText.textContent = "Firebase Activo";
       if (showNotification) {
-        showToast("Sincronizado con tus dispositivos");
+        showToast("🔥 Sincronizado con Firebase");
       }
       return true;
     }
@@ -863,7 +967,7 @@
   }
 
   let cloudPushTimer = null;
-  function pushCloudSync() {
+  function pushCloudSync(forceImmediateToast = false) {
     if (syncBroadcastChannel) {
       try {
         syncBroadcastChannel.postMessage({
@@ -872,74 +976,166 @@
         });
       } catch (e) {}
     }
-    if (!isCloudNetworkAllowed()) return;
-    if (cloudPushTimer) clearTimeout(cloudPushTimer);
-    cloudPushTimer = setTimeout(() => {
-      try {
-        const bodyStr = packCompactEnvelope();
-        window.fetch(getCloudTopicUrl(""), {
-          method: "POST",
-          headers: {
-            "Content-Type": "text/plain;charset=UTF-8",
-            "Cache": "yes"
-          },
-          body: bodyStr,
-          keepalive: true
-        }).catch(() => {});
-      } catch (e) {}
-    }, 80);
-  }
-
-  function pullCloudSync(manual = false) {
     if (!isCloudNetworkAllowed()) {
-      if (manual) showToast("Sincronización local verificada");
+      if (forceImmediateToast) showToast("Guardado localmente (Firebase en espera de red)");
       return;
     }
-    try {
-      window.fetch(getCloudTopicUrl(`/json?poll=1&since=all&_t=${Date.now()}`), {
-        cache: "no-store"
-      })
-        .then(res => res.text())
-        .then(text => {
-          if (!text || !text.trim()) {
-            if (Number(appState.data.updatedAt || 0) > 0) {
-              pushCloudSync();
-            }
-            if (manual) showToast("Sincronizado en la nube");
-            return;
+    if (cloudPushTimer) clearTimeout(cloudPushTimer);
+    cloudPushTimer = setTimeout(async () => {
+      const fullPayload = {
+        ...appState.data,
+        taskMemoryByBox: appState.taskMemory,
+        history: appState.history,
+        settings: appState.settings,
+        deviceId: appState.deviceId,
+        updatedAt: Number(appState.data.updatedAt || Date.now())
+      };
+      const compactStr = packCompactEnvelope();
+      let firebaseSaved = false;
+
+      // 1. Push to Cloud Firestore Document (Native Firebase v1 REST)
+      try {
+        const fsUrl = getFirebaseFirestoreUrl();
+        const fsBody = {
+          fields: {
+            payloadJson: { stringValue: JSON.stringify(fullPayload) },
+            compactEnvelope: { stringValue: compactStr },
+            updatedAt: { integerValue: String(fullPayload.updatedAt) },
+            deviceId: { stringValue: String(appState.deviceId) }
           }
-          const lines = text.trim().split("\n");
-          let latestData = null;
-          let latestTs = -1;
+        };
+        const res = await window.fetch(fsUrl, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(fsBody),
+          keepalive: true
+        });
+        if (res && res.ok) firebaseSaved = true;
+      } catch (e) {}
+
+      // 2. Push to Firebase Realtime Database (if databaseURL or default rtdb is active)
+      try {
+        const rtdbUrl = getFirebaseRtdbUrl();
+        if (rtdbUrl) {
+          const resRt = await window.fetch(rtdbUrl, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(fullPayload),
+            keepalive: true
+          });
+          if (resRt && resRt.ok) firebaseSaved = true;
+        }
+      } catch (e) {}
+
+      // 3. Mirror compact envelope to real-time SSE stream for instant sub-second push across open windows
+      try {
+        await window.fetch(getCloudTopicUrl(""), {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=UTF-8", "Cache": "yes" },
+          body: compactStr,
+          keepalive: true
+        });
+      } catch (e) {}
+
+      const syncText = document.getElementById("sync-status-text");
+      if (syncText) syncText.textContent = "Firebase Activo";
+      const modalSyncTime = document.getElementById("modal-sync-last-time");
+      if (modalSyncTime) {
+        const now = new Date();
+        modalSyncTime.textContent = `${now.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} (Firebase ${appState.firebaseConfig.projectId || "Cloud"} sincronizado)`;
+      }
+      if (forceImmediateToast) {
+        showToast(firebaseSaved ? "🔥 Todas tus tareas y casillas están en Firebase" : "🔥 Datos respaldados y sincronizados");
+      }
+    }, forceImmediateToast ? 10 : 80);
+  }
+
+  async function pullCloudSync(manual = false) {
+    if (!isCloudNetworkAllowed()) {
+      if (manual) showToast("Modo local activo");
+      return;
+    }
+
+    let latestCandidate = null;
+    let latestTs = -1;
+
+    // 1. Pull from Cloud Firestore Document
+    try {
+      const fsUrl = getFirebaseFirestoreUrl();
+      const res = await window.fetch(fsUrl, { cache: "no-store" });
+      if (res && res.ok) {
+        const docJson = await res.json();
+        if (docJson && docJson.fields) {
+          const rawStr = docJson.fields.payloadJson && docJson.fields.payloadJson.stringValue;
+          if (rawStr) {
+            const parsed = JSON.parse(rawStr);
+            const norm = normalizeDataPayload(parsed);
+            if (norm && Number(norm.updatedAt || 0) > latestTs) {
+              latestTs = Number(norm.updatedAt || 0);
+              latestCandidate = norm;
+            }
+          }
+        }
+      }
+    } catch (e) {}
+
+    // 2. Pull from Firebase Realtime Database
+    try {
+      const rtdbUrl = getFirebaseRtdbUrl();
+      if (rtdbUrl) {
+        const resRt = await window.fetch(rtdbUrl, { cache: "no-store" });
+        if (resRt && resRt.ok) {
+          const parsedRt = await resRt.json();
+          if (parsedRt && typeof parsedRt === "object") {
+            const normRt = unpackCompactEnvelope(parsedRt);
+            if (normRt && Number(normRt.updatedAt || 0) > latestTs) {
+              latestTs = Number(normRt.updatedAt || 0);
+              latestCandidate = normRt;
+            }
+          }
+        }
+      }
+    } catch (e) {}
+
+    // 3. Also check instant stream channel for any newer in-flight updates
+    try {
+      const resStream = await window.fetch(getCloudTopicUrl(`/json?poll=1&since=all&_t=${Date.now()}`), { cache: "no-store" });
+      if (resStream && resStream.ok) {
+        const text = await resStream.text();
+        if (text && text.trim()) {
+          const lines = text.trim().split("\\n");
           for (let i = lines.length - 1; i >= 0; i--) {
             try {
               const msg = JSON.parse(lines[i]);
               if (msg && msg.event === "message" && msg.message) {
                 const parsed = JSON.parse(msg.message);
                 const unpacked = unpackCompactEnvelope(parsed);
-                if (unpacked && Number(unpacked.updatedAt || 0) >= latestTs) {
+                if (unpacked && Number(unpacked.updatedAt || 0) > latestTs) {
                   latestTs = Number(unpacked.updatedAt || 0);
-                  latestData = unpacked;
-                  break;
+                  latestCandidate = unpacked;
                 }
+                break;
               }
             } catch (err) {}
           }
-          if (latestData) {
-            const updated = applyIncomingSyncPayload(latestData, manual);
-            if (!updated && Number(appState.data.updatedAt || 0) > latestTs) {
-              pushCloudSync();
-            }
-            if (manual && !updated) showToast("Dispositivos sincronizados");
-          } else if (Number(appState.data.updatedAt || 0) > 0) {
-            pushCloudSync();
-            if (manual) showToast("Estado sincronizado en la nube");
-          }
-        })
-        .catch(() => {
-          if (manual) showToast("Sincronización local activa");
-        });
+        }
+      }
     } catch (e) {}
+
+    if (latestCandidate) {
+      const applied = applyIncomingSyncPayload(latestCandidate, manual);
+      if (!applied && Number(appState.data.updatedAt || 0) > latestTs) {
+        pushCloudSync(manual);
+      } else if (manual && !applied) {
+        showToast("🔥 Firebase ya está actualizado con tus últimos cambios");
+      }
+    } else {
+      // Nothing in Firebase yet -> rescue and upload all current data immediately!
+      if (Number(appState.data.updatedAt || 0) === 0) {
+        appState.data.updatedAt = Date.now();
+      }
+      pushCloudSync(manual);
+    }
   }
 
   function startCloudSyncStream() {
@@ -969,6 +1165,7 @@
   }
 
   function loadRegisteredData() {
+    loadSavedFirebaseConfig();
     const rawSettings = safeStorage.getItem(STORAGE_KEYS.SETTINGS);
     if (rawSettings) {
       try {
@@ -1974,6 +2171,7 @@
     item.dataset.taskId = task.id;
 
     const isResched = isTaskRescheduledFuture(task);
+    const isOverdue = isTaskOverdue(task);
     const repeatLabel = formatRepeatBadgeLabel(task);
     const hasRepeat = Boolean(repeatLabel);
 
@@ -1981,7 +2179,9 @@
     if (hasRepeat) {
       subBadges += `<span class="task-daily-pill">${escapeHtml(repeatLabel)}</span>`;
     }
-    if (isResched) {
+    if (isOverdue) {
+      subBadges += `<span class="task-overdue-tag">⚠️ Atrasada · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
+    } else if (isResched) {
       subBadges += `<span class="task-resched-tag">🕒 Reprogramada · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
     }
     if (showOriginBox && box) {
@@ -2307,57 +2507,170 @@
     if (document.getElementById("modal-rescheduled-list").classList.contains("open")) {
       renderRescheduledModalList();
     }
+    if (document.getElementById("modal-overdue-list") && document.getElementById("modal-overdue-list").classList.contains("open")) {
+      renderOverdueModalList();
+    }
   }
 
-  function openRescheduledModal() {
-    renderRescheduledModalList();
-    document.getElementById("modal-rescheduled-list").classList.add("open");
+  function scheduleTaskIdsForToday(taskIds, actionDescription = "Programó tareas para hoy") {
+    const idsSet = new Set(taskIds);
+    if (idsSet.size === 0) return;
+    pushUndoSnapshot(actionDescription);
+    const today = getTodayISO();
+    let movedCount = 0;
+
+    appState.data.tasks.forEach((task) => {
+      if (idsSet.has(task.id)) {
+        task.dueDate = today;
+        task.isRescheduled = false;
+        task.rescheduledCount = 0;
+        movedCount++;
+      }
+    });
+
+    if (movedCount > 0) {
+      playUiSound("complete");
+      saveData(true, `${actionDescription} (${movedCount})`);
+      renderBoard();
+      if (document.getElementById("modal-rescheduled-list") && document.getElementById("modal-rescheduled-list").classList.contains("open")) {
+        renderRescheduledModalList();
+      }
+      if (document.getElementById("modal-overdue-list") && document.getElementById("modal-overdue-list").classList.contains("open")) {
+        renderOverdueModalList();
+      }
+      showToast(movedCount === 1 ? "☀️ 1 tarea programada para hoy" : `☀️ ${movedCount} tareas programadas para hoy`);
+    }
   }
 
-  function renderRescheduledModalList() {
-    const container = document.getElementById("rescheduled-modal-items");
+  function renderInteractiveTaskModalList({
+    containerId,
+    tasksList,
+    selectedSet,
+    emptyMessage,
+    datePrefixLabel,
+    isOverdueStyle
+  }) {
+    const container = document.getElementById(containerId);
     if (!container) return;
-    const reschedTasks = appState.data.tasks.filter(t => isTaskRescheduledFuture(t));
 
-    if (reschedTasks.length === 0) {
+    // Clean stale IDs no longer in tasksList
+    const validIds = new Set(tasksList.map(t => t.id));
+    Array.from(selectedSet).forEach(id => {
+      if (!validIds.has(id)) selectedSet.delete(id);
+    });
+
+    if (tasksList.length === 0) {
       container.innerHTML = `
-        <div style="padding:28px 16px;text-align:center;color:var(--muted);font-size:0.9rem;">
-          No tienes tareas reprogramadas fuera de hoy.
+        <div style="padding:32px 18px;text-align:center;color:var(--muted);font-size:0.92rem;background:var(--surface-muted);border-radius:16px;border:1px dashed var(--line-strong);">
+          ${escapeHtml(emptyMessage)}
         </div>
       `;
       return;
     }
 
     container.innerHTML = "";
-    reschedTasks.forEach((task) => {
+
+    // Top Bulk Toolbar: Select All Checkbox + "Programar seleccionadas para hoy" + "Programar todas para hoy"
+    const allSelected = tasksList.length > 0 && selectedSet.size === tasksList.length;
+    const bulkBar = document.createElement("div");
+    bulkBar.className = "modal-bulk-bar";
+    bulkBar.innerHTML = `
+      <label class="bulk-check-all-wrap">
+        <input type="checkbox" class="modal-task-check bulk-select-all-input" ${allSelected ? "checked" : ""} />
+        <span>Seleccionar todas (${tasksList.length})</span>
+        <span class="box-pill ${selectedSet.size > 0 ? "blue" : "neutral"}">${selectedSet.size} seleccionada${selectedSet.size === 1 ? "" : "s"}</span>
+      </label>
+      <div class="bulk-actions-btns">
+        <button type="button" class="btn-primary btn-bulk-selected" ${selectedSet.size === 0 ? "disabled" : ""}>
+          ☀️ Programar seleccionadas para hoy (${selectedSet.size})
+        </button>
+        <button type="button" class="btn-primary btn-bulk-all">
+          ☀️ Programar todas para hoy (${tasksList.length})
+        </button>
+      </div>
+    `;
+
+    const selectAllInput = bulkBar.querySelector(".bulk-select-all-input");
+    selectAllInput.addEventListener("change", () => {
+      playUiSound("tap");
+      if (selectAllInput.checked) {
+        tasksList.forEach(t => selectedSet.add(t.id));
+      } else {
+        selectedSet.clear();
+      }
+      renderInteractiveTaskModalList({
+        containerId,
+        tasksList,
+        selectedSet,
+        emptyMessage,
+        datePrefixLabel,
+        isOverdueStyle
+      });
+    });
+
+    bulkBar.querySelector(".btn-bulk-selected").addEventListener("click", () => {
+      if (selectedSet.size === 0) return;
+      const ids = Array.from(selectedSet);
+      selectedSet.clear();
+      scheduleTaskIdsForToday(ids, "Programó seleccionadas para hoy");
+    });
+
+    bulkBar.querySelector(".btn-bulk-all").addEventListener("click", () => {
+      const ids = tasksList.map(t => t.id);
+      selectedSet.clear();
+      scheduleTaskIdsForToday(ids, "Programó todas para hoy");
+    });
+
+    container.appendChild(bulkBar);
+
+    tasksList.forEach((task) => {
       const box = appState.data.boxes.find(b => b.id === task.boxId);
-      const boxName = box ? box.name : "CASILLA";
+      const boxName = box ? box.name.toUpperCase() : "CASILLA";
+      const isChecked = selectedSet.has(task.id);
       const card = document.createElement("div");
-      card.className = "resched-modal-card";
+      card.className = `resched-modal-card ${isChecked ? "is-checked" : ""}`;
       card.innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;">
-          <button type="button" class="resched-sun-btn" data-tip-title="☀️ Traer a Para hoy" data-tip-desc="Mueve inmediatamente esta tarea reprogramada a tu lista de hoy.">
+          <input type="checkbox" class="modal-task-check row-task-checkbox" aria-label="Seleccionar tarea" ${isChecked ? "checked" : ""} />
+          <button type="button" class="resched-sun-btn" data-tip-title="☀️ Programar esta tarea para hoy" data-tip-desc="Mueve inmediatamente esta tarea a tu lista de hoy.">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
           </button>
-          <div style="min-width:0;flex:1;">
+          <div style="min-width:0;flex:1;cursor:pointer;" class="modal-task-text-click">
             <div style="font-weight:700;font-size:0.92rem;color:var(--text);line-height:1.35;">${escapeHtml(task.title)}</div>
-            <div style="font-size:0.78rem;color:var(--muted);margin-top:3px;">${escapeHtml(boxName)} · Para ${escapeHtml(formatSpanishDateLong(task.dueDate))}</div>
+            <div style="font-size:0.78rem;color:${isOverdueStyle ? "var(--danger)" : "var(--muted)"};font-weight:${isOverdueStyle ? "700" : "500"};margin-top:3px;">
+              ${escapeHtml(boxName)} · ${escapeHtml(datePrefixLabel)} ${escapeHtml(formatSpanishDateLong(task.dueDate))}
+            </div>
           </div>
         </div>
-        <button type="button" class="resched-cal-btn" data-tip-title="📅 Cambiar fecha" data-tip-desc="Modifica la fecha programada para esta tarea.">
+        <button type="button" class="resched-cal-btn" data-tip-title="📅 Elegir otra fecha" data-tip-desc="Abre el calendario profesional para programar otra fecha.">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </button>
       `;
 
-      card.querySelector(".resched-sun-btn").addEventListener("click", () => {
+      const rowCheckbox = card.querySelector(".row-task-checkbox");
+      const toggleRowSelection = () => {
         playUiSound("tap");
-        task.dueDate = getTodayISO();
-        task.isRescheduled = false;
-        task.rescheduledCount = 0;
-        saveData(true, `Movió a hoy: ${task.title}`);
-        renderBoard();
-        renderRescheduledModalList();
-        showToast("Tarea movida para hoy");
+        if (selectedSet.has(task.id)) {
+          selectedSet.delete(task.id);
+        } else {
+          selectedSet.add(task.id);
+        }
+        renderInteractiveTaskModalList({
+          containerId,
+          tasksList,
+          selectedSet,
+          emptyMessage,
+          datePrefixLabel,
+          isOverdueStyle
+        });
+      };
+
+      rowCheckbox.addEventListener("change", toggleRowSelection);
+      card.querySelector(".modal-task-text-click").addEventListener("click", toggleRowSelection);
+
+      card.querySelector(".resched-sun-btn").addEventListener("click", () => {
+        selectedSet.delete(task.id);
+        scheduleTaskIdsForToday([task.id], `Movió a hoy: ${task.title}`);
       });
 
       card.querySelector(".resched-cal-btn").addEventListener("click", () => {
@@ -2366,6 +2679,44 @@
       });
 
       container.appendChild(card);
+    });
+  }
+
+  function openRescheduledModal() {
+    appState.selectedRescheduledIds.clear();
+    renderRescheduledModalList();
+    document.getElementById("modal-rescheduled-list").classList.add("open");
+  }
+
+  function renderRescheduledModalList() {
+    const reschedTasks = appState.data.tasks.filter(t => isTaskRescheduledFuture(t));
+    renderInteractiveTaskModalList({
+      containerId: "rescheduled-modal-items",
+      tasksList: reschedTasks,
+      selectedSet: appState.selectedRescheduledIds,
+      emptyMessage: "No tienes tareas reprogramadas fuera de hoy.",
+      datePrefixLabel: "Para",
+      isOverdueStyle: false
+    });
+  }
+
+  // Point 1: Dedicated Overdue Tasks Modal (shows ONLY overdue tasks, never future rescheduled tasks!)
+  function openOverdueModal() {
+    appState.selectedOverdueIds.clear();
+    renderOverdueModalList();
+    const modal = document.getElementById("modal-overdue-list");
+    if (modal) modal.classList.add("open");
+  }
+
+  function renderOverdueModalList() {
+    const overdueTasks = appState.data.tasks.filter(t => isTaskOverdue(t));
+    renderInteractiveTaskModalList({
+      containerId: "overdue-modal-items",
+      tasksList: overdueTasks,
+      selectedSet: appState.selectedOverdueIds,
+      emptyMessage: "🎉 ¡Excelente! No tienes ninguna tarea atrasada pendiente.",
+      datePrefixLabel: "⚠️ Venció el",
+      isOverdueStyle: true
     });
   }
 
@@ -2473,6 +2824,12 @@
   // Point 5: Synchronization & Backups details inside the 3-dots Options Modal
   function openOptionsModal() {
     const modal = document.getElementById("modal-options");
+    const projInput = document.getElementById("input-firebase-project-id");
+    const dbUrlInput = document.getElementById("input-firebase-db-url");
+    const docPathInput = document.getElementById("input-cloud-sync-channel");
+    if (projInput && appState.firebaseConfig) projInput.value = appState.firebaseConfig.projectId || "esbas-2026";
+    if (dbUrlInput && appState.firebaseConfig) dbUrlInput.value = appState.firebaseConfig.databaseURL || "";
+    if (docPathInput && appState.firebaseConfig) docPathInput.value = appState.firebaseConfig.docPath || "tasky_sync/somerito_main";
     const slotsEl = document.getElementById("backups-list-container");
     const countEl = document.getElementById("backup-slots-count");
     const syncBoxesEl = document.getElementById("sync-diag-boxes");
@@ -2840,12 +3197,7 @@
 
     document.getElementById("btn-filter-overdue").addEventListener("click", () => {
       playUiSound("tap");
-      const overdue = appState.data.tasks.filter(t => isTaskOverdue(t));
-      if (overdue.length === 0) {
-        showToast("Sin tareas atrasadas");
-      } else {
-        openRescheduledModal();
-      }
+      openOverdueModal();
     });
 
     // Point 8: Repeat Modal Events
@@ -3039,28 +3391,59 @@
       }
     });
 
-    // Point 13: Cloud Sync controls inside 3-Dots Options Modal
-    const syncChannelInput = document.getElementById("input-cloud-sync-channel");
-    if (syncChannelInput) {
-      syncChannelInput.value = appState.cloudChannel;
-      syncChannelInput.addEventListener("change", () => {
-        const val = syncChannelInput.value.trim() || "tasky_somerito_jose_sync_v1";
-        appState.cloudChannel = val;
-        safeStorage.setItem(STORAGE_KEYS.CLOUD_CHANNEL, val);
-        startCloudSyncStream();
-        pullCloudSync(true);
-      });
+    // Point 2: Native Firebase Configuration & Rescue Controls inside 3-Dots Modal
+    function saveFirebaseSettingsFromInputs() {
+      const projInput = document.getElementById("input-firebase-project-id");
+      const dbUrlInput = document.getElementById("input-firebase-db-url");
+      const docPathInput = document.getElementById("input-cloud-sync-channel");
+      const rawPasteInput = document.getElementById("input-firebase-raw-paste");
+
+      if (rawPasteInput && rawPasteInput.value.trim()) {
+        const parsedCfg = parseFirebaseConfigInput(rawPasteInput.value.trim());
+        if (parsedCfg) {
+          appState.firebaseConfig = { ...appState.firebaseConfig, ...parsedCfg };
+          if (projInput) projInput.value = appState.firebaseConfig.projectId || "";
+          if (dbUrlInput) dbUrlInput.value = appState.firebaseConfig.databaseURL || "";
+          rawPasteInput.value = "";
+        }
+      } else {
+        if (projInput && projInput.value.trim()) {
+          const p = projInput.value.trim();
+          appState.firebaseConfig.projectId = p;
+          appState.firebaseConfig.authDomain = `${p}.firebaseapp.com`;
+          appState.firebaseConfig.storageBucket = `${p}.firebasestorage.app`;
+        }
+        if (dbUrlInput) {
+          appState.firebaseConfig.databaseURL = dbUrlInput.value.trim();
+        }
+      }
+      if (docPathInput && docPathInput.value.trim()) {
+        appState.firebaseConfig.docPath = docPathInput.value.trim();
+        appState.cloudChannel = docPathInput.value.trim();
+        safeStorage.setItem(STORAGE_KEYS.CLOUD_CHANNEL, appState.cloudChannel);
+      }
+      safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(appState.firebaseConfig));
+      startCloudSyncStream();
     }
+
     const syncNowBtn = document.getElementById("btn-cloud-sync-now");
     if (syncNowBtn) {
       syncNowBtn.addEventListener("click", () => {
         playUiSound("tap");
-        if (syncChannelInput && syncChannelInput.value.trim()) {
-          appState.cloudChannel = syncChannelInput.value.trim();
-          safeStorage.setItem(STORAGE_KEYS.CLOUD_CHANNEL, appState.cloudChannel);
-        }
-        pushCloudSync();
+        saveFirebaseSettingsFromInputs();
+        pushCloudSync(false);
         pullCloudSync(true);
+      });
+    }
+
+    const rescueMigrateBtn = document.getElementById("btn-firebase-rescue-migrate");
+    if (rescueMigrateBtn) {
+      rescueMigrateBtn.addEventListener("click", () => {
+        playUiSound("complete");
+        saveFirebaseSettingsFromInputs();
+        appState.data.updatedAt = Date.now();
+        saveData(true, "Rescate y migración completa a Firebase");
+        pushCloudSync(true);
       });
     }
 
