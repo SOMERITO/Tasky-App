@@ -2501,6 +2501,14 @@
     return candidates[Math.floor(Math.random() * candidates.length)];
   }
 
+  // Show only the person's name, not the source, section, or adaptation note.
+  // For original contemporary maxims without a named author, use "Anónimo".
+  function getDisplayQuoteAuthor(author) {
+    const name = String(author || "").split("·")[0].trim();
+    if (!name || name === "Máxima estoica contemporánea") return "Anónimo";
+    return name;
+  }
+
   // Point 2: Quote rotation set to 75 seconds (1 min 15 sec)
   function renderQuote(animate = false) {
     const pool = appState.quotes;
@@ -2516,13 +2524,13 @@
       box.style.transform = "translateY(4px)";
       setTimeout(() => {
         textEl.textContent = quote.text;
-        authorEl.textContent = `— ${quote.author}`;
+        authorEl.textContent = `— ${getDisplayQuoteAuthor(quote.author)}`;
         box.style.opacity = "1";
         box.style.transform = "translateY(0)";
       }, 260);
     } else {
       textEl.textContent = quote.text;
-      authorEl.textContent = `— ${quote.author}`;
+      authorEl.textContent = `— ${getDisplayQuoteAuthor(quote.author)}`;
     }
   }
 
@@ -4447,7 +4455,7 @@
     const copyCurrentQuote = () => {
       const quote = appState.quotes[appState.currentQuoteIndex % appState.quotes.length];
       if (!quote) return;
-      copyTextToClipboard(`${quote.text}\n— ${quote.author}`, "📋 Frase y autor copiados", quoteContainer);
+      copyTextToClipboard(`${quote.text}\n— ${getDisplayQuoteAuthor(quote.author)}`, "📋 Frase y autor copiados", quoteContainer);
     };
 
     const advanceToNextQuote = () => {
