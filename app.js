@@ -2488,6 +2488,19 @@
     el.textContent = `${DAY_FULL_NAMES[now.getDay()]}, ${now.getDate()} de ${months[now.getMonth()]}`;
   }
 
+  // Return a random quote index, optionally excluding the current quote.
+  // Excluding the current index avoids an identical quote on the next timer tick.
+  function getRandomQuoteIndex(excludeIndex = -1) {
+    const pool = appState.quotes || [];
+    if (pool.length <= 1) return 0;
+    const candidates = [];
+    for (let index = 0; index < pool.length; index++) {
+      if (index !== excludeIndex) candidates.push(index);
+    }
+    if (!candidates.length) return 0;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
   // Point 2: Quote rotation set to 75 seconds (1 min 15 sec)
   function renderQuote(animate = false) {
     const pool = appState.quotes;
@@ -2516,7 +2529,7 @@
   function startQuoteRotation() {
     if (appState.quoteTimer) clearInterval(appState.quoteTimer);
     appState.quoteTimer = setInterval(() => {
-      appState.currentQuoteIndex = (appState.currentQuoteIndex + 1) % appState.quotes.length;
+      appState.currentQuoteIndex = getRandomQuoteIndex(appState.currentQuoteIndex);
       renderQuote(true);
     }, 75000);
   }
@@ -4889,6 +4902,8 @@
     scheduleExactMidnightRollover();
     applyThemeAndSoundUI();
     renderHeroDate();
+    // Pick a random quote on each app load instead of always starting at the first item.
+    appState.currentQuoteIndex = getRandomQuoteIndex();
     renderQuote(false);
     startQuoteRotation();
     initProTooltips();
