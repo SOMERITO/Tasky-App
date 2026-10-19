@@ -164,6 +164,18 @@
       </div>
     </nav>
 
+    <div id="multi-select-toolbar" class="multi-select-toolbar" role="toolbar" aria-label="Acciones para tareas seleccionadas" style="display:none;">
+      <div class="multi-select-info">
+        <strong><span id="multi-select-count">0</span> tareas seleccionadas</strong>
+        <span class="multi-select-hint">Mantén Ctrl y haz clic en las tareas para añadirlas o quitarlas de la selección.</span>
+      </div>
+      <div class="multi-select-actions">
+        <button type="button" id="btn-multi-reschedule" class="btn-primary">📅 Reprogramar seleccionadas</button>
+        <button type="button" id="btn-multi-tomorrow" class="btn-secondary">☀️ Pasar a mañana</button>
+        <button type="button" id="btn-multi-clear" class="btn-secondary">Cancelar selección</button>
+      </div>
+    </div>
+
     <!-- Dynamic Boxes & Tasks Container -->
     <main id="boxes-container" class="boxes-container"></main>
   </div>
