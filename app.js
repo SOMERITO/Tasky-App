@@ -252,7 +252,7 @@
     selectedRescheduledIds: new Set(),
     selectedOverdueIds: new Set(),
     firebaseConfig: {
-      apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YhrvEcb8",
+      apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YrhvEcb8",
       authDomain: "tasky-7a30c.firebaseapp.com",
       projectId: "tasky-7a30c",
       storageBucket: "tasky-7a30c.firebasestorage.app",
