@@ -511,111 +511,1555 @@
   },
   {
     "text": "No basta con saber qué es lo correcto: el carácter se demuestra cuando por fin lo haces.",
-    "author": "Epicteto · Disertaciones II.19 (adaptación)"
+    "author": "Epicteto"
   },
   {
     "text": "Deja de discutir cómo debe ser una persona buena. Conviértete en una.",
-    "author": "Marco Aurelio · Meditaciones X.16 (adaptación)"
+    "author": "Marco Aurelio"
   },
   {
     "text": "Si culpas a otros de tu conducta, les estás entregando el mando de tu vida.",
-    "author": "Epicteto · Manual, §5 (adaptación)"
+    "author": "Epicteto"
   },
   {
     "text": "No exijas que las cosas sucedan como deseas; aprende a recibirlas como suceden y tendrás más calma.",
-    "author": "Epicteto · Manual, §8 (adaptación)"
+    "author": "Epicteto"
   },
   {
     "text": "La dificultad no crea tu carácter: revela el que has entrenado.",
-    "author": "Epicteto · Disertaciones I.24 (adaptación)"
+    "author": "Epicteto"
   },
   {
     "text": "La vida no es necesariamente corta; la volvemos pequeña cuando la desperdiciamos.",
-    "author": "Séneca · Sobre la brevedad de la vida, §1 (adaptación)"
+    "author": "Séneca"
   },
   {
     "text": "Mientras aplazas vivir con propósito, el tiempo sigue pasando sin pedirte permiso.",
-    "author": "Séneca · Sobre la brevedad de la vida (adaptación)"
+    "author": "Séneca"
   },
   {
     "text": "Sufrimos muchas veces más por lo que imaginamos que por lo que ocurre.",
-    "author": "Séneca · Epístolas morales, 13.4 (adaptación)"
+    "author": "Séneca"
   },
   {
     "text": "No pidas una vida sin pruebas; entrena una voluntad que pueda atravesarlas.",
-    "author": "Séneca · Sobre la providencia (adaptación)"
+    "author": "Séneca"
   },
   {
     "text": "Tu mente se irá pareciendo a aquello en lo que piensa una y otra vez.",
-    "author": "Marco Aurelio · Meditaciones V.16 (adaptación)"
+    "author": "Marco Aurelio"
   },
   {
     "text": "La mejor venganza es no convertirte en aquello que te hizo daño.",
-    "author": "Marco Aurelio · Meditaciones VI.6 (adaptación)"
+    "author": "Marco Aurelio"
   },
   {
     "text": "No necesitas ganar cada discusión; necesitas no perder el gobierno de ti mismo.",
-    "author": "Marco Aurelio · Meditaciones (adaptación)"
+    "author": "Marco Aurelio"
   },
   {
     "text": "No confundas la comodidad con la fortaleza: la capacidad se entrena soportando lo que evitas.",
-    "author": "Musonio Rufo · Disertación VI (adaptación)"
+    "author": "Musonio Rufo"
   },
   {
     "text": "Si soportas esfuerzos por dinero, fama o aprobación, también puedes soportarlos por tu carácter.",
-    "author": "Musonio Rufo · Disertación VII (adaptación)"
+    "author": "Musonio Rufo"
   },
   {
     "text": "La virtud no es teoría que puedas recitar: es una práctica que debes repetir.",
-    "author": "Musonio Rufo · Disertación VI (adaptación)"
+    "author": "Musonio Rufo"
   },
   {
     "text": "No te hace libre conseguir todo lo que deseas; te hace libre dejar de ser esclavo de tus deseos.",
-    "author": "Epicteto · Manual, §1 (adaptación)"
+    "author": "Epicteto"
   },
   {
     "text": "Si tu tranquilidad depende de la opinión ajena, has puesto tu paz en manos de otros.",
-    "author": "Epicteto · Manual, §1 (adaptación)"
+    "author": "Epicteto"
   },
   {
     "text": "No puedes elegir todos los acontecimientos, pero sí la calidad de tu respuesta.",
-    "author": "Epicteto · Manual, §1 (adaptación)"
+    "author": "Epicteto"
   },
   {
     "text": "El obstáculo puede detener tus planes; no tiene por qué detener tu capacidad de actuar con virtud.",
-    "author": "Marco Aurelio · Meditaciones (adaptación)"
+    "author": "Marco Aurelio"
   },
   {
     "text": "No esperes que el día sea fácil. Procura no abandonar tu carácter cuando se vuelva difícil.",
-    "author": "Marco Aurelio · Meditaciones (adaptación)"
+    "author": "Marco Aurelio"
   },
   {
     "text": "Nadie puede practicar tu virtud por ti. Nadie puede hacer tus elecciones en tu lugar.",
-    "author": "Epicteto · Manual, §1 (adaptación)"
+    "author": "Epicteto"
   },
   {
     "text": "No es suficiente soportar el golpe; examina qué juicio te hace caer una segunda vez.",
-    "author": "Epicteto · Manual, §5 (adaptación)"
+    "author": "Epicteto"
   },
   {
     "text": "Que el esfuerzo de hoy te encuentre trabajando en tu carácter, no fabricando excusas.",
-    "author": "Musonio Rufo · Disertaciones (adaptación)"
+    "author": "Musonio Rufo"
   },
   {
     "text": "El tiempo que entregas a la queja no vuelve convertido en solución.",
-    "author": "Séneca · Sobre la brevedad de la vida (adaptación)"
+    "author": "Séneca"
   },
   {
     "text": "No eres responsable de controlar el mundo; sí de no traicionarte cuando el mundo no obedece.",
-    "author": "Marco Aurelio · Meditaciones (adaptación)"
+    "author": "Marco Aurelio"
   },
   {
     "text": "La pregunta no es cuánto puedes soportar por ambición, sino cuánto estás dispuesto a practicar por virtud.",
-    "author": "Musonio Rufo · Disertación VII (adaptación)"
+    "author": "Musonio Rufo"
   },
   {
     "text": "Ser fuerte no consiste en no sentir el impulso, sino en decidir si merece obediencia.",
-    "author": "Epicteto · Disertaciones (adaptación)"
+    "author": "Epicteto"
+  },
+  {
+    "text": "De las cosas, unas dependen de nosotros y otras no.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "No son las cosas las que nos perturban, sino nuestros juicios acerca de ellas.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "No pretendas que los acontecimientos sucedan como deseas; desea que sucedan como suceden.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "Si quieres mejorar, acepta parecer ignorante en aquello que todavía no dominas.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "Asóciate con quienes puedan hacerte mejor.",
+    "author": "Séneca"
+  },
+  {
+    "text": "Ver lo correcto y no hacerlo es falta de valor.",
+    "author": "Confucio"
+  },
+  {
+    "text": "Cometer un error y no corregirlo es cometer otro error.",
+    "author": "Confucio"
+  },
+  {
+    "text": "Aprender sin reflexionar es inútil; reflexionar sin aprender es peligroso.",
+    "author": "Confucio"
+  },
+  {
+    "text": "El hombre superior es modesto al hablar, pero sobresale por sus acciones.",
+    "author": "Confucio"
+  },
+  {
+    "text": "No hagas lo que no es correcto ni digas lo que no es verdad.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "Al levantarte, recuerda el privilegio de estar vivo y de poder cumplir tu trabajo como ser humano.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "Las cosas que debemos aprender antes de hacerlas, las aprendemos haciéndolas.",
+    "author": "Aristóteles"
+  },
+  {
+    "text": "El hombre superior busca lo que es justo; el hombre inferior, lo que le resulta ventajoso.",
+    "author": "Confucio"
+  },
+  {
+    "text": "La vida es suficientemente larga si sabes utilizarla.",
+    "author": "Séneca"
+  },
+  {
+    "text": "El tiempo perdido nunca se recupera.",
+    "author": "Benjamin Franklin"
+  },
+  {
+    "text": "Recuerda que el tiempo es dinero.",
+    "author": "Benjamin Franklin"
+  },
+  {
+    "text": "Bien hecho es mejor que bien dicho.",
+    "author": "Benjamin Franklin"
+  },
+  {
+    "text": "Acostarse temprano y levantarse temprano hace al hombre sano, rico y sabio.",
+    "author": "Benjamin Franklin"
+  },
+  {
+    "text": "La diligencia es la madre de la buena fortuna.",
+    "author": "Benjamin Franklin"
+  },
+  {
+    "text": "El costo de una cosa es la cantidad de vida que intercambias por ella.",
+    "author": "Henry David Thoreau"
+  },
+  {
+    "text": "Nuestra vida se desperdicia en detalles. Simplifica, simplifica.",
+    "author": "Henry David Thoreau"
+  },
+  {
+    "text": "Los hombres se han convertido en herramientas de sus herramientas.",
+    "author": "Henry David Thoreau"
+  },
+  {
+    "text": "Quise vivir deliberadamente, enfrentar solo los hechos esenciales de la vida.",
+    "author": "Henry David Thoreau"
+  },
+  {
+    "text": "Llena cada minuto implacable con sesenta segundos de esfuerzo bien empleado.",
+    "author": "Rudyard Kipling"
+  },
+  {
+    "text": "Lo pasado es prólogo.",
+    "author": "William Shakespeare"
+  },
+  {
+    "text": "Hay una marea en los asuntos humanos que, aprovechada a tiempo, conduce a la fortuna.",
+    "author": "William Shakespeare"
+  },
+  {
+    "text": "Quienes avanzan despacio por el camino correcto pueden progresar más que quienes corren y se desvían.",
+    "author": "René Descartes"
+  },
+  {
+    "text": "El tiempo es el recurso más escaso y, si no se administra, nada más puede administrarse.",
+    "author": "Peter F. Drucker"
+  },
+  {
+    "text": "Es mucho mejor atreverse a cosas grandes y arriesgarse al fracaso que vivir sin conocer ni la victoria ni la derrota.",
+    "author": "Theodore Roosevelt"
+  },
+  {
+    "text": "No predico la vida de facilidad, sino la vida de esfuerzo, trabajo y lucha.",
+    "author": "Theodore Roosevelt"
+  },
+  {
+    "text": "Si no hay lucha, no hay progreso.",
+    "author": "Frederick Douglass"
+  },
+  {
+    "text": "El poder no concede nada sin una exigencia; nunca lo ha hecho ni lo hará.",
+    "author": "Frederick Douglass"
+  },
+  {
+    "text": "La fortuna favorece a los audaces.",
+    "author": "Virgilio"
+  },
+  {
+    "text": "Nada saldrá de la nada.",
+    "author": "William Shakespeare"
+  },
+  {
+    "text": "La acción es elocuencia.",
+    "author": "William Shakespeare"
+  },
+  {
+    "text": "Nuestras dudas son traidoras y nos hacen perder el bien que podríamos alcanzar por temor a intentarlo.",
+    "author": "William Shakespeare"
+  },
+  {
+    "text": "Quien trabaja con diligencia tiene más oportunidades de aprovechar la buena fortuna.",
+    "author": "Benjamin Franklin"
+  },
+  {
+    "text": "La naturaleza, para ser dirigida, debe ser obedecida.",
+    "author": "Francis Bacon"
+  },
+  {
+    "text": "La actividad conforme a la virtud constituye el bien humano.",
+    "author": "Aristóteles"
+  },
+  {
+    "text": "La virtud se adquiere practicando actos virtuosos, del mismo modo que aprendemos un oficio practicándolo.",
+    "author": "Aristóteles"
+  },
+  {
+    "text": "Si puedes reunir todas tus ganancias, arriesgarlas, perderlas y volver a empezar sin lamentarte por la pérdida…",
+    "author": "Rudyard Kipling"
+  },
+  {
+    "text": "Si puedes obligar a tu corazón, tus nervios y tus músculos a seguir sirviéndote cuando estén agotados…",
+    "author": "Rudyard Kipling"
+  },
+  {
+    "text": "La experiencia mantiene una escuela costosa, pero los necios no aprenden en ninguna otra.",
+    "author": "Benjamin Franklin"
+  },
+  {
+    "text": "Los objetivos sirven para marcar una dirección; los sistemas son mejores para progresar.",
+    "author": "James Clear"
+  },
+  {
+    "text": "Te preocupa menos tu resultado actual de lo que debería preocuparte la trayectoria que llevas.",
+    "author": "James Clear"
+  },
+  {
+    "text": "La disciplina equivale a libertad.",
+    "author": "Jocko Willink"
+  },
+  {
+    "text": "La clave no es priorizar lo que está en tu agenda, sino agendar tus prioridades.",
+    "author": "Stephen R. Covey"
+  },
+  {
+    "text": "No ocultes tus talentos: se hicieron para usarse. ¿De qué sirve un reloj de sol a la sombra?",
+    "author": "Benjamin Franklin"
+  },
+  {
+    "text": "No hay ganancias sin esfuerzo.",
+    "author": "Benjamin Franklin"
+  },
+  {
+    "text": "Una golondrina no hace verano, ni un solo día; tampoco un día o un breve tiempo hacen feliz a un hombre.",
+    "author": "Aristóteles"
+  },
+  {
+    "text": "El hombre superior ve una oportunidad para corregirse cuando observa una virtud en otro.",
+    "author": "Confucio"
+  },
+  {
+    "text": "La constancia convierte pequeñas acciones en cambios significativos.",
+    "author": "James Clear"
+  },
+  {
+    "text": "El movimiento no equivale a acción; estar ocupado no equivale a ser eficaz.",
+    "author": "James Clear"
+  },
+  {
+    "text": "La forma en que empleas tus días es la forma en que empleas tu vida.",
+    "author": "Annie Dillard"
+  },
+  {
+    "text": "Hacer bien una cosa exige decidir qué no vas a hacer.",
+    "author": "Peter F. Drucker"
+  },
+  {
+    "text": "No leas para contradecir ni para creer a ciegas, sino para sopesar y considerar.",
+    "author": "Francis Bacon"
+  },
+  {
+    "text": "Algunos libros deben degustarse, otros tragarse y unos pocos masticarse y digerirse.",
+    "author": "Francis Bacon"
+  },
+  {
+    "text": "Los astutos desprecian los estudios, los simples los admiran y los sabios los utilizan.",
+    "author": "Francis Bacon"
+  },
+  {
+    "text": "No basta con tener una buena mente; lo importante es utilizarla bien.",
+    "author": "René Descartes"
+  },
+  {
+    "text": "Divide cada dificultad en tantas partes como sea posible y necesario para resolverla.",
+    "author": "René Descartes"
+  },
+  {
+    "text": "Leer buenos libros es como conversar con las mentes más destacadas de los siglos pasados.",
+    "author": "René Descartes"
+  },
+  {
+    "text": "Confía en ti mismo: cada corazón vibra con esa cuerda de hierro.",
+    "author": "Ralph Waldo Emerson"
+  },
+  {
+    "text": "La envidia es ignorancia; la imitación es suicidio.",
+    "author": "Ralph Waldo Emerson"
+  },
+  {
+    "text": "Insiste en ti mismo; nunca imites.",
+    "author": "Ralph Waldo Emerson"
+  },
+  {
+    "text": "Una coherencia tonta es el duende de las mentes pequeñas.",
+    "author": "Ralph Waldo Emerson"
+  },
+  {
+    "text": "La mayoría de los hombres lleva vidas de silenciosa desesperación.",
+    "author": "Henry David Thoreau"
+  },
+  {
+    "text": "Si alguien no lleva el paso de sus compañeros, quizá oye un tambor diferente.",
+    "author": "Henry David Thoreau"
+  },
+  {
+    "text": "Si has construido castillos en el aire, tu trabajo no tiene por qué perderse: ahora pon cimientos debajo de ellos.",
+    "author": "Henry David Thoreau"
+  },
+  {
+    "text": "Quien camina con otros dos puede aprender de ambos: imitar lo bueno y corregir lo malo.",
+    "author": "Confucio"
+  },
+  {
+    "text": "La libertad consiste en poder actuar conforme a la razón.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "Lo que no me mata me hace más fuerte.",
+    "author": "Friedrich Nietzsche"
+  },
+  {
+    "text": "Hay que tener caos dentro de uno para dar a luz una estrella danzante.",
+    "author": "Friedrich Nietzsche"
+  },
+  {
+    "text": "En medio del invierno descubrí que dentro de mí había un verano invencible.",
+    "author": "Albert Camus"
+  },
+  {
+    "text": "La lucha hacia las alturas basta para llenar el corazón de un hombre.",
+    "author": "Albert Camus"
+  },
+  {
+    "text": "Fracasa otra vez. Fracasa mejor.",
+    "author": "Samuel Beckett"
+  },
+  {
+    "text": "Es mejor atreverse a cosas grandes, aun con el riesgo del fracaso, que vivir sin haber conocido ni la victoria ni la derrota.",
+    "author": "Theodore Roosevelt"
+  },
+  {
+    "text": "Si puedes encontrarte con el triunfo y el desastre y tratar a ambos impostores por igual…",
+    "author": "Rudyard Kipling"
+  },
+  {
+    "text": "Si puedes empezar de nuevo y no pronunciar una palabra sobre lo perdido…",
+    "author": "Rudyard Kipling"
+  },
+  {
+    "text": "Si puedes seguir adelante cuando ya no queda nada en ti salvo la voluntad que dice: continúa…",
+    "author": "Rudyard Kipling"
+  },
+  {
+    "text": "Quienes dicen apoyar la libertad pero condenan la agitación quieren cosechar sin arar la tierra.",
+    "author": "Frederick Douglass"
+  },
+  {
+    "text": "No todo lo que afrontamos puede cambiarse, pero nada cambia hasta que lo afrontamos.",
+    "author": "James Baldwin"
+  },
+  {
+    "text": "El obstáculo a la acción puede convertirse en material para la acción.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "Por encima de todo, sé fiel a ti mismo.",
+    "author": "William Shakespeare"
+  },
+  {
+    "text": "La culpa, querido Bruto, no está en nuestras estrellas, sino en nosotros mismos.",
+    "author": "William Shakespeare"
+  },
+  {
+    "text": "Ningún legado es tan rico como la honestidad.",
+    "author": "William Shakespeare"
+  },
+  {
+    "text": "Sabemos lo que somos, pero no lo que podemos llegar a ser.",
+    "author": "William Shakespeare"
+  },
+  {
+    "text": "El hombre superior procura que sus palabras sean lentas y sus acciones rápidas.",
+    "author": "Confucio"
+  },
+  {
+    "text": "Lo que el hombre superior busca está en sí mismo; lo que el hombre inferior busca está en los demás.",
+    "author": "Confucio"
+  },
+  {
+    "text": "No te avergüences de necesitar ayuda.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "Cuando te moleste la falta de otro, examina primero tus propios defectos.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "No es quien te insulta quien te hiere, sino tu juicio acerca del insulto.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "Ama a todos, confía en unos pocos y no hagas daño a nadie.",
+    "author": "William Shakespeare"
+  },
+  {
+    "text": "Una vida sin examen no merece ser vivida.",
+    "author": "Sócrates"
+  },
+  {
+    "text": "Lo importante no es simplemente vivir, sino vivir correctamente.",
+    "author": "Sócrates"
+  },
+  {
+    "text": "Quien no piensa y planifica a largo plazo encontrará problemas a su puerta.",
+    "author": "Confucio"
+  },
+  {
+    "text": "Quien quiera ser un hombre debe ser inconformista.",
+    "author": "Ralph Waldo Emerson"
+  },
+  {
+    "text": "El alma se tiñe del color de sus pensamientos.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "Por naturaleza, todos los hombres desean saber.",
+    "author": "Aristóteles"
+  },
+  {
+    "text": "¿Acaso no es un placer aprender y practicar lo aprendido?",
+    "author": "Confucio"
+  },
+  {
+    "text": "Saber qué sabes y qué no sabes: eso es el verdadero conocimiento.",
+    "author": "Confucio"
+  },
+  {
+    "text": "Quien, revisando lo antiguo, descubre lo nuevo, puede ser un maestro.",
+    "author": "Confucio"
+  },
+  {
+    "text": "La lectura hace al hombre completo; la conversación, ágil; y la escritura, preciso.",
+    "author": "Francis Bacon"
+  },
+  {
+    "text": "El conocimiento mismo es poder.",
+    "author": "Francis Bacon"
+  },
+  {
+    "text": "La historia hace sabios a los hombres; la poesía, ingeniosos; las matemáticas, sutiles.",
+    "author": "Francis Bacon"
+  },
+  {
+    "text": "Es mejor tener una cabeza bien formada que una cabeza bien llena.",
+    "author": "Michel de Montaigne"
+  },
+  {
+    "text": "Me estudio a mí mismo más que cualquier otro asunto.",
+    "author": "Michel de Montaigne"
+  },
+  {
+    "text": "La excelencia moral se forma mediante hábitos, no aparece en nosotros por naturaleza ni contra ella.",
+    "author": "Aristóteles"
+  },
+  {
+    "text": "La prudencia consiste en deliberar bien sobre lo que es bueno y conveniente para vivir bien.",
+    "author": "Aristóteles"
+  },
+  {
+    "text": "Las mentes más grandes son capaces de los mayores vicios, así como de las mayores virtudes.",
+    "author": "René Descartes"
+  },
+  {
+    "text": "Si alguien puede refutarme y mostrarme mi error, cambiaré con gusto.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "Los estudios sirven para aprender a juzgar y no solo para acumular información.",
+    "author": "Michel de Montaigne"
+  },
+  {
+    "text": "Un comienzo es la parte más importante de cualquier trabajo.",
+    "author": "Platón"
+  },
+  {
+    "text": "El cobarde muere muchas veces antes de su muerte; el valiente solo prueba la muerte una vez.",
+    "author": "William Shakespeare"
+  },
+  {
+    "text": "Solo mediante trabajo y esfuerzo doloroso avanzamos hacia cosas mejores.",
+    "author": "Theodore Roosevelt"
+  },
+  {
+    "text": "La mejor parte del valor es la prudencia.",
+    "author": "William Shakespeare"
+  },
+  {
+    "text": "Debes hacer aquello que crees que no puedes hacer.",
+    "author": "Eleanor Roosevelt"
+  },
+  {
+    "text": "El valor y la confianza llegan cada vez que te enfrentas de verdad al miedo.",
+    "author": "Eleanor Roosevelt"
+  },
+  {
+    "text": "Si puedes confiar en ti mismo cuando todos dudan de ti, sin dejar de comprender sus dudas…",
+    "author": "Rudyard Kipling"
+  },
+  {
+    "text": "Si puedes hablar con multitudes y conservar tu virtud, o caminar con reyes sin perder el contacto con la gente común…",
+    "author": "Rudyard Kipling"
+  },
+  {
+    "text": "Si puedes soñar sin convertirte en esclavo de tus sueños, y pensar sin hacer de tus pensamientos tu único objetivo…",
+    "author": "Rudyard Kipling"
+  },
+  {
+    "text": "No hay lucha sin riesgo, ni progreso sin esfuerzo.",
+    "author": "Theodore Roosevelt"
+  },
+  {
+    "text": "Por la libertad y la honra se puede y se debe aventurar la vida.",
+    "author": "Miguel de Cervantes"
+  },
+  {
+    "text": "Quienes quieren cosechar sin arar quieren resultados sin el trabajo que los hace posibles.",
+    "author": "Frederick Douglass"
+  },
+  {
+    "text": "La acción valiente no garantiza la victoria, pero la inacción te excluye del esfuerzo.",
+    "author": "Theodore Roosevelt"
+  },
+  {
+    "text": "La voluntad de prepararse es una parte esencial de la oportunidad.",
+    "author": "Theodore Roosevelt"
+  },
+  {
+    "text": "La preparación es todo.",
+    "author": "William Shakespeare"
+  },
+  {
+    "text": "Dime, ¿qué piensas hacer con tu única vida preciosa y salvaje?",
+    "author": "Mary Oliver"
+  },
+  {
+    "text": "Ten paciencia con todo lo que permanece sin resolver en tu corazón e intenta amar las preguntas mismas.",
+    "author": "Rainer Maria Rilke"
+  },
+  {
+    "text": "Recuerda que eres un actor en una representación, y que el papel te será asignado.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "No hagas nada que no tenga un propósito.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "Cultivemos nuestro jardín.",
+    "author": "Voltaire"
+  },
+  {
+    "text": "El trabajo mantiene alejados tres grandes males: el aburrimiento, el vicio y la necesidad.",
+    "author": "Voltaire"
+  },
+  {
+    "text": "Quise vivir profundamente y extraer toda la médula de la vida.",
+    "author": "Henry David Thoreau"
+  },
+  {
+    "text": "El hombre superior está sereno y tranquilo; el hombre inferior, siempre preocupado y angustiado.",
+    "author": "Confucio"
+  },
+  {
+    "text": "Podrías abandonar la vida ahora mismo: deja que esa idea determine lo que haces, dices y piensas.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "La felicidad no consiste en placeres pasajeros, sino en vivir de acuerdo con la virtud.",
+    "author": "Aristóteles"
+  },
+  {
+    "text": "Confía en el tiempo, que suele dar dulces salidas a muchas amargas dificultades.",
+    "author": "Miguel de Cervantes"
+  },
+  {
+    "text": "El arte de vivir se parece más a la lucha que a la danza.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "El tiempo es nuestro bien más valioso: no lo entregues sin examinar a qué lo destinas.",
+    "author": "Séneca"
+  },
+  {
+    "text": "La pregunta no es cuánto tiempo tienes, sino qué haces con él.",
+    "author": "Séneca"
+  },
+  {
+    "text": "La vida bien empleada es más importante que la vida larga.",
+    "author": "Séneca"
+  },
+  {
+    "text": "Ningún hombre es libre si no es dueño de sí mismo.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "Podrías hacer el bien hoy mismo, pero en lugar de eso eliges mañana.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "Debemos sufrir uno de dos dolores: el dolor de la disciplina o el dolor del arrepentimiento. La diferencia es que la disciplina pesa onzas y el arrepentimiento pesa toneladas.",
+    "author": "Jim Rohn"
+  },
+  {
+    "text": "A nadie le importa. Trabaja más duro.",
+    "author": "Cameron Hanes"
+  },
+  {
+    "text": "Cuando tu mente te dice que estás acabado, que estás agotado y que no puedes dar un paso más, en realidad apenas estás al 40% de tu capacidad.",
+    "author": "David Goggins"
+  },
+  {
+    "text": "No eres tus intenciones; eres tus acciones.",
+    "author": "Naval Ravikant"
+  },
+  {
+    "text": "El primer paso hacia el cambio es la conciencia. El segundo paso es la aceptación. Nadie vendrá a salvarte.",
+    "author": "Nathaniel Branden"
+  },
+  {
+    "text": "Haz lo que debes hacer, cuando debes hacerlo, te guste o no.",
+    "author": "Thomas Henry Huxley"
+  },
+  {
+    "text": "Somos lo que hacemos día a día. De modo que la excelencia no es un acto, sino un hábito.",
+    "author": "Will Durant"
+  },
+  {
+    "text": "Si es soportable, entonces sopórtalo. Deja de quejarte.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "El éxito no se compra; se alquila, y el alquiler vence todos los días.",
+    "author": "J.J. Watt"
+  },
+  {
+    "text": "Un hombre que no ha pasado por la adversidad no conoce su propia fuerza.",
+    "author": "Séneca"
+  },
+  {
+    "text": "Exígete mucho a ti mismo y espera poco de los demás. Así te ahorrarás disgustos.",
+    "author": "Confucio"
+  },
+  {
+    "text": "Tus excusas no son más que las mentiras que te vende tu propio miedo.",
+    "author": "Robin Sharma"
+  },
+  {
+    "text": "Si no construyes tu sueño, alguien te contratará para que le ayudes a construir el suyo.",
+    "author": "Dhirubhai Ambani"
+  },
+  {
+    "text": "En los negocios y en la vida no obtienes lo que mereces, obtienes lo que negocias y trabajas.",
+    "author": "Chester L. Karrass"
+  },
+  {
+    "text": "No reces por una vida fácil, reza por tener la fuerza para soportar una difícil.",
+    "author": "Bruce Lee"
+  },
+  {
+    "text": "Eres el promedio de las cinco personas con las que pasas más tiempo.",
+    "author": "Jim Rohn"
+  },
+  {
+    "text": "No te digas a ti mismo que necesitas más motivación; lo que necesitas es dejar de romper las promesas que te haces.",
+    "author": "Ed Mylett"
+  },
+  {
+    "text": "El árbol más fuerte no crece en el suelo más cómodo, sino contra los vientos más fuertes.",
+    "author": "J. Willard Marriott"
+  },
+  {
+    "text": "Hasta que no te valores a ti mismo, no valorarás tu tiempo. Y hasta que no valores tu tiempo, no harás nada con él.",
+    "author": "M. Scott Peck"
+  },
+  {
+    "text": "Cuanto más sudes en el entrenamiento, menos sangrarás en el combate.",
+    "author": "Richard Marcinko"
+  },
+  {
+    "text": "¿Cuánto tiempo vas a esperar antes de exigir lo mejor para ti mismo?",
+    "author": "Epicteto"
+  },
+  {
+    "text": "Todo el mundo tiene un plan hasta que le dan un puñetazo en la boca.",
+    "author": "Mike Tyson"
+  },
+  {
+    "text": "Si trabajas duro cuando nadie te ve, el resultado hablará cuando todos te miren.",
+    "author": "Kobe Bryant"
+  },
+  {
+    "text": "Si siempre pones límites a todo lo que haces, física o mentalmente, se extenderá a tu trabajo y a tu vida.",
+    "author": "Bruce Lee"
+  },
+  {
+    "text": "Trata tu cuerpo con rigor para que no desobedezca a la mente.",
+    "author": "Séneca"
+  },
+  {
+    "text": "Si te entregas al esfuerzo continuo, el dolor pasará, pero el orgullo y el carácter permanecerán para siempre.",
+    "author": "Musonio Rufo"
+  },
+  {
+    "text": "La primera y mejor de las victorias es conquistarse a uno mismo; ser conquistado por uno mismo es, de todas las cosas, la más vergonzosa y vil.",
+    "author": "Platón"
+  },
+  {
+    "text": "La mayoría de la gente no quiere realmente la libertad, porque la libertad implica responsabilidad, y la mayoría de la gente tiene miedo de la responsabilidad.",
+    "author": "Sigmund Freud"
+  },
+  {
+    "text": "Asume la responsabilidad de tu propia vida. Date cuenta de que eres tú quien te llevará a donde quieres ir, nadie más.",
+    "author": "Les Brown"
+  },
+  {
+    "text": "Tu vida no mejora por casualidad, mejora por el cambio que provocas.",
+    "author": "Jim Rohn"
+  },
+  {
+    "text": "El precio de la grandeza es la responsabilidad sobre cada uno de tus pensamientos y actos.",
+    "author": "Winston Churchill"
+  },
+  {
+    "text": "No tienes derecho a las cartas que crees que deberían haberte repartido. Tienes la obligación de jugar al máximo las que tienes en la mano.",
+    "author": "Cheryl Strayed"
+  },
+  {
+    "text": "El hombre que se levanta a sí mismo después de caer es más fuerte que el que nunca ha caído.",
+    "author": "Viktor Frankl"
+  },
+  {
+    "text": "Si quieres hacer un cambio permanente, deja de centrarte en el tamaño de tus problemas y empieza a centrarte en tu propio tamaño.",
+    "author": "T. Harv Eker"
+  },
+  {
+    "text": "La comodidad es el peor tipo de esclavitud porque te hace creer que eres libre mientras te debilita.",
+    "author": "Nassim Nicholas Taleb"
+  },
+  {
+    "text": "La autodisciplina comienza con el dominio de tus pensamientos. Si no controlas lo que piensas, no puedes controlar lo que haces.",
+    "author": "Napoleon Hill"
+  },
+  {
+    "text": "El talento sin disciplina es como un pulpo en patines: hay mucho movimiento, pero nunca sabes si va hacia adelante, hacia atrás o hacia los lados.",
+    "author": "H. Jackson Brown Jr."
+  },
+  {
+    "text": "Nadie se vuelve grande haciendo solo lo que se le pide. La excelencia empieza donde termina la obligación.",
+    "author": "Baltasar Gracián"
+  },
+  {
+    "text": "Cada mañana tienes dos opciones: seguir durmiendo con tus sueños, o levantarte y perseguirlos.",
+    "author": "Carmelo Anthony"
+  },
+  {
+    "text": "El estándar que pasas por alto y toleras es el nuevo estándar que aceptas para tu vida.",
+    "author": "David Morrison"
+  },
+  {
+    "text": "No puedes cambiar tu destino de la noche a la mañana, pero puedes cambiar tu dirección de la noche a la mañana.",
+    "author": "Jim Rohn"
+  },
+  {
+    "text": "Es una vergüenza para un hombre envejecer sin ver la belleza y la fuerza de la que su cuerpo es capaz.",
+    "author": "Sócrates"
+  },
+  {
+    "text": "Compárate con quien eras ayer, no con quien es otra persona hoy.",
+    "author": "Jordan B. Peterson"
+  },
+  {
+    "text": "Di la verdad, o al menos no te mientas a ti mismo sobre tus propias debilidades.",
+    "author": "Jordan B. Peterson"
+  },
+  {
+    "text": "El problema es que crees que tienes tiempo.",
+    "author": "Jack Kornfield"
+  },
+  {
+    "text": "El tiempo perdido nunca se vuelve a encontrar.",
+    "author": "Benjamin Franklin"
+  },
+  {
+    "text": "Un hombre que se atreve a desperdiciar una hora de su tiempo no ha descubierto el valor de la vida.",
+    "author": "Charles Darwin"
+  },
+  {
+    "text": "Puedes retrasarte, pero el tiempo no lo hará.",
+    "author": "Benjamin Franklin"
+  },
+  {
+    "text": "El ayer es un cheque cancelado; el mañana es un pagaré; el hoy es el único efectivo que tienes, así que gástalo sabiamente.",
+    "author": "Kay Lyons"
+  },
+  {
+    "text": "La gente común solo piensa en cómo pasar el tiempo. Un hombre con talento intenta utilizarlo.",
+    "author": "Arthur Schopenhauer"
+  },
+  {
+    "text": "Si amas la vida, no malgastes el tiempo, porque el tiempo es el tejido del que está hecha la vida.",
+    "author": "Benjamin Franklin"
+  },
+  {
+    "text": "En lugar de decir 'no tengo tiempo', intenta decir 'no es una prioridad' y mira cómo se siente eso.",
+    "author": "Laura Vanderkam"
+  },
+  {
+    "text": "El tiempo es lo que más queremos, pero es lo que peor usamos.",
+    "author": "William Penn"
+  },
+  {
+    "text": "Dentro de un año desearás haber empezado hoy.",
+    "author": "Karen Lamb"
+  },
+  {
+    "text": "Tu tiempo es limitado, así que no lo malgastes viviendo la vida de otro.",
+    "author": "Steve Jobs"
+  },
+  {
+    "text": "El arrepentimiento por el tiempo perdido es más tiempo perdido.",
+    "author": "Mason Cooley"
+  },
+  {
+    "text": "Cualquier idiota puede enfrentar una crisis; es el desgaste del día a día sin propósito lo que te destruye.",
+    "author": "Antón Chéjov"
+  },
+  {
+    "text": "Nunca renuncies a una meta solo por el tiempo que te tomará lograrla. El tiempo pasará de todos modos.",
+    "author": "Earl Nightingale"
+  },
+  {
+    "text": "Vive como si fueras a morir mañana. Aprende como si fueras a vivir para siempre.",
+    "author": "Mahatma Gandhi"
+  },
+  {
+    "text": "Atrapa el día de hoy y no confíes lo más mínimo en el mañana.",
+    "author": "Horacio"
+  },
+  {
+    "text": "Los dos guerreros más poderosos son la paciencia y el tiempo.",
+    "author": "León Tolstói"
+  },
+  {
+    "text": "Cuidado con la esterilidad de una vida muy ocupada.",
+    "author": "Sócrates"
+  },
+  {
+    "text": "Todo tu dinero y todo tu esfuerzo no pueden comprar de vuelta ni un solo segundo de ayer.",
+    "author": "Bob Proctor"
+  },
+  {
+    "text": "Somos extremadamente celosos con nuestro dinero y nuestras propiedades, pero cuando se trata de perder el tiempo, en lo único donde la avaricia es honrosa, somos pródigos.",
+    "author": "Séneca"
+  },
+  {
+    "text": "Un día bien aprovechado nos da un buen sueño; una vida bien aprovechada nos da una muerte tranquila.",
+    "author": "Leonardo da Vinci"
+  },
+  {
+    "text": "El futuro tiene muchos nombres. Para los débiles es lo inalcanzable. Para los temerosos, lo desconocido. Para los valientes es la oportunidad.",
+    "author": "Victor Hugo"
+  },
+  {
+    "text": "Cada segundo es de un valor infinito, porque es el representante de toda una eternidad.",
+    "author": "Johann Wolfgang von Goethe"
+  },
+  {
+    "text": "No puedes matar el tiempo sin herir la eternidad.",
+    "author": "Henry David Thoreau"
+  },
+  {
+    "text": "La pérdida de tiempo es la más irreparable y la que menos nos preocupa.",
+    "author": "Conde de Buffon"
+  },
+  {
+    "text": "El espacio lo podemos recuperar; el tiempo, jamás.",
+    "author": "Napoleón Bonaparte"
+  },
+  {
+    "text": "Mañana es solo un adverbio de tiempo, pero para los flojos es una excusa eterna.",
+    "author": "William Shakespeare"
+  },
+  {
+    "text": "Recuerda que la vida no se mide por las veces que respiras, sino por lo que construyes antes de que se te acabe el aliento.",
+    "author": "Baltasar Gracián"
+  },
+  {
+    "text": "No somos dueños del mañana; quien pospone la rectitud de su vida es como el rústico que espera a que pase todo el río para cruzar, pero el río fluye y fluirá por toda la eternidad.",
+    "author": "Horacio"
+  },
+  {
+    "text": "Nada es realmente nuestro excepto el tiempo, del cual goza hasta quien no tiene morada.",
+    "author": "Baltasar Gracián"
+  },
+  {
+    "text": "Uno de estos días es ninguno de estos días.",
+    "author": "Henry George Bohn"
+  },
+  {
+    "text": "Quien no sabe aprovechar su tiempo, no sabe vivir; pasa por el mundo como una sombra sin dejar rastro.",
+    "author": "Michel de Montaigne"
+  },
+  {
+    "text": "Tu mayor recurso es tu tiempo; no lo inviertas en personas o batallas que no construyen tu futuro.",
+    "author": "Brian Tracy"
+  },
+  {
+    "text": "El hombre que espera a que las condiciones sean perfectas para actuar, morirá esperando.",
+    "author": "Salomón"
+  },
+  {
+    "text": "Acuéstate cada noche con la satisfacción de haber ganado el día, no con la culpa de haberlo sobrevivido.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "La procrastinación es el arte de mantenerse al día con el ayer.",
+    "author": "Don Marquis"
+  },
+  {
+    "text": "La procrastinación es la tumba donde se entierran las oportunidades.",
+    "author": "Napoleon Hill"
+  },
+  {
+    "text": "Lo único que realmente posees es este instante; si lo desperdicias en distracciones, te estás robando a ti mismo.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "El reloj corre. ¿Te estás convirtiendo en la persona que dijiste que ibas a ser?",
+    "author": "Greg Plitt"
+  },
+  {
+    "text": "Cinco minutos bastan para soñar toda una vida, así de relativo es el tiempo; pero cinco minutos de indolencia bastan para arruinar un día.",
+    "author": "Mario Benedetti"
+  },
+  {
+    "text": "Aquel que no añade nada a sus conocimientos cada día, los disminuye.",
+    "author": "Hillel el Viejo"
+  },
+  {
+    "text": "El mejor momento para actuar fue ayer. El segundo mejor momento es ahora mismo.",
+    "author": "Zig Ziglar"
+  },
+  {
+    "text": "El tiempo descubre la verdad y desenmascara al hombre que solo hablaba pero no construía.",
+    "author": "Séneca"
+  },
+  {
+    "text": "Los aficionados se sientan y esperan la inspiración; el resto de nosotros simplemente nos levantamos y nos ponemos a trabajar.",
+    "author": "Stephen King"
+  },
+  {
+    "text": "Si pasas demasiado tiempo pensando en una cosa, nunca la harás.",
+    "author": "Bruce Lee"
+  },
+  {
+    "text": "Lo que no se define no se puede medir. Lo que no se mide, no se puede mejorar. Lo que no se mejora, se degrada siempre.",
+    "author": "William Thomson Kelvin"
+  },
+  {
+    "text": "Enfocarse no es decir sí a aquello en lo que debes concentrarte; es decir no a las otras cien buenas ideas que existen.",
+    "author": "Steve Jobs"
+  },
+  {
+    "text": "Nunca confundas movimiento con acción.",
+    "author": "Ernest Hemingway"
+  },
+  {
+    "text": "El trabajo se expande hasta llenar el tiempo disponible para su realización.",
+    "author": "Cyril Northcote Parkinson"
+  },
+  {
+    "text": "Trágate un sapo vivo a primera hora de la mañana y nada peor te ocurrirá durante el resto del día.",
+    "author": "Nicolas Chamfort"
+  },
+  {
+    "text": "La visión sin ejecución es solo una alucinación.",
+    "author": "Thomas Alva Edison"
+  },
+  {
+    "text": "Las ideas son fáciles. La implementación es lo difícil.",
+    "author": "Guy Kawasaki"
+  },
+  {
+    "text": "El guerrero exitoso es el hombre promedio, pero con un enfoque similar al de un láser.",
+    "author": "Bruce Lee"
+  },
+  {
+    "text": "El hombre que persigue dos conejos no atrapa ninguno.",
+    "author": "Confucio"
+  },
+  {
+    "text": "Nunca disminuyas tu meta. Aumenta tus acciones.",
+    "author": "Grant Cardone"
+  },
+  {
+    "text": "Estar siempre ocupado es una forma de pereza: pensamiento perezoso y acción indiscriminada.",
+    "author": "Tim Ferriss"
+  },
+  {
+    "text": "Haz primero las cosas difíciles. Las cosas fáciles se resolverán solas.",
+    "author": "Dale Carnegie"
+  },
+  {
+    "text": "La eficiencia es hacer las cosas bien; la efectividad es hacer las cosas correctas.",
+    "author": "Peter Drucker"
+  },
+  {
+    "text": "No necesitas más tiempo en tu día. Necesitas decidir.",
+    "author": "Seth Godin"
+  },
+  {
+    "text": "Una onza de acción vale más que una tonelada de teoría.",
+    "author": "Friedrich Engels"
+  },
+  {
+    "text": "No juzgues cada día por la cosecha que recoges, sino por las semillas que plantas.",
+    "author": "Robert Louis Stevenson"
+  },
+  {
+    "text": "Si no produces, no prosperarás, sin importar cuán hábil o talentoso seas.",
+    "author": "Cal Newport"
+  },
+  {
+    "text": "Concéntrate todos tus pensamientos en el trabajo que tienes entre manos. Los rayos del sol no queman hasta que se enfocan.",
+    "author": "Alexander Graham Bell"
+  },
+  {
+    "text": "La acción cura el miedo. La indecisión y el aplazamiento, en cambio, lo fertilizan.",
+    "author": "David J. Schwartz"
+  },
+  {
+    "text": "Si dedicas tu vida a intentar ser bueno en todo, nunca serás excelente en nada.",
+    "author": "Tom Rath"
+  },
+  {
+    "text": "No hay nada tan inútil como hacer con gran eficiencia algo que no debería haberse hecho en absoluto.",
+    "author": "Peter Drucker"
+  },
+  {
+    "text": "La diferencia entre las personas exitosas y las personas realmente exitosas es que las realmente exitosas dicen 'no' a casi todo.",
+    "author": "Warren Buffett"
+  },
+  {
+    "text": "Si tú mismo no diseñas tu propio plan de vida, lo más probable es que caigas en el plan de otra persona. Y adivina qué han planeado para ti: no mucho.",
+    "author": "Jim Rohn"
+  },
+  {
+    "text": "Un buen plan ejecutado con violencia hoy es mejor que un plan perfecto la próxima semana.",
+    "author": "George S. Patton"
+  },
+  {
+    "text": "La inspiración existe, pero tiene que encontrarte trabajando.",
+    "author": "Pablo Picasso"
+  },
+  {
+    "text": "No puedes construir una reputación sobre lo que vas a hacer.",
+    "author": "Henry Ford"
+  },
+  {
+    "text": "Los planes son inútiles, pero la planificación es indispensable.",
+    "author": "Dwight D. Eisenhower"
+  },
+  {
+    "text": "Estar en todas partes es no estar en ninguna.",
+    "author": "Séneca"
+  },
+  {
+    "text": "La sabiduría consiste en la eliminación de lo no esencial.",
+    "author": "Lin Yutang"
+  },
+  {
+    "text": "Hasta que todo tu esfuerzo no se convierta en compromiso real, solo hay vacilación y la posibilidad de echarse atrás.",
+    "author": "William Hutchison Murray"
+  },
+  {
+    "text": "El secreto para salir adelante es simplemente empezar; el secreto para empezar es dividir tus tareas complejas y abrumadoras en pequeñas tareas manejables y luego comenzar por la primera.",
+    "author": "Mark Twain"
+  },
+  {
+    "text": "El éxito extraordinario es secuencial, no simultáneo. Empieza de forma lineal y se vuelve geométrico.",
+    "author": "Gary Keller"
+  },
+  {
+    "text": "Si no pagas el precio del enfoque, pagarás el precio de la dispersión.",
+    "author": "Greg McKeown"
+  },
+  {
+    "text": "Dime a qué le prestas atención y te diré quién eres.",
+    "author": "José Ortega y Gasset"
+  },
+  {
+    "text": "La mayoría de los hombres fracasan no por falta de capacidad, sino por falta de dirección y compromiso con un solo objetivo.",
+    "author": "Vince Lombardi"
+  },
+  {
+    "text": "Haz menos cosas, pero hazlas con obsesión y maestría.",
+    "author": "Morten T. Hansen"
+  },
+  {
+    "text": "Cuando trabajes, trabaja; cuando descanses, descansa. La mediocridad vive en el punto intermedio donde no haces bien ninguna de las dos.",
+    "author": "Séneca"
+  },
+  {
+    "text": "Si quieres que un trabajo difícil parezca fácil, sigue postergándolo; pronto parecerá imposible.",
+    "author": "George Horace Lorimer"
+  },
+  {
+    "text": "La acción es la medida real de la inteligencia.",
+    "author": "Napoleon Hill"
+  },
+  {
+    "text": "No te quejes de los resultados que no obtuviste por el trabajo que no hiciste.",
+    "author": "Ronda Rousey"
+  },
+  {
+    "text": "El perfeccionismo es a menudo una excusa elegante para no terminar nada por miedo al juicio.",
+    "author": "Elizabeth Gilbert"
+  },
+  {
+    "text": "Corta las distracciones de raíz. Un hombre que es esclavo de sus impulsos inmediatos jamás construirá un imperio a largo plazo.",
+    "author": "Robert Greene"
+  },
+  {
+    "text": "Céntrate en ser productivo en lugar de estar ocupado.",
+    "author": "Tim Ferriss"
+  },
+  {
+    "text": "El esfuerzo solo libera toda su recompensa después de que una persona se niega a rendirse.",
+    "author": "Napoleon Hill"
+  },
+  {
+    "text": "Un barco en el puerto está seguro, pero no es para eso para lo que se construyen los barcos.",
+    "author": "John A. Shedd"
+  },
+  {
+    "text": "La medida definitiva de un hombre no es dónde se encuentra en momentos de comodidad, sino dónde se para en tiempos de desafío y controversia.",
+    "author": "Martin Luther King Jr."
+  },
+  {
+    "text": "He fallado más de 9,000 tiros en mi carrera. He perdido casi 300 juegos. He fallado una y otra vez en mi vida; y por eso he tenido éxito.",
+    "author": "Michael Jordan"
+  },
+  {
+    "text": "Las dificultades preparan a menudo a una persona común para un destino extraordinario.",
+    "author": "C.S. Lewis"
+  },
+  {
+    "text": "La adversidad tiene el efecto de despertar talentos que en circunstancias prósperas habrían continuado dormidos.",
+    "author": "Horacio"
+  },
+  {
+    "text": "Tu nivel de éxito rara vez superará tu nivel de desarrollo personal, porque el éxito es algo que atraes por la persona en la que te conviertes.",
+    "author": "Jim Rohn"
+  },
+  {
+    "text": "La riqueza no consiste en tener grandes posesiones, sino en tener pocas necesidades.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "No te detengas cuando estés cansado. Detente cuando hayas terminado.",
+    "author": "David Goggins"
+  },
+  {
+    "text": "La mente lo es todo. En lo que piensas, en eso te conviertes.",
+    "author": "Siddhartha Gautama"
+  },
+  {
+    "text": "Sufrimos más a menudo en la imaginación que en la realidad.",
+    "author": "Séneca"
+  },
+  {
+    "text": "Un hombre debe ser lo suficientemente grande como para admitir sus errores, lo suficientemente inteligente como para aprovecharlos y lo suficientemente fuerte como para corregirlos.",
+    "author": "John C. Maxwell"
+  },
+  {
+    "text": "Es duro fracasar, pero es todavía peor no haber intentado nunca triunfar.",
+    "author": "Theodore Roosevelt"
+  },
+  {
+    "text": "No es el crítico quien cuenta, ni el que señala cómo el hombre fuerte tropieza... El crédito pertenece al hombre que está realmente en la arena, con el rostro desfigurado por el polvo, el sudor y la sangre.",
+    "author": "Theodore Roosevelt"
+  },
+  {
+    "text": "Haz todos los días algo que te dé miedo.",
+    "author": "Eleanor Roosevelt"
+  },
+  {
+    "text": "El dolor es temporal. Puede durar un minuto, una hora, un día o un año, pero al final se acabará y otra cosa tomará su lugar. Si me rindo, en cambio, durará para siempre.",
+    "author": "Lance Armstrong"
+  },
+  {
+    "text": "No desperdicies más tiempo argumentando acerca de lo que debe ser un buen hombre. Sé uno.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "No hay nada fuera de ti que pueda permitirte ser mejor, más fuerte, más rico, más rápido o más inteligente. Todo está dentro. No busques nada fuera de ti mismo.",
+    "author": "Miyamoto Musashi"
+  },
+  {
+    "text": "En medio del caos, también hay oportunidad.",
+    "author": "Sun Tzu"
+  },
+  {
+    "text": "No mido el éxito de un hombre por lo alto que escala, sino por lo alto que rebota cuando toca fondo.",
+    "author": "George S. Patton"
+  },
+  {
+    "text": "El dolor y el sufrimiento son siempre inevitables para una gran inteligencia y un corazón profundo.",
+    "author": "Fiódor Dostoyevski"
+  },
+  {
+    "text": "Un mar en calma nunca hizo a un marinero experto.",
+    "author": "Franklin D. Roosevelt"
+  },
+  {
+    "text": "No son las cosas que nos pasan las que nos perturban, sino nuestras opiniones sobre las cosas que nos pasan.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "El coraje no es la ausencia de miedo, sino el triunfo sobre él. El hombre valiente no es el que no siente miedo, sino el que conquista ese miedo.",
+    "author": "Nelson Mandela"
+  },
+  {
+    "text": "Si te derrumbas en el día de la angustia, tu fuerza es realmente pequeña.",
+    "author": "Salomón"
+  },
+  {
+    "text": "Sé como el promontorio contra el que rompen continuamente las olas; se mantiene firme y doma la furia del agua a su alrededor.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "Nadie puede herirte sin tu consentimiento; el daño real comienza en el momento en que tú decides sentirte herido.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "Las mentes grandes tienen propósitos; las demás solo tienen deseos.",
+    "author": "Washington Irving"
+  },
+  {
+    "text": "Prefiero morir de pie que vivir siempre arrodillado ante mis propios miedos.",
+    "author": "Emiliano Zapata"
+  },
+  {
+    "text": "La cueva en la que temes entrar contiene el tesoro que buscas.",
+    "author": "Joseph Campbell"
+  },
+  {
+    "text": "La resistencia se construye en soledad, cuando no hay aplausos y tu único testigo es tu propia conciencia.",
+    "author": "David Goggins"
+  },
+  {
+    "text": "Lo que niegas te somete. Lo que aceptas te transforma.",
+    "author": "Carl Gustav Jung"
+  },
+  {
+    "text": "La paciencia y la perseverancia tienen un efecto mágico ante el cual las dificultades desaparecen y los obstáculos se desvanecen.",
+    "author": "John Quincy Adams"
+  },
+  {
+    "text": "Nunca te quejes, nunca des explicaciones. Resuelve el problema y sigue adelante.",
+    "author": "Benjamin Disraeli"
+  },
+  {
+    "text": "El carácter no se puede desarrollar en la facilidad y la tranquilidad. Solo a través de la experiencia de la prueba y el sufrimiento se puede fortalecer el alma.",
+    "author": "Helen Keller"
+  },
+  {
+    "text": "Un guerrero acepta la derrota como una lección, jamás como una identidad.",
+    "author": "Miyamoto Musashi"
+  },
+  {
+    "text": "El pesimista se queja del viento; el optimista espera que cambie; el realista ajusta las velas.",
+    "author": "William Arthur Ward"
+  },
+  {
+    "text": "Domina tus pasiones para que tus pasiones no te destruyan a ti.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "El talento sin trabajo duro no es nada.",
+    "author": "Cristiano Ronaldo"
+  },
+  {
+    "text": "La fuerza no proviene de ganar. Tus luchas desarrollan tus fortalezas. Cuando atraviesas dificultades y decides no rendirte, eso es fuerza.",
+    "author": "Arnold Schwarzenegger"
+  },
+  {
+    "text": "El futuro pertenece a aquellos que aprenden más habilidades y las combinan de maneras creativas.",
+    "author": "Robert Greene"
+  },
+  {
+    "text": "El dolor más reflexión es igual a progreso.",
+    "author": "Ray Dalio"
+  },
+  {
+    "text": "Solo los paranoicos sobreviven. La complacencia es el preludio de la caída.",
+    "author": "Andrew S. Grove"
+  },
+  {
+    "text": "En cinco años serás exactamente la misma persona que eres hoy, excepto por los libros que leas, las personas de las que te rodees y los hábitos que adoptes.",
+    "author": "Charlie 'Tremendous' Jones"
+  },
+  {
+    "text": "Si no te da vergüenza quién eras el año pasado, no estás aprendiendo ni creciendo lo suficiente.",
+    "author": "Alain de Botton"
+  },
+  {
+    "text": "Juega juegos a largo plazo con personas a largo plazo. Todos los retornos en la vida, ya sea en riqueza, relaciones o conocimiento, provienen del interés compuesto.",
+    "author": "Naval Ravikant"
+  },
+  {
+    "text": "Las cadenas de los malos hábitos son generalmente demasiado pequeñas para sentirlas hasta que son demasiado fuertes para romperlas.",
+    "author": "Samuel Johnson"
+  },
+  {
+    "text": "Quien quiere aprender a volar un día, debe primero aprender a ponerse de pie, caminar, correr y trepar; no se puede volar de golpe.",
+    "author": "Friedrich Nietzsche"
+  },
+  {
+    "text": "Ningún hombre puede mandar bien si antes no ha aprendido a obedecer con disciplina.",
+    "author": "Aristóteles"
+  },
+  {
+    "text": "El verdadero liderazgo no trata de títulos, cargos o jerarquías. Trata de una vida que influye en otra a través del ejemplo.",
+    "author": "John C. Maxwell"
+  },
+  {
+    "text": "El ego es el enemigo de lo que quieres y de lo que tienes: de dominar un oficio, de la verdadera visión creativa, de trabajar bien con los demás, de construir lealtad y apoyo.",
+    "author": "Ryan Holiday"
+  },
+  {
+    "text": "Si eres la persona más inteligente de la habitación, estás en la habitación equivocada.",
+    "author": "Richard Feynman"
+  },
+  {
+    "text": "Acostúmbrate a hacer las cosas bien incluso cuando nadie esté auditando tu trabajo; la integridad es el cimiento de la maestría.",
+    "author": "Henry Ford"
+  },
+  {
+    "text": "Los ganadores no tienen miedo de perder. Pero los perdedores sí. El fracaso es parte del proceso del éxito; la gente que evita el fracaso también evita el éxito.",
+    "author": "Robert Kiyosaki"
+  },
+  {
+    "text": "La única forma de ganar una discusión es evitándola; la única forma de ganar respeto es demostrándolo con hechos.",
+    "author": "Dale Carnegie"
+  },
+  {
+    "text": "Cuanto más aprendes, más ganas; pero primero debes pagar el precio de la ignorancia vencida.",
+    "author": "Warren Buffett"
+  },
+  {
+    "text": "Aquel que no es lo suficientemente valiente como para tomar riesgos no logrará nada en la vida.",
+    "author": "Muhammad Ali"
+  },
+  {
+    "text": "La mediocridad no conoce nada superior a sí misma, pero el talento reconoce instantáneamente al genio y al esfuerzo.",
+    "author": "Arthur Conan Doyle"
+  },
+  {
+    "text": "No tengas miedo de ir despacio; ten miedo únicamente de quedarte quieto.",
+    "author": "Confucio"
+  },
+  {
+    "text": "El éxito no es definitivo, el fracaso no es fatal: lo que cuenta es el valor para continuar.",
+    "author": "Winston Churchill"
+  },
+  {
+    "text": "La educación formal te dará para ganarte la vida; la autoeducación te dará una fortuna y libertad.",
+    "author": "Jim Rohn"
+  },
+  {
+    "text": "Acuéstate cada día siendo un poco más sabio de lo que eras cuando te despertaste.",
+    "author": "Charlie Munger"
+  },
+  {
+    "text": "La preparación rigurosa vence al talento improvisado nueve de cada diez veces.",
+    "author": "Bill Belichick"
+  },
+  {
+    "text": "Si quieres conquistar el miedo, no te quedes sentado en casa pensando en ello. Sal y ponte en acción.",
+    "author": "Dale Carnegie"
+  },
+  {
+    "text": "Un hombre sin un propósito claro es como un barco sin timón: un vagabundo, una nada, un nadie.",
+    "author": "Thomas Carlyle"
+  },
+  {
+    "text": "Nunca subestimes el poder de la consistencia aburrida: hacer lo básico de manera impecable todos los días.",
+    "author": "Alex Hormozi"
+  },
+  {
+    "text": "No se trata de los recursos que tienes, sino de qué tan ingenioso eres con lo que tienes.",
+    "author": "Tony Robbins"
+  },
+  {
+    "text": "La suerte es lo que sucede cuando la preparación se encuentra con la oportunidad.",
+    "author": "Séneca"
+  },
+  {
+    "text": "Para alcanzar la maestría debes enamorarte del aburrimiento de repetir los fundamentos mil veces.",
+    "author": "Robert Greene"
+  },
+  {
+    "text": "Quien controla a otros puede ser poderoso, pero quien se ha dominado a sí mismo es aún más poderoso.",
+    "author": "Lao-Tsé"
+  },
+  {
+    "text": "Haz lo que pocos están dispuestos a hacer hoy, para poder vivir mañana como pocos pueden vivir.",
+    "author": "Dave Ramsey"
+  },
+  {
+    "text": "El hombre prudente busca lo que hay en él mismo; el necio busca la aprobación en los demás.",
+    "author": "Confucio"
+  },
+  {
+    "text": "La victoria está reservada para aquellos que están dispuestos a pagar su precio en sudor y estudio.",
+    "author": "Sun Tzu"
+  },
+  {
+    "text": "El hombre que teme al sufrimiento ya sufre por lo que teme.",
+    "author": "Michel de Montaigne"
+  },
+  {
+    "text": "La excelencia nunca es un accidente. Siempre es el resultado de una alta intención, un esfuerzo sincero y una ejecución inteligente.",
+    "author": "Aristóteles"
+  },
+  {
+    "text": "Nunca permitas que una buena crisis se desperdicie; es tu mejor campo de entrenamiento.",
+    "author": "Winston Churchill"
+  },
+  {
+    "text": "Si no estás dispuesto a arriesgar lo inusual, tendrás que conformarte con lo ordinario.",
+    "author": "Jim Rohn"
+  },
+  {
+    "text": "El verdadero fracaso no es caer, es quedarse en el suelo culpando a la piedra.",
+    "author": "Baltasar Gracián"
+  },
+  {
+    "text": "Trabaja en silencio, perfecciona tu técnica en las sombras y deja que tu competencia se entere cuando ya sea demasiado tarde para alcanzarte.",
+    "author": "Robert Greene"
+  },
+  {
+    "text": "Un líder es un repartidor de esperanza y un ejemplo viviente de disciplina bajo presión.",
+    "author": "Napoleón Bonaparte"
+  },
+  {
+    "text": "No le pidas a la vida que baje la montaña; pídele a tus piernas que aprendan a subirla.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "El conocimiento no es poder hasta que se aplica con determinación.",
+    "author": "Dale Carnegie"
+  },
+  {
+    "text": "Cuando sientas ganas de rendirte, recuerda por qué empezaste y quién depende de que no falles.",
+    "author": "Jocko Willink"
+  },
+  {
+    "text": "La grandeza exige que sacrifiques lo que eres hoy por lo que puedes llegar a ser mañana.",
+    "author": "Carl Gustav Jung"
+  },
+  {
+    "text": "Descansa al final, no en la mitad del camino.",
+    "author": "Kobe Bryant"
+  },
+  {
+    "text": "Empieza de una vez a ser quien vas a ser.",
+    "author": "Séneca"
   }
 ];
   const DAY_SHORT_NAMES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
@@ -2613,9 +4057,14 @@
     return nextIndex;
   }
 
-  // Group and display by the author's name only, ignoring work titles and adaptation notes.
+  // Display the author's name only; omit works, source notes, and attribution labels.
   function getDisplayQuoteAuthor(author) {
-    return String(author || "").split("·")[0].trim();
+    let name = String(author || "").split("·")[0].trim();
+    if (/^Eclesiast[eé]s\s*\(Atribuido a Salom[oó]n\)$/i.test(name)) return "Salomón";
+    if (/^Talmud\s*\(Atribuido a Hillel el Viejo\)$/i.test(name)) return "Hillel el Viejo";
+    if (/^Salom[oó]n\s*\(Libro de los Proverbios\)$/i.test(name)) return "Salomón";
+    if (/^S[oó]crates,\s*seg[uú]n Plat[oó]n$/i.test(name)) return "Sócrates";
+    return name;
   }
 
   // Point 2: Quote rotation set to 75 seconds (1 min 15 sec)
