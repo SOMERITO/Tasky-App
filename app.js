@@ -2259,6 +2259,7 @@
       tasks: [],
       monthlyCompletedBase: 66,
       completedBoxCollapsed: false,
+      learningGoals: { daily: {}, weekly: {} },
       updatedAt: 0
     },
     settings: {
@@ -2600,6 +2601,33 @@
     window.addEventListener("scroll", hideTooltip, { passive: true });
   }
 
+  function normalizeLearningGoalsData(raw) {
+    const source = raw && typeof raw === "object" ? raw : {};
+    const normalizeRecords = (records, acceptedStatuses) => {
+      const result = {};
+      if (!records || typeof records !== "object" || Array.isArray(records)) return result;
+      Object.entries(records).forEach(([key, value]) => {
+        if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(key) || !value || typeof value !== "object") return;
+        const goal = String(value.goal || "").trim().slice(0, 220);
+        const notes = String(value.notes || "").slice(0, 1600);
+        const status = acceptedStatuses.includes(value.status) ? value.status : "pending";
+        if (!goal) return;
+        result[key] = {
+          date: key,
+          goal,
+          notes,
+          status,
+          updatedAt: Number(value.updatedAt || 0)
+        };
+      });
+      return result;
+    };
+    return {
+      daily: normalizeRecords(source.daily, ["pending", "completed", "missed"]),
+      weekly: normalizeRecords(source.weekly, ["pending", "in_progress", "completed", "missed"])
+    };
+  }
+
   function normalizeDataPayload(raw) {
     if (!raw || typeof raw !== "object") return null;
     const today = getTodayISO();
@@ -2645,6 +2673,7 @@
       monthlyCompletedBase: typeof raw.monthlyCompletedBase === "number" ? raw.monthlyCompletedBase : 66,
       completedBoxCollapsed: Boolean(raw.completedBoxCollapsed),
       taskMemoryByBox: (raw.taskMemoryByBox && typeof raw.taskMemoryByBox === "object" && !Array.isArray(raw.taskMemoryByBox)) ? raw.taskMemoryByBox : {},
+      learningGoals: normalizeLearningGoalsData(raw.learningGoals),
       deletedTaskIds: Array.isArray(raw.deletedTaskIds) ? Array.from(new Set(raw.deletedTaskIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
       deletedBoxIds: Array.isArray(raw.deletedBoxIds) ? Array.from(new Set(raw.deletedBoxIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
       syncSchemaVersion: Number(raw.syncSchemaVersion || 0),
@@ -2933,6 +2962,7 @@
       sv: 1,
       dt: Array.isArray(d.deletedTaskIds) ? d.deletedTaskIds : [],
       db: Array.isArray(d.deletedBoxIds) ? d.deletedBoxIds : [],
+      lg: normalizeLearningGoalsData(d.learningGoals),
       b: d.boxes.map(x => [x.id, String(x.name || "").toUpperCase(), x.color || "#2563eb", x.collapsed ? 1 : 0, x.order || 0]),
       t: d.tasks.map(x => [
         x.id,
@@ -2986,6 +3016,7 @@
         completedBoxCollapsed: Boolean(parsed.cc),
         deletedTaskIds: Array.isArray(parsed.dt) ? parsed.dt : [],
         deletedBoxIds: Array.isArray(parsed.db) ? parsed.db : [],
+        learningGoals: normalizeLearningGoalsData(parsed.lg),
         syncSchemaVersion: Number(parsed.sv || 0),
         updatedAt: Number(parsed.u || 0)
       });
@@ -3004,6 +3035,7 @@
       monthlyCompletedBase: d.monthlyCompletedBase,
       completedBoxCollapsed: d.completedBoxCollapsed,
       taskMemoryByBox: d.taskMemoryByBox || {},
+      learningGoals: normalizeLearningGoalsData(d.learningGoals),
       history: d.history || {},
       settings: d.settings || {}
     });
@@ -3015,6 +3047,23 @@
       .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "");
+  }
+
+  function mergeLearningGoalsData(primaryRaw, secondaryRaw) {
+    const primary = normalizeLearningGoalsData(primaryRaw);
+    const secondary = normalizeLearningGoalsData(secondaryRaw);
+    const mergeRecords = (first, second) => {
+      const merged = { ...second };
+      Object.entries(first).forEach(([key, record]) => {
+        const other = merged[key];
+        if (!other || Number(record.updatedAt || 0) >= Number(other.updatedAt || 0)) merged[key] = record;
+      });
+      return merged;
+    };
+    return {
+      daily: mergeRecords(primary.daily, secondary.daily),
+      weekly: mergeRecords(primary.weekly, secondary.weekly)
+    };
   }
 
   function mergeSyncDatasets(leftRaw, rightRaw) {
@@ -3179,6 +3228,7 @@
       taskMemoryByBox: { ...(secondary.taskMemoryByBox || {}), ...(primary.taskMemoryByBox || {}) },
       history: { ...(secondary.history || {}), ...(primary.history || {}) },
       settings: { ...(secondary.settings || {}), ...(primary.settings || {}) },
+      learningGoals: mergeLearningGoalsData(primary.learningGoals, secondary.learningGoals),
       bootstrapSeedData: primaryIsSeed && secondaryIsSeed,
       syncSchemaVersion: 1,
       updatedAt: Math.max(leftTime, rightTime)
@@ -3216,6 +3266,7 @@
     safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
     rebuildTaskMemoryFromTasks();
     renderBoard();
+    renderLearningGoalsPanel();
     const syncText = document.getElementById("sync-status-text");
     if (syncText) syncText.textContent = "Firebase conciliando datos";
     if (syncFingerprint(merged) !== syncFingerprint(norm)) pushCloudSync(false);
@@ -3910,6 +3961,179 @@
     const now = new Date();
     const months = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
     el.textContent = `${DAY_FULL_NAMES[now.getDay()]}, ${now.getDate()} de ${months[now.getMonth()]}`;
+  }
+
+  function getLearningWeekStartISO(baseIso = getTodayISO()) {
+    const date = new Date(`${baseIso}T00:00:00`);
+    const offset = (date.getDay() + 6) % 7;
+    date.setDate(date.getDate() - offset);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  }
+
+  function formatLearningDate(iso, options = {}) {
+    if (!iso) return "";
+    const date = new Date(`${iso}T00:00:00`);
+    return date.toLocaleDateString("es-PE", {
+      day: "numeric", month: "short", ...(options.year ? { year: "numeric" } : {})
+    });
+  }
+
+  function getLearningStatusLabel(status, isWeekly = false) {
+    if (status === "completed") return "Cumplida";
+    if (status === "missed") return "No cumplida";
+    if (status === "in_progress") return "En curso";
+    return isWeekly ? "En curso" : "Pendiente de revisión";
+  }
+
+  function renderLearningGoalsPanel() {
+    const section = document.getElementById("learning-goals-section");
+    if (!section) return;
+    const goals = normalizeLearningGoalsData(appState.data.learningGoals);
+    appState.data.learningGoals = goals;
+    const preserveDraft = section.contains(document.activeElement);
+    const today = getTodayISO();
+    const yesterday = addDaysISO(today, -1);
+    const weekStart = getLearningWeekStartISO(today);
+    const weekEnd = addDaysISO(weekStart, 6);
+    const todayRecord = goals.daily[today];
+    const yesterdayRecord = goals.daily[yesterday];
+    const weekRecord = goals.weekly[weekStart];
+
+    document.getElementById("learning-today-date").textContent = formatLearningDate(today);
+    document.getElementById("learning-yesterday-date").textContent = formatLearningDate(yesterday);
+    document.getElementById("learning-week-range").textContent = `${formatLearningDate(weekStart)} – ${formatLearningDate(weekEnd)}`;
+
+    if (!preserveDraft) {
+      document.getElementById("input-learning-daily-goal").value = todayRecord ? todayRecord.goal : "";
+      document.getElementById("input-learning-daily-notes").value = todayRecord ? todayRecord.notes : "";
+      document.getElementById("input-learning-weekly-goal").value = weekRecord ? weekRecord.goal : "";
+      document.getElementById("input-learning-weekly-notes").value = weekRecord ? weekRecord.notes : "";
+    }
+
+    const dailyStatus = document.getElementById("learning-daily-status");
+    dailyStatus.textContent = todayRecord ? getLearningStatusLabel(todayRecord.status) : "Sin registrar";
+    dailyStatus.dataset.status = todayRecord ? todayRecord.status : "empty";
+
+    const weeklyStatus = document.getElementById("learning-weekly-status");
+    weeklyStatus.textContent = weekRecord ? getLearningStatusLabel(weekRecord.status, true) : "Sin registrar";
+    weeklyStatus.dataset.status = weekRecord ? weekRecord.status : "empty";
+
+    const yesterdayGoal = document.getElementById("learning-yesterday-goal");
+    const yesterdayStatus = document.getElementById("learning-yesterday-status");
+    const yesterdayButtons = section.querySelectorAll('[data-learning-action="mark-yesterday"]');
+    if (yesterdayRecord) {
+      yesterdayGoal.textContent = yesterdayRecord.goal;
+      yesterdayStatus.textContent = getLearningStatusLabel(yesterdayRecord.status);
+      yesterdayStatus.dataset.status = yesterdayRecord.status;
+    } else {
+      yesterdayGoal.textContent = "Aún no hay una meta diaria registrada para ayer.";
+      yesterdayStatus.textContent = "Sin meta registrada";
+      yesterdayStatus.dataset.status = "empty";
+    }
+    yesterdayButtons.forEach(button => { button.disabled = !yesterdayRecord; });
+
+    const weeklyButtons = section.querySelectorAll('[data-learning-action="mark-weekly"]');
+    weeklyButtons.forEach(button => { button.disabled = !weekRecord; });
+
+    const dailyHistory = Object.values(goals.daily).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+    document.getElementById("learning-daily-history").innerHTML = dailyHistory.length
+      ? dailyHistory.map(record => `<div class="learning-history-item">
+          <div class="learning-history-item-heading"><strong>${escapeHtml(formatLearningDate(record.date, { year: true }))}</strong><span class="learning-status-chip" data-status="${escapeHtml(record.status)}">${escapeHtml(getLearningStatusLabel(record.status))}</span></div>
+          <p>${escapeHtml(record.goal)}</p>
+          ${record.notes ? `<small>${escapeHtml(record.notes)}</small>` : ""}
+        </div>`).join("")
+      : '<p class="learning-empty-history">Tus metas diarias guardadas aparecerán aquí.</p>';
+
+    const weeklyHistory = Object.values(goals.weekly).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
+    document.getElementById("learning-weekly-history").innerHTML = weeklyHistory.length
+      ? weeklyHistory.map(record => `<div class="learning-history-item">
+          <div class="learning-history-item-heading"><strong>Semana del ${escapeHtml(formatLearningDate(record.date, { year: true }))}</strong><span class="learning-status-chip" data-status="${escapeHtml(record.status)}">${escapeHtml(getLearningStatusLabel(record.status, true))}</span></div>
+          <p>${escapeHtml(record.goal)}</p>
+          ${record.notes ? `<small>${escapeHtml(record.notes)}</small>` : ""}
+        </div>`).join("")
+      : '<p class="learning-empty-history">Tus metas semanales guardadas aparecerán aquí.</p>';
+  }
+
+  function saveDailyLearningGoal() {
+    const goal = document.getElementById("input-learning-daily-goal").value.trim();
+    const notes = document.getElementById("input-learning-daily-notes").value.trim();
+    if (!goal) {
+      showToast("Escribe qué quieres aprender hoy", true);
+      document.getElementById("input-learning-daily-goal").focus();
+      return;
+    }
+    const today = getTodayISO();
+    const goals = normalizeLearningGoalsData(appState.data.learningGoals);
+    const previous = goals.daily[today];
+    goals.daily[today] = {
+      date: today,
+      goal,
+      notes,
+      status: previous ? previous.status : "pending",
+      updatedAt: Date.now()
+    };
+    appState.data.learningGoals = goals;
+    saveData(true, "Guardó la meta diaria de aprendizaje");
+    renderLearningGoalsPanel();
+    showToast("Meta diaria de aprendizaje guardada");
+    playUiSound("complete");
+  }
+
+  function saveWeeklyLearningGoal() {
+    const goal = document.getElementById("input-learning-weekly-goal").value.trim();
+    const notes = document.getElementById("input-learning-weekly-notes").value.trim();
+    if (!goal) {
+      showToast("Escribe qué tema quieres profundizar esta semana", true);
+      document.getElementById("input-learning-weekly-goal").focus();
+      return;
+    }
+    const weekStart = getLearningWeekStartISO();
+    const goals = normalizeLearningGoalsData(appState.data.learningGoals);
+    const previous = goals.weekly[weekStart];
+    goals.weekly[weekStart] = {
+      date: weekStart,
+      goal,
+      notes,
+      status: previous && previous.status !== "pending" ? previous.status : "in_progress",
+      updatedAt: Date.now()
+    };
+    appState.data.learningGoals = goals;
+    saveData(true, "Guardó la meta semanal de aprendizaje");
+    renderLearningGoalsPanel();
+    showToast("Meta semanal de aprendizaje guardada");
+    playUiSound("complete");
+  }
+
+  function markLearningGoalStatus(action, status) {
+    const goals = normalizeLearningGoalsData(appState.data.learningGoals);
+    if (action === "mark-yesterday") {
+      const date = addDaysISO(getTodayISO(), -1);
+      const record = goals.daily[date];
+      if (!record) {
+        showToast("Ayer no hay una meta diaria registrada", true);
+        return;
+      }
+      record.status = status;
+      record.updatedAt = Date.now();
+      goals.daily[date] = record;
+    } else if (action === "mark-weekly") {
+      const weekStart = getLearningWeekStartISO();
+      const record = goals.weekly[weekStart];
+      if (!record) {
+        showToast("Primero guarda tu meta semanal", true);
+        return;
+      }
+      record.status = status;
+      record.updatedAt = Date.now();
+      goals.weekly[weekStart] = record;
+    } else {
+      return;
+    }
+    appState.data.learningGoals = goals;
+    saveData(true, "Actualizó el resultado de una meta de aprendizaje");
+    renderLearningGoalsPanel();
+    showToast(status === "completed" ? "Meta marcada como cumplida" : "Meta marcada como no cumplida");
+    playUiSound(status === "completed" ? "complete" : "tap");
   }
 
   // Persistent shuffled deck: every quote appears once per cycle, without adjacent authors repeating.
@@ -5907,6 +6131,17 @@
     const searchInput = document.getElementById("search-input");
     const searchClear = document.getElementById("search-clear-btn");
 
+    document.getElementById("btn-save-daily-learning").addEventListener("click", saveDailyLearningGoal);
+    document.getElementById("btn-save-weekly-learning").addEventListener("click", saveWeeklyLearningGoal);
+    const learningSection = document.getElementById("learning-goals-section");
+    learningSection.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-learning-action]");
+      if (!button || button.disabled) return;
+      playUiSound("tap");
+      markLearningGoalStatus(button.dataset.learningAction, button.dataset.learningStatus);
+    });
+
+
     searchInput.addEventListener("input", () => {
       appState.searchQuery = searchInput.value.trim();
       searchClear.style.display = appState.searchQuery ? "inline-flex" : "none";
@@ -6475,6 +6710,7 @@
     initProTooltips();
     initEvents();
     renderBoard();
+    renderLearningGoalsPanel();
     document.documentElement.classList.remove("tasky-booting");
 
     // One initial catch-up pull, then real-time SSE/BroadcastChannel for changes.
