@@ -3796,6 +3796,11 @@
       }
 
       if (e.key === "Escape") {
+        // ESC also cancels Ctrl/Cmd multi-selection and hides the bulk action toolbar.
+        if (appState.selectedTaskIds && appState.selectedTaskIds.size > 0) {
+          clearTaskSelection();
+        }
+
         // Point 4: Close any open inline add-task input box
         const openForms = document.querySelectorAll(".inline-add-form.open");
         if (openForms.length > 0) {
