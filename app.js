@@ -1267,6 +1267,26 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
+  function renderSyncDiagnostics(statuses) {
+    const entries = [
+      ["Firestore", statuses.firestore || "sin respuesta"],
+      ["Realtime Database", statuses.rtdb || "sin respuesta"],
+      ["ntfy (canal auxiliar)", statuses.ntfy || "no comprobado"]
+    ];
+    const fullText = entries.map(([name, value]) => `${name}: ${value}`).join(" · ");
+    const details = document.getElementById("sync-diagnostic-details");
+    if (details) details.textContent = fullText;
+    return fullText;
+  }
+
+  function compactProviderStatus(value) {
+    const match = String(value || "").match(/HTTP\\s+\\d+/i);
+    if (match) return match[0].replace(/\\s+/g, "");
+    if (String(value || "").startsWith("OK")) return "OK";
+    if (String(value || "").includes("vacía") || String(value || "").includes("sin una copia válida") || String(value || "").includes("sin campo payloadJson")) return "200 sin datos válidos";
+    return "error";
+  }
+
   async function pullCloudSync(manual = false) {
     if (!isCloudNetworkAllowed()) {
       if (manual) showToast("Modo local activo");
@@ -1278,67 +1298,106 @@
     try {
       const candidates = [];
       let durableCandidateCount = 0;
+      const sourceStatus = {
+        firestore: "no consultado",
+        rtdb: "no consultada",
+        ntfy: "no consultado"
+      };
+      const isValidSnapshot = (norm) => Boolean(norm && Array.isArray(norm.boxes) &&
+        norm.boxes.length && Array.isArray(norm.tasks) && Number(norm.updatedAt || 0) > 0);
+      const describeSnapshot = (norm) => isValidSnapshot(norm)
+        ? `OK · ${norm.boxes.length} casillas, ${norm.tasks.length} tareas · revisión ${norm.updatedAt}`
+        : "respuesta sin una copia válida (faltan casillas/tareas o updatedAt)";
 
       try {
         const fsUrl = getFirebaseFirestoreUrl();
         const res = await window.fetch(fsUrl, { cache: "no-store" });
-        if (res && res.ok) {
+        if (!res.ok) {
+          sourceStatus.firestore = `HTTP ${res.status} ${res.statusText || ""}`.trim();
+        } else {
           const docJson = await res.json();
           const rawStr = docJson && docJson.fields && docJson.fields.payloadJson && docJson.fields.payloadJson.stringValue;
-          if (rawStr) {
+          if (!rawStr) {
+            sourceStatus.firestore = "HTTP 200 · documento vacío o sin campo payloadJson";
+          } else {
             const norm = normalizeDataPayload(JSON.parse(rawStr));
-            if (norm && norm.boxes.length && Number(norm.updatedAt || 0) > 0) {
+            sourceStatus.firestore = describeSnapshot(norm);
+            if (isValidSnapshot(norm)) {
               candidates.push(norm);
               durableCandidateCount++;
             }
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        sourceStatus.firestore = `error de lectura: ${String(e && e.message || e).slice(0, 140)}`;
+      }
 
       try {
         const rtdbUrl = getFirebaseRtdbUrl();
-        if (rtdbUrl) {
+        if (!rtdbUrl) {
+          sourceStatus.rtdb = "URL no configurada";
+        } else {
           const resRt = await window.fetch(rtdbUrl, { cache: "no-store" });
-          if (resRt && resRt.ok) {
+          if (!resRt.ok) {
+            sourceStatus.rtdb = `HTTP ${resRt.status} ${resRt.statusText || ""}`.trim();
+          } else {
             const parsedRt = await resRt.json();
-            const normRt = unpackCompactEnvelope(parsedRt);
-            if (normRt && normRt.boxes.length && Number(normRt.updatedAt || 0) > 0) {
-              candidates.push(normRt);
-              durableCandidateCount++;
+            if (parsedRt == null) {
+              sourceStatus.rtdb = "HTTP 200 · ruta vacía (null)";
+            } else {
+              const normRt = unpackCompactEnvelope(parsedRt);
+              sourceStatus.rtdb = describeSnapshot(normRt);
+              if (isValidSnapshot(normRt)) {
+                candidates.push(normRt);
+                durableCandidateCount++;
+              }
             }
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        sourceStatus.rtdb = `error de lectura: ${String(e && e.message || e).slice(0, 140)}`;
+      }
 
-      // ntfy is a transport/history stream, not the authority. Merge its newest valid message with durable snapshots.
+      // ntfy is a transport/history source only. It cannot authorize cloud writes by itself.
       try {
         const resStream = await window.fetch(getCloudTopicUrl(`/json?poll=1&since=all&_t=${Date.now()}`), { cache: "no-store" });
-        if (resStream && resStream.ok) {
+        if (!resStream.ok) {
+          sourceStatus.ntfy = `HTTP ${resStream.status} ${resStream.statusText || ""}`.trim();
+        } else {
           const responseText = await resStream.text();
-          const lines = responseText ? responseText.trim().split(/\r?\n/) : [];
-          for (let i = lines.length - 1; i >= 0; i--) {
+          const rows = responseText ? responseText.trim().split(/\\r?\\n/) : [];
+          let found = false;
+          for (let i = rows.length - 1; i >= 0; i--) {
             try {
-              const msg = JSON.parse(lines[i]);
+              const msg = JSON.parse(rows[i]);
               if (!msg || msg.event !== "message" || !msg.message) continue;
               const parsed = JSON.parse(msg.message);
               const unpacked = unpackCompactEnvelope(parsed);
-              if (unpacked && unpacked.boxes.length && Number(unpacked.updatedAt || 0) > 0) {
+              if (isValidSnapshot(unpacked)) {
                 candidates.push(unpacked);
+                sourceStatus.ntfy = `mensaje válido · ${unpacked.boxes.length} casillas, ${unpacked.tasks.length} tareas`;
+                found = true;
                 break;
               }
             } catch (err) {}
           }
+          if (!found) sourceStatus.ntfy = "HTTP 200 · no se encontró mensaje válido";
         }
-      } catch (e) {}
+      } catch (e) {
+        sourceStatus.ntfy = `error de lectura: ${String(e && e.message || e).slice(0, 140)}`;
+      }
+
+      renderSyncDiagnostics(sourceStatus);
 
       if (durableCandidateCount === 0 || !candidates.length) {
         cloudSyncReady = false;
         cloudSyncReadyConfig = "";
+        const summary = `Nube no verificada · FS ${compactProviderStatus(sourceStatus.firestore)} / RTDB ${compactProviderStatus(sourceStatus.rtdb)}`;
         const syncText = document.getElementById("sync-status-text");
-        if (syncText) syncText.textContent = "Datos locales protegidos · nube no verificada";
+        if (syncText) syncText.textContent = summary;
         const modalSyncTime = document.getElementById("modal-sync-last-time");
-        if (modalSyncTime) modalSyncTime.textContent = "No se encontró una copia remota verificable. No se subieron datos automáticamente.";
-        if (manual) showToast("No se pudo verificar la nube. Tus datos locales se conservaron y no se subió ninguna copia automáticamente.", true);
+        if (modalSyncTime) modalSyncTime.textContent = "No se encontró una copia remota persistente válida. No se subieron datos automáticamente.";
+        if (manual) showToast("La nube no se pudo verificar. Abre el menú «…» y revisa el diagnóstico de Firestore y Realtime Database. Tus datos locales siguen protegidos.", true);
         return;
       }
 
@@ -1366,7 +1425,7 @@
       ) {
         pushCloudSync(false);
       } else if (manual) {
-        showToast("🔄 Sincronización verificada; los datos se conciliaron sin reemplazar tareas faltantes.");
+        showToast("Sincronización verificada; los datos se conciliaron sin reemplazar tareas faltantes.");
       }
     } finally {
       cloudPullInFlight = false;
