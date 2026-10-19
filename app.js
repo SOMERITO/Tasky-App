@@ -2488,17 +2488,88 @@
     el.textContent = `${DAY_FULL_NAMES[now.getDay()]}, ${now.getDate()} de ${months[now.getMonth()]}`;
   }
 
-  // Return a random quote index, optionally excluding the current quote.
-  // Excluding the current index avoids an identical quote on the next timer tick.
-  function getRandomQuoteIndex(excludeIndex = -1) {
-    const pool = appState.quotes || [];
-    if (pool.length <= 1) return 0;
-    const candidates = [];
-    for (let index = 0; index < pool.length; index++) {
-      if (index !== excludeIndex) candidates.push(index);
+  // Persistent shuffled deck: every quote is shown once before the deck is shuffled again.
+  // Saving the next position prevents refreshes from restarting the cycle or repeating a quote.
+  const QUOTE_DECK_STORAGE_KEY = "tasky_quote_deck_v1";
+  let quoteDeckState = null;
+
+  function isValidQuoteDeckState(candidate, quoteCount) {
+    if (!candidate || candidate.version !== 1 || candidate.quoteCount !== quoteCount) return false;
+    if (!Array.isArray(candidate.order) || candidate.order.length !== quoteCount) return false;
+    if (!Number.isInteger(candidate.next) || candidate.next < 0 || candidate.next > quoteCount) return false;
+    const seen = new Set();
+    for (const index of candidate.order) {
+      if (!Number.isInteger(index) || index < 0 || index >= quoteCount || seen.has(index)) return false;
+      seen.add(index);
     }
-    if (!candidates.length) return 0;
-    return candidates[Math.floor(Math.random() * candidates.length)];
+    return candidate.last === -1 || (Number.isInteger(candidate.last) && candidate.last >= 0 && candidate.last < quoteCount);
+  }
+
+  function createQuoteDeck(quoteCount, previousLastIndex = -1) {
+    const order = Array.from({ length: quoteCount }, (_, index) => index);
+    // Fisher-Yates shuffle.
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    // Avoid repeating the previous cycle's final quote right at the boundary.
+    if (order.length > 1 && order[0] === previousLastIndex) {
+      const swapIndex = 1 + Math.floor(Math.random() * (order.length - 1));
+      [order[0], order[swapIndex]] = [order[swapIndex], order[0]];
+    }
+    return { version: 1, quoteCount, order, next: 0, last: previousLastIndex };
+  }
+
+  function saveQuoteDeckState() {
+    try {
+      if (typeof localStorage !== "undefined" && quoteDeckState) {
+        localStorage.setItem(QUOTE_DECK_STORAGE_KEY, JSON.stringify(quoteDeckState));
+      }
+    } catch (_) {
+      // Continue with the in-memory deck if storage is unavailable.
+    }
+  }
+
+  function ensureQuoteDeckState() {
+    const quoteCount = (appState.quotes || []).length;
+    if (!quoteCount) return null;
+    if (isValidQuoteDeckState(quoteDeckState, quoteCount)) return quoteDeckState;
+
+    let saved = null;
+    try {
+      if (typeof localStorage !== "undefined") {
+        saved = JSON.parse(localStorage.getItem(QUOTE_DECK_STORAGE_KEY) || "null");
+      }
+    } catch (_) {
+      saved = null;
+    }
+
+    if (isValidQuoteDeckState(saved, quoteCount)) {
+      quoteDeckState = saved;
+    } else {
+      const previousLast = saved && Number.isInteger(saved.last) && saved.last >= 0 && saved.last < quoteCount
+        ? saved.last
+        : -1;
+      quoteDeckState = createQuoteDeck(quoteCount, previousLast);
+    }
+    return quoteDeckState;
+  }
+
+  function getNextQuoteIndex() {
+    const deck = ensureQuoteDeckState();
+    if (!deck) return 0;
+
+    if (deck.next >= deck.order.length) {
+      const previousLast = deck.last;
+      quoteDeckState = createQuoteDeck(deck.quoteCount, previousLast);
+    }
+
+    const activeDeck = quoteDeckState;
+    const nextIndex = activeDeck.order[activeDeck.next];
+    activeDeck.next += 1;
+    activeDeck.last = nextIndex;
+    saveQuoteDeckState();
+    return nextIndex;
   }
 
   // Show only the person's name, not the source, section, or adaptation note.
@@ -2537,7 +2608,7 @@
   function startQuoteRotation() {
     if (appState.quoteTimer) clearInterval(appState.quoteTimer);
     appState.quoteTimer = setInterval(() => {
-      appState.currentQuoteIndex = getRandomQuoteIndex(appState.currentQuoteIndex);
+      appState.currentQuoteIndex = getNextQuoteIndex();
       renderQuote(true);
     }, 75000);
   }
@@ -4459,7 +4530,7 @@
     };
 
     const advanceToNextQuote = () => {
-      appState.currentQuoteIndex = (appState.currentQuoteIndex + 1) % appState.quotes.length;
+      appState.currentQuoteIndex = getNextQuoteIndex();
       renderQuote(true);
       startQuoteRotation();
       playUiSound("tap");
@@ -4910,8 +4981,8 @@
     scheduleExactMidnightRollover();
     applyThemeAndSoundUI();
     renderHeroDate();
-    // Pick a random quote on each app load instead of always starting at the first item.
-    appState.currentQuoteIndex = getRandomQuoteIndex();
+    // Resume the shuffled deck at its next unused quote, even after a page refresh.
+    appState.currentQuoteIndex = getNextQuoteIndex();
     renderQuote(false);
     startQuoteRotation();
     initProTooltips();
