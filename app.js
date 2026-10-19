@@ -2721,7 +2721,7 @@
 
   function updateMultiSelectUI() {
     if (!appState.selectedTaskIds) appState.selectedTaskIds = new Set();
-    const currentIds = new Set((appState.data.tasks || []).map(task => String(task.id)));
+    const currentIds = new Set((appState.data.tasks || []).filter(task => !task.done).map(task => String(task.id)));
     Array.from(appState.selectedTaskIds).forEach(id => {
       if (!currentIds.has(String(id))) appState.selectedTaskIds.delete(id);
     });
