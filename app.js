@@ -252,7 +252,7 @@
     selectedRescheduledIds: new Set(),
     selectedOverdueIds: new Set(),
     firebaseConfig: {
-      apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YrhvEcb8",
+      apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YhrvEcb8",
       authDomain: "tasky-7a30c.firebaseapp.com",
       projectId: "tasky-7a30c",
       storageBucket: "tasky-7a30c.firebasestorage.app",
@@ -797,6 +797,8 @@
   let cloudSyncReady = false;
   let cloudSyncReadyConfig = "";
   let cloudPullInFlight = false;
+  let cloudBootstrapInFlight = false;
+  let lastCloudBootstrapError = "";
   let syncBroadcastChannel = null;
   try {
     if (typeof window.BroadcastChannel !== "undefined") {
@@ -841,13 +843,14 @@
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === "object" && parsed.projectId) {
-          if (String(parsed.projectId).trim() === "esbas-2026") {
-            // Migrate the app's former hard-coded project. Its API key/URL must not be reused
-            // for Tasky, but keep the configured Firestore document path if one was customized.
+          const parsedProjectId = String(parsed.projectId).trim();
+          if (parsedProjectId === "esbas-2026" || parsedProjectId === "tasky-7a30c") {
+            // Migrate stale devices to the verified Tasky web config. Keep the chosen Firestore path.
+            // Preserve a Realtime Database URL only when the saved config is already Tasky's project.
             const migrated = {
               ...appState.firebaseConfig,
               docPath: String(parsed.docPath || appState.firebaseConfig.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, ""),
-              databaseURL: ""
+              databaseURL: parsedProjectId === "tasky-7a30c" ? String(parsed.databaseURL || "") : ""
             };
             appState.firebaseConfig = migrated;
             safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(migrated));
@@ -859,60 +862,12 @@
           }
         }
       }
-      // Clean up any legacy JSONBin keys from localStorage while rescuing their data if present
       ["jsonbin_config", "tasky_jsonbin", "cfo_v101_final"].forEach((legacyKey) => {
         try {
-          if (legacyKey.includes("jsonbin")) {
-            window.localStorage.removeItem(legacyKey);
-          }
+          if (legacyKey.includes("jsonbin")) window.localStorage.removeItem(legacyKey);
         } catch (e) {}
       });
     } catch (e) {}
-  }
-
-  function parseFirebaseConfigInput(rawText) {
-    const text = String(rawText || "").trim();
-    if (!text) return null;
-    try {
-      if (text.startsWith("{") && text.endsWith("}")) {
-        const obj = JSON.parse(text);
-        if (obj.projectId || obj.databaseURL) return obj;
-      }
-    } catch (e) {}
-
-    const extract = (key) => {
-      const rx = new RegExp(key + "\\s*[:=]\\s*[\x22\x27]([^\x22\x27]+)[\x22\x27]", "i");
-      const m = text.match(rx);
-      return m ? m[1].trim() : "";
-    };
-
-    const projectId = extract("projectId");
-    const apiKey = extract("apiKey");
-    const databaseURL = extract("databaseURL");
-    const authDomain = extract("authDomain") || (projectId ? `${projectId}.firebaseapp.com` : "");
-    const storageBucket = extract("storageBucket") || (projectId ? `${projectId}.firebasestorage.app` : "");
-
-    if (projectId || databaseURL) {
-      return {
-        apiKey: apiKey || appState.firebaseConfig.apiKey,
-        projectId: projectId || appState.firebaseConfig.projectId,
-        databaseURL: databaseURL || "",
-        authDomain,
-        storageBucket,
-        docPath: appState.firebaseConfig.docPath || "tasky_sync/somerito_main"
-      };
-    }
-
-    // If the user typed a plain projectId (e.g., "typify-pro-91c4f" or "esbas-2026")
-    if (/^[a-z0-9-]+$/i.test(text)) {
-      return {
-        ...appState.firebaseConfig,
-        projectId: text,
-        authDomain: `${text}.firebaseapp.com`,
-        storageBucket: `${text}.firebasestorage.app`
-      };
-    }
-    return null;
   }
 
   function getFirebaseFirestoreUrl() {
@@ -1357,6 +1312,130 @@
     return "error";
   }
 
+  async function autoBootstrapFirestoreDocument(localRaw, sourceStatus) {
+    if (cloudBootstrapInFlight) return "busy";
+    cloudBootstrapInFlight = true;
+    try {
+      const cfg = appState.firebaseConfig || {};
+      const projectId = String(cfg.projectId || "").trim();
+      const parts = String(cfg.docPath || "tasky_sync/somerito_main")
+        .replace(/^\/+|\/+$/g, "")
+        .split("/")
+        .filter(Boolean);
+      if (!projectId || parts.length < 2 || parts.length % 2 !== 0) {
+        sourceStatus.firestore = "No se pudo inicializar: la ruta de documento no es válida.";
+        renderSyncDiagnostics(sourceStatus);
+        return "failed";
+      }
+
+      const candidate = normalizeDataPayload(localRaw);
+      if (!candidate || !candidate.boxes.length || !Array.isArray(candidate.tasks)) {
+        sourceStatus.firestore = "No se pudo inicializar: los datos locales no son válidos.";
+        renderSyncDiagnostics(sourceStatus);
+        return "failed";
+      }
+
+      candidate.updatedAt = Math.max(Date.now(), Number(candidate.updatedAt || 0) + 1);
+      candidate.syncSchemaVersion = 1;
+      candidate.deletedTaskIds = Array.isArray(candidate.deletedTaskIds) ? candidate.deletedTaskIds : [];
+      candidate.deletedBoxIds = Array.isArray(candidate.deletedBoxIds) ? candidate.deletedBoxIds : [];
+      candidate.bootstrapSeedData = false;
+      candidate.boxes.forEach(box => { delete box.bootstrapSeed; });
+      candidate.tasks.forEach(task => { delete task.bootstrapSeed; });
+
+      appState.data = candidate;
+      safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
+      rebuildTaskMemoryFromTasks();
+
+      const fullPayload = {
+        ...appState.data,
+        taskMemoryByBox: appState.taskMemory,
+        history: appState.history,
+        settings: appState.settings,
+        deviceId: appState.deviceId,
+        updatedAt: Number(appState.data.updatedAt)
+      };
+      const compactStr = packCompactEnvelope();
+      const documentId = parts[parts.length - 1];
+      const collectionPath = parts.slice(0, -1).map(encodeURIComponent).join("/");
+      const keyParam = cfg.apiKey ? "&key=" + encodeURIComponent(cfg.apiKey) : "";
+      const createUrl = "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(projectId) +
+        "/databases/(default)/documents/" + collectionPath + "?documentId=" + encodeURIComponent(documentId) + keyParam;
+      const body = {
+        fields: {
+          payloadJson: { stringValue: JSON.stringify(fullPayload) },
+          compactEnvelope: { stringValue: compactStr },
+          updatedAt: { integerValue: String(fullPayload.updatedAt) },
+          deviceId: { stringValue: String(appState.deviceId) }
+        }
+      };
+
+      const response = await window.fetch(createUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const responseText = await response.text();
+
+      if (response.ok) {
+        cloudSyncReady = true;
+        cloudSyncReadyConfig = getCloudSyncConfigKey();
+        sourceStatus.firestore = "Documento creado automáticamente · " + candidate.boxes.length + " casillas, " + candidate.tasks.length + " tareas";
+        renderSyncDiagnostics(sourceStatus);
+        const syncText = document.getElementById("sync-status-text");
+        if (syncText) syncText.textContent = "Firebase inicializado · sincronización automática";
+        const modalSyncTime = document.getElementById("modal-sync-last-time");
+        if (modalSyncTime) modalSyncTime.textContent = "Copia inicial creada automáticamente en Firestore. Los cambios se sincronizarán sin pulsar botones.";
+        lastCloudBootstrapError = "";
+        showToast("✅ Nube inicializada. La sincronización automática ya está activa.");
+        try {
+          await window.fetch(getCloudTopicUrl(""), {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=UTF-8" },
+            body: compactStr
+          });
+        } catch (e) {}
+        return "created";
+      }
+
+      let parsedError = "";
+      try {
+        const err = JSON.parse(responseText);
+        parsedError = err && err.error && err.error.message ? String(err.error.message) : responseText;
+      } catch (e) {
+        parsedError = responseText;
+      }
+      const shortError = String(parsedError || response.statusText || "Error desconocido").replace(/\s+/g, " ").slice(0, 220);
+      sourceStatus.firestore = "HTTP " + response.status + " al crear documento: " + shortError;
+      renderSyncDiagnostics(sourceStatus);
+
+      if (response.status === 409 || /ALREADY_EXISTS|already exists/i.test(shortError)) {
+        sourceStatus.firestore = "El documento fue creado por otro dispositivo; se volverá a leer automáticamente.";
+        renderSyncDiagnostics(sourceStatus);
+        return "exists";
+      }
+
+      const signature = String(response.status) + ":" + shortError;
+      if (signature !== lastCloudBootstrapError) {
+        showToast("No se pudo iniciar Firestore (HTTP " + response.status + "). Revisa Diagnóstico de conexión.", true);
+        lastCloudBootstrapError = signature;
+      }
+      return "failed";
+    } catch (error) {
+      const message = String(error && error.message || error).slice(0, 220);
+      sourceStatus.firestore = "Error al crear documento: " + message;
+      renderSyncDiagnostics(sourceStatus);
+      const signature = "exception:" + message;
+      if (signature !== lastCloudBootstrapError) {
+        showToast("La inicialización automática de Firestore falló. Revisa el diagnóstico de conexión.", true);
+        lastCloudBootstrapError = signature;
+      }
+      return "failed";
+    } finally {
+      cloudBootstrapInFlight = false;
+    }
+  }
+
   async function pullCloudSync(manual = false) {
     if (!isCloudNetworkAllowed()) {
       if (manual) showToast("Modo local activo");
@@ -1458,6 +1537,15 @@
       }
 
       renderSyncDiagnostics(sourceStatus);
+
+      if (durableCandidateCount === 0 && /^HTTP 404\b/.test(sourceStatus.firestore)) {
+        let bootstrapDataset = normalizeDataPayload(appState.data);
+        for (const candidate of candidates) {
+          bootstrapDataset = mergeSyncDatasets(bootstrapDataset, candidate);
+        }
+        const bootstrapResult = await autoBootstrapFirestoreDocument(bootstrapDataset, sourceStatus);
+        if (bootstrapResult === "created" || bootstrapResult === "exists" || bootstrapResult === "busy") return;
+      }
 
       if (durableCandidateCount === 0 || !candidates.length) {
         cloudSyncReady = false;
