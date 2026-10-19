@@ -252,10 +252,12 @@
     selectedRescheduledIds: new Set(),
     selectedOverdueIds: new Set(),
     firebaseConfig: {
-      apiKey: ["AIzaSyC4eWmz68", "IlI0qEaW6zndkjFN_bwzlLjpY"].join(""),
-      authDomain: "esbas-2026.firebaseapp.com",
-      projectId: "esbas-2026",
-      storageBucket: "esbas-2026.firebasestorage.app",
+      apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YhrvEcb8",
+      authDomain: "tasky-7a30c.firebaseapp.com",
+      projectId: "tasky-7a30c",
+      storageBucket: "tasky-7a30c.firebasestorage.app",
+      messagingSenderId: "505071526437",
+      appId: "1:505071526437:web:6c9eb46dbb4fef296655cc",
       databaseURL: "",
       docPath: "tasky_sync/somerito_main"
     },
@@ -839,10 +841,22 @@
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === "object" && parsed.projectId) {
-          appState.firebaseConfig = {
-            ...appState.firebaseConfig,
-            ...parsed
-          };
+          if (String(parsed.projectId).trim() === "esbas-2026") {
+            // Migrate the app's former hard-coded project. Its API key/URL must not be reused
+            // for Tasky, but keep the configured Firestore document path if one was customized.
+            const migrated = {
+              ...appState.firebaseConfig,
+              docPath: String(parsed.docPath || appState.firebaseConfig.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, ""),
+              databaseURL: ""
+            };
+            appState.firebaseConfig = migrated;
+            safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(migrated));
+          } else {
+            appState.firebaseConfig = {
+              ...appState.firebaseConfig,
+              ...parsed
+            };
+          }
         }
       }
       // Clean up any legacy JSONBin keys from localStorage while rescuing their data if present
@@ -903,7 +917,7 @@
 
   function getFirebaseFirestoreUrl() {
     const cfg = appState.firebaseConfig || {};
-    const proj = String(cfg.projectId || "esbas-2026").trim();
+    const proj = String(cfg.projectId || "tasky-7a30c").trim();
     const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, "");
     const keyParam = cfg.apiKey ? `?key=${encodeURIComponent(cfg.apiKey)}` : "";
     return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(proj)}/databases/(default)/documents/${docPath}${keyParam}`;
@@ -911,10 +925,9 @@
 
   function getFirebaseRtdbUrl() {
     const cfg = appState.firebaseConfig || {};
-    let base = String(cfg.databaseURL || "").trim().replace(/\/+$/, "");
-    if (!base && cfg.projectId) {
-      base = `https://${cfg.projectId}-default-rtdb.firebaseio.com`;
-    }
+    // Only query Realtime Database when its exact URL is configured.
+    // Tasky's registered Firebase Web SDK config does not contain databaseURL, so do not guess a host.
+    const base = String(cfg.databaseURL || "").trim().replace(/\/+$/, "");
     if (!base) return "";
     const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, "");
     return `${base}/${docPath}.json`;
