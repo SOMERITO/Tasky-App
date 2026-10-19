@@ -4428,15 +4428,49 @@
     });
 
     const quoteContainer = document.getElementById("quote-container");
+    let quoteClickTimeout = null;
+    const quoteClickDelay = 350;
+
     const copyCurrentQuote = () => {
       const quote = appState.quotes[appState.currentQuoteIndex % appState.quotes.length];
       if (!quote) return;
       copyTextToClipboard(`${quote.text}\n— ${quote.author}`, "📋 Frase y autor copiados", quoteContainer);
     };
-    quoteContainer.addEventListener("click", copyCurrentQuote);
+
+    const advanceToNextQuote = () => {
+      appState.currentQuoteIndex = (appState.currentQuoteIndex + 1) % appState.quotes.length;
+      renderQuote(true);
+      startQuoteRotation();
+      playUiSound("tap");
+    };
+
+    quoteContainer.addEventListener("click", (e) => {
+      // The second click of a double-click cancels the pending copy.
+      if (e.detail > 1) {
+        if (quoteClickTimeout !== null) clearTimeout(quoteClickTimeout);
+        quoteClickTimeout = null;
+        return;
+      }
+
+      if (quoteClickTimeout !== null) clearTimeout(quoteClickTimeout);
+      quoteClickTimeout = setTimeout(() => {
+        quoteClickTimeout = null;
+        copyCurrentQuote();
+      }, quoteClickDelay);
+    });
+
+    quoteContainer.addEventListener("dblclick", (e) => {
+      e.preventDefault();
+      if (quoteClickTimeout !== null) clearTimeout(quoteClickTimeout);
+      quoteClickTimeout = null;
+      advanceToNextQuote();
+    });
+
     quoteContainer.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" && e.key !== " ") return;
       e.preventDefault();
+      if (quoteClickTimeout !== null) clearTimeout(quoteClickTimeout);
+      quoteClickTimeout = null;
       copyCurrentQuote();
     });
 
