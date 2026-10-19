@@ -1030,7 +1030,7 @@
   function canonicalBoxKey(name) {
     return String(name || "CASILLA")
       .normalize("NFD")
-      .replace(/[\\u0300-\\u036f]/g, "")
+      .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "");
   }
@@ -1175,8 +1175,7 @@
       canonicalSecondaryTasks,
       deletedTasks,
       "id",
-      task => canonicalBoxesByKey.has(canonicalBoxKey((canonicalBoxesByKey.get(canonicalBoxKey(task.boxId)) || {}).name)) ||
-              Array.from(canonicalBoxesByKey.values()).some(box => String(box.id) === String(task.boxId))
+      task => Array.from(canonicalBoxesByKey.values()).some(box => String(box.id) === String(task.boxId))
     );
 
     const usedCanonicalBoxIds = new Set(tasks.map(task => String(task.boxId)));
