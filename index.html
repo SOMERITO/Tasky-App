@@ -140,6 +140,91 @@
       </div>
     </section>
 
+    <!-- Daily and weekly learning goals -->
+    <section id="learning-goals-section" class="learning-section" aria-labelledby="learning-section-title">
+      <div class="learning-section-heading">
+        <div>
+          <span class="learning-eyebrow">CRECIMIENTO PERSONAL</span>
+          <h2 id="learning-section-title">Aprendizaje continuo</h2>
+          <p>Una idea nueva cada día. Una meta con más profundidad cada semana.</p>
+        </div>
+        <span class="learning-heading-mark" aria-hidden="true">✦</span>
+      </div>
+
+      <div class="learning-cards-grid">
+        <article class="learning-card learning-daily-card">
+          <div class="learning-card-heading">
+            <div>
+              <span class="learning-card-kicker">META DIARIA · <span id="learning-today-date">HOY</span></span>
+              <h3>Aprender algo nuevo</h3>
+            </div>
+            <span class="learning-card-symbol" aria-hidden="true">☀️</span>
+          </div>
+          <label class="learning-label" for="input-learning-daily-goal">¿Qué vas a aprender hoy?</label>
+          <input id="input-learning-daily-goal" class="learning-input" type="text" maxlength="220" placeholder="Ej.: comprender cómo funciona la memoria" />
+          <label class="learning-label" for="input-learning-daily-notes">Apunte o aprendizaje obtenido</label>
+          <textarea id="input-learning-daily-notes" class="learning-input learning-textarea" rows="3" maxlength="1200" placeholder="Anota una idea, explicación o ejemplo para recordar lo aprendido."></textarea>
+          <div class="learning-action-row">
+            <button type="button" id="btn-save-daily-learning" class="btn-primary">Guardar meta diaria</button>
+            <span id="learning-daily-status" class="learning-status-chip">Sin registrar</span>
+          </div>
+
+          <div class="learning-review-panel">
+            <div class="learning-review-title">
+              <strong>Revisión de ayer</strong>
+              <span id="learning-yesterday-date"></span>
+            </div>
+            <p id="learning-yesterday-goal" class="learning-review-goal">Aún no hay una meta diaria registrada para ayer.</p>
+            <span id="learning-yesterday-status" class="learning-status-chip">Pendiente de revisión</span>
+            <div class="learning-action-row learning-review-actions">
+              <button type="button" class="btn-secondary learning-status-btn" data-learning-action="mark-yesterday" data-learning-status="completed" disabled>✓ Sí, la cumplí</button>
+              <button type="button" class="btn-secondary learning-status-btn" data-learning-action="mark-yesterday" data-learning-status="missed" disabled>No llegué</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="learning-card learning-weekly-card">
+          <div class="learning-card-heading">
+            <div>
+              <span class="learning-card-kicker">META SEMANAL · <span id="learning-week-range">ESTA SEMANA</span></span>
+              <h3>Profundizar en un tema</h3>
+            </div>
+            <span class="learning-card-symbol" aria-hidden="true">📚</span>
+          </div>
+          <label class="learning-label" for="input-learning-weekly-goal">¿Qué tema aprenderás esta semana?</label>
+          <input id="input-learning-weekly-goal" class="learning-input" type="text" maxlength="220" placeholder="Ej.: estudiar los fundamentos de la estadística" />
+          <label class="learning-label" for="input-learning-weekly-notes">Avance, apuntes o dudas</label>
+          <textarea id="input-learning-weekly-notes" class="learning-input learning-textarea" rows="3" maxlength="1600" placeholder="Divide el tema en partes y registra lo que vas comprendiendo."></textarea>
+          <div class="learning-action-row">
+            <button type="button" id="btn-save-weekly-learning" class="btn-primary">Guardar meta semanal</button>
+            <span id="learning-weekly-status" class="learning-status-chip">Sin registrar</span>
+          </div>
+          <div class="learning-review-panel">
+            <div class="learning-review-title">
+              <strong>Evaluación semanal</strong>
+              <span>El domingo</span>
+            </div>
+            <p class="learning-review-hint">Marca el resultado al finalizar la semana. Puedes actualizar tus apuntes durante el proceso.</p>
+            <div class="learning-action-row learning-review-actions">
+              <button type="button" class="btn-secondary learning-status-btn" data-learning-action="mark-weekly" data-learning-status="completed" disabled>✓ Meta cumplida</button>
+              <button type="button" class="btn-secondary learning-status-btn" data-learning-action="mark-weekly" data-learning-status="missed" disabled>No completada</button>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div class="learning-history-grid">
+        <div class="learning-history-card">
+          <h4>Metas diarias recientes</h4>
+          <div id="learning-daily-history" class="learning-history-list"><p class="learning-empty-history">Tus metas diarias guardadas aparecerán aquí.</p></div>
+        </div>
+        <div class="learning-history-card">
+          <h4>Metas semanales recientes</h4>
+          <div id="learning-weekly-history" class="learning-history-list"><p class="learning-empty-history">Tus metas semanales guardadas aparecerán aquí.</p></div>
+        </div>
+      </div>
+    </section>
+
     <!-- Navigation Filters & Quick Actions -->
     <nav class="controls-bar" aria-label="Filtros de tareas">
       <div class="tabs-group">
