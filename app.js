@@ -1027,6 +1027,14 @@
     });
   }
 
+  function canonicalBoxKey(name) {
+    return String(name || "CASILLA")
+      .normalize("NFD")
+      .replace(/[\\u0300-\\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  }
+
   function mergeSyncDatasets(leftRaw, rightRaw) {
     const left = normalizeDataPayload(leftRaw);
     const right = normalizeDataPayload(rightRaw);
@@ -1046,19 +1054,17 @@
     const rightDeletedBoxIds = new Set(right.deletedBoxIds || []);
     const leftTaskIds = new Set(left.tasks.map(task => String(task.id)));
     const rightTaskIds = new Set(right.tasks.map(task => String(task.id)));
-    const leftBoxIds = new Set(left.boxes.map(box => String(box.id)));
-    const rightBoxIds = new Set(right.boxes.map(box => String(box.id)));
 
-    // Count records each snapshot lacks, excluding IDs explicitly deleted in that snapshot.
+    const leftBoxKeys = new Set(left.boxes.map(box => canonicalBoxKey(box.name)));
+    const rightBoxKeys = new Set(right.boxes.map(box => canonicalBoxKey(box.name)));
     const leftMissingCount =
       left.tasks.filter(task => !rightTaskIds.has(String(task.id)) && !rightDeletedTaskIds.has(String(task.id))).length +
-      left.boxes.filter(box => !rightBoxIds.has(String(box.id)) && !rightDeletedBoxIds.has(String(box.id))).length;
+      left.boxes.filter(box => !rightBoxKeys.has(canonicalBoxKey(box.name)) && !rightDeletedBoxIds.has(String(box.id))).length;
     const rightMissingCount =
       right.tasks.filter(task => !leftTaskIds.has(String(task.id)) && !leftDeletedTaskIds.has(String(task.id))).length +
-      right.boxes.filter(box => !leftBoxIds.has(String(box.id)) && !leftDeletedBoxIds.has(String(box.id))).length;
+      right.boxes.filter(box => !leftBoxKeys.has(canonicalBoxKey(box.name)) && !leftDeletedBoxIds.has(String(box.id))).length;
 
-    // A much smaller snapshot may be partial even if it also contains one device-only task.
-    // Preserve fields from the substantially more complete snapshot, regardless of the device clock.
+    // Prefer the materially more complete dataset even when its clock is older.
     if (leftMissingCount > rightMissingCount + 3) {
       primary = left;
       secondary = right;
@@ -1080,7 +1086,6 @@
     const ignoreUnversionedSecondary = Number(primary.updatedAt || 0) > 0 && Number(secondary.updatedAt || 0) <= 0;
     const primaryIsSeed = Boolean(primary.bootstrapSeedData);
     const secondaryIsSeed = Boolean(secondary.bootstrapSeedData);
-
     const deletedTaskIds = Array.from(new Set([
       ...(left.deletedTaskIds || []), ...(right.deletedTaskIds || [])
     ])).filter(Boolean);
@@ -1090,6 +1095,54 @@
     const deletedTasks = new Set(deletedTaskIds);
     const deletedBoxes = new Set(deletedBoxIds);
 
+    // Map semantically identical boxes by normalized display name. The chosen primary box ID
+    // becomes the canonical ID for tasks coming from either device.
+    const primaryBoxesByKey = new Map();
+    (primary.boxes || []).forEach(box => {
+      const key = canonicalBoxKey(box.name);
+      if (!primaryBoxesByKey.has(key) && !deletedBoxes.has(String(box.id))) primaryBoxesByKey.set(key, box);
+    });
+    const secondaryBoxesByKey = new Map();
+    (secondary.boxes || []).forEach(box => {
+      const key = canonicalBoxKey(box.name);
+      if (!secondaryBoxesByKey.has(key) && !deletedBoxes.has(String(box.id))) secondaryBoxesByKey.set(key, box);
+    });
+
+    const canonicalBoxesByKey = new Map();
+    primaryBoxesByKey.forEach((box, key) => {
+      const other = secondaryBoxesByKey.get(key);
+      let chosen = box;
+      if (box.bootstrapSeed === true && other && other.bootstrapSeed !== true && !secondaryIsSeed) chosen = other;
+      canonicalBoxesByKey.set(key, chosen);
+    });
+    if (!ignoreUnversionedSecondary) {
+      secondaryBoxesByKey.forEach((box, key) => {
+        if (canonicalBoxesByKey.has(key)) return;
+        if (box.bootstrapSeed === true && !primaryIsSeed) return;
+        canonicalBoxesByKey.set(key, box);
+      });
+    }
+
+    const primaryIdToCanonical = new Map();
+    const secondaryIdToCanonical = new Map();
+    (primary.boxes || []).forEach(box => {
+      const canonical = canonicalBoxesByKey.get(canonicalBoxKey(box.name));
+      if (canonical) primaryIdToCanonical.set(String(box.id), String(canonical.id));
+    });
+    (secondary.boxes || []).forEach(box => {
+      const canonical = canonicalBoxesByKey.get(canonicalBoxKey(box.name));
+      if (canonical) secondaryIdToCanonical.set(String(box.id), String(canonical.id));
+    });
+
+    const canonicalPrimaryTasks = (primary.tasks || []).map(task => ({
+      ...task,
+      boxId: primaryIdToCanonical.get(String(task.boxId)) || String(task.boxId)
+    }));
+    const canonicalSecondaryTasks = (secondary.tasks || []).map(task => ({
+      ...task,
+      boxId: secondaryIdToCanonical.get(String(task.boxId)) || String(task.boxId)
+    }));
+
     function combineById(primaryItems, secondaryItems, tombstones, idKey, extraFilter) {
       const byId = new Map();
       const secondaryById = new Map((Array.isArray(secondaryItems) ? secondaryItems : [])
@@ -1098,9 +1151,8 @@
         if (!item || item[idKey] == null) return;
         const id = String(item[idKey]);
         if (tombstones.has(id)) return;
-        const matchedOther = secondaryById.has(id);
         const otherItem = secondaryById.get(id);
-        const suppressSeed = item.bootstrapSeed === true && !secondaryIsSeed && !matchedOther;
+        const suppressSeed = item.bootstrapSeed === true && !secondaryIsSeed && !otherItem;
         const useOtherAuthoritativeItem = item.bootstrapSeed === true && otherItem && otherItem.bootstrapSeed !== true && !secondaryIsSeed;
         const chosenItem = useOtherAuthoritativeItem ? otherItem : item;
         if (!suppressSeed && (!extraFilter || extraFilter(chosenItem))) byId.set(id, chosenItem);
@@ -1118,22 +1170,29 @@
       return Array.from(byId.values());
     }
 
-    const taskItems = combineById(primary.tasks, secondary.tasks, deletedTasks, "id",
-      task => !deletedBoxes.has(String(task.boxId)));
-    const nonSeedTaskBoxIds = new Set(taskItems
-      .filter(task => !(task.bootstrapSeed === true && (primaryIsSeed || secondaryIsSeed)))
-      .map(task => String(task.boxId)));
-    const boxes = combineById(primary.boxes, secondary.boxes, deletedBoxes, "id",
-      box => nonSeedTaskBoxIds.has(String(box.id)) || !box.bootstrapSeed || secondaryHasBox(secondary.boxes, box.id));
-    function secondaryHasBox(items, boxId) {
-      return (Array.isArray(items) ? items : []).some(box => box && String(box.id) === String(boxId));
-    }
+    const tasks = combineById(
+      canonicalPrimaryTasks,
+      canonicalSecondaryTasks,
+      deletedTasks,
+      "id",
+      task => canonicalBoxesByKey.has(canonicalBoxKey((canonicalBoxesByKey.get(canonicalBoxKey(task.boxId)) || {}).name)) ||
+              Array.from(canonicalBoxesByKey.values()).some(box => String(box.id) === String(task.boxId))
+    );
 
-    const tasks = taskItems.filter(task => !deletedBoxes.has(String(task.boxId)));
+    const usedCanonicalBoxIds = new Set(tasks.map(task => String(task.boxId)));
+    const boxes = Array.from(canonicalBoxesByKey.values()).filter(box =>
+      !deletedBoxes.has(String(box.id)) &&
+      (usedCanonicalBoxIds.has(String(box.id)) || !box.bootstrapSeed || canonicalBoxesByKey.size <= 7)
+    );
+
+    const normalizedTasks = tasks
+      .filter(task => !deletedBoxes.has(String(task.boxId)) && boxes.some(box => String(box.id) === String(task.boxId)))
+      .map(task => ({ ...task }));
+
     const merged = {
       ...primary,
       boxes,
-      tasks,
+      tasks: normalizedTasks,
       deletedTaskIds,
       deletedBoxIds,
       taskMemoryByBox: { ...(secondary.taskMemoryByBox || {}), ...(primary.taskMemoryByBox || {}) },
@@ -1147,7 +1206,6 @@
       merged.boxes.forEach(box => { delete box.bootstrapSeed; });
       merged.tasks.forEach(task => { delete task.bootstrapSeed; });
     }
-
     if (syncFingerprint(merged) !== syncFingerprint(primary)) {
       merged.updatedAt = Math.max(Date.now(), Math.max(leftTime, rightTime) + 1);
     }
