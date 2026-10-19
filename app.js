@@ -36,7 +36,608 @@
     }
   };
 
-  const QUOTES_POOL = [{"text": "La dicha del hombre consiste en observar las reglas y condiciones por las cuales se consigue el bien de todos los hombres.", "author": "León Tolstói"}, {"text": "No es que tengamos poco tiempo, sino que perdemos mucho.", "author": "Séneca"}, {"text": "Por cada minuto dedicado a organizar, se gana una hora.", "author": "Benjamin Franklin"}, {"text": "Somos lo que hacemos repetidamente. La excelencia, entonces, no es un acto, sino un hábito.", "author": "Aristóteles"}, {"text": "Concéntrate en cada minuto como un romano, haciendo lo que tienes delante con dignidad y precisión.", "author": "Marco Aurelio"}, {"text": "El secreto de salir adelante es simplemente empezar.", "author": "Mark Twain"}, {"text": "Primero di a ti mismo lo que serías; y luego haz lo que tengas que hacer.", "author": "Epicteto"}, {"text": "La simplicidad es la máxima sofisticación.", "author": "Leonardo da Vinci"}, {"text": "Tu mente es para tener ideas, no para retenerlas.", "author": "David Allen"}, {"text": "Lo que se mide se mejora; lo que se planifica con claridad se ejecuta con calma.", "author": "Peter Drucker"}, {"text": "Enfocarse significa decir que no a cien buenas ideas más.", "author": "Steve Jobs"}, {"text": "Pequeñas disciplinas repetidas con consistencia cada día conducen a grandes logros.", "author": "John C. Maxwell"}, {"text": "Ningún viento es favorable para quien no sabe a qué puerto se dirige.", "author": "Séneca"}, {"text": "El orden es el placer de la razón; pero el desorden es la delicia de la imaginación.", "author": "Paul Claudel"}, {"text": "Haz cada cosa en la vida como si fuera lo último que fueras a hacer.", "author": "Marco Aurelio"}, {"text": "El futuro depende de lo que hagas hoy.", "author": "Mahatma Gandhi"}, {"text": "La disciplina es el puente entre las metas y los logros.", "author": "Jim Rohn"}, {"text": "No dejes que lo que no puedes hacer interfiera con lo que sí puedes hacer.", "author": "John Wooden"}, {"text": "Un viaje de mil millas comienza con un solo paso.", "author": "Lao-Tsé"}, {"text": "Quien tiene un porqué para vivir puede soportar casi cualquier cómo.", "author": "Friedrich Nietzsche"}, {"text": "La acción es la clave fundamental de todo éxito.", "author": "Pablo Picasso"}, {"text": "La mejor manera de predecir el futuro es creándolo.", "author": "Peter Drucker"}, {"text": "El hombre que mueve montañas comienza cargando pequeñas piedras.", "author": "Confucio"}, {"text": "No cuentes los días, haz que los días cuenten.", "author": "Muhammad Ali"}, {"text": "La constancia es la virtud por la cual todas las otras virtudes dan su fruto.", "author": "Arturo Graf"}, {"text": "El éxito es la suma de pequeños esfuerzos repetidos día tras día.", "author": "Robert Collier"}, {"text": "La claridad precede a la maestría.", "author": "Robin Sharma"}, {"text": "Nada es particularmente difícil si lo divides en pequeños trabajos.", "author": "Henry Ford"}, {"text": "El sabio no se sienta a lamentarse por lo perdido, sino que se alegra de remediarlo.", "author": "William Shakespeare"}, {"text": "Donde hay orden, hay tranquilidad y progreso.", "author": "Cicerón"}, {"text": "La paciencia es amarga, pero su fruto es dulce.", "author": "Jean-Jacques Rousseau"}, {"text": "El que domina a los otros es fuerte; el que se domina a sí mismo es poderoso.", "author": "Lao-Tsé"}, {"text": "Saber qué hacer elimina el miedo.", "author": "Rosa Parks"}, {"text": "La energía y la persistencia conquistan todas las cosas.", "author": "Benjamin Franklin"}, {"text": "Nunca es demasiado tarde para ser lo que podrías haber sido.", "author": "George Eliot"}, {"text": "Lo que hacemos ahora resuena en la eternidad.", "author": "Marco Aurelio"}, {"text": "La buena fortuna favorece a los audaces y organizados.", "author": "Virgilio"}, {"text": "Empieza donde estás, usa lo que tienes, haz lo que puedas.", "author": "Arthur Ashe"}, {"text": "El tiempo es la cosa más valiosa que una persona puede gastar.", "author": "Teofrasto"}, {"text": "Pensar es fácil. Actuar es difícil. Actuar siguiendo el pensamiento propio es lo más difícil del mundo.", "author": "Johann Wolfgang von Goethe"}, {"text": "Al hombre se le puede arrebatar todo salvo una cosa: la última de las libertades humanas, la elección de la actitud personal ante cualquier circunstancia.", "author": "Viktor Frankl"}, {"text": "Cuando ya no podemos cambiar una situación, tenemos el desafío de cambiarnos a nosotros mismos.", "author": "Viktor Frankl"}, {"text": "Siempre parece imposible hasta que se hace.", "author": "Nelson Mandela"}, {"text": "No me juzgues por mis éxitos, júzgame por las veces que me caí y volví a levantarme.", "author": "Nelson Mandela"}, {"text": "Soy el amo de mi destino, soy el capitán de mi alma.", "author": "Nelson Mandela"}, {"text": "Pies, ¿para qué los quiero si tengo alas pa' volar?", "author": "Frida Kahlo"}, {"text": "Al final del día, podemos soportar mucho más de lo que creemos que podemos.", "author": "Frida Kahlo"}, {"text": "Si no puedes volar, corre; si no puedes correr, camina; si no puedes caminar, gatea, pero sigue avanzando hacia tu meta.", "author": "Martin Luther King Jr."}, {"text": "La oscuridad no puede expulsar a la oscuridad; solo la luz puede hacer eso.", "author": "Martin Luther King Jr."}, {"text": "Aunque el mundo está lleno de sufrimiento, también está lleno de la superación del mismo.", "author": "Helen Keller"}, {"text": "El optimismo es la fe que conduce al logro; nada puede hacerse sin esperanza y confianza.", "author": "Helen Keller"}, {"text": "Nunca dobles la cabeza. Mantenla siempre alta. Mira al mundo directamente a los ojos.", "author": "Helen Keller"}, {"text": "Por muy difícil que parezca la vida, siempre hay algo que puedes hacer y en lo que puedes tener éxito.", "author": "Stephen Hawking"}, {"text": "La inteligencia es la capacidad de adaptarse al cambio.", "author": "Stephen Hawking"}, {"text": "Si no puedes conseguir un milagro, conviértete en uno.", "author": "Nick Vujicic"}, {"text": "El miedo es una discapacidad mayor que no tener brazos ni piernas.", "author": "Nick Vujicic"}, {"text": "Si me caigo cien veces, me intentaré levantar cien veces más.", "author": "Nick Vujicic"}, {"text": "Un niño, un profesor, un libro y una pluma pueden cambiar el mundo.", "author": "Malala Yousafzai"}, {"text": "Nos damos cuenta de la importancia de nuestra voz solo cuando somos silenciados.", "author": "Malala Yousafzai"}, {"text": "Convierte tus heridas en sabiduría.", "author": "Oprah Winfrey"}, {"text": "Donde no hay lucha, no hay fuerza.", "author": "Oprah Winfrey"}, {"text": "La mayor descubrimiento de todos los tiempos es que una persona puede cambiar su futuro simplemente cambiando su actitud.", "author": "Oprah Winfrey"}, {"text": "El fondo de la roca se convirtió en la base sólida sobre la cual reconstruí mi vida.", "author": "J.K. Rowling"}, {"text": "Es imposible vivir sin fracasar en algo, a menos que vivas tan cautelosamente que bien podrías no haber vivido en absoluto.", "author": "J.K. Rowling"}, {"text": "Nuestra mayor gloria no está en no caer nunca, sino en levantarnos cada vez que caemos.", "author": "Confucio"}, {"text": "El obstáculo en el camino se convierte en el camino. Nunca olvides que dentro de cada obstáculo hay una oportunidad para mejorar.", "author": "Marco Aurelio"}, {"text": "Tienes poder sobre tu mente, no sobre los acontecimientos externos. Date cuenta de esto y encontrarás la fuerza.", "author": "Marco Aurelio"}, {"text": "El fuego prueba el oro; la adversidad prueba a los hombres fuertes.", "author": "Séneca"}, {"text": "A veces incluso vivir es un acto de coraje.", "author": "Séneca"}, {"text": "No es lo que te sucede, sino cómo reaccionas a ello lo que importa.", "author": "Epicteto"}, {"text": "Las dificultades son las cosas que muestran lo que son los hombres.", "author": "Epicteto"}, {"text": "En medio del invierno aprendí por fin que había en mí un verano invencible.", "author": "Albert Camus"}, {"text": "El éxito consiste en ir de fracaso en fracaso sin perder el entusiasmo.", "author": "Winston Churchill"}, {"text": "Si estás atravesando un infierno, sigue caminando.", "author": "Winston Churchill"}, {"text": "Las cometas se elevan más alto contra el viento, no a favor de él.", "author": "Winston Churchill"}, {"text": "En medio de la dificultad reside la oportunidad.", "author": "Albert Einstein"}, {"text": "Hay una fuerza motriz más poderosa que el vapor, la electricidad y la energía atómica: la voluntad.", "author": "Albert Einstein"}, {"text": "La vida es como montar en bicicleta. Para mantener el equilibrio, debes seguir moviéndote.", "author": "Albert Einstein"}, {"text": "He fallado una y otra y otra vez en mi vida. Y es por eso que tengo éxito.", "author": "Michael Jordan"}, {"text": "Los obstáculos no tienen que detenerte. Si te encuentras con un muro, no te des la vuelta; descubre cómo escalarlo.", "author": "Michael Jordan"}, {"text": "Lo más importante es intentar inspirar a las personas para que puedan ser grandes en lo que sea que quieran hacer.", "author": "Kobe Bryant"}, {"text": "Todo lo negativo —la presión, los desafíos— es una oportunidad para mí de levantarme.", "author": "Kobe Bryant"}, {"text": "Odié cada minuto de entrenamiento, pero dije: 'No renuncies. Sufre ahora y vive el resto de tu vida como un campeón'.", "author": "Muhammad Ali"}, {"text": "Imposible es solo una palabra grande lanzada por hombres pequeños que encuentran más fácil vivir en el mundo que se les ha dado.", "author": "Muhammad Ali"}, {"text": "En la vida no hay nada que temer, solo hay que comprender.", "author": "Marie Curie"}, {"text": "La vida no es fácil para ninguno de nosotros. Pero ¡qué importa! Hay que perseverar y, sobre todo, tener confianza en uno mismo.", "author": "Marie Curie"}, {"text": "El fracaso es simplemente la oportunidad de comenzar de nuevo, esta vez de forma más inteligente.", "author": "Henry Ford"}, {"text": "Tanto si piensas que puedes, como si piensas que no puedes, estás en lo cierto.", "author": "Henry Ford"}, {"text": "No he fracasado. Simplemente he encontrado diez mil maneras que no funcionan.", "author": "Thomas Alva Edison"}, {"text": "Nuestra mayor debilidad radica en renunciar. La forma más segura de tener éxito es intentarlo una vez más.", "author": "Thomas Alva Edison"}, {"text": "El mundo rompe a todos, y después, muchos son fuertes en los lugares rotos.", "author": "Ernest Hemingway"}, {"text": "Pero el hombre no está hecho para la derrota. Un hombre puede ser destruido, pero no derrotado.", "author": "Ernest Hemingway"}, {"text": "Caer siete veces y levantarse ocho.", "author": "Proverbio Japonés"}, {"text": "El bambú que se dobla es más fuerte que el roble que resiste.", "author": "Proverbio Japonés"}, {"text": "Podrán encontrarme derrotada muchas veces, pero nunca reducida.", "author": "Maya Angelou"}, {"text": "Si no te gusta algo, cámbialo. Si no puedes cambiarlo, cambia tu actitud.", "author": "Maya Angelou"}, {"text": "Nada puede apagar la luz que brilla desde el interior.", "author": "Maya Angelou"}, {"text": "No soy producto de mis circunstancias. Soy producto de mis decisiones.", "author": "Stephen R. Covey"}, {"text": "Lo principal es mantener lo principal como lo principal.", "author": "Stephen R. Covey"}, {"text": "Tú no subes al nivel de tus metas. Caes al nivel de tus sistemas.", "author": "James Clear"}, {"text": "Cada acción que realizas es un voto por el tipo de persona en la que deseas convertirte.", "author": "James Clear"}, {"text": "Los hábitos son el interés compuesto de la superación personal.", "author": "James Clear"}, {"text": "La claridad sobre lo que importa proporciona claridad sobre lo que no importa.", "author": "Cal Newport"}, {"text": "Los esfuerzos profundos producen valor duradero y serenidad mental.", "author": "Cal Newport"}, {"text": "Si gastas tu tiempo persiguiendo mariposas, ellas volarán; si construyes un hermoso jardín, las mariposas vendrán a ti.", "author": "Mario Quintana"}, {"text": "Un marinero experto no se hace en mares tranquilos.", "author": "Franklin D. Roosevelt"}, {"text": "Lo único a lo que debemos temer es al miedo mismo.", "author": "Franklin D. Roosevelt"}, {"text": "Haz lo que puedas, con lo que tengas, donde estés.", "author": "Theodore Roosevelt"}, {"text": "Cree que puedes y ya estarás a medio camino.", "author": "Theodore Roosevelt"}, {"text": "No es el crítico quien cuenta, sino el hombre que realmente está en la arena y se esfuerza valientemente.", "author": "Theodore Roosevelt"}, {"text": "La resiliencia es aceptar tu nueva realidad, incluso si es menos buena que la que tenías antes.", "author": "Elizabeth Edwards"}, {"text": "El dolor es inevitable, pero el sufrimiento es opcional.", "author": "Haruki Murakami"}, {"text": "Cuando salgas de la tormenta, no serás la misma persona que entró en ella.", "author": "Haruki Murakami"}, {"text": "La cicatriz demuestra que la herida sanó y que tú fuiste más fuerte que aquello que intentó detenerte.", "author": "Viktor Frankl"}, {"text": "La verdadera medida de un hombre no se ve en momentos de comodidad, sino en momentos de desafío.", "author": "Martin Luther King Jr."}, {"text": "La perseverancia no es una carrera larga; son muchas carreras cortas una tras otra.", "author": "Walter Elliot"}, {"text": "Cambia tus pensamientos y cambiarás tu mundo.", "author": "Norman Vincent Peale"}, {"text": "El coraje no siempre ruge. A veces el coraje es la pequeña voz al final del día que dice: lo intentaré de nuevo mañana.", "author": "Mary Anne Radmacher"}, {"text": "Primero hacemos nuestros hábitos, y luego nuestros hábitos nos hacen a nosotros.", "author": "John Dryden"}, {"text": "La motivación es lo que te pone en marcha, y el hábito es lo que hace que sigas avanzando.", "author": "Jim Ryun"}];
+  const QUOTES_POOL = [
+  {
+    "text": "La dicha del hombre consiste en observar las reglas y condiciones por las cuales se consigue el bien de todos los hombres.",
+    "author": "León Tolstói"
+  },
+  {
+    "text": "No es que tengamos poco tiempo, sino que perdemos mucho.",
+    "author": "Séneca"
+  },
+  {
+    "text": "Por cada minuto dedicado a organizar, se gana una hora.",
+    "author": "Benjamin Franklin"
+  },
+  {
+    "text": "Somos lo que hacemos repetidamente. La excelencia, entonces, no es un acto, sino un hábito.",
+    "author": "Aristóteles"
+  },
+  {
+    "text": "Concéntrate en cada minuto como un romano, haciendo lo que tienes delante con dignidad y precisión.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "El secreto de salir adelante es simplemente empezar.",
+    "author": "Mark Twain"
+  },
+  {
+    "text": "Primero di a ti mismo lo que serías; y luego haz lo que tengas que hacer.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "La simplicidad es la máxima sofisticación.",
+    "author": "Leonardo da Vinci"
+  },
+  {
+    "text": "Tu mente es para tener ideas, no para retenerlas.",
+    "author": "David Allen"
+  },
+  {
+    "text": "Lo que se mide se mejora; lo que se planifica con claridad se ejecuta con calma.",
+    "author": "Peter Drucker"
+  },
+  {
+    "text": "Enfocarse significa decir que no a cien buenas ideas más.",
+    "author": "Steve Jobs"
+  },
+  {
+    "text": "Pequeñas disciplinas repetidas con consistencia cada día conducen a grandes logros.",
+    "author": "John C. Maxwell"
+  },
+  {
+    "text": "Ningún viento es favorable para quien no sabe a qué puerto se dirige.",
+    "author": "Séneca"
+  },
+  {
+    "text": "El orden es el placer de la razón; pero el desorden es la delicia de la imaginación.",
+    "author": "Paul Claudel"
+  },
+  {
+    "text": "Haz cada cosa en la vida como si fuera lo último que fueras a hacer.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "El futuro depende de lo que hagas hoy.",
+    "author": "Mahatma Gandhi"
+  },
+  {
+    "text": "La disciplina es el puente entre las metas y los logros.",
+    "author": "Jim Rohn"
+  },
+  {
+    "text": "No dejes que lo que no puedes hacer interfiera con lo que sí puedes hacer.",
+    "author": "John Wooden"
+  },
+  {
+    "text": "Un viaje de mil millas comienza con un solo paso.",
+    "author": "Lao-Tsé"
+  },
+  {
+    "text": "Quien tiene un porqué para vivir puede soportar casi cualquier cómo.",
+    "author": "Friedrich Nietzsche"
+  },
+  {
+    "text": "La acción es la clave fundamental de todo éxito.",
+    "author": "Pablo Picasso"
+  },
+  {
+    "text": "La mejor manera de predecir el futuro es creándolo.",
+    "author": "Peter Drucker"
+  },
+  {
+    "text": "El hombre que mueve montañas comienza cargando pequeñas piedras.",
+    "author": "Confucio"
+  },
+  {
+    "text": "No cuentes los días, haz que los días cuenten.",
+    "author": "Muhammad Ali"
+  },
+  {
+    "text": "La constancia es la virtud por la cual todas las otras virtudes dan su fruto.",
+    "author": "Arturo Graf"
+  },
+  {
+    "text": "El éxito es la suma de pequeños esfuerzos repetidos día tras día.",
+    "author": "Robert Collier"
+  },
+  {
+    "text": "La claridad precede a la maestría.",
+    "author": "Robin Sharma"
+  },
+  {
+    "text": "Nada es particularmente difícil si lo divides en pequeños trabajos.",
+    "author": "Henry Ford"
+  },
+  {
+    "text": "El sabio no se sienta a lamentarse por lo perdido, sino que se alegra de remediarlo.",
+    "author": "William Shakespeare"
+  },
+  {
+    "text": "Donde hay orden, hay tranquilidad y progreso.",
+    "author": "Cicerón"
+  },
+  {
+    "text": "La paciencia es amarga, pero su fruto es dulce.",
+    "author": "Jean-Jacques Rousseau"
+  },
+  {
+    "text": "El que domina a los otros es fuerte; el que se domina a sí mismo es poderoso.",
+    "author": "Lao-Tsé"
+  },
+  {
+    "text": "Saber qué hacer elimina el miedo.",
+    "author": "Rosa Parks"
+  },
+  {
+    "text": "La energía y la persistencia conquistan todas las cosas.",
+    "author": "Benjamin Franklin"
+  },
+  {
+    "text": "Nunca es demasiado tarde para ser lo que podrías haber sido.",
+    "author": "George Eliot"
+  },
+  {
+    "text": "Lo que hacemos ahora resuena en la eternidad.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "La buena fortuna favorece a los audaces y organizados.",
+    "author": "Virgilio"
+  },
+  {
+    "text": "Empieza donde estás, usa lo que tienes, haz lo que puedas.",
+    "author": "Arthur Ashe"
+  },
+  {
+    "text": "El tiempo es la cosa más valiosa que una persona puede gastar.",
+    "author": "Teofrasto"
+  },
+  {
+    "text": "Pensar es fácil. Actuar es difícil. Actuar siguiendo el pensamiento propio es lo más difícil del mundo.",
+    "author": "Johann Wolfgang von Goethe"
+  },
+  {
+    "text": "Al hombre se le puede arrebatar todo salvo una cosa: la última de las libertades humanas, la elección de la actitud personal ante cualquier circunstancia.",
+    "author": "Viktor Frankl"
+  },
+  {
+    "text": "Cuando ya no podemos cambiar una situación, tenemos el desafío de cambiarnos a nosotros mismos.",
+    "author": "Viktor Frankl"
+  },
+  {
+    "text": "Siempre parece imposible hasta que se hace.",
+    "author": "Nelson Mandela"
+  },
+  {
+    "text": "No me juzgues por mis éxitos, júzgame por las veces que me caí y volví a levantarme.",
+    "author": "Nelson Mandela"
+  },
+  {
+    "text": "Soy el amo de mi destino, soy el capitán de mi alma.",
+    "author": "Nelson Mandela"
+  },
+  {
+    "text": "Pies, ¿para qué los quiero si tengo alas pa' volar?",
+    "author": "Frida Kahlo"
+  },
+  {
+    "text": "Al final del día, podemos soportar mucho más de lo que creemos que podemos.",
+    "author": "Frida Kahlo"
+  },
+  {
+    "text": "Si no puedes volar, corre; si no puedes correr, camina; si no puedes caminar, gatea, pero sigue avanzando hacia tu meta.",
+    "author": "Martin Luther King Jr."
+  },
+  {
+    "text": "La oscuridad no puede expulsar a la oscuridad; solo la luz puede hacer eso.",
+    "author": "Martin Luther King Jr."
+  },
+  {
+    "text": "Aunque el mundo está lleno de sufrimiento, también está lleno de la superación del mismo.",
+    "author": "Helen Keller"
+  },
+  {
+    "text": "El optimismo es la fe que conduce al logro; nada puede hacerse sin esperanza y confianza.",
+    "author": "Helen Keller"
+  },
+  {
+    "text": "Nunca dobles la cabeza. Mantenla siempre alta. Mira al mundo directamente a los ojos.",
+    "author": "Helen Keller"
+  },
+  {
+    "text": "Por muy difícil que parezca la vida, siempre hay algo que puedes hacer y en lo que puedes tener éxito.",
+    "author": "Stephen Hawking"
+  },
+  {
+    "text": "La inteligencia es la capacidad de adaptarse al cambio.",
+    "author": "Stephen Hawking"
+  },
+  {
+    "text": "Si no puedes conseguir un milagro, conviértete en uno.",
+    "author": "Nick Vujicic"
+  },
+  {
+    "text": "El miedo es una discapacidad mayor que no tener brazos ni piernas.",
+    "author": "Nick Vujicic"
+  },
+  {
+    "text": "Si me caigo cien veces, me intentaré levantar cien veces más.",
+    "author": "Nick Vujicic"
+  },
+  {
+    "text": "Un niño, un profesor, un libro y una pluma pueden cambiar el mundo.",
+    "author": "Malala Yousafzai"
+  },
+  {
+    "text": "Nos damos cuenta de la importancia de nuestra voz solo cuando somos silenciados.",
+    "author": "Malala Yousafzai"
+  },
+  {
+    "text": "Convierte tus heridas en sabiduría.",
+    "author": "Oprah Winfrey"
+  },
+  {
+    "text": "Donde no hay lucha, no hay fuerza.",
+    "author": "Oprah Winfrey"
+  },
+  {
+    "text": "La mayor descubrimiento de todos los tiempos es que una persona puede cambiar su futuro simplemente cambiando su actitud.",
+    "author": "Oprah Winfrey"
+  },
+  {
+    "text": "El fondo de la roca se convirtió en la base sólida sobre la cual reconstruí mi vida.",
+    "author": "J.K. Rowling"
+  },
+  {
+    "text": "Es imposible vivir sin fracasar en algo, a menos que vivas tan cautelosamente que bien podrías no haber vivido en absoluto.",
+    "author": "J.K. Rowling"
+  },
+  {
+    "text": "Nuestra mayor gloria no está en no caer nunca, sino en levantarnos cada vez que caemos.",
+    "author": "Confucio"
+  },
+  {
+    "text": "El obstáculo en el camino se convierte en el camino. Nunca olvides que dentro de cada obstáculo hay una oportunidad para mejorar.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "Tienes poder sobre tu mente, no sobre los acontecimientos externos. Date cuenta de esto y encontrarás la fuerza.",
+    "author": "Marco Aurelio"
+  },
+  {
+    "text": "El fuego prueba el oro; la adversidad prueba a los hombres fuertes.",
+    "author": "Séneca"
+  },
+  {
+    "text": "A veces incluso vivir es un acto de coraje.",
+    "author": "Séneca"
+  },
+  {
+    "text": "No es lo que te sucede, sino cómo reaccionas a ello lo que importa.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "Las dificultades son las cosas que muestran lo que son los hombres.",
+    "author": "Epicteto"
+  },
+  {
+    "text": "En medio del invierno aprendí por fin que había en mí un verano invencible.",
+    "author": "Albert Camus"
+  },
+  {
+    "text": "El éxito consiste en ir de fracaso en fracaso sin perder el entusiasmo.",
+    "author": "Winston Churchill"
+  },
+  {
+    "text": "Si estás atravesando un infierno, sigue caminando.",
+    "author": "Winston Churchill"
+  },
+  {
+    "text": "Las cometas se elevan más alto contra el viento, no a favor de él.",
+    "author": "Winston Churchill"
+  },
+  {
+    "text": "En medio de la dificultad reside la oportunidad.",
+    "author": "Albert Einstein"
+  },
+  {
+    "text": "Hay una fuerza motriz más poderosa que el vapor, la electricidad y la energía atómica: la voluntad.",
+    "author": "Albert Einstein"
+  },
+  {
+    "text": "La vida es como montar en bicicleta. Para mantener el equilibrio, debes seguir moviéndote.",
+    "author": "Albert Einstein"
+  },
+  {
+    "text": "He fallado una y otra y otra vez en mi vida. Y es por eso que tengo éxito.",
+    "author": "Michael Jordan"
+  },
+  {
+    "text": "Los obstáculos no tienen que detenerte. Si te encuentras con un muro, no te des la vuelta; descubre cómo escalarlo.",
+    "author": "Michael Jordan"
+  },
+  {
+    "text": "Lo más importante es intentar inspirar a las personas para que puedan ser grandes en lo que sea que quieran hacer.",
+    "author": "Kobe Bryant"
+  },
+  {
+    "text": "Todo lo negativo —la presión, los desafíos— es una oportunidad para mí de levantarme.",
+    "author": "Kobe Bryant"
+  },
+  {
+    "text": "Odié cada minuto de entrenamiento, pero dije: 'No renuncies. Sufre ahora y vive el resto de tu vida como un campeón'.",
+    "author": "Muhammad Ali"
+  },
+  {
+    "text": "Imposible es solo una palabra grande lanzada por hombres pequeños que encuentran más fácil vivir en el mundo que se les ha dado.",
+    "author": "Muhammad Ali"
+  },
+  {
+    "text": "En la vida no hay nada que temer, solo hay que comprender.",
+    "author": "Marie Curie"
+  },
+  {
+    "text": "La vida no es fácil para ninguno de nosotros. Pero ¡qué importa! Hay que perseverar y, sobre todo, tener confianza en uno mismo.",
+    "author": "Marie Curie"
+  },
+  {
+    "text": "El fracaso es simplemente la oportunidad de comenzar de nuevo, esta vez de forma más inteligente.",
+    "author": "Henry Ford"
+  },
+  {
+    "text": "Tanto si piensas que puedes, como si piensas que no puedes, estás en lo cierto.",
+    "author": "Henry Ford"
+  },
+  {
+    "text": "No he fracasado. Simplemente he encontrado diez mil maneras que no funcionan.",
+    "author": "Thomas Alva Edison"
+  },
+  {
+    "text": "Nuestra mayor debilidad radica en renunciar. La forma más segura de tener éxito es intentarlo una vez más.",
+    "author": "Thomas Alva Edison"
+  },
+  {
+    "text": "El mundo rompe a todos, y después, muchos son fuertes en los lugares rotos.",
+    "author": "Ernest Hemingway"
+  },
+  {
+    "text": "Pero el hombre no está hecho para la derrota. Un hombre puede ser destruido, pero no derrotado.",
+    "author": "Ernest Hemingway"
+  },
+  {
+    "text": "Caer siete veces y levantarse ocho.",
+    "author": "Proverbio Japonés"
+  },
+  {
+    "text": "El bambú que se dobla es más fuerte que el roble que resiste.",
+    "author": "Proverbio Japonés"
+  },
+  {
+    "text": "Podrán encontrarme derrotada muchas veces, pero nunca reducida.",
+    "author": "Maya Angelou"
+  },
+  {
+    "text": "Si no te gusta algo, cámbialo. Si no puedes cambiarlo, cambia tu actitud.",
+    "author": "Maya Angelou"
+  },
+  {
+    "text": "Nada puede apagar la luz que brilla desde el interior.",
+    "author": "Maya Angelou"
+  },
+  {
+    "text": "No soy producto de mis circunstancias. Soy producto de mis decisiones.",
+    "author": "Stephen R. Covey"
+  },
+  {
+    "text": "Lo principal es mantener lo principal como lo principal.",
+    "author": "Stephen R. Covey"
+  },
+  {
+    "text": "Tú no subes al nivel de tus metas. Caes al nivel de tus sistemas.",
+    "author": "James Clear"
+  },
+  {
+    "text": "Cada acción que realizas es un voto por el tipo de persona en la que deseas convertirte.",
+    "author": "James Clear"
+  },
+  {
+    "text": "Los hábitos son el interés compuesto de la superación personal.",
+    "author": "James Clear"
+  },
+  {
+    "text": "La claridad sobre lo que importa proporciona claridad sobre lo que no importa.",
+    "author": "Cal Newport"
+  },
+  {
+    "text": "Los esfuerzos profundos producen valor duradero y serenidad mental.",
+    "author": "Cal Newport"
+  },
+  {
+    "text": "Si gastas tu tiempo persiguiendo mariposas, ellas volarán; si construyes un hermoso jardín, las mariposas vendrán a ti.",
+    "author": "Mario Quintana"
+  },
+  {
+    "text": "Un marinero experto no se hace en mares tranquilos.",
+    "author": "Franklin D. Roosevelt"
+  },
+  {
+    "text": "Lo único a lo que debemos temer es al miedo mismo.",
+    "author": "Franklin D. Roosevelt"
+  },
+  {
+    "text": "Haz lo que puedas, con lo que tengas, donde estés.",
+    "author": "Theodore Roosevelt"
+  },
+  {
+    "text": "Cree que puedes y ya estarás a medio camino.",
+    "author": "Theodore Roosevelt"
+  },
+  {
+    "text": "No es el crítico quien cuenta, sino el hombre que realmente está en la arena y se esfuerza valientemente.",
+    "author": "Theodore Roosevelt"
+  },
+  {
+    "text": "La resiliencia es aceptar tu nueva realidad, incluso si es menos buena que la que tenías antes.",
+    "author": "Elizabeth Edwards"
+  },
+  {
+    "text": "El dolor es inevitable, pero el sufrimiento es opcional.",
+    "author": "Haruki Murakami"
+  },
+  {
+    "text": "Cuando salgas de la tormenta, no serás la misma persona que entró en ella.",
+    "author": "Haruki Murakami"
+  },
+  {
+    "text": "La cicatriz demuestra que la herida sanó y que tú fuiste más fuerte que aquello que intentó detenerte.",
+    "author": "Viktor Frankl"
+  },
+  {
+    "text": "La verdadera medida de un hombre no se ve en momentos de comodidad, sino en momentos de desafío.",
+    "author": "Martin Luther King Jr."
+  },
+  {
+    "text": "La perseverancia no es una carrera larga; son muchas carreras cortas una tras otra.",
+    "author": "Walter Elliot"
+  },
+  {
+    "text": "Cambia tus pensamientos y cambiarás tu mundo.",
+    "author": "Norman Vincent Peale"
+  },
+  {
+    "text": "El coraje no siempre ruge. A veces el coraje es la pequeña voz al final del día que dice: lo intentaré de nuevo mañana.",
+    "author": "Mary Anne Radmacher"
+  },
+  {
+    "text": "Primero hacemos nuestros hábitos, y luego nuestros hábitos nos hacen a nosotros.",
+    "author": "John Dryden"
+  },
+  {
+    "text": "La motivación es lo que te pone en marcha, y el hábito es lo que hace que sigas avanzando.",
+    "author": "Jim Ryun"
+  },
+  {
+    "text": "No basta con saber qué es lo correcto: el carácter se demuestra cuando por fin lo haces.",
+    "author": "Epicteto · Disertaciones II.19 (adaptación)"
+  },
+  {
+    "text": "Deja de discutir cómo debe ser una persona buena. Conviértete en una.",
+    "author": "Marco Aurelio · Meditaciones X.16 (adaptación)"
+  },
+  {
+    "text": "Si culpas a otros de tu conducta, les estás entregando el mando de tu vida.",
+    "author": "Epicteto · Manual, §5 (adaptación)"
+  },
+  {
+    "text": "No exijas que las cosas sucedan como deseas; aprende a recibirlas como suceden y tendrás más calma.",
+    "author": "Epicteto · Manual, §8 (adaptación)"
+  },
+  {
+    "text": "La dificultad no crea tu carácter: revela el que has entrenado.",
+    "author": "Epicteto · Disertaciones I.24 (adaptación)"
+  },
+  {
+    "text": "La vida no es necesariamente corta; la volvemos pequeña cuando la desperdiciamos.",
+    "author": "Séneca · Sobre la brevedad de la vida, §1 (adaptación)"
+  },
+  {
+    "text": "Mientras aplazas vivir con propósito, el tiempo sigue pasando sin pedirte permiso.",
+    "author": "Séneca · Sobre la brevedad de la vida (adaptación)"
+  },
+  {
+    "text": "Sufrimos muchas veces más por lo que imaginamos que por lo que ocurre.",
+    "author": "Séneca · Epístolas morales, 13.4 (adaptación)"
+  },
+  {
+    "text": "No pidas una vida sin pruebas; entrena una voluntad que pueda atravesarlas.",
+    "author": "Séneca · Sobre la providencia (adaptación)"
+  },
+  {
+    "text": "Tu mente se irá pareciendo a aquello en lo que piensa una y otra vez.",
+    "author": "Marco Aurelio · Meditaciones V.16 (adaptación)"
+  },
+  {
+    "text": "La mejor venganza es no convertirte en aquello que te hizo daño.",
+    "author": "Marco Aurelio · Meditaciones VI.6 (adaptación)"
+  },
+  {
+    "text": "No necesitas ganar cada discusión; necesitas no perder el gobierno de ti mismo.",
+    "author": "Marco Aurelio · Meditaciones (adaptación)"
+  },
+  {
+    "text": "No confundas la comodidad con la fortaleza: la capacidad se entrena soportando lo que evitas.",
+    "author": "Musonio Rufo · Disertación VI (adaptación)"
+  },
+  {
+    "text": "Si soportas esfuerzos por dinero, fama o aprobación, también puedes soportarlos por tu carácter.",
+    "author": "Musonio Rufo · Disertación VII (adaptación)"
+  },
+  {
+    "text": "La virtud no es teoría que puedas recitar: es una práctica que debes repetir.",
+    "author": "Musonio Rufo · Disertación VI (adaptación)"
+  },
+  {
+    "text": "No te hace libre conseguir todo lo que deseas; te hace libre dejar de ser esclavo de tus deseos.",
+    "author": "Epicteto · Manual, §1 (adaptación)"
+  },
+  {
+    "text": "Si tu tranquilidad depende de la opinión ajena, has puesto tu paz en manos de otros.",
+    "author": "Epicteto · Manual, §1 (adaptación)"
+  },
+  {
+    "text": "No puedes elegir todos los acontecimientos, pero sí la calidad de tu respuesta.",
+    "author": "Epicteto · Manual, §1 (adaptación)"
+  },
+  {
+    "text": "El obstáculo puede detener tus planes; no tiene por qué detener tu capacidad de actuar con virtud.",
+    "author": "Marco Aurelio · Meditaciones (adaptación)"
+  },
+  {
+    "text": "No esperes que el día sea fácil. Procura no abandonar tu carácter cuando se vuelva difícil.",
+    "author": "Marco Aurelio · Meditaciones (adaptación)"
+  },
+  {
+    "text": "La disciplina empieza cuando tus valores pesan más que tus ganas de escapar.",
+    "author": "Máxima estoica contemporánea"
+  },
+  {
+    "text": "Cada vez que obedeces un impulso que desprecias, entrenas la versión de ti que no quieres ser.",
+    "author": "Máxima estoica contemporánea"
+  },
+  {
+    "text": "Nadie puede practicar tu virtud por ti. Nadie puede hacer tus elecciones en tu lugar.",
+    "author": "Epicteto · Manual, §1 (adaptación)"
+  },
+  {
+    "text": "No es suficiente soportar el golpe; examina qué juicio te hace caer una segunda vez.",
+    "author": "Epicteto · Manual, §5 (adaptación)"
+  },
+  {
+    "text": "Que el esfuerzo de hoy te encuentre trabajando en tu carácter, no fabricando excusas.",
+    "author": "Musonio Rufo · Disertaciones (adaptación)"
+  },
+  {
+    "text": "El tiempo que entregas a la queja no vuelve convertido en solución.",
+    "author": "Séneca · Sobre la brevedad de la vida (adaptación)"
+  },
+  {
+    "text": "No eres responsable de controlar el mundo; sí de no traicionarte cuando el mundo no obedece.",
+    "author": "Marco Aurelio · Meditaciones (adaptación)"
+  },
+  {
+    "text": "La pregunta no es cuánto puedes soportar por ambición, sino cuánto estás dispuesto a practicar por virtud.",
+    "author": "Musonio Rufo · Disertación VII (adaptación)"
+  },
+  {
+    "text": "El progreso empieza cuando dejas de fingir que ignoras lo que ya sabes que debes cambiar.",
+    "author": "Máxima estoica contemporánea"
+  },
+  {
+    "text": "Ser fuerte no consiste en no sentir el impulso, sino en decidir si merece obediencia.",
+    "author": "Epicteto · Disertaciones (adaptación)"
+  }
+];
   const DAY_SHORT_NAMES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
   const DAY_FULL_NAMES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
@@ -3827,10 +4428,9 @@
     });
 
     document.getElementById("quote-container").addEventListener("click", () => {
-      playUiSound("tap");
-      appState.currentQuoteIndex = (appState.currentQuoteIndex + 1) % appState.quotes.length;
-      renderQuote(true);
-      startQuoteRotation();
+      const quote = appState.quotes[appState.currentQuoteIndex % appState.quotes.length];
+      if (!quote) return;
+      copyTextToClipboard(`${quote.text}\n— ${quote.author}`, "📋 Frase y autor copiados", document.getElementById("quote-container"));
     });
 
     // Point 6: Sound Toggle Button
