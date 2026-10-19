@@ -4427,10 +4427,17 @@
       }
     });
 
-    document.getElementById("quote-container").addEventListener("click", () => {
+    const quoteContainer = document.getElementById("quote-container");
+    const copyCurrentQuote = () => {
       const quote = appState.quotes[appState.currentQuoteIndex % appState.quotes.length];
       if (!quote) return;
-      copyTextToClipboard(`${quote.text}\n— ${quote.author}`, "📋 Frase y autor copiados", document.getElementById("quote-container"));
+      copyTextToClipboard(`${quote.text}\n— ${quote.author}`, "📋 Frase y autor copiados", quoteContainer);
+    };
+    quoteContainer.addEventListener("click", copyCurrentQuote);
+    quoteContainer.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      copyCurrentQuote();
     });
 
     // Point 6: Sound Toggle Button
