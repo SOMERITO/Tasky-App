@@ -2607,7 +2607,7 @@
       const result = {};
       if (!records || typeof records !== "object" || Array.isArray(records)) return result;
       Object.entries(records).forEach(([key, value]) => {
-        if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(key) || !value || typeof value !== "object") return;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || !value || typeof value !== "object") return;
         const goal = String(value.goal || "").trim().slice(0, 220);
         const notes = String(value.notes || "").slice(0, 1600);
         const status = acceptedStatuses.includes(value.status) ? value.status : "pending";
