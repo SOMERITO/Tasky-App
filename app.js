@@ -1605,7 +1605,8 @@
             if (parsed && parsed.d !== appState.deviceId && parsed.deviceId !== appState.deviceId) {
               const unpacked = unpackCompactEnvelope(parsed);
               if (unpacked && cloudSyncReady && cloudSyncReadyConfig === getCloudSyncConfigKey()) {
-                applyIncomingSyncPayload(unpacked, true);
+                // Background realtime updates must be silent; avoid toasts on every cross-device edit.
+                applyIncomingSyncPayload(unpacked, false);
               }
             }
           }
@@ -4107,8 +4108,9 @@
   function boot() {
     loadRegisteredData();
     cleanupCompletedTasksFromPreviousDays();
+    // The midnight timeout and focus/visibility handlers cover date rollover.
+    // Do not poll cleanup every 5 seconds: it can trigger repeated board renders.
     scheduleExactMidnightRollover();
-    setInterval(cleanupCompletedTasksFromPreviousDays, 5000);
     applyThemeAndSoundUI();
     renderHeroDate();
     renderQuote(false);
@@ -4118,12 +4120,10 @@
     renderBoard();
     document.documentElement.classList.remove("tasky-booting");
 
-    // Start real-time cross-device & incognito cloud sync (Web <-> Incognito <-> Mobile App)
+    // One initial catch-up pull, then real-time SSE/BroadcastChannel for changes.
+    // Avoid periodic whole-dataset polling, which caused unnecessary redraws and visual flicker.
     pullCloudSync(false);
     startCloudSyncStream();
-    setInterval(() => {
-      pullCloudSync(false);
-    }, 6000);
     window.addEventListener("focus", () => {
       cleanupCompletedTasksFromPreviousDays();
       pullCloudSync(false);
