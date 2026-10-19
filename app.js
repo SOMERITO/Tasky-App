@@ -406,14 +406,6 @@
     "author": "Ernest Hemingway"
   },
   {
-    "text": "Caer siete veces y levantarse ocho.",
-    "author": "Proverbio Japonés"
-  },
-  {
-    "text": "El bambú que se dobla es más fuerte que el roble que resiste.",
-    "author": "Proverbio Japonés"
-  },
-  {
     "text": "Podrán encontrarme derrotada muchas veces, pero nunca reducida.",
     "author": "Maya Angelou"
   },
@@ -598,14 +590,6 @@
     "author": "Marco Aurelio · Meditaciones (adaptación)"
   },
   {
-    "text": "La disciplina empieza cuando tus valores pesan más que tus ganas de escapar.",
-    "author": "Máxima estoica contemporánea"
-  },
-  {
-    "text": "Cada vez que obedeces un impulso que desprecias, entrenas la versión de ti que no quieres ser.",
-    "author": "Máxima estoica contemporánea"
-  },
-  {
     "text": "Nadie puede practicar tu virtud por ti. Nadie puede hacer tus elecciones en tu lugar.",
     "author": "Epicteto · Manual, §1 (adaptación)"
   },
@@ -628,10 +612,6 @@
   {
     "text": "La pregunta no es cuánto puedes soportar por ambición, sino cuánto estás dispuesto a practicar por virtud.",
     "author": "Musonio Rufo · Disertación VII (adaptación)"
-  },
-  {
-    "text": "El progreso empieza cuando dejas de fingir que ignoras lo que ya sabes que debes cambiar.",
-    "author": "Máxima estoica contemporánea"
   },
   {
     "text": "Ser fuerte no consiste en no sentir el impulso, sino en decidir si merece obediencia.",
@@ -2488,35 +2468,93 @@
     el.textContent = `${DAY_FULL_NAMES[now.getDay()]}, ${now.getDate()} de ${months[now.getMonth()]}`;
   }
 
-  // Persistent shuffled deck: every quote is shown once before the deck is shuffled again.
-  // Saving the next position prevents refreshes from restarting the cycle or repeating a quote.
+  // Persistent shuffled deck: every quote appears once per cycle, without adjacent authors repeating.
+  // Store the next position so refreshes continue the current cycle.
   const QUOTE_DECK_STORAGE_KEY = "tasky_quote_deck_v1";
   let quoteDeckState = null;
+
+  function quoteAuthorKeyAt(index) {
+    const quote = (appState.quotes || [])[index];
+    return quote ? getDisplayQuoteAuthor(quote.author) : "";
+  }
 
   function isValidQuoteDeckState(candidate, quoteCount) {
     if (!candidate || candidate.version !== 1 || candidate.quoteCount !== quoteCount) return false;
     if (!Array.isArray(candidate.order) || candidate.order.length !== quoteCount) return false;
     if (!Number.isInteger(candidate.next) || candidate.next < 0 || candidate.next > quoteCount) return false;
     const seen = new Set();
+    let previousAuthor = "";
     for (const index of candidate.order) {
       if (!Number.isInteger(index) || index < 0 || index >= quoteCount || seen.has(index)) return false;
+      const author = quoteAuthorKeyAt(index);
+      if (!author || author === previousAuthor) return false;
+      previousAuthor = author;
       seen.add(index);
     }
     return candidate.last === -1 || (Number.isInteger(candidate.last) && candidate.last >= 0 && candidate.last < quoteCount);
   }
 
   function createQuoteDeck(quoteCount, previousLastIndex = -1) {
-    const order = Array.from({ length: quoteCount }, (_, index) => index);
-    // Fisher-Yates shuffle.
-    for (let i = order.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [order[i], order[j]] = [order[j], order[i]];
+    const groups = new Map();
+    for (let index = 0; index < quoteCount; index++) {
+      const author = quoteAuthorKeyAt(index);
+      if (!author) continue; // Unattributed quotes must never enter the deck.
+      if (!groups.has(author)) groups.set(author, []);
+      groups.get(author).push(index);
     }
-    // Avoid repeating the previous cycle's final quote right at the boundary.
-    if (order.length > 1 && order[0] === previousLastIndex) {
-      const swapIndex = 1 + Math.floor(Math.random() * (order.length - 1));
-      [order[0], order[swapIndex]] = [order[swapIndex], order[0]];
+
+    // Shuffle individual quotes inside each author's group.
+    for (const indices of groups.values()) {
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
     }
+
+    // A greedy randomized choice with a feasibility check prevents dead ends.
+    // The remaining count for the preceding author may occupy only every other slot.
+    const order = [];
+    let previousAuthor = previousLastIndex >= 0 && previousLastIndex < quoteCount
+      ? quoteAuthorKeyAt(previousLastIndex)
+      : "";
+
+    while (order.length < quoteCount) {
+      const slotsAfterChoice = quoteCount - order.length - 1;
+      const eligibleAuthors = [];
+
+      for (const [author, indices] of groups) {
+        if (!indices.length || author === previousAuthor) continue;
+        let feasible = true;
+
+        for (const [remainingAuthor, remainingIndices] of groups) {
+          const remainingCount = remainingIndices.length - (remainingAuthor === author ? 1 : 0);
+          const limit = remainingAuthor === author
+            ? Math.floor(slotsAfterChoice / 2)
+            : Math.ceil(slotsAfterChoice / 2);
+          if (remainingCount > limit) {
+            feasible = false;
+            break;
+          }
+        }
+
+        if (feasible) eligibleAuthors.push({ author, indices });
+      }
+
+      const choices = [];
+      for (const group of eligibleAuthors) {
+        for (const index of group.indices) choices.push({ author: group.author, index });
+      }
+      if (!choices.length) {
+        throw new Error("No se pudo crear una baraja de frases sin autores consecutivos");
+      }
+
+      const chosen = choices[Math.floor(Math.random() * choices.length)];
+      const group = groups.get(chosen.author);
+      group.splice(group.indexOf(chosen.index), 1);
+      order.push(chosen.index);
+      previousAuthor = chosen.author;
+    }
+
     return { version: 1, quoteCount, order, next: 0, last: previousLastIndex };
   }
 
@@ -2547,7 +2585,10 @@
     if (isValidQuoteDeckState(saved, quoteCount)) {
       quoteDeckState = saved;
     } else {
-      const previousLast = saved && Number.isInteger(saved.last) && saved.last >= 0 && saved.last < quoteCount
+      // Index positions changed when unattributed quotes were removed, so only reuse
+      // a previous last index when it belongs to a deck with the same quote count.
+      const previousLast = saved && saved.quoteCount === quoteCount &&
+        Number.isInteger(saved.last) && saved.last >= 0 && saved.last < quoteCount
         ? saved.last
         : -1;
       quoteDeckState = createQuoteDeck(quoteCount, previousLast);
@@ -2572,12 +2613,9 @@
     return nextIndex;
   }
 
-  // Show only the person's name, not the source, section, or adaptation note.
-  // For original contemporary maxims without a named author, use "Anónimo".
+  // Group and display by the author's name only, ignoring work titles and adaptation notes.
   function getDisplayQuoteAuthor(author) {
-    const name = String(author || "").split("·")[0].trim();
-    if (!name || name === "Máxima estoica contemporánea") return "Anónimo";
-    return name;
+    return String(author || "").split("·")[0].trim();
   }
 
   // Point 2: Quote rotation set to 75 seconds (1 min 15 sec)
