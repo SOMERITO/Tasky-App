@@ -4445,6 +4445,8 @@
     };
 
     quoteContainer.addEventListener("click", (e) => {
+      // Keyboard activation is handled in keydown so its synthetic click must not copy twice.
+      if (e.detail === 0) return;
       // The second click of a double-click cancels the pending copy.
       if (e.detail > 1) {
         if (quoteClickTimeout !== null) clearTimeout(quoteClickTimeout);
