@@ -251,6 +251,7 @@
     hasBootRendered: false,
     selectedRescheduledIds: new Set(),
     selectedOverdueIds: new Set(),
+    selectedTaskIds: new Set(),
     firebaseConfig: {
       apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YhrvEcb8",
       authDomain: "tasky-7a30c.firebaseapp.com",
@@ -267,6 +268,7 @@
     currentQuoteIndex: 0,
     quoteTimer: null,
     reschedulingTaskId: null,
+    reschedulingTaskIds: [],
     repeatingTaskId: null,
     selectedRepeatDays: [],
     editingBoxId: null,
@@ -2714,11 +2716,81 @@
     allRescheduledBoxesList.forEach(box => renderSingleBoxCard(box, false));
 
     appState.hasBootRendered = true;
+    updateMultiSelectUI();
+  }
+
+  function updateMultiSelectUI() {
+    if (!appState.selectedTaskIds) appState.selectedTaskIds = new Set();
+    const currentIds = new Set((appState.data.tasks || []).map(task => String(task.id)));
+    Array.from(appState.selectedTaskIds).forEach(id => {
+      if (!currentIds.has(String(id))) appState.selectedTaskIds.delete(id);
+    });
+
+    const toolbar = document.getElementById("multi-select-toolbar");
+    const countLabel = document.getElementById("multi-select-count");
+    const count = appState.selectedTaskIds.size;
+    if (toolbar) toolbar.style.display = count > 0 ? "flex" : "none";
+    if (countLabel) countLabel.textContent = String(count);
+
+    document.querySelectorAll(".task-item[data-task-id]").forEach(row => {
+      const selected = appState.selectedTaskIds.has(String(row.dataset.taskId));
+      row.classList.toggle("multi-selected", selected);
+      row.setAttribute("aria-selected", selected ? "true" : "false");
+    });
+  }
+
+  function toggleTaskSelection(taskId) {
+    const id = String(taskId);
+    const task = appState.data.tasks.find(item => String(item.id) === id);
+    if (!task) return;
+    if (task.done) {
+      showToast("Para esta acción, selecciona tareas pendientes.", true);
+      return;
+    }
+    if (appState.selectedTaskIds.has(id)) appState.selectedTaskIds.delete(id);
+    else appState.selectedTaskIds.add(id);
+    updateMultiSelectUI();
+  }
+
+  function clearTaskSelection() {
+    appState.selectedTaskIds.clear();
+    updateMultiSelectUI();
+  }
+
+  function updateTaskActionModalsAfterBulkChange() {
+    const rescheduledModal = document.getElementById("modal-rescheduled-list");
+    if (rescheduledModal && rescheduledModal.classList.contains("open")) renderRescheduledModalList();
+    const overdueModal = document.getElementById("modal-overdue-list");
+    if (overdueModal && overdueModal.classList.contains("open")) renderOverdueModalList();
+  }
+
+  function rescheduleSelectedTasksToTomorrow() {
+    const selectedIds = new Set(Array.from(appState.selectedTaskIds).map(String));
+    const tasks = appState.data.tasks.filter(task => selectedIds.has(String(task.id)) && !task.done);
+    if (!tasks.length) {
+      showToast("Selecciona al menos una tarea pendiente.", true);
+      return;
+    }
+
+    pushUndoSnapshot(`Pasar ${tasks.length} tareas seleccionadas para mañana`);
+    const tomorrowIso = addDaysISO(getTodayISO(), 1);
+    tasks.forEach(task => {
+      task.dueDate = tomorrowIso;
+      task.isRescheduled = true;
+      task.rescheduledCount = (task.rescheduledCount || 0) + 1;
+    });
+
+    playUiSound("reschedule");
+    saveData(true, `Pasó ${tasks.length} tareas seleccionadas para mañana`);
+    clearTaskSelection();
+    renderBoard();
+    updateTaskActionModalsAfterBulkChange();
+    showToast(tasks.length === 1 ? "☀️ 1 tarea pasada para mañana" : `☀️ ${tasks.length} tareas pasadas para mañana`);
   }
 
   function createTaskRowElement(task, box, showOriginBox = false) {
     const item = document.createElement("div");
-    item.className = `task-item ${task.done ? "done" : ""}`;
+    item.className = `task-item ${task.done ? "done" : ""} ${appState.selectedTaskIds && appState.selectedTaskIds.has(String(task.id)) ? "multi-selected" : ""}`;
     item.dataset.taskId = task.id;
 
     const isResched = isTaskRescheduledFuture(task);
@@ -2776,9 +2848,18 @@
 
     // Point 8: Hold-to-Drag works on any blank space of the task or even holding on the row
     item.addEventListener("pointerdown", (e) => {
-      if (e.target.closest("button") || e.target.closest("input")) return;
+      if (e.ctrlKey || e.metaKey || e.target.closest("button") || e.target.closest("input")) return;
       beginHoldDrag("task", task.id, item, e.clientX, e.clientY);
     });
+
+    // Ctrl-click (Windows/Linux) or Cmd-click (macOS) toggles selection without editing or dragging.
+    item.addEventListener("click", (e) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      if (e.target.closest("button, input, select, textarea, a, .drag-handle")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      toggleTaskSelection(task.id);
+    }, true);
 
     const checkBtn = item.querySelector(".task-check-circle");
     checkBtn.addEventListener("click", () => toggleTaskDone(task.id, checkBtn));
@@ -3016,13 +3097,35 @@
   }
 
   // Date Picker / Reschedule Modal
-  function openDatePickerModal(taskId) {
-    const task = appState.data.tasks.find(t => t.id === taskId);
-    if (!task) return;
-    appState.reschedulingTaskId = taskId;
-    document.getElementById("resched-task-name").textContent = task.title;
+  function openDatePickerModal(taskIdOrIds) {
+    const isBulk = Array.isArray(taskIdOrIds);
+    const requestedIds = isBulk
+      ? Array.from(new Set(taskIdOrIds.map(id => String(id))))
+      : [String(taskIdOrIds)];
+    let tasks = appState.data.tasks.filter(task => requestedIds.includes(String(task.id)));
+    if (isBulk) tasks = tasks.filter(task => !task.done);
+    if (!tasks.length) return;
+
+    if (!isBulk) clearTaskSelection();
+    appState.reschedulingTaskIds = tasks.map(task => String(task.id));
+    appState.reschedulingTaskId = tasks.length === 1 ? tasks[0].id : null;
+
+    const dateTitle = document.getElementById("date-modal-title");
+    const taskName = document.getElementById("resched-task-name");
+    if (dateTitle) dateTitle.textContent = tasks.length === 1 ? "Reprogramar tarea" : `Reprogramar ${tasks.length} tareas`;
+    if (taskName) {
+      taskName.textContent = tasks.length === 1
+        ? tasks[0].title
+        : `Se aplicará la misma fecha a ${tasks.length} tareas seleccionadas.`;
+    }
+
     const tomorrowIso = addDaysISO(getTodayISO(), 1);
-    const defaultIso = task.dueDate && task.dueDate > getTodayISO() ? task.dueDate : tomorrowIso;
+    const uniqueFutureDates = Array.from(new Set(tasks
+      .map(task => task.dueDate)
+      .filter(date => date && date > getTodayISO())));
+    const defaultIso = uniqueFutureDates.length === 1 && tasks.every(task => task.dueDate === uniqueFutureDates[0])
+      ? uniqueFutureDates[0]
+      : tomorrowIso;
     const dateInput = document.getElementById("input-resched-date");
     dateInput.min = tomorrowIso;
     dateInput.value = defaultIso;
@@ -3037,39 +3140,50 @@
   }
 
   function applyTaskRescheduleDate(newDateIso, moveToToday = false) {
-    const task = appState.data.tasks.find(t => t.id === appState.reschedulingTaskId);
-    if (!task) return;
+    const requestedIds = Array.isArray(appState.reschedulingTaskIds) && appState.reschedulingTaskIds.length
+      ? Array.from(new Set(appState.reschedulingTaskIds.map(id => String(id))))
+      : (appState.reschedulingTaskId != null ? [String(appState.reschedulingTaskId)] : []);
+    const tasks = appState.data.tasks.filter(task => requestedIds.includes(String(task.id)));
+    if (!tasks.length) return;
+    const isBulk = tasks.length > 1;
     const today = getTodayISO();
 
-    // Point 1: Reschedule modal cannot reprogram a task for today or earlier
     if (!moveToToday && (!newDateIso || newDateIso <= today)) {
       showToast("Elige una fecha futura (desde mañana) para reprogramar", true);
       return;
     }
 
-    pushUndoSnapshot(`Reprogramar: ${task.title}`);
+    const actionLabel = isBulk
+      ? `Reprogramó ${tasks.length} tareas seleccionadas`
+      : `Reprogramó: ${tasks[0].title}`;
+    pushUndoSnapshot(isBulk ? `Reprogramar ${tasks.length} tareas` : `Reprogramar: ${tasks[0].title}`);
 
-    if (moveToToday) {
-      task.dueDate = today;
-      task.isRescheduled = false;
-      task.rescheduledCount = 0;
-      showToast("Programada para hoy");
-    } else {
-      task.dueDate = newDateIso;
-      task.isRescheduled = true;
-      task.rescheduledCount = (task.rescheduledCount || 0) + 1;
-      showToast(`Reprogramada · ${formatSpanishDateLong(newDateIso)}`);
-    }
+    tasks.forEach(task => {
+      if (moveToToday) {
+        task.dueDate = today;
+        task.isRescheduled = false;
+        task.rescheduledCount = 0;
+      } else {
+        task.dueDate = newDateIso;
+        task.isRescheduled = true;
+        task.rescheduledCount = (task.rescheduledCount || 0) + 1;
+      }
+    });
 
     playUiSound("reschedule");
     document.getElementById("modal-date-picker").classList.remove("open");
-    saveData(true, `Reprogramó: ${task.title}`);
+    appState.reschedulingTaskIds = [];
+    appState.reschedulingTaskId = null;
+    if (isBulk) clearTaskSelection();
+    saveData(true, actionLabel);
     renderBoard();
-    if (document.getElementById("modal-rescheduled-list").classList.contains("open")) {
-      renderRescheduledModalList();
-    }
-    if (document.getElementById("modal-overdue-list") && document.getElementById("modal-overdue-list").classList.contains("open")) {
-      renderOverdueModalList();
+    updateTaskActionModalsAfterBulkChange();
+    if (moveToToday) {
+      showToast(tasks.length === 1 ? "☀️ Tarea programada para hoy" : `☀️ ${tasks.length} tareas programadas para hoy`);
+    } else {
+      showToast(tasks.length === 1
+        ? `Reprogramada · ${formatSpanishDateLong(newDateIso)}`
+        : `📅 ${tasks.length} tareas reprogramadas · ${formatSpanishDateLong(newDateIso)}`);
     }
   }
 
@@ -3760,6 +3874,20 @@
       playUiSound("tap");
       openOverdueModal();
     });
+
+    const multiRescheduleBtn = document.getElementById("btn-multi-reschedule");
+    if (multiRescheduleBtn) {
+      multiRescheduleBtn.addEventListener("click", () => {
+        const ids = Array.from(appState.selectedTaskIds);
+        if (!ids.length) return;
+        playUiSound("tap");
+        openDatePickerModal(ids);
+      });
+    }
+    const multiTomorrowBtn = document.getElementById("btn-multi-tomorrow");
+    if (multiTomorrowBtn) multiTomorrowBtn.addEventListener("click", rescheduleSelectedTasksToTomorrow);
+    const multiClearBtn = document.getElementById("btn-multi-clear");
+    if (multiClearBtn) multiClearBtn.addEventListener("click", clearTaskSelection);
 
     // Point 8: Repeat Modal Events
     document.querySelectorAll("[data-repeat-preset]").forEach(btn => {
