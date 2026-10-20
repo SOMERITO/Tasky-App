@@ -3688,3 +3688,9 @@ body {
   }
   .focus-priority-task-actions { width: 100%; justify-content: flex-start; }
 }
+
+
+/* Focus-only view: hide normal casillas while Modo Enfoque is open. */
+body.focus-mode-open #boxes-container {
+  display: none !important;
+}

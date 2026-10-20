@@ -4884,6 +4884,23 @@
     suggestions.hidden = false;
   }
 
+  function setFocusModeVisibility(isOpen) {
+    const focusPanel = document.getElementById("focus-mode-panel");
+    const focusToggle = document.getElementById("btn-toggle-focus-mode");
+    if (focusPanel) focusPanel.hidden = !isOpen;
+    if (focusToggle) focusToggle.setAttribute("aria-expanded", String(isOpen));
+    const label = document.getElementById("focus-mode-toggle-label");
+    if (label) label.textContent = isOpen ? "Cerrar enfoque" : "Modo Enfoque";
+    document.body.classList.toggle("focus-mode-open", isOpen);
+
+    if (!isOpen && focusPanel) {
+      focusPanel.querySelectorAll(".focus-priority-suggestions").forEach(list => {
+        list.hidden = true;
+        list.dataset.activeIndex = "-1";
+      });
+    }
+  }
+
   function renderFocusModePanel() {
     const panel = document.getElementById("focus-mode-panel");
     const list = document.getElementById("focus-mode-priorities");
@@ -5068,6 +5085,9 @@
       renderFocusModePanel();
       return;
     }
+
+    // Close focus-only view before revealing the task on the board.
+    setFocusModeVisibility(false);
 
     // Reset filters and open the source box so the task can always be revealed.
     appState.searchQuery = "";
@@ -6996,9 +7016,7 @@
     const focusPanel = document.getElementById("focus-mode-panel");
     focusToggle.addEventListener("click", () => {
       const nextExpanded = focusToggle.getAttribute("aria-expanded") !== "true";
-      focusToggle.setAttribute("aria-expanded", String(nextExpanded));
-      focusPanel.hidden = !nextExpanded;
-      document.getElementById("focus-mode-toggle-label").textContent = nextExpanded ? "Cerrar enfoque" : "Modo Enfoque";
+      setFocusModeVisibility(nextExpanded);
       playUiSound("tap");
       if (nextExpanded) renderFocusModePanel();
     });
@@ -7170,23 +7188,13 @@
           return;
         }
 
-        // ESC closes Modo Enfoque without clearing the saved priority selections.
+        // ESC closes Modo Enfoque and restores the board without clearing saved priorities.
         const focusPanel = document.getElementById("focus-mode-panel");
-        const focusToggle = document.getElementById("btn-toggle-focus-mode");
         if (focusPanel && !focusPanel.hidden) {
-          focusPanel.hidden = true;
-          focusPanel.querySelectorAll(".focus-priority-suggestions").forEach(list => {
-            list.hidden = true;
-            list.dataset.activeIndex = "-1";
-          });
-          if (focusToggle) {
-            focusToggle.setAttribute("aria-expanded", "false");
-            const label = document.getElementById("focus-mode-toggle-label");
-            if (label) label.textContent = "Modo Enfoque";
-          }
           if (document.activeElement && focusPanel.contains(document.activeElement)) {
             document.activeElement.blur();
           }
+          setFocusModeVisibility(false);
           playUiSound("tap");
         }
 
