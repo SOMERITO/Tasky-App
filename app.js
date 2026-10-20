@@ -4645,24 +4645,27 @@
 
     const sortedBoxes = appState.data.boxes.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    // Point 3: Partition boxes into:
-    // 1. activeBoxesList (has tasks for today or completed today)
-    // 2. emptyBoxesList (has 0 tasks registered, e.g., COMO BOMBERO 🚒)
-    // 3. allRescheduledBoxesList (has tasks, and ALL of them are rescheduled, e.g., OFICINA -> full orange, rendered below empty boxes!)
+    // Partition boxes by what needs attention first:
+    // 1. activeBoxesList: at least one pending task for today
+    // 2. emptyBoxesList: no tasks registered
+    // 3. allRescheduledBoxesList: pending tasks exist, but all are scheduled for future dates
+    // 4. completedBoxesList: every task is completed; keep these at the bottom of the board
     const activeBoxesList = [];
     const emptyBoxesList = [];
     const allRescheduledBoxesList = [];
+    const completedBoxesList = [];
 
     sortedBoxes.forEach((b) => {
       const bTasks = appState.data.tasks.filter(t => t.boxId === b.id);
       if (bTasks.length === 0) {
         emptyBoxesList.push(b);
+      } else if (bTasks.every(t => t.done)) {
+        completedBoxesList.push(b);
       } else {
         const bPending = bTasks.filter(t => !t.done);
-        const bDone = bTasks.filter(t => t.done);
         const bResched = bPending.filter(t => isTaskRescheduledFuture(t));
         const bToday = bPending.filter(t => isTaskForToday(t));
-        if (bToday.length === 0 && bDone.length === 0 && bResched.length > 0) {
+        if (bToday.length === 0 && bResched.length > 0) {
           allRescheduledBoxesList.push(b);
         } else {
           activeBoxesList.push(b);
@@ -4698,9 +4701,10 @@
 
       // Point 3: Casillas that have ALL of their tasks rescheduled get the full orange color (box-rescheduled-theme)
       const isAllTasksRescheduled = boxTasksAll.length > 0 && todayInBox.length === 0 && doneBoxTasks.length === 0 && reschedInBox.length > 0;
+      const isFullyCompletedBox = boxTasksAll.length > 0 && pendingBoxTasks.length === 0;
 
       const card = document.createElement("section");
-      card.className = `box-card ${!appState.hasBootRendered ? "boot-animate" : ""} ${box.collapsed ? "collapsed" : ""} ${isAllTasksRescheduled ? "box-rescheduled-theme" : ""} ${isEmptyStandby ? "box-empty-theme" : ""}`;
+      card.className = `box-card ${!appState.hasBootRendered ? "boot-animate" : ""} ${box.collapsed ? "collapsed" : ""} ${isAllTasksRescheduled ? "box-rescheduled-theme" : ""} ${isFullyCompletedBox ? "box-fully-completed-theme" : ""} ${isEmptyStandby ? "box-empty-theme" : ""}`;
       card.dataset.boxId = box.id;
 
       // Point 2: No "X pendientes" pill in badgesHtml — replaced by the 34x34 colored number square in .box-header-actions!
@@ -4709,6 +4713,11 @@
         badgesHtml = `
           <span class="box-pill neutral">📭 Sin tareas registradas</span>
           <span class="box-pill blue">Casilla disponible</span>
+        `;
+      } else if (isFullyCompletedBox) {
+        badgesHtml = `
+          <span class="box-pill green">✓ Todas completadas</span>
+          <span class="box-pill neutral">${doneBoxTasks.length} tarea${doneBoxTasks.length === 1 ? "" : "s"} finalizada${doneBoxTasks.length === 1 ? "" : "s"}</span>
         `;
       } else if (isAllTasksRescheduled) {
         badgesHtml = `
@@ -5127,14 +5136,37 @@
       container.appendChild(compCard);
     }
 
-    // 3. Render Empty Casillas (with 0 tasks, e.g., COMO BOMBERO 🚒) below TAREAS COMPLETADAS
+    // 3. Render empty Casillas below the completed-task summary.
     emptyBoxesList.forEach(box => renderSingleBoxCard(box, true));
 
-    // 4. Point 3: Render Casillas with ALL tasks rescheduled (e.g., OFICINA in full orange) BELOW Empty Casillas!
+    // 4. Render casillas with all pending tasks rescheduled below empty boxes.
     allRescheduledBoxesList.forEach(box => renderSingleBoxCard(box, false));
+
+    // 5. Keep casillas with every task completed at the very bottom (e.g., MERCADO).
+    completedBoxesList.forEach(box => renderSingleBoxCard(box, false));
 
     appState.hasBootRendered = true;
     updateMultiSelectUI();
+  }
+
+  // Preserve the visible viewport when rescheduling changes the board layout.
+  function renderBoardPreservingScroll() {
+    const scrollX = Number.isFinite(window.scrollX) ? window.scrollX : (window.pageXOffset || 0);
+    const scrollY = Number.isFinite(window.scrollY) ? window.scrollY : (window.pageYOffset || 0);
+    const board = document.getElementById("boxes-container");
+    const focusedElement = document.activeElement;
+
+    // The clicked button will be removed during rendering; blur it first to prevent WebView jumps.
+    if (board && focusedElement && board.contains(focusedElement) && typeof focusedElement.blur === "function") {
+      focusedElement.blur();
+    }
+
+    renderBoard();
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        window.scrollTo(scrollX, scrollY);
+      });
+    });
   }
 
   function updateMultiSelectUI() {
@@ -5201,7 +5233,7 @@
     playUiSound("reschedule");
     saveData(true, `Pasó ${tasks.length} tareas seleccionadas para mañana`);
     clearTaskSelection();
-    renderBoard();
+    renderBoardPreservingScroll();
     updateTaskActionModalsAfterBulkChange();
     showToast(tasks.length === 1 ? "☀️ 1 tarea pasada para mañana" : `☀️ ${tasks.length} tareas pasadas para mañana`);
   }
@@ -5307,7 +5339,7 @@
       task.isRescheduled = true;
       task.rescheduledCount = (task.rescheduledCount || 0) + 1;
       saveData(true, `Pasó para mañana: ${task.title}`);
-      renderBoard();
+      renderBoardPreservingScroll();
       showToast("Pasada para mañana ☀️");
     });
 
@@ -5537,21 +5569,17 @@
         : `Se aplicará la misma fecha a ${tasks.length} tareas seleccionadas.`;
     }
 
-    const tomorrowIso = addDaysISO(getTodayISO(), 1);
-    const uniqueFutureDates = Array.from(new Set(tasks
-      .map(task => task.dueDate)
-      .filter(date => date && date > getTodayISO())));
-    const defaultIso = uniqueFutureDates.length === 1 && tasks.every(task => task.dueDate === uniqueFutureDates[0])
-      ? uniqueFutureDates[0]
-      : tomorrowIso;
+    const todayIso = getTodayISO();
+    const tomorrowIso = addDaysISO(todayIso, 1);
     const dateInput = document.getElementById("input-resched-date");
+    // Display today as the reference date, but min prevents it from being selected as a due date.
     dateInput.min = tomorrowIso;
-    dateInput.value = defaultIso;
+    dateInput.value = todayIso;
 
-    const parts = defaultIso.split("-");
+    const parts = todayIso.split("-");
     calState.viewYear = Number(parts[0]) || new Date().getFullYear();
     calState.viewMonth = (Number(parts[1]) || (new Date().getMonth() + 1)) - 1;
-    calState.selectedIso = defaultIso;
+    calState.selectedIso = todayIso;
     renderProVisualCalendar();
 
     document.getElementById("modal-date-picker").classList.add("open");
@@ -5594,7 +5622,7 @@
     appState.reschedulingTaskId = null;
     if (isBulk) clearTaskSelection();
     saveData(true, actionLabel);
-    renderBoard();
+    renderBoardPreservingScroll();
     updateTaskActionModalsAfterBulkChange();
     if (moveToToday) {
       showToast(tasks.length === 1 ? "☀️ Tarea programada para hoy" : `☀️ ${tasks.length} tareas programadas para hoy`);
@@ -5624,7 +5652,7 @@
     if (movedCount > 0) {
       playUiSound("complete");
       saveData(true, `${actionDescription} (${movedCount})`);
-      renderBoard();
+      renderBoardPreservingScroll();
       if (document.getElementById("modal-rescheduled-list") && document.getElementById("modal-rescheduled-list").classList.contains("open")) {
         renderRescheduledModalList();
       }
@@ -6459,12 +6487,12 @@
 
     document.getElementById("btn-cal-today-jump").addEventListener("click", () => {
       playUiSound("tap");
-      const tomorrowIso = addDaysISO(getTodayISO(), 1);
-      const parts = tomorrowIso.split("-");
+      const todayIso = getTodayISO();
+      const parts = todayIso.split("-");
       calState.viewYear = Number(parts[0]);
       calState.viewMonth = Number(parts[1]) - 1;
-      calState.selectedIso = tomorrowIso;
-      document.getElementById("input-resched-date").value = tomorrowIso;
+      calState.selectedIso = todayIso;
+      document.getElementById("input-resched-date").value = todayIso;
       renderProVisualCalendar();
     });
 

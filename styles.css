@@ -3039,3 +3039,9 @@ body {
   .learning-summary-label { font-size: 0.62rem; }
   .learning-summary-card .learning-status-chip { font-size: 0.53rem; }
 }
+
+
+/* Visually distinguish a casilla whose entire task list is complete. */
+.box-card.box-fully-completed-theme {
+  border-color: rgba(22, 163, 74, 0.24);
+}
