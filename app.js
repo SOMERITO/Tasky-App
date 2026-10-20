@@ -4024,7 +4024,10 @@
     if (!section) return;
     const goals = normalizeLearningGoalsData(appState.data.learningGoals);
     appState.data.learningGoals = goals;
-    const preserveDraft = section.contains(document.activeElement);
+    const focusedElement = document.activeElement;
+    const preserveDraft = Boolean(focusedElement && focusedElement.matches(
+      "#input-learning-daily-goal, #input-learning-daily-notes, #input-learning-weekly-goal, #input-learning-weekly-notes"
+    ));
     const today = getTodayISO();
     const yesterday = addDaysISO(today, -1);
     const weekStart = getLearningWeekStartISO(today);
@@ -6680,23 +6683,32 @@
       if (jump) jumpToFocusTask(jump.dataset.taskId);
     });
 
-    const learningToggle = document.getElementById("btn-toggle-learning-details");
-    learningToggle.addEventListener("click", () => {
-      const expanded = learningToggle.getAttribute("aria-expanded") === "true";
-      const panel = document.getElementById("learning-details-panel");
-      const nextExpanded = !expanded;
-      learningToggle.setAttribute("aria-expanded", String(nextExpanded));
-      panel.hidden = !nextExpanded;
-      document.getElementById("learning-goals-section").classList.toggle("learning-expanded", nextExpanded);
-      document.getElementById("learning-toggle-label").textContent = nextExpanded ? "Cerrar registro" : "Abrir registro";
-      document.getElementById("learning-toggle-icon").textContent = nextExpanded ? "⌃" : "⌄";
+    const learningSection = document.getElementById("learning-goals-section");
+    const learningModal = document.getElementById("learning-details-panel");
+    const openLearningModal = () => {
+      renderLearningGoalsPanel();
+      learningModal.classList.add("open");
       playUiSound("tap");
-      // Do not autofocus the form on mobile; expanding the panel should not open the keyboard.
+      const dialog = learningModal.querySelector(".learning-modal-dialog");
+      if (dialog) dialog.focus({ preventScroll: true });
+    };
+
+    learningSection.addEventListener("click", event => {
+      const trigger = event.target.closest("[data-learning-open]");
+      if (trigger) openLearningModal();
+    });
+    learningSection.addEventListener("keydown", event => {
+      const trigger = event.target.closest("[data-learning-open]");
+      if (!trigger || (event.key !== "Enter" && event.key !== " ")) return;
+      event.preventDefault();
+      openLearningModal();
+    });
+    learningModal.addEventListener("click", event => {
+      if (event.target === learningModal) learningModal.classList.remove("open");
     });
 
     document.getElementById("btn-save-daily-learning").addEventListener("click", saveDailyLearningGoal);
     document.getElementById("btn-save-weekly-learning").addEventListener("click", saveWeeklyLearningGoal);
-    const learningSection = document.getElementById("learning-goals-section");
     learningSection.addEventListener("click", (event) => {
       const button = event.target.closest("[data-learning-action]");
       if (!button || button.disabled) return;

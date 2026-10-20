@@ -130,19 +130,9 @@
     </section>
 
     <!-- Daily and weekly learning goals -->
-    <section id="learning-goals-section" class="learning-section" aria-labelledby="learning-section-title">
-      <div class="learning-section-heading">
-        <div class="learning-heading-copy">
-          <h2 id="learning-section-title">Aprendizaje</h2>
-        </div>
-        <button type="button" id="btn-toggle-learning-details" class="learning-toggle-btn" aria-expanded="false" aria-controls="learning-details-panel">
-          <span id="learning-toggle-label">Abrir registro</span>
-          <span id="learning-toggle-icon" class="learning-toggle-chevron" aria-hidden="true">⌄</span>
-        </button>
-      </div>
-
+    <section id="learning-goals-section" class="learning-section" aria-label="Metas de aprendizaje">
       <div class="learning-summary-grid" aria-label="Metas de aprendizaje actuales">
-        <article class="learning-summary-card">
+        <article class="learning-summary-card" role="button" tabindex="0" data-learning-open="daily" aria-label="Abrir registro de la meta diaria">
           <div class="learning-summary-topline">
             <span class="learning-summary-label">☀️ Meta diaria</span>
             <span id="learning-daily-summary-status" class="learning-status-chip" data-status="empty">Sin registrar</span>
@@ -150,7 +140,7 @@
           <p id="learning-daily-summary-goal" class="learning-summary-goal">Todavía no has registrado la meta de hoy.</p>
           <span id="learning-summary-today-date" class="learning-summary-date">Hoy</span>
         </article>
-        <article class="learning-summary-card">
+        <article class="learning-summary-card" role="button" tabindex="0" data-learning-open="weekly" aria-label="Abrir registro de la meta semanal">
           <div class="learning-summary-topline">
             <span class="learning-summary-label">📚 Meta semanal</span>
             <span id="learning-weekly-summary-status" class="learning-status-chip" data-status="empty">Sin registrar</span>
@@ -160,7 +150,18 @@
         </article>
       </div>
 
-      <div id="learning-details-panel" class="learning-details-panel" hidden>
+    </section>
+
+    <div id="learning-details-panel" class="modal-backdrop learning-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="learning-modal-title">
+      <div class="modal-dialog wide learning-modal-dialog" tabindex="-1">
+        <div class="modal-header">
+          <div>
+            <div class="modal-eyebrow">🎯 METAS DE APRENDIZAJE</div>
+            <h2 id="learning-modal-title" class="modal-title">Registro de aprendizaje</h2>
+          </div>
+          <button type="button" class="modal-close-btn" data-close-modal="learning-details-panel" aria-label="Cerrar">✕</button>
+        </div>
+        <div class="learning-details-content">
       <div class="learning-cards-grid">
         <article class="learning-card learning-daily-card">
           <div class="learning-card-heading">
@@ -246,8 +247,9 @@
           <div id="learning-weekly-history" class="learning-history-list"><p class="learning-empty-history">Tus metas semanales guardadas aparecerán aquí.</p></div>
         </div>
       </div>
+        </div>
       </div>
-    </section>
+    </div>
 
     <!-- Navigation Filters & Quick Actions -->
     <nav class="controls-bar" aria-label="Filtros de tareas">
