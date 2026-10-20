@@ -895,23 +895,25 @@ body {
   border-color: rgba(34, 197, 94, 0.32);
 }
 
-/* Point 8: Distinct Empty-State Box Color Theme for Casillas with 0 tasks */
+/* Distinct blue theme for casillas with no tasks registered. */
 .box-card.box-empty-theme {
-  background: linear-gradient(180deg, rgba(241, 245, 249, 0.86), rgba(226, 232, 240, 0.62));
-  border: 1.5px dashed rgba(100, 116, 139, 0.34);
+  background: linear-gradient(135deg, rgba(219, 234, 254, 0.96), rgba(224, 242, 254, 0.92));
+  border: 1.5px dashed rgba(59, 130, 246, 0.52);
+  border-left: 4px solid #60a5fa;
 }
 
 .box-card.box-empty-theme .box-name {
-  color: #475569;
+  color: #1d4ed8;
 }
 
 [data-theme="dark"] .box-card.box-empty-theme {
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.55), rgba(15, 23, 42, 0.45));
-  border: 1.5px dashed rgba(148, 163, 184, 0.28);
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.42), rgba(8, 47, 73, 0.48));
+  border: 1.5px dashed rgba(96, 165, 250, 0.52);
+  border-left: 4px solid #60a5fa;
 }
 
 [data-theme="dark"] .box-card.box-empty-theme .box-name {
-  color: #94a3b8;
+  color: #93c5fd;
 }
 
 /* Point 7: Hold-to-Drag Loading Bar & Active Drag / Drop Preview States */
