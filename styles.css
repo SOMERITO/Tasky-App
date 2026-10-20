@@ -3063,28 +3063,28 @@ body {
 }
 
 
-/* Casillas con tareas, pero sin pendientes: verde visible para distinguirlas
-   de las casillas activas (neutras) y de las vacías (azules). */
+/* Una casilla sin pendientes queda visualmente vacía: usa el mismo azul
+   tanto si nunca tuvo tareas como si ya se completaron todas. */
 .box-card.box-fully-completed-theme {
-  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important;
-  border: 1.5px solid rgba(22, 163, 74, 0.48) !important;
-  border-left: 6px solid #16a34a !important;
-  box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.08), 0 4px 14px rgba(22, 163, 74, 0.08) !important;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+  border: 2px solid #60a5fa !important;
+  border-left: 8px solid #2563eb !important;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.10), 0 4px 14px rgba(37, 99, 235, 0.10) !important;
 }
 
 .box-card.box-fully-completed-theme .box-name {
-  color: #166534;
+  color: #1d4ed8 !important;
 }
 
 [data-theme="dark"] .box-card.box-fully-completed-theme {
-  background: linear-gradient(135deg, #052e16 0%, #064e3b 100%) !important;
-  border: 1.5px solid rgba(74, 222, 128, 0.42) !important;
-  border-left: 6px solid #4ade80 !important;
-  box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.08), 0 4px 14px rgba(0, 0, 0, 0.18) !important;
+  background: linear-gradient(135deg, #172554 0%, #0c4a6e 100%) !important;
+  border: 2px solid #60a5fa !important;
+  border-left: 8px solid #93c5fd !important;
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.12), 0 4px 14px rgba(0, 0, 0, 0.18) !important;
 }
 
 [data-theme="dark"] .box-card.box-fully-completed-theme .box-name {
-  color: #bbf7d0;
+  color: #bfdbfe !important;
 }
 
 
