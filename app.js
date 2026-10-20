@@ -6153,7 +6153,7 @@
       learningToggle.setAttribute("aria-expanded", String(nextExpanded));
       panel.hidden = !nextExpanded;
       document.getElementById("learning-goals-section").classList.toggle("learning-expanded", nextExpanded);
-      document.getElementById("learning-toggle-label").textContent = nextExpanded ? "Ocultar detalles" : "Editar y revisar";
+      document.getElementById("learning-toggle-label").textContent = nextExpanded ? "Cerrar registro" : "Abrir registro";
       document.getElementById("learning-toggle-icon").textContent = nextExpanded ? "⌃" : "⌄";
       playUiSound("tap");
       // Do not autofocus the form on mobile; expanding the panel should not open the keyboard.
