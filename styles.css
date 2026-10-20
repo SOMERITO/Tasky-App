@@ -560,10 +560,10 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
-/* 4-Card Metrics Grid (Larger & More Expressive for Laptop) */
+/* 3-Card Metrics Grid: keep the most actionable indicators in focus */
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }

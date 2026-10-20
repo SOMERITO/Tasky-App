@@ -4467,11 +4467,6 @@
     document.getElementById("metric-daily-pct").textContent = `${dailyPct}%`;
     document.getElementById("metric-daily-sub").textContent = `${doneToday} de ${totalToday} tareas de hoy`;
 
-    const activeBoxesCount = boxes.filter(b =>
-      tasks.some(t => t.boxId === b.id && !t.done && isTaskForToday(t))
-    ).length;
-
-    document.getElementById("metric-boxes-count").textContent = String(activeBoxesCount);
     document.getElementById("metric-pending-count").textContent = String(pendingToday);
 
     const totalDoneNow = tasks.filter(t => t.done).length;
