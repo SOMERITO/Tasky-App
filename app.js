@@ -4720,11 +4720,30 @@
     return plan;
   }
 
+  function removeCompletedFocusPriority(taskId, today) {
+    const plan = getFocusPlanForToday();
+    const completedIndex = plan.taskIds.findIndex(id => id && String(id) === String(taskId));
+    if (completedIndex < 0) return false;
+
+    // Remove the completed priority, shift later choices left and keep three slots.
+    const remainingIds = plan.taskIds.slice();
+    remainingIds.splice(completedIndex, 1);
+    const compactedIds = remainingIds.filter(Boolean).slice(0, 3);
+    while (compactedIds.length < 3) compactedIds.push("");
+
+    appState.data.focusPlan = {
+      date: today,
+      taskIds: compactedIds,
+      updatedAt: Date.now()
+    };
+    return true;
+  }
+
   function renderFocusTaskSuggestions(slot, rawQuery) {
     const suggestions = document.getElementById(`focus-priority-suggestions-${slot}`);
     if (!suggestions) return;
 
-    const query = String(rawQuery || "").trim().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
+    const query = String(rawQuery || "").trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     suggestions.innerHTML = "";
     suggestions.dataset.activeIndex = "-1";
     if (!query) {
@@ -4740,7 +4759,7 @@
         if (task.done || !isTaskForToday(task) || selectedElsewhere.has(id)) return false;
         const box = appState.data.boxes.find(entry => String(entry.id) === String(task.boxId));
         const haystack = `${task.title || ""} ${box ? box.name : ""}`
-          .normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
         return haystack.includes(query);
       })
       .sort((a, b) => {
@@ -4918,7 +4937,6 @@
         empty.textContent = "Aún no has elegido una tarea para esta prioridad.";
         detail.appendChild(empty);
       }
-      card.appendChild(select);
       card.appendChild(detail);
       list.appendChild(card);
     }
@@ -5748,10 +5766,13 @@
     const today = getTodayISO();
     if (task.done) {
       task.completedDate = today;
+      const shiftedFocusPriority = removeCompletedFocusPriority(task.id, today);
       playUiSound("complete");
       spawnCompletionParticles(checkBtnEl);
       appState.history[today] = (appState.history[today] || 0) + 1;
-      showToast("Tarea completada");
+      showToast(shiftedFocusPriority
+        ? "Prioridad completada; las siguientes avanzaron"
+        : "Tarea completada");
     } else {
       task.completedDate = null;
       playUiSound("uncomplete");
