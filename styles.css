@@ -3557,3 +3557,13 @@ body {
   .focus-mode-priorities { grid-template-columns: 1fr; }
   .focus-box-priority-group > .focus-mode-priorities { padding: 0 8px 8px; }
 }
+
+/* Stack each casilla's own priority set vertically; only the three slots inside a group form a grid. */
+.focus-mode-box-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.focus-mode-box-groups > .focus-box-priority-group {
+  margin: 0;
+}
