@@ -2292,6 +2292,7 @@
     },
     activeTab: "all",
     searchQuery: "",
+    focusRevealTaskId: null,
     quotes: QUOTES_POOL.slice(),
     currentQuoteIndex: 0,
     quoteTimer: null,
@@ -4984,34 +4985,47 @@
       return;
     }
 
+    // Reset filters and open the source box so the task can always be revealed.
+    appState.searchQuery = "";
     const searchInput = document.getElementById("search-input");
     const searchClear = document.getElementById("search-clear-btn");
-    const hadSearch = Boolean(appState.searchQuery);
-    if (hadSearch) {
-      appState.searchQuery = "";
-      if (searchInput) searchInput.value = "";
-      if (searchClear) searchClear.style.display = "none";
-    }
+    if (searchInput) searchInput.value = "";
+    if (searchClear) searchClear.style.display = "none";
+
+    const sourceBox = appState.data.boxes.find(box => String(box.id) === String(task.boxId));
+    if (sourceBox) sourceBox.collapsed = false;
 
     const targetTab = task.done ? "completed" : "all";
-    const targetButton = document.querySelector(`[data-tab="${targetTab}"]`);
-    if (targetButton && appState.activeTab !== targetTab) {
-      targetButton.click();
-    } else {
-      renderBoard();
-    }
+    appState.activeTab = targetTab;
+    document.querySelectorAll("[data-tab]").forEach(button => {
+      button.classList.toggle("active", button.dataset.tab === targetTab);
+    });
+
+    // A task may have been rescheduled after it was chosen as a priority.
+    // Temporarily include it in the board so the jump still has a visible target.
+    appState.focusRevealTaskId = String(task.id);
+    if (sourceBox) saveData(false, "Abrió la casilla de una prioridad");
+    renderBoard();
 
     const reveal = () => {
       const rows = Array.from(document.querySelectorAll(".task-item[data-task-id]"));
-      const row = rows.find(element => String(element.dataset.taskId) === String(taskId));
+      const row = rows.find(element => String(element.dataset.taskId) === String(task.id));
+      appState.focusRevealTaskId = null;
       if (!row) {
-        showToast("No pude mostrar la tarea en el tablero. Comprueba si está reprogramada.", true);
+        showToast("No encontré la tarea en el tablero. Vuelve a abrir Modo Enfoque e inténtalo otra vez.", true);
         return;
       }
-      row.scrollIntoView({ block: "center", behavior: "smooth" });
+
+      if (typeof row.scrollIntoView === "function") {
+        row.scrollIntoView({ block: "center", behavior: "smooth" });
+      } else {
+        const top = row.getBoundingClientRect().top + (window.pageYOffset || 0);
+        window.scrollTo(0, Math.max(0, top - window.innerHeight / 2));
+      }
       row.classList.add("focus-mode-highlight");
-      window.setTimeout(() => row.classList.remove("focus-mode-highlight"), 1600);
+      window.setTimeout(() => row.classList.remove("focus-mode-highlight"), 1800);
     };
+
     if (typeof window.requestAnimationFrame === "function") {
       window.requestAnimationFrame(() => window.requestAnimationFrame(reveal));
     } else {
@@ -5071,9 +5085,14 @@
       // Rescheduled tasks disappear from the Casilla and live in Tareas Reprogramadas until their dueDate arrives
       let visibleTasks = [];
       if (appState.activeTab === "completed") {
-        visibleTasks = doneBoxTasks.filter(t => matchesSearch(t, box.name));
+        visibleTasks = doneBoxTasks.filter(t =>
+          matchesSearch(t, box.name) || String(t.id) === String(appState.focusRevealTaskId || "")
+        );
       } else {
-        visibleTasks = pendingBoxTasks.filter(t => isTaskForToday(t) && matchesSearch(t, box.name));
+        visibleTasks = pendingBoxTasks.filter(t =>
+          (isTaskForToday(t) || String(t.id) === String(appState.focusRevealTaskId || "")) &&
+          matchesSearch(t, box.name)
+        );
       }
 
       if (appState.searchQuery && visibleTasks.length === 0 && !box.name.toLowerCase().includes(appState.searchQuery.toLowerCase())) {
