@@ -5687,6 +5687,262 @@
     showToast(tasks.length === 1 ? "☀️ 1 tarea pasada para mañana" : `☀️ ${tasks.length} tareas pasadas para mañana`);
   }
 
+  function closeTaskContextMenu() {
+    const menu = document.getElementById("task-context-menu");
+    if (menu) {
+      menu.hidden = true;
+      menu.innerHTML = "";
+      menu.dataset.taskId = "";
+    }
+  }
+
+  function ensureTaskContextMenu() {
+    let menu = document.getElementById("task-context-menu");
+    if (menu) return menu;
+
+    menu = document.createElement("div");
+    menu.id = "task-context-menu";
+    menu.className = "task-context-menu";
+    menu.setAttribute("role", "menu");
+    menu.setAttribute("aria-label", "Opciones de tarea");
+    menu.hidden = true;
+    document.body.appendChild(menu);
+
+    menu.addEventListener("click", event => {
+      const button = event.target.closest("[data-context-action]");
+      if (!button || button.disabled) return;
+      const action = button.dataset.contextAction;
+      const taskId = menu.dataset.taskId;
+      const slot = button.dataset.prioritySlot === undefined
+        ? -1
+        : Number(button.dataset.prioritySlot) - 1;
+      closeTaskContextMenu();
+      handleTaskContextAction(action, taskId, slot);
+    });
+
+    document.addEventListener("pointerdown", event => {
+      const currentMenu = document.getElementById("task-context-menu");
+      if (currentMenu && !currentMenu.hidden && !currentMenu.contains(event.target)) {
+        closeTaskContextMenu();
+      }
+    }, true);
+    window.addEventListener("resize", closeTaskContextMenu);
+    window.addEventListener("scroll", event => {
+      const currentMenu = document.getElementById("task-context-menu");
+      if (currentMenu && !currentMenu.hidden && !currentMenu.contains(event.target)) {
+        closeTaskContextMenu();
+      }
+    }, true);
+    return menu;
+  }
+
+  function addTaskContextMenuButton(menu, label, action, options = {}) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `task-context-menu-item ${options.danger ? "is-danger" : ""} ${options.priorityClass || ""}`.trim();
+    button.setAttribute("role", "menuitem");
+    button.dataset.contextAction = action;
+    button.textContent = label;
+    if (options.prioritySlot !== undefined) button.dataset.prioritySlot = String(options.prioritySlot);
+    if (options.disabled) button.disabled = true;
+    if (options.title) button.title = options.title;
+    menu.appendChild(button);
+    return button;
+  }
+
+  function addTaskContextMenuDivider(menu) {
+    const divider = document.createElement("div");
+    divider.className = "task-context-menu-divider";
+    divider.setAttribute("role", "separator");
+    menu.appendChild(divider);
+  }
+
+  function openTaskContextMenu(taskId, x, y) {
+    const task = appState.data.tasks.find(entry => String(entry.id) === String(taskId));
+    if (!task) return;
+    const menu = ensureTaskContextMenu();
+    menu.innerHTML = "";
+    menu.dataset.taskId = String(task.id);
+
+    const heading = document.createElement("div");
+    heading.className = "task-context-menu-heading";
+    const headingLabel = document.createElement("span");
+    headingLabel.textContent = "OPCIONES DE TAREA";
+    const headingTitle = document.createElement("strong");
+    headingTitle.textContent = task.title || "Tarea sin título";
+    headingTitle.title = task.title || "Tarea sin título";
+    heading.append(headingLabel, headingTitle);
+    menu.appendChild(heading);
+
+    addTaskContextMenuButton(menu, task.done ? "↩ Reabrir tarea" : "✓ Marcar como completada", "toggle-done");
+    addTaskContextMenuButton(menu, "✏️ Editar tarea", "edit");
+    addTaskContextMenuButton(menu, "📋 Copiar texto", "copy");
+    if (!task.done) addTaskContextMenuButton(menu, "☀️ Pasar para mañana", "tomorrow");
+    addTaskContextMenuButton(menu, "📅 Reprogramar fecha", "reschedule");
+    addTaskContextMenuButton(menu, "🔁 Configurar repetición", "repeat");
+
+    addTaskContextMenuDivider(menu);
+    const priorityHeading = document.createElement("div");
+    priorityHeading.className = "task-context-menu-section-label";
+    priorityHeading.textContent = "ASIGNAR PRIORIDAD";
+    menu.appendChild(priorityHeading);
+
+    const plan = getFocusPlanForToday();
+    const currentPriorityIndex = plan.taskIds.findIndex(id => id && String(id) === String(task.id));
+    const eligibleForPriority = !task.done && isTaskForToday(task);
+    const priorityNames = [
+      { number: 1, color: "Rojo", css: "p1" },
+      { number: 2, color: "Amarillo", css: "p2" },
+      { number: 3, color: "Verde", css: "p3" }
+    ];
+
+    priorityNames.forEach(priority => {
+      const slotIndex = priority.number - 1;
+      const occupiedId = plan.taskIds[slotIndex] || "";
+      const owner = occupiedId
+        ? appState.data.tasks.find(entry => String(entry.id) === String(occupiedId))
+        : null;
+      const occupiedByOther = Boolean(occupiedId && String(occupiedId) !== String(task.id));
+      let label;
+      let disabled = false;
+      let title = "";
+
+      if (occupiedByOther) {
+        label = `P${priority.number} · Ocupada: ${owner ? owner.title : "otra tarea"}`;
+        disabled = true;
+        title = owner ? `Esta prioridad ya corresponde a: ${owner.title}` : "Esta prioridad ya está ocupada.";
+      } else if (occupiedId && String(occupiedId) === String(task.id)) {
+        label = `✓ P${priority.number} · Ya asignada`;
+        disabled = true;
+        title = "Esta tarea ya ocupa esta prioridad.";
+      } else if (!eligibleForPriority) {
+        label = `P${priority.number} · Solo hoy o atrasadas`;
+        disabled = true;
+        title = "Solo se pueden priorizar tareas pendientes para hoy o atrasadas.";
+      } else {
+        label = currentPriorityIndex >= 0
+          ? `Mover a P${priority.number} · ${priority.color}`
+          : `Asignar P${priority.number} · ${priority.color}`;
+      }
+
+      addTaskContextMenuButton(menu, label, "assign-priority", {
+        prioritySlot: priority.number,
+        priorityClass: `task-context-menu-priority-${priority.css}`,
+        disabled,
+        title
+      });
+    });
+
+    if (currentPriorityIndex >= 0) {
+      addTaskContextMenuButton(menu, `Quitar prioridad actual (P${currentPriorityIndex + 1})`, "clear-priority");
+    }
+
+    addTaskContextMenuDivider(menu);
+    addTaskContextMenuButton(menu, "🗑️ Eliminar tarea", "delete", { danger: true });
+
+    menu.hidden = false;
+    menu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - 280))}px`;
+    menu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - 420))}px`;
+    const rect = menu.getBoundingClientRect();
+    menu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - rect.width - 8))}px`;
+    menu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - rect.height - 8))}px`;
+
+    const firstAction = menu.querySelector("button:not(:disabled)");
+    if (firstAction) firstAction.focus({ preventScroll: true });
+  }
+
+  function assignTaskToFocusPriority(taskId, slot) {
+    if (!Number.isInteger(slot) || slot < 0 || slot > 2) return;
+    const task = appState.data.tasks.find(entry => String(entry.id) === String(taskId));
+    if (!task || task.done || !isTaskForToday(task)) {
+      showToast("Solo puedes priorizar tareas pendientes para hoy o atrasadas", true);
+      return;
+    }
+
+    const today = getTodayISO();
+    const plan = getFocusPlanForToday();
+    const currentTargetId = plan.taskIds[slot] || "";
+    if (currentTargetId && String(currentTargetId) !== String(task.id)) {
+      const occupiedTask = appState.data.tasks.find(entry => String(entry.id) === String(currentTargetId));
+      showToast(`P${slot + 1} ya está ocupada${occupiedTask ? `: ${occupiedTask.title}` : ""}`, true);
+      return;
+    }
+
+    const previousSlot = plan.taskIds.findIndex(id => id && String(id) === String(task.id));
+    if (previousSlot === slot) {
+      showToast(`Esta tarea ya es P${slot + 1}`);
+      return;
+    }
+
+    const nextIds = plan.taskIds.slice();
+    if (previousSlot >= 0) nextIds[previousSlot] = "";
+    nextIds[slot] = String(task.id);
+    appState.data.focusPlan = { date: today, taskIds: nextIds, updatedAt: Date.now() };
+    saveData(false, `Asignó P${slot + 1}: ${task.title}`);
+    playUiSound("tap");
+    renderBoard();
+    showToast(previousSlot >= 0 ? `Tarea movida a P${slot + 1}` : `Tarea asignada como P${slot + 1}`);
+  }
+
+  function handleTaskContextAction(action, taskId, slot = -1) {
+    const task = appState.data.tasks.find(entry => String(entry.id) === String(taskId));
+    if (!task) {
+      showToast("Esta tarea ya no está disponible", true);
+      return;
+    }
+
+    switch (action) {
+      case "toggle-done": {
+        const row = Array.from(document.querySelectorAll(".task-item[data-task-id]"))
+          .find(element => String(element.dataset.taskId) === String(task.id));
+        toggleTaskDone(task.id, row ? row.querySelector(".task-check-circle") : null);
+        break;
+      }
+      case "edit":
+        playUiSound("modalOpen");
+        openEditTaskTitleModal(task.id);
+        break;
+      case "copy":
+        copyTextToClipboard(task.title, "📋 Tarea copiada al portapapeles");
+        break;
+      case "tomorrow": {
+        if (task.done) return;
+        pushUndoSnapshot(`Pasar para mañana: ${task.title}`);
+        task.dueDate = addDaysISO(getTodayISO(), 1);
+        task.isRescheduled = true;
+        task.rescheduledCount = (task.rescheduledCount || 0) + 1;
+        playUiSound("reschedule");
+        saveData(true, `Pasó para mañana: ${task.title}`);
+        renderBoardPreservingScroll();
+        showToast("Pasada para mañana ☀️");
+        break;
+      }
+      case "reschedule":
+        playUiSound("tap");
+        openDatePickerModal(task.id);
+        break;
+      case "repeat":
+        playUiSound("tap");
+        openRepeatPickerModal(task.id);
+        break;
+      case "assign-priority":
+        assignTaskToFocusPriority(task.id, slot);
+        break;
+      case "clear-priority": {
+        const plan = getFocusPlanForToday();
+        const index = plan.taskIds.findIndex(id => id && String(id) === String(task.id));
+        if (index >= 0) setFocusPriority(index, "");
+        break;
+      }
+      case "delete":
+        playUiSound("delete");
+        deleteTask(task.id);
+        break;
+      default:
+        break;
+    }
+  }
+
   function createTaskRowElement(task, box, showOriginBox = false) {
     const item = document.createElement("div");
     const focusPriority = getFocusPriorityLevel(task.id);
@@ -5752,8 +6008,14 @@
 
     // Point 8: Hold-to-Drag works on any blank space of the task or even holding on the row
     item.addEventListener("pointerdown", (e) => {
-      if (e.ctrlKey || e.metaKey || e.target.closest("button") || e.target.closest("input")) return;
+      if (e.button !== 0 || e.ctrlKey || e.metaKey || e.target.closest("button") || e.target.closest("input")) return;
       beginHoldDrag("task", task.id, item, e.clientX, e.clientY);
+    });
+
+    item.addEventListener("contextmenu", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      openTaskContextMenu(task.id, event.clientX, event.clientY);
     });
 
     // Ctrl-click (Windows/Linux) or Cmd-click (macOS) toggles selection without editing or dragging.
@@ -6827,6 +7089,13 @@
       }
 
       if (e.key === "Escape") {
+        const taskMenu = document.getElementById("task-context-menu");
+        if (taskMenu && !taskMenu.hidden) {
+          closeTaskContextMenu();
+          e.preventDefault();
+          return;
+        }
+
         // ESC closes Modo Enfoque without clearing the saved priority selections.
         const focusPanel = document.getElementById("focus-mode-panel");
         const focusToggle = document.getElementById("btn-toggle-focus-mode");
