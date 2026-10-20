@@ -4889,10 +4889,6 @@
     const list = document.getElementById("focus-mode-priorities");
     if (!panel || !list) return;
 
-    const openBoxIds = new Set(
-      Array.from(list.querySelectorAll("details[data-focus-box-id][open]"))
-        .map(element => String(element.dataset.focusBoxId))
-    );
     let plan = getFocusPlanForToday();
     const taskById = new Map((appState.data.tasks || []).map(task => [String(task.id), task]));
     const validBoxIds = new Set((appState.data.boxes || []).map(box => String(box.id)));
@@ -4903,167 +4899,138 @@
       const taskIds = boxPlan.taskIds.map(id => {
         if (!id) return "";
         const task = taskById.get(String(id));
-        return task && String(task.boxId) === String(boxId) ? String(id) : "";
+        return task && !task.done && String(task.boxId) === String(boxId) ? String(id) : "";
       });
-      cleanedByBox[boxId] = { taskIds, updatedAt: boxPlan.updatedAt };
+      if (taskIds.some(Boolean)) cleanedByBox[boxId] = { taskIds, updatedAt: boxPlan.updatedAt };
     });
     const dirty = JSON.stringify(cleanedByBox) !== JSON.stringify(plan.byBox);
     if (dirty) {
       plan = { ...plan, byBox: cleanedByBox, updatedAt: Date.now() };
       appState.data.focusPlan = plan;
-      saveData(false, "Limpió prioridades de casillas que ya no existen");
+      saveData(false, "Limpió prioridades de tareas que ya no están pendientes");
     }
 
-    const boxList = appState.data.boxes.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
-    const selectedIds = Object.values(plan.byBox).flatMap(boxPlan => boxPlan.taskIds.filter(Boolean));
-    const selectedCount = selectedIds.length;
+    const boxById = new Map((appState.data.boxes || []).map(box => [String(box.id), box]));
+    const entriesByPriority = [[], [], []];
+    Object.entries(plan.byBox).forEach(([boxId, boxPlan]) => {
+      boxPlan.taskIds.forEach((taskId, slot) => {
+        if (!taskId) return;
+        const task = taskById.get(String(taskId));
+        if (!task || task.done || String(task.boxId) !== String(boxId)) return;
+        entriesByPriority[slot].push({
+          task,
+          box: boxById.get(String(boxId)) || null,
+          boxId: String(boxId),
+          slot
+        });
+      });
+    });
+    entriesByPriority.forEach(entries => {
+      entries.sort((a, b) =>
+        (a.box ? Number(a.box.order) || 0 : 0) - (b.box ? Number(b.box.order) || 0 : 0) ||
+        (Number(a.task.order) || 0) - (Number(b.task.order) || 0)
+      );
+    });
+
+    const selectedCount = entriesByPriority.reduce((total, entries) => total + entries.length, 0);
     const countBadge = document.getElementById("focus-mode-count");
     const progress = document.getElementById("focus-mode-progress");
     const dateLabel = document.getElementById("focus-mode-date");
     const emptyNote = document.getElementById("focus-mode-empty");
     if (countBadge) countBadge.textContent = String(selectedCount);
     if (progress) progress.textContent = selectedCount
-      ? `${selectedCount} prioridad${selectedCount === 1 ? "" : "es"} asignada${selectedCount === 1 ? "" : "s"} por casilla`
+      ? selectedCount + " tarea" + (selectedCount === 1 ? "" : "s") + " prioritaria" + (selectedCount === 1 ? "" : "s")
       : "Aún sin prioridades asignadas";
     if (dateLabel) dateLabel.textContent = formatLearningDate(getTodayISO());
 
     list.innerHTML = "";
-    boxList.forEach((box, boxIndex) => {
-      const boxPlan = plan.byBox[String(box.id)] || { taskIds: ["", "", ""], updatedAt: 0 };
-      const ids = boxPlan.taskIds.slice();
-      const assignedCount = ids.filter(Boolean).length;
-      const group = document.createElement("details");
-      group.className = "focus-box-priority-group";
-      group.dataset.focusBoxId = String(box.id);
-      group.open = openBoxIds.has(String(box.id)) || assignedCount > 0 || (openBoxIds.size === 0 && boxIndex === 0);
+    const priorityColors = ["Rojo", "Amarillo", "Verde"];
+    entriesByPriority.forEach((entries, slot) => {
+      const priority = slot + 1;
+      const group = document.createElement("section");
+      group.className = "focus-priority-group focus-priority-group-p" + priority;
+      group.dataset.priority = "P" + priority;
 
-      const summary = document.createElement("summary");
-      summary.className = "focus-box-priority-summary";
-      const name = document.createElement("strong");
-      name.className = "focus-box-priority-name";
-      name.textContent = box.name;
+      const heading = document.createElement("div");
+      heading.className = "focus-priority-group-heading focus-priority-group-heading-p" + priority;
+
+      const headingLeft = document.createElement("div");
+      headingLeft.className = "focus-priority-group-title-wrap";
+      const number = document.createElement("span");
+      number.className = "focus-priority-group-number";
+      number.textContent = "P" + priority;
+      const titleWrap = document.createElement("div");
+      titleWrap.className = "focus-priority-group-title-text";
+      const title = document.createElement("strong");
+      title.textContent = "Prioridad " + priority;
+      const subtitle = document.createElement("span");
+      subtitle.textContent = priorityColors[slot];
+      titleWrap.append(title, subtitle);
+      headingLeft.append(number, titleWrap);
+
       const count = document.createElement("span");
-      count.className = "focus-box-priority-count";
-      count.textContent = `${assignedCount}/3 prioridades`;
-      summary.append(name, count);
-      if (assignedCount) {
-        const assignedSummary = document.createElement("span");
-        assignedSummary.className = "focus-box-priority-current";
-        assignedSummary.textContent = ids.map((id, slot) => {
-          const task = id ? taskById.get(String(id)) : null;
-          return task ? `P${slot + 1}: ${task.title}` : "";
-        }).filter(Boolean).join(" · ");
-        summary.appendChild(assignedSummary);
+      count.className = "focus-priority-group-count";
+      count.textContent = entries.length + (entries.length === 1 ? " tarea" : " tareas");
+      heading.append(headingLeft, count);
+      group.appendChild(heading);
+
+      const taskList = document.createElement("div");
+      taskList.className = "focus-priority-task-list";
+      if (!entries.length) {
+        const empty = document.createElement("p");
+        empty.className = "focus-priority-group-empty";
+        empty.textContent = "No hay tareas asignadas a P" + priority + ". Puedes asignarla con clic derecho sobre una tarea de su casilla.";
+        taskList.appendChild(empty);
       }
-      group.appendChild(summary);
 
-      const slotsGrid = document.createElement("div");
-      slotsGrid.className = "focus-mode-priorities";
-      for (let slot = 0; slot < 3; slot++) {
-        const selectedId = ids[slot] || "";
-        const selectedTask = selectedId ? taskById.get(String(selectedId)) : null;
-        const card = document.createElement("article");
-        card.className = "focus-priority-card";
-        card.dataset.status = selectedTask && selectedTask.done ? "completed" : (selectedTask ? "pending" : "empty");
-        card.dataset.focusBoxId = String(box.id);
-        card.dataset.focusSlotCard = String(slot);
+      entries.forEach(entry => {
+        const task = entry.task;
+        const row = document.createElement("article");
+        row.className = "focus-priority-task-entry focus-priority-entry-p" + priority;
 
-        const top = document.createElement("div");
-        top.className = `focus-priority-topline focus-priority-topline-p${slot + 1}`;
-        const number = document.createElement("span");
-        number.className = "focus-priority-number";
-        number.textContent = String(slot + 1);
-        const label = document.createElement("label");
-        label.htmlFor = `focus-priority-search-${boxIndex}-${slot}`;
-        label.textContent = `Prioridad ${slot + 1} · ${["Rojo", "Amarillo", "Verde"][slot]}`;
-        top.append(number, label);
-        card.appendChild(top);
+        const content = document.createElement("div");
+        content.className = "focus-priority-task-content";
+        const taskTitle = document.createElement("strong");
+        taskTitle.className = "focus-priority-title";
+        taskTitle.textContent = task.title || "Tarea sin título";
+        const meta = document.createElement("span");
+        meta.className = "focus-priority-context";
+        const dueLabel = task.dueDate
+          ? (task.dueDate > getTodayISO()
+            ? "Programada para " + formatSpanishDateLong(task.dueDate)
+            : (task.dueDate < getTodayISO() ? "Atrasada · " + formatSpanishDateLong(task.dueDate) : "Programada para hoy"))
+          : "Sin fecha específica";
+        meta.textContent = (entry.box ? entry.box.name + " · " : "") + dueLabel;
+        content.append(taskTitle, meta);
 
-        const searchWrap = document.createElement("div");
-        searchWrap.className = "focus-priority-search-wrap";
-        const input = document.createElement("input");
-        input.type = "search";
-        input.className = "focus-priority-search";
-        input.id = `focus-priority-search-${boxIndex}-${slot}`;
-        input.dataset.focusBoxId = String(box.id);
-        input.dataset.focusSearchSlot = String(slot);
-        input.setAttribute("aria-label", `Buscar tarea para prioridad ${slot + 1} de ${box.name}`);
-        input.setAttribute("autocomplete", "off");
-        input.setAttribute("autocapitalize", "off");
-        input.setAttribute("spellcheck", "false");
-        input.placeholder = selectedTask ? "Buscar otra tarea de esta casilla…" : `Buscar tarea en ${box.name}…`;
+        const actions = document.createElement("div");
+        actions.className = "focus-priority-task-actions";
+        const openButton = document.createElement("button");
+        openButton.type = "button";
+        openButton.className = "focus-priority-open";
+        openButton.dataset.focusAction = "jump-task";
+        openButton.dataset.taskId = String(task.id);
+        openButton.textContent = "Ver en tablero";
+        const clearButton = document.createElement("button");
+        clearButton.type = "button";
+        clearButton.className = "focus-priority-clear";
+        clearButton.dataset.focusAction = "clear-task";
+        clearButton.dataset.focusBoxId = entry.boxId;
+        clearButton.dataset.focusSlot = String(slot);
+        clearButton.textContent = "Quitar";
+        clearButton.setAttribute("aria-label", "Quitar " + task.title + " de P" + priority);
+        actions.append(openButton, clearButton);
+        row.append(content, actions);
+        taskList.appendChild(row);
+      });
 
-        const suggestions = document.createElement("div");
-        suggestions.className = "focus-priority-suggestions";
-        suggestions.id = `focus-priority-suggestions-${boxIndex}-${slot}`;
-        suggestions.hidden = true;
-        suggestions.dataset.activeIndex = "-1";
-        suggestions.setAttribute("role", "listbox");
-        suggestions.setAttribute("aria-label", `Resultados para prioridad ${slot + 1} de ${box.name}`);
-        searchWrap.append(input, suggestions);
-        card.appendChild(searchWrap);
-
-        if (selectedTask) {
-          const currentChoice = document.createElement("div");
-          currentChoice.className = "focus-current-choice";
-          const currentLabel = document.createElement("span");
-          currentLabel.textContent = "Seleccionada";
-          currentChoice.appendChild(currentLabel);
-          const clearButton = document.createElement("button");
-          clearButton.type = "button";
-          clearButton.className = "focus-priority-clear";
-          clearButton.dataset.focusAction = "clear-task";
-          clearButton.dataset.focusBoxId = String(box.id);
-          clearButton.dataset.focusSlot = String(slot);
-          clearButton.textContent = "Quitar";
-          clearButton.setAttribute("aria-label", `Quitar tarea de P${slot + 1} de ${box.name}`);
-          currentChoice.appendChild(clearButton);
-          card.appendChild(currentChoice);
-        }
-
-        const detail = document.createElement("div");
-        detail.className = "focus-priority-detail";
-        if (selectedTask) {
-          const title = document.createElement("strong");
-          title.className = "focus-priority-title";
-          title.textContent = selectedTask.title;
-          detail.appendChild(title);
-          const dueLabel = selectedTask.dueDate
-            ? (selectedTask.dueDate > getTodayISO()
-              ? `Programada para ${formatSpanishDateLong(selectedTask.dueDate)}`
-              : (selectedTask.dueDate < getTodayISO() ? `Vencía ${formatSpanishDateLong(selectedTask.dueDate)}` : "Programada para hoy"))
-            : "Sin fecha específica";
-          const context = document.createElement("span");
-          context.className = "focus-priority-context";
-          context.textContent = dueLabel;
-          detail.appendChild(context);
-          const status = document.createElement("span");
-          status.className = "focus-priority-status";
-          status.textContent = selectedTask.done ? "✓ Completada" : (isTaskOverdue(selectedTask) ? "Pendiente · atrasada" : "Pendiente");
-          detail.appendChild(status);
-          const openButton = document.createElement("button");
-          openButton.type = "button";
-          openButton.className = "focus-priority-open";
-          openButton.dataset.focusAction = "jump-task";
-          openButton.dataset.taskId = String(selectedTask.id);
-          openButton.textContent = "Ver en el tablero ↗";
-          detail.appendChild(openButton);
-        } else {
-          const empty = document.createElement("p");
-          empty.className = "focus-priority-empty";
-          empty.textContent = "Sin tarea asignada a esta prioridad.";
-          detail.appendChild(empty);
-        }
-        card.appendChild(detail);
-        slotsGrid.appendChild(card);
-      }
-      group.appendChild(slotsGrid);
+      group.appendChild(taskList);
       list.appendChild(group);
     });
 
     if (emptyNote) {
       emptyNote.hidden = selectedCount > 0;
-      emptyNote.textContent = "Cada casilla puede tener su propia P1, P2 y P3. Abre una casilla y busca las tareas que quieras priorizar.";
+      emptyNote.textContent = "Asigna P1, P2 o P3 desde el clic derecho de una tarea. Las prioridades de cada casilla aparecerán aquí agrupadas por nivel.";
     }
   }
 

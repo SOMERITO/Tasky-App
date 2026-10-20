@@ -3567,3 +3567,124 @@ body {
 .focus-mode-box-groups > .focus-box-priority-group {
   margin: 0;
 }
+
+
+/* Focus Mode now displays only priority groups, not casilla accordions. */
+.focus-mode-priority-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.focus-priority-group {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--surface-solid);
+}
+.focus-priority-group-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.focus-priority-group-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.focus-priority-group-number {
+  display: inline-flex;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  font-size: 0.86rem;
+  font-weight: 950;
+}
+.focus-priority-group-title-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.focus-priority-group-title-text strong {
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+.focus-priority-group-title-text span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+.focus-priority-group-count {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.focus-priority-group-p1 { border-left: 4px solid #dc2626; }
+.focus-priority-group-p2 { border-left: 4px solid #ca8a04; }
+.focus-priority-group-p3 { border-left: 4px solid #16a34a; }
+.focus-priority-group-heading-p1 { background: rgba(220,38,38,.065); }
+.focus-priority-group-heading-p2 { background: rgba(234,179,8,.11); }
+.focus-priority-group-heading-p3 { background: rgba(34,197,94,.075); }
+.focus-priority-group-heading-p1 .focus-priority-group-number { background: #fee2e2; color: #b91c1c; }
+.focus-priority-group-heading-p2 .focus-priority-group-number { background: #fef3c7; color: #854d0e; }
+.focus-priority-group-heading-p3 .focus-priority-group-number { background: #dcfce7; color: #166534; }
+[data-theme="dark"] .focus-priority-group-heading-p1 .focus-priority-group-number { background: rgba(220,38,38,.18); color: #fecaca; }
+[data-theme="dark"] .focus-priority-group-heading-p2 .focus-priority-group-number { background: rgba(234,179,8,.17); color: #fde68a; }
+[data-theme="dark"] .focus-priority-group-heading-p3 .focus-priority-group-number { background: rgba(34,197,94,.16); color: #bbf7d0; }
+.focus-priority-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.focus-priority-task-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.focus-priority-task-entry:last-child { border-bottom: 0; }
+.focus-priority-entry-p1 { background: rgba(220,38,38,.025); }
+.focus-priority-entry-p2 { background: rgba(234,179,8,.035); }
+.focus-priority-entry-p3 { background: rgba(34,197,94,.025); }
+.focus-priority-task-content {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+.focus-priority-task-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.focus-priority-task-actions .focus-priority-open { margin-top: 0; }
+.focus-priority-group-empty {
+  margin: 0;
+  padding: 13px 14px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+@media (max-width: 620px) {
+  .focus-priority-group-heading { padding: 9px 10px; }
+  .focus-priority-task-entry {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 10px;
+    gap: 8px;
+  }
+  .focus-priority-task-actions { width: 100%; justify-content: flex-start; }
+}
