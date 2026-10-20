@@ -4729,14 +4729,6 @@
     return index >= 0 ? index + 1 : 0;
   }
 
-  function getBoxFocusPriorityRank(box) {
-    const pendingPriorities = (appState.data.tasks || [])
-      .filter(task => String(task.boxId) === String(box.id) && !task.done)
-      .map(task => getFocusPriorityLevel(task.id))
-      .filter(priority => priority > 0);
-    return pendingPriorities.length ? Math.min(...pendingPriorities) : 4;
-  }
-
   function removeCompletedFocusPriority(taskId, today) {
     const plan = getFocusPlanForToday();
     const completedIndex = plan.taskIds.findIndex(id => id && String(id) === String(taskId));
@@ -5096,17 +5088,7 @@
       }
     });
 
-    activeBoxesList.sort((a, b) =>
-      getBoxFocusPriorityRank(a) - getBoxFocusPriorityRank(b) ||
-      (a.order || 0) - (b.order || 0)
-    );
-    allRescheduledBoxesList.sort((a, b) =>
-      getBoxFocusPriorityRank(a) - getBoxFocusPriorityRank(b) ||
-      (a.order || 0) - (b.order || 0)
-    );
-
     function renderSingleBoxCard(box, isEmptyStandby) {
-      const boxIdx = sortedBoxes.findIndex(x => x.id === box.id);
       const boxTasksAll = appState.data.tasks
         .filter(t => t.boxId === box.id)
         .sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -5311,28 +5293,40 @@
         openBoxModal(box.id);
       });
 
-      card.querySelector('[data-box-action="move-up"]').addEventListener("click", () => {
-        if (boxIdx === 0) return;
+      function moveBoxWithinVisibleSection(direction) {
+        // The board groups active, empty, rescheduled and completed boxes separately.
+        // Reorder against the section's visible neighbors, not the raw global array.
+        const sectionLists = [activeBoxesList, emptyBoxesList, allRescheduledBoxesList, completedBoxesList];
+        const section = sectionLists.find(list => list.some(entry => String(entry.id) === String(box.id)));
+        if (!section) {
+          showToast("No pude identificar la sección de esta casilla", true);
+          return;
+        }
+        const currentIndex = section.findIndex(entry => String(entry.id) === String(box.id));
+        const targetIndex = currentIndex + direction;
+        if (targetIndex < 0 || targetIndex >= section.length) {
+          showToast(direction < 0
+            ? "Esta casilla ya está al inicio de su sección"
+            : "Esta casilla ya está al final de su sección");
+          return;
+        }
+
+        const neighbor = section[targetIndex];
+        const oldOrder = Number(box.order) || 0;
+        box.order = Number(neighbor.order) || 0;
+        neighbor.order = oldOrder;
         playUiSound("tap");
-        const prev = sortedBoxes[boxIdx - 1];
-        const tmp = box.order;
-        box.order = prev.order;
-        prev.order = tmp;
         saveData(false);
         renderBoard();
-        showToast("Casilla movida arriba");
+        showToast(direction < 0 ? "Casilla movida arriba" : "Casilla movida abajo");
+      }
+
+      card.querySelector('[data-box-action="move-up"]').addEventListener("click", () => {
+        moveBoxWithinVisibleSection(-1);
       });
 
       card.querySelector('[data-box-action="move-down"]').addEventListener("click", () => {
-        if (boxIdx >= sortedBoxes.length - 1) return;
-        playUiSound("tap");
-        const next = sortedBoxes[boxIdx + 1];
-        const tmp = box.order;
-        box.order = next.order;
-        next.order = tmp;
-        saveData(false);
-        renderBoard();
-        showToast("Casilla movida abajo");
+        moveBoxWithinVisibleSection(1);
       });
 
       card.querySelector('[data-box-action="delete"]').addEventListener("click", () => {
