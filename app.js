@@ -5225,9 +5225,11 @@
       // A task completed ahead of schedule is complete, but does not inflate today's planned progress.
       const isAllTasksRescheduled = boxTasksAll.length > 0 && todayInBox.length === 0 && doneTodayBoxTasks.length === 0 && reschedInBox.length > 0;
       const isFullyCompletedBox = boxTasksAll.length > 0 && pendingBoxTasks.length === 0;
+      // When today's planned tasks are all completed, use the same soft blue as an empty casilla.
+      const isTodayFullyCompletedBox = totalTodayBox > 0 && todayInBox.length === 0 && doneTodayBoxTasks.length === totalTodayBox;
 
       const card = document.createElement("section");
-      card.className = `box-card ${!appState.hasBootRendered ? "boot-animate" : ""} ${box.collapsed ? "collapsed" : ""} ${isAllTasksRescheduled ? "box-rescheduled-theme" : ""} ${isFullyCompletedBox ? "box-fully-completed-theme" : ""} ${isEmptyStandby ? "box-empty-theme" : ""}`;
+      card.className = `box-card ${!appState.hasBootRendered ? "boot-animate" : ""} ${box.collapsed ? "collapsed" : ""} ${isAllTasksRescheduled ? "box-rescheduled-theme" : ""} ${isFullyCompletedBox ? "box-fully-completed-theme" : ""} ${isTodayFullyCompletedBox && !isFullyCompletedBox ? "box-today-completed-theme" : ""} ${isEmptyStandby ? "box-empty-theme" : ""}`;
       card.dataset.boxId = box.id;
 
       // Point 2: No "X pendientes" pill in badgesHtml — replaced by the 34x34 colored number square in .box-header-actions!
