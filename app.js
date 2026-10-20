@@ -4002,6 +4002,20 @@
     document.getElementById("learning-today-date").textContent = formatLearningDate(today);
     document.getElementById("learning-yesterday-date").textContent = formatLearningDate(yesterday);
     document.getElementById("learning-week-range").textContent = `${formatLearningDate(weekStart)} – ${formatLearningDate(weekEnd)}`;
+    document.getElementById("learning-summary-today-date").textContent = `Hoy · ${formatLearningDate(today)}`;
+    document.getElementById("learning-summary-week-range").textContent = `${formatLearningDate(weekStart)} – ${formatLearningDate(weekEnd)}`;
+
+    const dailySummaryGoal = document.getElementById("learning-daily-summary-goal");
+    dailySummaryGoal.textContent = todayRecord ? todayRecord.goal : "Todavía no has registrado la meta de hoy.";
+    const dailySummaryStatus = document.getElementById("learning-daily-summary-status");
+    dailySummaryStatus.textContent = todayRecord ? getLearningStatusLabel(todayRecord.status) : "Sin registrar";
+    dailySummaryStatus.dataset.status = todayRecord ? todayRecord.status : "empty";
+
+    const weeklySummaryGoal = document.getElementById("learning-weekly-summary-goal");
+    weeklySummaryGoal.textContent = weekRecord ? weekRecord.goal : "Todavía no has registrado el tema de esta semana.";
+    const weeklySummaryStatus = document.getElementById("learning-weekly-summary-status");
+    weeklySummaryStatus.textContent = weekRecord ? getLearningStatusLabel(weekRecord.status, true) : "Sin registrar";
+    weeklySummaryStatus.dataset.status = weekRecord ? weekRecord.status : "empty";
 
     if (!preserveDraft) {
       document.getElementById("input-learning-daily-goal").value = todayRecord ? todayRecord.goal : "";
@@ -6130,6 +6144,22 @@
 
     const searchInput = document.getElementById("search-input");
     const searchClear = document.getElementById("search-clear-btn");
+
+    const learningToggle = document.getElementById("btn-toggle-learning-details");
+    learningToggle.addEventListener("click", () => {
+      const expanded = learningToggle.getAttribute("aria-expanded") === "true";
+      const panel = document.getElementById("learning-details-panel");
+      const nextExpanded = !expanded;
+      learningToggle.setAttribute("aria-expanded", String(nextExpanded));
+      panel.hidden = !nextExpanded;
+      document.getElementById("learning-goals-section").classList.toggle("learning-expanded", nextExpanded);
+      document.getElementById("learning-toggle-label").textContent = nextExpanded ? "Ocultar detalles" : "Editar y revisar";
+      document.getElementById("learning-toggle-icon").textContent = nextExpanded ? "⌃" : "⌄";
+      playUiSound("tap");
+      if (nextExpanded) {
+        document.getElementById("input-learning-daily-goal").focus({ preventScroll: true });
+      }
+    });
 
     document.getElementById("btn-save-daily-learning").addEventListener("click", saveDailyLearningGoal);
     document.getElementById("btn-save-weekly-learning").addEventListener("click", saveWeeklyLearningGoal);
