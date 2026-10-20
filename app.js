@@ -4388,7 +4388,9 @@
   }
 
   function isTaskForToday(task) {
-    return !isTaskRescheduledFuture(task);
+    const today = getTodayISO();
+    // Completion status must not make a future-dated task count toward today's planned workload.
+    return Boolean(task && (!task.dueDate || task.dueDate <= today));
   }
 
   // Format Repeat Schedule Label (Point 8)
@@ -4677,6 +4679,9 @@
   }
 
   function renderBoard() {
+    // Save the viewport before rebuilding cards; detached controls can otherwise make mobile browsers jump.
+    const viewportScrollX = Number.isFinite(window.scrollX) ? window.scrollX : (window.pageXOffset || 0);
+    const viewportScrollY = Number.isFinite(window.scrollY) ? window.scrollY : (window.pageYOffset || 0);
     updateMetrics();
     const container = document.getElementById("boxes-container");
     if (!container) return;
@@ -4720,6 +4725,7 @@
 
       const pendingBoxTasks = boxTasksAll.filter(t => !t.done);
       const doneBoxTasks = boxTasksAll.filter(t => t.done);
+      const doneTodayBoxTasks = doneBoxTasks.filter(t => isTaskForToday(t));
 
       // Rescheduled tasks disappear from the Casilla and live in Tareas Reprogramadas until their dueDate arrives
       let visibleTasks = [];
@@ -4735,11 +4741,11 @@
 
       const reschedInBox = pendingBoxTasks.filter(t => isTaskRescheduledFuture(t));
       const todayInBox = pendingBoxTasks.filter(t => isTaskForToday(t));
-      const totalTodayBox = todayInBox.length + doneBoxTasks.length;
-      const pctTodayBox = totalTodayBox > 0 ? Math.round((doneBoxTasks.length / totalTodayBox) * 100) : 0;
+      const totalTodayBox = todayInBox.length + doneTodayBoxTasks.length;
+      const pctTodayBox = totalTodayBox > 0 ? Math.round((doneTodayBoxTasks.length / totalTodayBox) * 100) : 0;
 
-      // Point 3: Casillas that have ALL of their tasks rescheduled get the full orange color (box-rescheduled-theme)
-      const isAllTasksRescheduled = boxTasksAll.length > 0 && todayInBox.length === 0 && doneBoxTasks.length === 0 && reschedInBox.length > 0;
+      // A task completed ahead of schedule is complete, but does not inflate today's planned progress.
+      const isAllTasksRescheduled = boxTasksAll.length > 0 && todayInBox.length === 0 && doneTodayBoxTasks.length === 0 && reschedInBox.length > 0;
       const isFullyCompletedBox = boxTasksAll.length > 0 && pendingBoxTasks.length === 0;
 
       const card = document.createElement("section");
@@ -4778,9 +4784,9 @@
         `;
       }
 
-      const rightLabel = (todayInBox.length === 0 && doneBoxTasks.length === 0)
+      const rightLabel = (todayInBox.length === 0 && doneTodayBoxTasks.length === 0)
         ? "—"
-        : `${doneBoxTasks.length}/${totalTodayBox} hoy`;
+        : `${doneTodayBoxTasks.length}/${totalTodayBox} hoy`;
 
       const barFillWidth = isAllTasksRescheduled ? 100 : pctTodayBox;
 
@@ -5186,26 +5192,30 @@
 
     appState.hasBootRendered = true;
     updateMultiSelectUI();
+
+    // Restore after the layout settles, for completion, deletion, reorder and remote-sync updates too.
+    const restoreViewport = () => {
+      const currentX = Number.isFinite(window.scrollX) ? window.scrollX : (window.pageXOffset || 0);
+      const currentY = Number.isFinite(window.scrollY) ? window.scrollY : (window.pageYOffset || 0);
+      if (Math.abs(currentX - viewportScrollX) > 1 || Math.abs(currentY - viewportScrollY) > 1) {
+        window.scrollTo(viewportScrollX, viewportScrollY);
+      }
+    };
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(restoreViewport));
+    } else {
+      restoreViewport();
+    }
   }
 
-  // Preserve the visible viewport when rescheduling changes the board layout.
+  // Blur detached action buttons before rendering; the central renderer restores the viewport for all callers.
   function renderBoardPreservingScroll() {
-    const scrollX = Number.isFinite(window.scrollX) ? window.scrollX : (window.pageXOffset || 0);
-    const scrollY = Number.isFinite(window.scrollY) ? window.scrollY : (window.pageYOffset || 0);
     const board = document.getElementById("boxes-container");
     const focusedElement = document.activeElement;
-
-    // The clicked button will be removed during rendering; blur it first to prevent WebView jumps.
     if (board && focusedElement && board.contains(focusedElement) && typeof focusedElement.blur === "function") {
       focusedElement.blur();
     }
-
     renderBoard();
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        window.scrollTo(scrollX, scrollY);
-      });
-    });
   }
 
   function updateMultiSelectUI() {
@@ -6038,14 +6048,16 @@
 
     const tasks = appState.data.tasks;
     const boxes = appState.data.boxes;
+    const todayIso = getTodayISO();
     const todayTasks = tasks.filter(t => isTaskForToday(t));
-    const doneToday = todayTasks.filter(t => t.done).length;
+    const doneForTodayPlan = todayTasks.filter(t => t.done).length;
     const pendingToday = todayTasks.filter(t => !t.done).length;
-    const rate = todayTasks.length > 0 ? Math.round((doneToday / todayTasks.length) * 100) : 0;
+    const completedTodayActual = tasks.filter(t => t.done && t.completedDate === todayIso).length;
+    const rate = todayTasks.length > 0 ? Math.round((doneForTodayPlan / todayTasks.length) * 100) : 0;
     const reschedCount = tasks.filter(t => isTaskRescheduledFuture(t)).length;
     const recurringCount = tasks.filter(t => t.frequency !== "once" || (t.repeatDays && t.repeatDays.length > 0)).length;
     const focusScore = tasks.length > 0 ? Math.round(((tasks.length - reschedCount) / tasks.length) * 100) : 100;
-    const monthlyTotal = (appState.data.monthlyCompletedBase || 66) + doneToday;
+    const monthlyTotal = (appState.data.monthlyCompletedBase || 66) + tasks.filter(t => t.done).length;
 
     // Find dominant box
     let topBoxName = "CASA";
@@ -6096,10 +6108,9 @@
     const textColor = isDark ? "#cbd5e1" : "#475569";
     const gridColor = isDark ? "rgba(255,255,255,0.07)" : "rgba(15,23,42,0.07)";
 
-    // Chart 1: 7-Day Activity & Velocity Trend
+    // Chart 1: only use recorded history; a missing prior-day value remains blank.
     const labels7 = [];
     const values7 = [];
-    const baseline7 = [3, 5, 4, 6, 4, 5, doneToday];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
@@ -6108,7 +6119,31 @@
       const day = String(d.getDate()).padStart(2, "0");
       const iso = `${y}-${m}-${day}`;
       labels7.push(`${DAY_SHORT_NAMES[d.getDay()]} ${d.getDate()}`);
-      values7.push(appState.history[iso] !== undefined ? appState.history[iso] : baseline7[6 - i]);
+
+      const hasRecordedValue = Object.prototype.hasOwnProperty.call(appState.history || {}, iso) &&
+        appState.history[iso] !== null &&
+        appState.history[iso] !== "" &&
+        Number.isFinite(Number(appState.history[iso])) &&
+        Number(appState.history[iso]) >= 0;
+
+      if (hasRecordedValue) {
+        values7.push(Number(appState.history[iso]));
+      } else if (iso === todayIso) {
+        // Today's actual completion count can be recovered from the saved task records.
+        values7.push(completedTodayActual);
+      } else {
+        values7.push(null);
+      }
+    }
+
+    const historyNote = document.getElementById("chart-productivity-history-note");
+    if (historyNote) {
+      const recordedDays = values7.filter(value => value !== null).length;
+      historyNote.textContent = recordedDays === 7
+        ? "Historial real registrado para los últimos siete días."
+        : recordedDays === 1
+          ? "Solo hay un día con datos reales. Los demás días quedan vacíos; no se estiman cifras."
+          : `Datos reales disponibles para ${recordedDays} de los últimos 7 días. Los días vacíos no tienen historial guardado.`;
     }
 
     const ctxTrend = document.getElementById("chart-productivity-trend");
@@ -6123,6 +6158,7 @@
               type: "line",
               label: "Tendencia",
               data: values7,
+              spanGaps: false,
               borderColor: "#8b5cf6",
               backgroundColor: "rgba(139, 92, 246, 0.15)",
               borderWidth: 2.5,
@@ -6184,7 +6220,7 @@
           labels: ["Pendientes Hoy", "Reprogramadas", "Hábitos Recurrentes", "Completadas Hoy"],
           datasets: [{
             label: "Tareas",
-            data: [pendingToday, reschedCount, recurringCount, doneToday],
+            data: [pendingToday, reschedCount, recurringCount, completedTodayActual],
             backgroundColor: ["#3b82f6", "#f59e0b", "#8b5cf6", "#22c55e"],
             borderRadius: 8
           }]
