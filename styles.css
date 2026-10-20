@@ -3480,3 +3480,80 @@ body {
 .task-context-menu-priority-p1 { border-left: 3px solid #dc2626; }
 .task-context-menu-priority-p2 { border-left: 3px solid #ca8a04; }
 .task-context-menu-priority-p3 { border-left: 3px solid #16a34a; }
+
+
+/* Per-casilla focus priorities: every box owns an independent P1/P2/P3 set. */
+.focus-mode-priorities {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.focus-box-priority-group {
+  margin-top: 9px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface-solid);
+  overflow: visible;
+}
+.focus-box-priority-group:first-child { margin-top: 0; }
+.focus-box-priority-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px 10px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.focus-box-priority-summary::-webkit-details-marker { display: none; }
+.focus-box-priority-summary::before {
+  content: "›";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 1.1rem;
+  font-weight: 900;
+  transform: rotate(0deg);
+  transition: transform 0.18s ease;
+}
+.focus-box-priority-group[open] > .focus-box-priority-summary::before { transform: rotate(90deg); }
+.focus-box-priority-name { color: var(--text); font-size: 0.82rem; font-weight: 900; }
+.focus-box-priority-count {
+  margin-left: auto;
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 0.67rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.focus-box-priority-current {
+  flex: 1 1 100%;
+  padding-left: 30px;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.focus-box-priority-group > .focus-mode-priorities { padding: 0 10px 10px; }
+.focus-priority-topline-p1 .focus-priority-number { background: #fee2e2; color: #b91c1c; }
+.focus-priority-topline-p2 .focus-priority-number { background: #fef3c7; color: #854d0e; }
+.focus-priority-topline-p3 .focus-priority-number { background: #dcfce7; color: #166534; }
+.focus-priority-topline-p1 label { color: #b91c1c; }
+.focus-priority-topline-p2 label { color: #854d0e; }
+.focus-priority-topline-p3 label { color: #166534; }
+[data-theme="dark"] .focus-priority-topline-p1 .focus-priority-number { background: rgba(220,38,38,.18); color: #fecaca; }
+[data-theme="dark"] .focus-priority-topline-p2 .focus-priority-number { background: rgba(234,179,8,.17); color: #fde68a; }
+[data-theme="dark"] .focus-priority-topline-p3 .focus-priority-number { background: rgba(34,197,94,.16); color: #bbf7d0; }
+@media (max-width: 900px) {
+  .focus-mode-priorities { grid-template-columns: 1fr; }
+  .focus-box-priority-group > .focus-mode-priorities { padding: 0 8px 8px; }
+}

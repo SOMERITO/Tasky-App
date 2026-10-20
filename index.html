@@ -263,7 +263,7 @@
         <button type="button" id="btn-toggle-focus-mode" class="pill-btn focus-mode-toggle" aria-controls="focus-mode-panel" aria-expanded="false" data-tip-title="🎯 Modo Enfoque" data-tip-desc="Elige hasta tres tareas existentes como prioridades de hoy y consulta su avance sin duplicarlas.">
           <span aria-hidden="true">🎯</span>
           <span id="focus-mode-toggle-label">Modo Enfoque</span>
-          <span id="focus-mode-count" class="pill-badge-circle">0/3</span>
+          <span id="focus-mode-count" class="pill-badge-circle">0</span>
         </button>
         <button type="button" id="btn-open-productivity" class="pill-btn" data-tip-title="📊 Analítica de Productividad" data-tip-desc="Abre el panel ejecutivo con gráficos de evolución, distribución y métricas de avance.">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -283,8 +283,8 @@
     <section id="focus-mode-panel" class="focus-mode-panel" aria-label="Modo Enfoque" hidden>
       <div class="focus-mode-header">
         <div class="focus-mode-heading">
-          <h2>🎯 Mis 3 prioridades de hoy</h2>
-          <p>Elige tareas que ya existen en tu tablero. Se guardan y sincronizan sin crear copias.</p>
+          <h2>🎯 Prioridades de hoy por casilla</h2>
+          <p>Cada casilla puede tener su propia P1, P2 y P3. Las prioridades se guardan y sincronizan sin duplicar tareas.</p>
         </div>
         <div class="focus-mode-progress">
           <strong id="focus-mode-progress">0 de 0 completadas</strong>
