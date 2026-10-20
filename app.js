@@ -4720,6 +4720,82 @@
     return plan;
   }
 
+  function renderFocusTaskSuggestions(slot, rawQuery) {
+    const suggestions = document.getElementById(`focus-priority-suggestions-${slot}`);
+    if (!suggestions) return;
+
+    const query = String(rawQuery || "").trim().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
+    suggestions.innerHTML = "";
+    suggestions.dataset.activeIndex = "-1";
+    if (!query) {
+      suggestions.hidden = true;
+      return;
+    }
+
+    const plan = getFocusPlanForToday();
+    const selectedElsewhere = new Set(plan.taskIds.filter((id, index) => id && index !== slot));
+    const matchingTasks = (appState.data.tasks || [])
+      .filter(task => {
+        const id = String(task.id);
+        if (task.done || !isTaskForToday(task) || selectedElsewhere.has(id)) return false;
+        const box = appState.data.boxes.find(entry => String(entry.id) === String(task.boxId));
+        const haystack = `${task.title || ""} ${box ? box.name : ""}`
+          .normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
+        return haystack.includes(query);
+      })
+      .sort((a, b) => {
+        const aDue = String(a.dueDate || "");
+        const bDue = String(b.dueDate || "");
+        return aDue.localeCompare(bDue) || (a.order || 0) - (b.order || 0);
+      });
+
+    if (!matchingTasks.length) {
+      const empty = document.createElement("div");
+      empty.className = "focus-search-no-results";
+      empty.textContent = "No encontré tareas pendientes que coincidan.";
+      suggestions.appendChild(empty);
+      suggestions.hidden = false;
+      return;
+    }
+
+    matchingTasks.slice(0, 8).forEach(task => {
+      const box = appState.data.boxes.find(entry => String(entry.id) === String(task.boxId));
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "focus-priority-suggestion";
+      button.dataset.focusAction = "choose-task";
+      button.dataset.focusSlot = String(slot);
+      button.dataset.taskId = String(task.id);
+      button.setAttribute("role", "option");
+      button.setAttribute("aria-selected", "false");
+      button.addEventListener("mousedown", event => event.preventDefault());
+
+      const title = document.createElement("span");
+      title.className = "focus-suggestion-title";
+      title.textContent = task.title;
+      button.appendChild(title);
+
+      const metadata = document.createElement("span");
+      metadata.className = "focus-suggestion-meta";
+      const dueLabel = task.dueDate && task.dueDate < getTodayISO()
+        ? `Atrasada · ${formatSpanishDateLong(task.dueDate)}`
+        : (task.dueDate && task.dueDate > getTodayISO()
+          ? `Programada · ${formatSpanishDateLong(task.dueDate)}`
+          : "Para hoy");
+      metadata.textContent = `${box ? box.name + " · " : ""}${dueLabel}`;
+      button.appendChild(metadata);
+      suggestions.appendChild(button);
+    });
+
+    if (matchingTasks.length > 8) {
+      const more = document.createElement("div");
+      more.className = "focus-search-more";
+      more.textContent = `Escribe más para afinar la búsqueda · ${matchingTasks.length} coincidencias`;
+      suggestions.appendChild(more);
+    }
+    suggestions.hidden = false;
+  }
+
   function renderFocusModePanel() {
     const panel = document.getElementById("focus-mode-panel");
     const list = document.getElementById("focus-mode-priorities");
@@ -4760,42 +4836,50 @@
 
       const top = document.createElement("div");
       top.className = "focus-priority-topline";
-      top.innerHTML = `<span class="focus-priority-number">${slot + 1}</span><label for="focus-priority-select-${slot}">Prioridad ${slot + 1}</label>`;
+      top.innerHTML = `<span class="focus-priority-number">${slot + 1}</span><label for="focus-priority-search-${slot}">Prioridad ${slot + 1}</label>`;
       card.appendChild(top);
+      card.dataset.focusSlotCard = String(slot);
 
-      const select = document.createElement("select");
-      select.className = "focus-priority-select";
-      select.id = `focus-priority-select-${slot}`;
-      select.dataset.focusSlot = String(slot);
-      select.setAttribute("aria-label", `Seleccionar prioridad ${slot + 1}`);
-      const placeholder = document.createElement("option");
-      placeholder.value = "";
-      placeholder.textContent = "Seleccionar tarea…";
-      select.appendChild(placeholder);
+      const searchWrap = document.createElement("div");
+      searchWrap.className = "focus-priority-search-wrap";
+      const input = document.createElement("input");
+      input.type = "search";
+      input.className = "focus-priority-search";
+      input.id = `focus-priority-search-${slot}`;
+      input.dataset.focusSearchSlot = String(slot);
+      input.setAttribute("aria-label", `Buscar tarea para prioridad ${slot + 1}`);
+      input.setAttribute("autocomplete", "off");
+      input.setAttribute("autocapitalize", "off");
+      input.setAttribute("spellcheck", "false");
+      input.placeholder = selectedTask ? "Buscar otra tarea…" : "Escribe para buscar una tarea…";
 
-      const selectedElsewhere = new Set(plan.taskIds.filter((id, index) => id && index !== slot));
-      const options = (appState.data.tasks || [])
-        .filter(task => {
-          const id = String(task.id);
-          const eligibleNow = !task.done && isTaskForToday(task);
-          const isCurrentChoice = id === selectedId;
-          return !selectedElsewhere.has(id) && (eligibleNow || isCurrentChoice);
-        })
-        .sort((a, b) => {
-          const aDue = String(a.dueDate || "");
-          const bDue = String(b.dueDate || "");
-          return aDue.localeCompare(bDue) || (a.order || 0) - (b.order || 0);
-        });
+      const suggestions = document.createElement("div");
+      suggestions.className = "focus-priority-suggestions";
+      suggestions.id = `focus-priority-suggestions-${slot}`;
+      suggestions.hidden = true;
+      suggestions.setAttribute("role", "listbox");
+      suggestions.setAttribute("aria-label", `Resultados para prioridad ${slot + 1}`);
 
-      options.forEach(task => {
-        const option = document.createElement("option");
-        option.value = String(task.id);
-        const box = appState.data.boxes.find(entry => String(entry.id) === String(task.boxId));
-        const statusPrefix = task.done ? "✓ " : (isTaskOverdue(task) ? "⚠ " : "");
-        option.textContent = `${statusPrefix}${task.title}${box ? " · " + box.name : ""}`;
-        select.appendChild(option);
-      });
-      select.value = selectedTask ? selectedId : "";
+      searchWrap.appendChild(input);
+      searchWrap.appendChild(suggestions);
+      card.appendChild(searchWrap);
+
+      if (selectedTask) {
+        const currentChoice = document.createElement("div");
+        currentChoice.className = "focus-current-choice";
+        const currentLabel = document.createElement("span");
+        currentLabel.textContent = "Seleccionada";
+        currentChoice.appendChild(currentLabel);
+        const clearButton = document.createElement("button");
+        clearButton.type = "button";
+        clearButton.className = "focus-priority-clear";
+        clearButton.dataset.focusAction = "clear-task";
+        clearButton.dataset.focusSlot = String(slot);
+        clearButton.textContent = "Quitar";
+        clearButton.setAttribute("aria-label", `Quitar tarea de la prioridad ${slot + 1}`);
+        currentChoice.appendChild(clearButton);
+        card.appendChild(currentChoice);
+      }
 
       const detail = document.createElement("div");
       detail.className = "focus-priority-detail";
@@ -6503,15 +6587,62 @@
       playUiSound("tap");
       if (nextExpanded) renderFocusModePanel();
     });
-    focusPanel.addEventListener("change", event => {
-      const select = event.target.closest("[data-focus-slot]");
-      if (!select) return;
-      setFocusPriority(Number(select.dataset.focusSlot), select.value);
+    focusPanel.addEventListener("input", event => {
+      const input = event.target.closest("[data-focus-search-slot]");
+      if (!input) return;
+      renderFocusTaskSuggestions(Number(input.dataset.focusSearchSlot), input.value);
+    });
+    focusPanel.addEventListener("keydown", event => {
+      const input = event.target.closest("[data-focus-search-slot]");
+      if (!input) return;
+      const slot = Number(input.dataset.focusSearchSlot);
+      const suggestions = document.getElementById(`focus-priority-suggestions-${slot}`);
+      if (!suggestions) return;
+
+      if (event.key === "Escape") {
+        suggestions.hidden = true;
+        suggestions.dataset.activeIndex = "-1";
+        return;
+      }
+      const options = Array.from(suggestions.querySelectorAll(".focus-priority-suggestion"));
+      if (!options.length || suggestions.hidden) {
+        if (event.key === "Enter") event.preventDefault();
+        return;
+      }
+      let activeIndex = Number(suggestions.dataset.activeIndex || -1);
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        activeIndex = event.key === "ArrowDown"
+          ? (activeIndex + 1) % options.length
+          : (activeIndex - 1 + options.length) % options.length;
+        suggestions.dataset.activeIndex = String(activeIndex);
+        options.forEach((option, index) => {
+          option.classList.toggle("active", index === activeIndex);
+          option.setAttribute("aria-selected", String(index === activeIndex));
+        });
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        const chosen = activeIndex >= 0 ? options[activeIndex] : options[0];
+        if (chosen) chosen.click();
+      }
+    });
+    focusPanel.addEventListener("focusout", event => {
+      if (event.relatedTarget && event.relatedTarget.closest && event.relatedTarget.closest(".focus-priority-search-wrap")) return;
+      focusPanel.querySelectorAll(".focus-priority-suggestions").forEach(list => { list.hidden = true; });
     });
     focusPanel.addEventListener("click", event => {
-      const button = event.target.closest('[data-focus-action="jump-task"]');
-      if (!button) return;
-      jumpToFocusTask(button.dataset.taskId);
+      const clear = event.target.closest('[data-focus-action="clear-task"]');
+      if (clear) {
+        setFocusPriority(Number(clear.dataset.focusSlot), "");
+        return;
+      }
+      const choose = event.target.closest('[data-focus-action="choose-task"]');
+      if (choose) {
+        setFocusPriority(Number(choose.dataset.focusSlot), choose.dataset.taskId);
+        return;
+      }
+      const jump = event.target.closest('[data-focus-action="jump-task"]');
+      if (jump) jumpToFocusTask(jump.dataset.taskId);
     });
 
     const learningToggle = document.getElementById("btn-toggle-learning-details");
