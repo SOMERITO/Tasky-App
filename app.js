@@ -6156,9 +6156,7 @@
       document.getElementById("learning-toggle-label").textContent = nextExpanded ? "Ocultar detalles" : "Editar y revisar";
       document.getElementById("learning-toggle-icon").textContent = nextExpanded ? "⌃" : "⌄";
       playUiSound("tap");
-      if (nextExpanded) {
-        document.getElementById("input-learning-daily-goal").focus({ preventScroll: true });
-      }
+      // Do not autofocus the form on mobile; expanding the panel should not open the keyboard.
     });
 
     document.getElementById("btn-save-daily-learning").addEventListener("click", saveDailyLearningGoal);
