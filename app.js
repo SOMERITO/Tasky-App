@@ -6827,6 +6827,26 @@
       }
 
       if (e.key === "Escape") {
+        // ESC closes Modo Enfoque without clearing the saved priority selections.
+        const focusPanel = document.getElementById("focus-mode-panel");
+        const focusToggle = document.getElementById("btn-toggle-focus-mode");
+        if (focusPanel && !focusPanel.hidden) {
+          focusPanel.hidden = true;
+          focusPanel.querySelectorAll(".focus-priority-suggestions").forEach(list => {
+            list.hidden = true;
+            list.dataset.activeIndex = "-1";
+          });
+          if (focusToggle) {
+            focusToggle.setAttribute("aria-expanded", "false");
+            const label = document.getElementById("focus-mode-toggle-label");
+            if (label) label.textContent = "Modo Enfoque";
+          }
+          if (document.activeElement && focusPanel.contains(document.activeElement)) {
+            document.activeElement.blur();
+          }
+          playUiSound("tap");
+        }
+
         // ESC also cancels Ctrl/Cmd multi-selection and hides the bulk action toolbar.
         if (appState.selectedTaskIds && appState.selectedTaskIds.size > 0) {
           clearTaskSelection();
