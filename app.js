@@ -4719,6 +4719,24 @@
     return plan;
   }
 
+  function getFocusPriorityLevel(taskId) {
+    const normalizedId = String(taskId || "");
+    if (!normalizedId) return 0;
+    const task = (appState.data.tasks || []).find(entry => String(entry.id) === normalizedId);
+    if (!task || task.done) return 0;
+    const plan = getFocusPlanForToday();
+    const index = plan.taskIds.findIndex(id => id && String(id) === normalizedId);
+    return index >= 0 ? index + 1 : 0;
+  }
+
+  function getBoxFocusPriorityRank(box) {
+    const pendingPriorities = (appState.data.tasks || [])
+      .filter(task => String(task.boxId) === String(box.id) && !task.done)
+      .map(task => getFocusPriorityLevel(task.id))
+      .filter(priority => priority > 0);
+    return pendingPriorities.length ? Math.min(...pendingPriorities) : 4;
+  }
+
   function removeCompletedFocusPriority(taskId, today) {
     const plan = getFocusPlanForToday();
     const completedIndex = plan.taskIds.findIndex(id => id && String(id) === String(taskId));
@@ -4976,7 +4994,7 @@
       updatedAt: Date.now()
     };
     saveData(false, "Actualizó Modo Enfoque");
-    renderFocusModePanel();
+    renderBoard();
     playUiSound("tap");
   }
 
@@ -5075,6 +5093,15 @@
       }
     });
 
+    activeBoxesList.sort((a, b) =>
+      getBoxFocusPriorityRank(a) - getBoxFocusPriorityRank(b) ||
+      (a.order || 0) - (b.order || 0)
+    );
+    allRescheduledBoxesList.sort((a, b) =>
+      getBoxFocusPriorityRank(a) - getBoxFocusPriorityRank(b) ||
+      (a.order || 0) - (b.order || 0)
+    );
+
     function renderSingleBoxCard(box, isEmptyStandby) {
       const boxIdx = sortedBoxes.findIndex(x => x.id === box.id);
       const boxTasksAll = appState.data.tasks
@@ -5093,10 +5120,22 @@
         );
       } else {
         visibleTasks = pendingBoxTasks.filter(t =>
-          (isTaskForToday(t) || String(t.id) === String(appState.focusRevealTaskId || "")) &&
+          (isTaskForToday(t) ||
+            getFocusPriorityLevel(t.id) > 0 ||
+            String(t.id) === String(appState.focusRevealTaskId || "")) &&
           matchesSearch(t, box.name)
         );
       }
+
+      // Pin P1, P2 and P3 above ordinary tasks without changing saved task order.
+      visibleTasks.sort((a, b) => {
+        const aPriority = getFocusPriorityLevel(a.id);
+        const bPriority = getFocusPriorityLevel(b.id);
+        if (aPriority && bPriority) return aPriority - bPriority;
+        if (aPriority) return -1;
+        if (bPriority) return 1;
+        return (a.order || 0) - (b.order || 0);
+      });
 
       if (appState.searchQuery && visibleTasks.length === 0 && !box.name.toLowerCase().includes(appState.searchQuery.toLowerCase())) {
         return;
@@ -5653,8 +5692,10 @@
 
   function createTaskRowElement(task, box, showOriginBox = false) {
     const item = document.createElement("div");
-    item.className = `task-item ${task.done ? "done" : ""} ${appState.selectedTaskIds && appState.selectedTaskIds.has(String(task.id)) ? "multi-selected" : ""}`;
+    const focusPriority = getFocusPriorityLevel(task.id);
+    item.className = `task-item ${task.done ? "done" : ""} ${appState.selectedTaskIds && appState.selectedTaskIds.has(String(task.id)) ? "multi-selected" : ""} ${focusPriority ? `focus-priority-task focus-priority-${focusPriority}` : ""}`;
     item.dataset.taskId = task.id;
+    if (focusPriority) item.dataset.focusPriority = `P${focusPriority}`;
 
     const isResched = isTaskRescheduledFuture(task);
     const isOverdue = isTaskOverdue(task);
@@ -5662,6 +5703,9 @@
     const hasRepeat = Boolean(repeatLabel);
 
     let subBadges = "";
+    if (focusPriority) {
+      subBadges += `<span class="task-focus-priority-badge task-focus-priority-badge-p${focusPriority}">P${focusPriority} · PRIORIDAD ${focusPriority}</span>`;
+    }
     if (hasRepeat) {
       subBadges += `<span class="task-daily-pill">${escapeHtml(repeatLabel)}</span>`;
     }
