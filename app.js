@@ -4008,7 +4008,9 @@
     const dailySummaryGoal = document.getElementById("learning-daily-summary-goal");
     dailySummaryGoal.textContent = todayRecord ? todayRecord.goal : "Todavía no has registrado la meta de hoy.";
     const dailySummaryStatus = document.getElementById("learning-daily-summary-status");
-    dailySummaryStatus.textContent = todayRecord ? getLearningStatusLabel(todayRecord.status) : "Sin registrar";
+    dailySummaryStatus.textContent = !todayRecord
+      ? "Sin registrar"
+      : (todayRecord.status === "pending" ? "Pendiente" : getLearningStatusLabel(todayRecord.status));
     dailySummaryStatus.dataset.status = todayRecord ? todayRecord.status : "empty";
 
     const weeklySummaryGoal = document.getElementById("learning-weekly-summary-goal");
@@ -4024,9 +4026,32 @@
       document.getElementById("input-learning-weekly-notes").value = weekRecord ? weekRecord.notes : "";
     }
 
+    const getTodayDailyStatusLabel = (record) => {
+      if (!record) return "Sin registrar";
+      return record.status === "pending" ? "Pendiente" : getLearningStatusLabel(record.status);
+    };
+
     const dailyStatus = document.getElementById("learning-daily-status");
-    dailyStatus.textContent = todayRecord ? getLearningStatusLabel(todayRecord.status) : "Sin registrar";
+    dailyStatus.textContent = getTodayDailyStatusLabel(todayRecord);
     dailyStatus.dataset.status = todayRecord ? todayRecord.status : "empty";
+
+    // The current-day goal can be marked immediately; yesterday's review is handled separately below.
+    const todayCheckinDate = document.getElementById("learning-today-checkin-date");
+    if (todayCheckinDate) todayCheckinDate.textContent = formatLearningDate(today);
+    const todayCheckinStatus = document.getElementById("learning-today-checkin-status");
+    if (todayCheckinStatus) {
+      todayCheckinStatus.textContent = getTodayDailyStatusLabel(todayRecord);
+      todayCheckinStatus.dataset.status = todayRecord ? todayRecord.status : "empty";
+    }
+    const todayButtons = section.querySelectorAll('[data-learning-action="mark-today"]');
+    todayButtons.forEach(button => {
+      button.disabled = !todayRecord || todayRecord.status === button.dataset.learningStatus;
+      if (button.dataset.learningStatus === "completed") {
+        button.textContent = todayRecord && todayRecord.status === "completed" ? "✓ Ya la cumplí" : "✓ Sí, la cumplí";
+      } else if (button.dataset.learningStatus === "pending") {
+        button.textContent = todayRecord && todayRecord.status === "pending" ? "Aún en curso" : "↩ Cambiar a pendiente";
+      }
+    });
 
     const weeklyStatus = document.getElementById("learning-weekly-status");
     weeklyStatus.textContent = weekRecord ? getLearningStatusLabel(weekRecord.status, true) : "Sin registrar";
@@ -4083,7 +4108,7 @@
       date: today,
       goal,
       notes,
-      status: previous ? previous.status : "pending",
+      status: previous && previous.goal === goal ? previous.status : "pending",
       updatedAt: Date.now()
     };
     appState.data.learningGoals = goals;
@@ -4120,7 +4145,18 @@
 
   function markLearningGoalStatus(action, status) {
     const goals = normalizeLearningGoalsData(appState.data.learningGoals);
-    if (action === "mark-yesterday") {
+    if (action === "mark-today") {
+      const date = getTodayISO();
+      const record = goals.daily[date];
+      if (!record) {
+        showToast("Primero guarda tu meta diaria de hoy", true);
+        return;
+      }
+      if (status !== "completed" && status !== "pending") return;
+      record.status = status;
+      record.updatedAt = Date.now();
+      goals.daily[date] = record;
+    } else if (action === "mark-yesterday") {
       const date = addDaysISO(getTodayISO(), -1);
       const record = goals.daily[date];
       if (!record) {
@@ -4146,7 +4182,10 @@
     appState.data.learningGoals = goals;
     saveData(true, "Actualizó el resultado de una meta de aprendizaje");
     renderLearningGoalsPanel();
-    showToast(status === "completed" ? "Meta marcada como cumplida" : "Meta marcada como no cumplida");
+    const confirmationMessage = status === "completed"
+      ? "Meta marcada como cumplida"
+      : (status === "pending" ? "Meta diaria sigue pendiente" : "Meta marcada como no cumplida");
+    showToast(confirmationMessage);
     playUiSound(status === "completed" ? "complete" : "tap");
   }
 
