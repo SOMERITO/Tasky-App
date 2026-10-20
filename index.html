@@ -143,14 +143,36 @@
     <!-- Daily and weekly learning goals -->
     <section id="learning-goals-section" class="learning-section" aria-labelledby="learning-section-title">
       <div class="learning-section-heading">
-        <div>
+        <div class="learning-heading-copy">
           <span class="learning-eyebrow">CRECIMIENTO PERSONAL</span>
           <h2 id="learning-section-title">Aprendizaje continuo</h2>
-          <p>Una idea nueva cada día. Una meta con más profundidad cada semana.</p>
         </div>
-        <span class="learning-heading-mark" aria-hidden="true">✦</span>
+        <button type="button" id="btn-toggle-learning-details" class="learning-toggle-btn" aria-expanded="false" aria-controls="learning-details-panel">
+          <span id="learning-toggle-label">Editar y revisar</span>
+          <span id="learning-toggle-icon" class="learning-toggle-chevron" aria-hidden="true">⌄</span>
+        </button>
       </div>
 
+      <div class="learning-summary-grid" aria-label="Metas de aprendizaje actuales">
+        <article class="learning-summary-card">
+          <div class="learning-summary-topline">
+            <span class="learning-summary-label">☀️ Meta diaria</span>
+            <span id="learning-daily-summary-status" class="learning-status-chip" data-status="empty">Sin registrar</span>
+          </div>
+          <p id="learning-daily-summary-goal" class="learning-summary-goal">Todavía no has registrado la meta de hoy.</p>
+          <span id="learning-summary-today-date" class="learning-summary-date">Hoy</span>
+        </article>
+        <article class="learning-summary-card">
+          <div class="learning-summary-topline">
+            <span class="learning-summary-label">📚 Meta semanal</span>
+            <span id="learning-weekly-summary-status" class="learning-status-chip" data-status="empty">Sin registrar</span>
+          </div>
+          <p id="learning-weekly-summary-goal" class="learning-summary-goal">Todavía no has registrado el tema de esta semana.</p>
+          <span id="learning-summary-week-range" class="learning-summary-date">Esta semana</span>
+        </article>
+      </div>
+
+      <div id="learning-details-panel" class="learning-details-panel" hidden>
       <div class="learning-cards-grid">
         <article class="learning-card learning-daily-card">
           <div class="learning-card-heading">
@@ -222,6 +244,7 @@
           <h4>Metas semanales recientes</h4>
           <div id="learning-weekly-history" class="learning-history-list"><p class="learning-empty-history">Tus metas semanales guardadas aparecerán aquí.</p></div>
         </div>
+      </div>
       </div>
     </section>
 
