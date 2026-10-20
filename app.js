@@ -4080,7 +4080,7 @@
       todayCheckinStatus.textContent = getTodayDailyStatusLabel(todayRecord);
       todayCheckinStatus.dataset.status = todayRecord ? todayRecord.status : "empty";
     }
-    const todayButtons = section.querySelectorAll('[data-learning-action="mark-today"]');
+    const todayButtons = document.querySelectorAll('#learning-details-panel [data-learning-action="mark-today"]');
     todayButtons.forEach(button => {
       button.disabled = !todayRecord || todayRecord.status === button.dataset.learningStatus;
       if (button.dataset.learningStatus === "completed") {
@@ -4096,7 +4096,7 @@
 
     const yesterdayGoal = document.getElementById("learning-yesterday-goal");
     const yesterdayStatus = document.getElementById("learning-yesterday-status");
-    const yesterdayButtons = section.querySelectorAll('[data-learning-action="mark-yesterday"]');
+    const yesterdayButtons = document.querySelectorAll('#learning-details-panel [data-learning-action="mark-yesterday"]');
     if (yesterdayRecord) {
       yesterdayGoal.textContent = yesterdayRecord.goal;
       yesterdayStatus.textContent = getLearningStatusLabel(yesterdayRecord.status);
@@ -4108,7 +4108,7 @@
     }
     yesterdayButtons.forEach(button => { button.disabled = !yesterdayRecord; });
 
-    const weeklyButtons = section.querySelectorAll('[data-learning-action="mark-weekly"]');
+    const weeklyButtons = document.querySelectorAll('#learning-details-panel [data-learning-action="mark-weekly"]');
     weeklyButtons.forEach(button => { button.disabled = !weekRecord; });
 
     const dailyHistory = Object.values(goals.daily).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
