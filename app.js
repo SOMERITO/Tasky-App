@@ -5853,12 +5853,12 @@
     addTaskContextMenuButton(menu, "🔁 Configurar repetición", "repeat");
 
     addTaskContextMenuDivider(menu);
+    const box = appState.data.boxes.find(entry => String(entry.id) === String(task.boxId));
     const priorityHeading = document.createElement("div");
     priorityHeading.className = "task-context-menu-section-label";
     priorityHeading.textContent = `PRIORIDADES DE ${box ? box.name : "ESTA CASILLA"}`;
     menu.appendChild(priorityHeading);
 
-    const box = appState.data.boxes.find(entry => String(entry.id) === String(task.boxId));
     const plan = getFocusBoxPlanForToday(task.boxId);
     const currentPriorityIndex = plan.taskIds.findIndex(id => id && String(id) === String(task.id));
     const eligibleForPriority = !task.done && isTaskForToday(task);
@@ -5919,8 +5919,8 @@
     menu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - rect.width - 8))}px`;
     menu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - rect.height - 8))}px`;
 
-    const firstAction = menu.querySelector("button:not(:disabled)");
-    if (firstAction) firstAction.focus({ preventScroll: true });
+    // Do not autofocus an item here: some browsers scroll focused buttons into view,
+    // which would trigger the menu's scroll-to-dismiss handler immediately.
   }
 
   function assignTaskToFocusPriority(taskId, slot) {
