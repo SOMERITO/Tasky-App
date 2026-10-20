@@ -5085,7 +5085,10 @@
         const bPending = bTasks.filter(t => !t.done);
         const bResched = bPending.filter(t => isTaskRescheduledFuture(t));
         const bToday = bPending.filter(t => isTaskForToday(t));
-        if (bToday.length === 0 && bResched.length > 0) {
+        const hasFocusPriority = bPending.some(t => getFocusPriorityLevel(t.id) > 0);
+        if (hasFocusPriority) {
+          activeBoxesList.push(b);
+        } else if (bToday.length === 0 && bResched.length > 0) {
           allRescheduledBoxesList.push(b);
         } else {
           activeBoxesList.push(b);
