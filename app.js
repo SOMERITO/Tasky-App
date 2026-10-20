@@ -2322,6 +2322,8 @@
 
   // Point 6: Studio-Grade Warm Acoustic Marimba / Celeste Sound Engine (Things 3 / Apple Design Award Style)
   let sharedAudioCtx = null;
+  let sharedAudioMasterGain = null;
+  const UI_SOUND_VOLUME_BOOST = 1.45; // Raise app effects by 45% while preserving per-effect balance.
   function playNoteLayer(ctx, freqStart, freqEnd, delaySec, durationSec, oscType, peakGain) {
     const start = ctx.currentTime + delaySec;
     const osc = ctx.createOscillator();
@@ -2357,7 +2359,8 @@
     subOsc.connect(subGain);
     subGain.connect(filter);
     filter.connect(gain);
-    gain.connect(ctx.destination);
+    // Route all effects through one master gain so overall volume is consistent.
+    gain.connect(sharedAudioMasterGain || ctx.destination);
 
     osc.start(start);
     subOsc.start(start);
@@ -2373,6 +2376,11 @@
       if (!sharedAudioCtx) sharedAudioCtx = new AudioCtx();
       if (sharedAudioCtx.state === "suspended") sharedAudioCtx.resume();
       const ctx = sharedAudioCtx;
+      if (!sharedAudioMasterGain) {
+        sharedAudioMasterGain = ctx.createGain();
+        sharedAudioMasterGain.gain.setValueAtTime(UI_SOUND_VOLUME_BOOST, ctx.currentTime);
+        sharedAudioMasterGain.connect(ctx.destination);
+      }
 
       switch (type) {
         case "complete":
