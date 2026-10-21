@@ -7224,7 +7224,7 @@
 
     document.getElementById("btn-save-daily-learning").addEventListener("click", saveDailyLearningGoal);
     document.getElementById("btn-save-weekly-learning").addEventListener("click", saveWeeklyLearningGoal);
-    learningSection.addEventListener("click", (event) => {
+    learningModal.addEventListener("click", (event) => {
       const button = event.target.closest("[data-learning-action]");
       if (!button || button.disabled) return;
       playUiSound("tap");
