@@ -534,6 +534,36 @@
           <label class="form-label" for="input-box-name">Nombre de la casilla</label>
           <input type="text" id="input-box-name" class="form-input" placeholder="Ej. CASA, MERCADO, OFICINA" maxlength="60" />
         </div>
+
+        <div class="form-group box-emoji-form-group">
+          <label class="form-label" for="input-box-emoji">Emoji de la casilla <span class="box-emoji-optional">(opcional)</span></label>
+          <div class="box-emoji-input-row">
+            <input type="text" id="input-box-emoji" class="form-input box-emoji-input" placeholder="Pega un emoji, por ejemplo 🏠" maxlength="16" autocomplete="off" aria-describedby="box-emoji-help" />
+            <button type="button" id="btn-clear-box-emoji" class="btn-secondary box-emoji-clear" aria-label="Quitar emoji" title="Quitar emoji">Quitar</button>
+          </div>
+          <p id="box-emoji-help" class="box-emoji-help">Pega tu propio emoji o elige uno de los siguientes.</p>
+          <div class="box-emoji-gallery" role="group" aria-label="Elegir un emoji para la casilla">
+            <button type="button" class="box-emoji-choice" data-box-emoji="🏠" aria-label="Casa" aria-pressed="false">🏠</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="🛒" aria-label="Mercado" aria-pressed="false">🛒</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="💼" aria-label="Oficina" aria-pressed="false">💼</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="📚" aria-label="Estudio" aria-pressed="false">📚</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="🎯" aria-label="Objetivos" aria-pressed="false">🎯</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="🧹" aria-label="Limpieza" aria-pressed="false">🧹</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="🛏️" aria-label="Dormitorio" aria-pressed="false">🛏️</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="🧺" aria-label="Ropa" aria-pressed="false">🧺</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="🍽️" aria-label="Comida" aria-pressed="false">🍽️</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="🚿" aria-label="Baño" aria-pressed="false">🚿</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="🏋️" aria-label="Ejercicio" aria-pressed="false">🏋️</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="💻" aria-label="Computadora" aria-pressed="false">💻</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="🚗" aria-label="Auto" aria-pressed="false">🚗</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="💰" aria-label="Finanzas" aria-pressed="false">💰</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="📦" aria-label="Paquetes" aria-pressed="false">📦</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="🐶" aria-label="Mascota" aria-pressed="false">🐶</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="🌱" aria-label="Hábitos" aria-pressed="false">🌱</button>
+            <button type="button" class="box-emoji-choice" data-box-emoji="✍️" aria-label="Escritura" aria-pressed="false">✍️</button>
+          </div>
+        </div>
+
         <div class="modal-footer">
           <button type="button" class="btn-secondary" data-close-modal="modal-box">Cancelar</button>
           <button type="submit" class="btn-primary">Guardar</button>
