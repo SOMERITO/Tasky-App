@@ -2245,6 +2245,7 @@
       monthlyCompletedBase: 66,
       completedBoxCollapsed: false,
       focusPlan: { date: "", byBox: {}, updatedAt: 0 },
+      completionLog: [],
       taskMemoryByBox: {},
       deletedTaskIds: [],
       deletedBoxIds: [],
@@ -2262,6 +2263,7 @@
       completedBoxCollapsed: false,
       learningGoals: { daily: {}, weekly: {} },
       focusPlan: { date: "", byBox: {}, updatedAt: 0 },
+      completionLog: [],
       updatedAt: 0
     },
     settings: {
@@ -2718,6 +2720,56 @@
     };
   }
 
+  // Durable completion ledger: it keeps a snapshot even when a one-off task is later removed
+  // or a recurring task resets at midnight.
+  const COMPLETION_LOG_LIMIT = 2000;
+
+  function completionEventId(taskId, date) {
+    return `${String(taskId || "")}::${String(date || "")}`;
+  }
+
+  function normalizeCompletionLog(raw) {
+    const byId = new Map();
+    (Array.isArray(raw) ? raw : []).forEach(entry => {
+      if (!entry || typeof entry !== "object") return;
+      const taskId = String(entry.taskId || "").trim();
+      const completedDate = String(entry.completedDate || "").slice(0, 10);
+      if (!taskId || !/^\\d{4}-\\d{2}-\\d{2}$/.test(completedDate)) return;
+      const id = String(entry.id || completionEventId(taskId, completedDate));
+      const fallbackTime = new Date(`${completedDate}T12:00:00`).getTime();
+      const rawCompletedAt = Number(entry.completedAt);
+      const rawUpdatedAt = Number(entry.updatedAt);
+      const event = {
+        id,
+        taskId,
+        title: String(entry.title || "Tarea sin título"),
+        boxId: String(entry.boxId || ""),
+        boxName: String(entry.boxName || "Casilla no disponible"),
+        completedDate,
+        completedAt: Number.isFinite(rawCompletedAt) && rawCompletedAt > 0 ? rawCompletedAt : fallbackTime,
+        updatedAt: Number.isFinite(rawUpdatedAt) && rawUpdatedAt > 0
+          ? rawUpdatedAt
+          : (Number.isFinite(rawCompletedAt) && rawCompletedAt > 0 ? rawCompletedAt : fallbackTime),
+        frequency: String(entry.frequency || "once"),
+        reversed: Boolean(entry.reversed),
+        timeKnown: entry.timeKnown !== false
+      };
+      const previous = byId.get(id);
+      if (!previous || event.updatedAt >= previous.updatedAt) byId.set(id, event);
+    });
+    return Array.from(byId.values())
+      .sort((a, b) => Number(b.completedAt || 0) - Number(a.completedAt || 0))
+      .slice(0, COMPLETION_LOG_LIMIT);
+  }
+
+  function mergeCompletionLogs(primaryRaw, secondaryRaw) {
+    // When the same task/day record exists on both devices, the latest edit wins.
+    return normalizeCompletionLog([
+      ...normalizeCompletionLog(secondaryRaw),
+      ...normalizeCompletionLog(primaryRaw)
+    ]);
+  }
+
   function normalizeDataPayload(raw) {
     if (!raw || typeof raw !== "object") return null;
     const today = getTodayISO();
@@ -2765,6 +2817,7 @@
       taskMemoryByBox: (raw.taskMemoryByBox && typeof raw.taskMemoryByBox === "object" && !Array.isArray(raw.taskMemoryByBox)) ? raw.taskMemoryByBox : {},
       learningGoals: normalizeLearningGoalsData(raw.learningGoals),
       focusPlan: normalizeFocusPlanData(raw.focusPlan, tasks),
+      completionLog: normalizeCompletionLog(raw.completionLog),
       deletedTaskIds: Array.isArray(raw.deletedTaskIds) ? Array.from(new Set(raw.deletedTaskIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
       deletedBoxIds: Array.isArray(raw.deletedBoxIds) ? Array.from(new Set(raw.deletedBoxIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
       syncSchemaVersion: Number(raw.syncSchemaVersion || 0),
@@ -3055,6 +3108,7 @@
       db: Array.isArray(d.deletedBoxIds) ? d.deletedBoxIds : [],
       lg: normalizeLearningGoalsData(d.learningGoals),
       fp: normalizeFocusPlanData(d.focusPlan, d.tasks),
+      cl: normalizeCompletionLog(d.completionLog),
       b: d.boxes.map(x => [x.id, String(x.name || "").toUpperCase(), x.color || "#2563eb", x.collapsed ? 1 : 0, x.order || 0]),
       t: d.tasks.map(x => [
         x.id,
@@ -3110,6 +3164,7 @@
         deletedBoxIds: Array.isArray(parsed.db) ? parsed.db : [],
         learningGoals: normalizeLearningGoalsData(parsed.lg),
         focusPlan: normalizeFocusPlanData(parsed.fp, tasks),
+        completionLog: normalizeCompletionLog(parsed.cl),
         syncSchemaVersion: Number(parsed.sv || 0),
         updatedAt: Number(parsed.u || 0)
       });
@@ -3131,6 +3186,7 @@
       learningGoals: normalizeLearningGoalsData(d.learningGoals),
       focusPlan: normalizeFocusPlanData(d.focusPlan, d.tasks),
       history: d.history || {},
+      completionLog: normalizeCompletionLog(d.completionLog),
       settings: d.settings || {}
     });
   }
@@ -3321,6 +3377,7 @@
       deletedBoxIds,
       taskMemoryByBox: { ...(secondary.taskMemoryByBox || {}), ...(primary.taskMemoryByBox || {}) },
       history: { ...(secondary.history || {}), ...(primary.history || {}) },
+      completionLog: mergeCompletionLogs(primary.completionLog, secondary.completionLog),
       settings: { ...(secondary.settings || {}), ...(primary.settings || {}) },
       learningGoals: mergeLearningGoalsData(primary.learningGoals, secondary.learningGoals),
       focusPlan: mergeFocusPlanData(primary.focusPlan, secondary.focusPlan, primary.tasks, secondary.tasks),
@@ -6189,6 +6246,155 @@
     return item;
   }
 
+  function recordTaskCompletionEvent(task, completed, date = getTodayISO(), options = {}) {
+    if (!task) return;
+    const id = completionEventId(task.id, date);
+    const existingLog = normalizeCompletionLog(appState.data.completionLog);
+    const existingIndex = existingLog.findIndex(entry => entry.id === id);
+    const box = appState.data.boxes.find(entry => String(entry.id) === String(task.boxId));
+    const now = Date.now();
+    const completedAt = Number(options.completedAt || now);
+    const event = {
+      id,
+      taskId: String(task.id),
+      title: String(task.title || "Tarea sin título"),
+      boxId: String(task.boxId || ""),
+      boxName: box ? String(box.name || "CASILLA") : "Casilla no disponible",
+      completedDate: date,
+      completedAt,
+      updatedAt: now,
+      frequency: String(task.frequency || "once"),
+      reversed: !completed,
+      timeKnown: options.timeKnown !== false
+    };
+    if (existingIndex >= 0) existingLog[existingIndex] = event;
+    else existingLog.push(event);
+    appState.data.completionLog = normalizeCompletionLog(existingLog);
+  }
+
+  function ensureCompletionLogIncludesCurrentDoneTasks() {
+    const records = normalizeCompletionLog(appState.data.completionLog);
+    const knownIds = new Set(records.map(entry => entry.id));
+    let changed = false;
+    const today = getTodayISO();
+
+    appState.data.tasks.filter(task => task && task.done).forEach(task => {
+      const date = String(task.completedDate || today).slice(0, 10);
+      const id = completionEventId(task.id, date);
+      if (knownIds.has(id)) return;
+      const box = appState.data.boxes.find(entry => String(entry.id) === String(task.boxId));
+      const estimatedTime = date === today
+        ? Date.now()
+        : new Date(`${date}T12:00:00`).getTime();
+      records.push({
+        id,
+        taskId: String(task.id),
+        title: String(task.title || "Tarea sin título"),
+        boxId: String(task.boxId || ""),
+        boxName: box ? String(box.name || "CASILLA") : "Casilla no disponible",
+        completedDate: date,
+        completedAt: estimatedTime,
+        updatedAt: Date.now(),
+        frequency: String(task.frequency || "once"),
+        reversed: false,
+        timeKnown: false
+      });
+      knownIds.add(id);
+      changed = true;
+    });
+
+    if (changed) {
+      appState.data.completionLog = normalizeCompletionLog(records);
+      saveData(false, "Registró tareas completadas previamente");
+    }
+  }
+
+  let completionHistoryPeriod = "today";
+
+  function renderCompletionHistory() {
+    const list = document.getElementById("completion-history-list");
+    const summary = document.getElementById("completion-history-summary");
+    const rangeLabel = document.getElementById("completion-history-range");
+    if (!list || !summary || !rangeLabel) return;
+
+    const today = getTodayISO();
+    const weekStart = getLearningWeekStartISO(today);
+    const weekEnd = addDaysISO(weekStart, 6);
+    const allEvents = normalizeCompletionLog(appState.data.completionLog).filter(event => !event.reversed);
+    const visibleEvents = allEvents.filter(event => completionHistoryPeriod === "today"
+      ? event.completedDate === today
+      : event.completedDate >= weekStart && event.completedDate <= weekEnd);
+
+    rangeLabel.textContent = completionHistoryPeriod === "today"
+      ? `Hoy · ${formatLearningDate(today)}`
+      : `${formatLearningDate(weekStart)} – ${formatLearningDate(weekEnd)}`;
+    summary.textContent = visibleEvents.length
+      ? `${visibleEvents.length} tarea${visibleEvents.length === 1 ? "" : "s"} completada${visibleEvents.length === 1 ? "" : "s"} ${completionHistoryPeriod === "today" ? "hoy" : "esta semana"}`
+      : `Todavía no hay tareas registradas como completadas ${completionHistoryPeriod === "today" ? "hoy" : "esta semana"}.`;
+    list.innerHTML = "";
+
+    if (!visibleEvents.length) {
+      const empty = document.createElement("div");
+      empty.className = "completion-history-empty";
+      empty.textContent = "Cuando marques una tarea como completada, aparecerá aquí con su casilla y fecha.";
+      list.appendChild(empty);
+      return;
+    }
+
+    const groups = new Map();
+    visibleEvents.forEach(event => {
+      if (!groups.has(event.completedDate)) groups.set(event.completedDate, []);
+      groups.get(event.completedDate).push(event);
+    });
+    Array.from(groups.keys()).sort((a, b) => b.localeCompare(a)).forEach(date => {
+      if (completionHistoryPeriod === "week") {
+        const heading = document.createElement("h4");
+        heading.className = "completion-history-day-heading";
+        heading.textContent = date === today ? `Hoy · ${formatLearningDate(date, { year: true })}` : formatLearningDate(date, { year: true });
+        list.appendChild(heading);
+      }
+      const group = document.createElement("div");
+      group.className = "completion-history-day-list";
+      groups.get(date).sort((a, b) => Number(b.completedAt || 0) - Number(a.completedAt || 0)).forEach(event => {
+        const row = document.createElement("article");
+        row.className = "completion-history-item";
+
+        const check = document.createElement("span");
+        check.className = "completion-history-check";
+        check.setAttribute("aria-hidden", "true");
+        check.textContent = "✓";
+
+        const details = document.createElement("div");
+        details.className = "completion-history-details";
+        const title = document.createElement("strong");
+        title.className = "completion-history-task-title";
+        title.textContent = event.title;
+        const metadata = document.createElement("span");
+        metadata.className = "completion-history-task-box";
+        metadata.textContent = event.boxName;
+        const time = document.createElement("span");
+        time.className = "completion-history-task-time";
+        time.textContent = event.timeKnown
+          ? new Date(Number(event.completedAt)).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })
+          : "Hora no registrada";
+        details.appendChild(title);
+        details.appendChild(metadata);
+        details.appendChild(time);
+        row.appendChild(check);
+        row.appendChild(details);
+        group.appendChild(row);
+      });
+      list.appendChild(group);
+    });
+  }
+
+  function openCompletionHistoryModal() {
+    ensureCompletionLogIncludesCurrentDoneTasks();
+    renderCompletionHistory();
+    const modal = document.getElementById("modal-completion-history");
+    if (modal) modal.classList.add("open");
+  }
+
   function toggleTaskDone(taskId, checkBtnEl) {
     const task = appState.data.tasks.find(t => t.id === taskId);
     if (!task) return;
@@ -6197,6 +6403,7 @@
     const today = getTodayISO();
     if (task.done) {
       task.completedDate = today;
+      recordTaskCompletionEvent(task, true, today);
       const shiftedFocusPriority = removeCompletedFocusPriority(task.id, today);
       playUiSound("complete");
       spawnCompletionParticles(checkBtnEl);
@@ -6206,6 +6413,7 @@
         : "Tarea completada");
     } else {
       task.completedDate = null;
+      recordTaskCompletionEvent(task, false, today);
       playUiSound("uncomplete");
       if (appState.history[today] > 0) appState.history[today]--;
       showToast("Tarea reabierta");
@@ -7461,6 +7669,25 @@
     document.getElementById("btn-open-productivity").addEventListener("click", () => {
       playUiSound("tap");
       openProductivityModal();
+    });
+
+    const openCompletionHistoryButton = document.getElementById("btn-open-completion-history");
+    if (openCompletionHistoryButton) {
+      openCompletionHistoryButton.addEventListener("click", () => {
+        playUiSound("tap");
+        openCompletionHistoryModal();
+      });
+    }
+    document.querySelectorAll("[data-completion-period]").forEach(button => {
+      button.addEventListener("click", () => {
+        completionHistoryPeriod = button.dataset.completionPeriod === "week" ? "week" : "today";
+        document.querySelectorAll("[data-completion-period]").forEach(option => {
+          option.classList.toggle("is-active", option === button);
+          option.setAttribute("aria-pressed", option === button ? "true" : "false");
+        });
+        renderCompletionHistory();
+        playUiSound("tap");
+      });
     });
 
     document.getElementById("btn-filter-overdue").addEventListener("click", () => {
