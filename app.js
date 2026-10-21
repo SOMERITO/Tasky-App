@@ -3213,7 +3213,7 @@
       fp: normalizeFocusPlanData(d.focusPlan, d.tasks),
       cl: normalizeCompletionLog(d.completionLog),
       ds: normalizeDismissedTaskSuggestions(d.dismissedTaskSuggestionsByBox),
-      b: d.boxes.map(x => [x.id, String(x.name || "").toUpperCase(), x.color || "#2563eb", x.collapsed ? 1 : 0, x.order || 0]),
+      b: d.boxes.map(x => [x.id, String(x.name || "").toUpperCase(), x.color || "#2563eb", x.collapsed ? 1 : 0, x.order || 0, String(x.emoji || "")]),
       t: d.tasks.map(x => [
         x.id,
         x.boxId,
@@ -3245,7 +3245,8 @@
         name: String(arr[1] || "CASILLA").toUpperCase(),
         color: arr[2] || "#2563eb",
         collapsed: Boolean(arr[3]),
-        order: typeof arr[4] === "number" ? arr[4] : idx
+        order: typeof arr[4] === "number" ? arr[4] : idx,
+        emoji: String(arr[5] || "")
       }));
       const tasks = parsed.t.map((arr, idx) => ({
         id: arr[0],
@@ -5607,7 +5608,7 @@
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
                 </button>
               </div>
-              <h2 class="box-name" data-tip-title="✏️ Renombrar casilla" data-tip-desc="Haz clic para modificar el nombre de esta casilla de trabajo.">${escapeHtml(box.name.toUpperCase())}</h2>
+              <h2 class="box-name" data-tip-title="✏️ Editar casilla" data-tip-desc="Haz clic para modificar el nombre o el emoji de esta casilla de trabajo.">${box.emoji ? `<span class="box-emoji" aria-hidden="true">${escapeHtml(box.emoji)}</span>` : ""}<span class="box-name-text">${escapeHtml(box.name.toUpperCase())}</span></h2>
             </div>
             <div class="box-badges-row">${badgesHtml}</div>
           </div>
@@ -5671,7 +5672,7 @@
           const allRegisteredInBox = appState.data.tasks
             .filter(t => t.boxId === box.id)
             .sort((a, b) => (a.order || 0) - (b.order || 0));
-          const lines = [box.name.toUpperCase()];
+          const lines = [`${box.emoji ? box.emoji + " " : ""}${box.name.toUpperCase()}`];
           if (allRegisteredInBox.length === 0) {
             lines.push("(Sin tareas registradas)");
           } else {
@@ -7343,16 +7344,20 @@
     const modal = document.getElementById("modal-box");
     const titleEl = document.getElementById("modal-box-title");
     const nameInput = document.getElementById("input-box-name");
+    const emojiInput = document.getElementById("input-box-emoji");
 
     if (boxId) {
       const box = appState.data.boxes.find(b => b.id === boxId);
       if (!box) return;
-      titleEl.textContent = "Renombrar casilla";
+      titleEl.textContent = "Editar casilla";
       nameInput.value = box.name.toUpperCase();
+      if (emojiInput) emojiInput.value = String(box.emoji || "");
     } else {
       titleEl.textContent = "Nueva casilla";
       nameInput.value = "";
+      if (emojiInput) emojiInput.value = "";
     }
+    syncBoxEmojiPickerUI();
     modal.classList.add("open");
     setTimeout(() => nameInput.focus(), 60);
   }
@@ -7388,7 +7393,7 @@
     appState.data.boxes.forEach(box => {
       const bTasks = appState.data.tasks.filter(t => t.boxId === box.id);
       if (!bTasks.length) return;
-      lines.push(`🗂️ *${box.name}*`);
+      lines.push(`${box.emoji ? box.emoji + " " : "🗂️ "}*${box.name}*`);
       bTasks.forEach(t => {
         const icon = t.done ? "✅" : (isTaskRescheduledFuture(t) ? "🕒" : "⏳");
         lines.push(`  ${icon} ${t.title}`);
@@ -8183,11 +8188,45 @@
       });
     }
 
+    // Optional emoji for casillas: select from the quick gallery or paste an emoji directly.
+    const boxEmojiInput = document.getElementById("input-box-emoji");
+    function syncBoxEmojiPickerUI() {
+      const selected = String(boxEmojiInput ? boxEmojiInput.value : "").trim();
+      document.querySelectorAll("[data-box-emoji]").forEach(button => {
+        const active = selected === button.dataset.boxEmoji;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+    }
+
+    if (boxEmojiInput) {
+      boxEmojiInput.addEventListener("input", syncBoxEmojiPickerUI);
+      document.querySelectorAll("[data-box-emoji]").forEach(button => {
+        button.addEventListener("click", () => {
+          boxEmojiInput.value = button.dataset.boxEmoji;
+          syncBoxEmojiPickerUI();
+          boxEmojiInput.focus();
+          playUiSound("tap");
+        });
+      });
+      const clearBoxEmojiButton = document.getElementById("btn-clear-box-emoji");
+      if (clearBoxEmojiButton) {
+        clearBoxEmojiButton.addEventListener("click", () => {
+          boxEmojiInput.value = "";
+          syncBoxEmojiPickerUI();
+          boxEmojiInput.focus();
+          playUiSound("tap");
+        });
+      }
+    }
+
     // Box Form Submit
     document.getElementById("form-box").addEventListener("submit", (e) => {
       e.preventDefault();
       const nameInput = document.getElementById("input-box-name");
+      const emojiInput = document.getElementById("input-box-emoji");
       const name = nameInput.value.trim().toUpperCase();
+      const emoji = String(emojiInput ? emojiInput.value : "").trim().slice(0, 16);
       if (!name) {
         nameInput.classList.add("input-invalid");
         setTimeout(() => nameInput.classList.remove("input-invalid"), 400);
@@ -8196,12 +8235,16 @@
       }
       if (appState.editingBoxId) {
         const box = appState.data.boxes.find(b => b.id === appState.editingBoxId);
-        if (box) box.name = name;
+        if (box) {
+          box.name = name;
+          box.emoji = emoji;
+        }
         showToast("Casilla actualizada");
       } else {
         appState.data.boxes.push({
           id: `box_${Date.now()}`,
           name,
+          emoji,
           color: "#2563eb",
           collapsed: false,
           order: appState.data.boxes.length
