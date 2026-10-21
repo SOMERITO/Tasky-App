@@ -5680,12 +5680,16 @@
             <span class="memory-suggestion-label">💡 ${escapeHtml(suggestionText)}</span>
             <span class="memory-suggestion-hint">Clic o Tab</span>
           `;
-          chooseButton.addEventListener("mousedown", (ev) => {
+          chooseButton.addEventListener("mousedown", ev => {
+            // Keep the input stable until the click handler saves the selected suggestion.
             ev.preventDefault();
-            playUiSound("tap");
-            inlineInput.value = suggestionText;
+          });
+          chooseButton.addEventListener("click", ev => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            activeSuggestionIdx = -1;
             suggestionsBox.classList.remove("open");
-            inlineInput.focus();
+            saveInlineTask(suggestionText);
           });
 
           const dismissButton = document.createElement("button");
@@ -5709,6 +5713,40 @@
           suggestionsBox.appendChild(row);
         });
         suggestionsBox.classList.add("open");
+      }
+
+      function saveInlineTask(rawTitle) {
+        const title = capitalizeFirst(rawTitle);
+        if (!title) {
+          inlineInput.classList.add("input-invalid");
+          setTimeout(() => inlineInput.classList.remove("input-invalid"), 400);
+          showToast("Escribe el nombre de la tarea", true);
+          return false;
+        }
+
+        pushUndoSnapshot(`Añadir tarea: ${title}`);
+        learnTaskTitle(title, box.id);
+        const newTask = {
+          id: `task_${Date.now()}`,
+          boxId: box.id,
+          title,
+          done: false,
+          completedDate: null,
+          createdAt: Date.now(),
+          dueDate: getTodayISO(),
+          frequency: "once",
+          repeatDays: [],
+          rescheduledCount: 0,
+          isRescheduled: false,
+          order: boxTasksAll.length
+        };
+        appState.data.tasks.push(newTask);
+        appState.keepInlineAddOpenBoxId = box.id;
+        playUiSound("addTask");
+        saveData(true, `Añadió tarea en ${box.name}`);
+        renderBoard();
+        showToast("Tarea agregada");
+        return true;
       }
 
       inlineInput.addEventListener("input", renderInlineSuggestions);
@@ -5744,9 +5782,9 @@
           const chosenIdx = activeSuggestionIdx >= 0 ? activeSuggestionIdx : 0;
           const matches = getTaskSuggestions(inlineInput.value, box.id);
           if (matches[chosenIdx]) {
-            playUiSound("tap");
-            inlineInput.value = matches[chosenIdx];
+            activeSuggestionIdx = -1;
             suggestionsBox.classList.remove("open");
+            saveInlineTask(matches[chosenIdx]);
           }
         }
       });
@@ -5770,41 +5808,12 @@
         if (activeSuggestionIdx >= 0 && items[activeSuggestionIdx]) {
           const matches = getTaskSuggestions(inlineInput.value, box.id);
           if (matches[activeSuggestionIdx]) {
-            inlineInput.value = matches[activeSuggestionIdx];
             suggestionsBox.classList.remove("open");
-            activeSuggestionIdx = -1;
+            saveInlineTask(matches[activeSuggestionIdx]);
             return;
           }
         }
-        const title = capitalizeFirst(inlineInput.value);
-        if (!title) {
-          inlineInput.classList.add("input-invalid");
-          setTimeout(() => inlineInput.classList.remove("input-invalid"), 400);
-          showToast("Escribe el nombre de la tarea", true);
-          return;
-        }
-        pushUndoSnapshot(`Añadir tarea: ${title}`);
-        learnTaskTitle(title, box.id);
-        const newTask = {
-          id: `task_${Date.now()}`,
-          boxId: box.id,
-          title,
-          done: false,
-          completedDate: null,
-          createdAt: Date.now(),
-          dueDate: getTodayISO(),
-          frequency: "once",
-          repeatDays: [],
-          rescheduledCount: 0,
-          isRescheduled: false,
-          order: boxTasksAll.length
-        };
-        appState.data.tasks.push(newTask);
-        appState.keepInlineAddOpenBoxId = box.id;
-        playUiSound("addTask");
-        saveData(true, `Añadió tarea en ${box.name}`);
-        renderBoard();
-        showToast("Tarea agregada");
+        saveInlineTask(inlineInput.value);
       });
 
       const listEl = card.querySelector(".tasks-list");
