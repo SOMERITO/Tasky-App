@@ -2082,6 +2082,35 @@
     return `${y}-${m}-${day}`;
   }
 
+  function getRepeatWeekEndISO(baseIso = getTodayISO()) {
+    const weekday = new Date(`${baseIso}T00:00:00`).getDay();
+    return addDaysISO(baseIso, (7 - weekday) % 7);
+  }
+
+  function getTaskRepeatDays(task) {
+    const selected = Array.isArray(task && task.repeatDays)
+      ? Array.from(new Set(task.repeatDays.map(Number).filter(day => Number.isInteger(day) && day >= 0 && day <= 6))).sort((a, b) => a - b)
+      : [];
+    if (selected.length) return selected;
+    if (task && task.frequency === "daily") return [0, 1, 2, 3, 4, 5, 6];
+    if (task && task.frequency === "weekdays") return [1, 2, 3, 4, 5];
+    if (task && task.frequency === "weekends") return [0, 6];
+    return [];
+  }
+
+  function getNextRepeatDateOnOrAfter(baseIso, repeatDays, endIso = null) {
+    const selected = Array.from(new Set((Array.isArray(repeatDays) ? repeatDays : [])
+      .map(Number).filter(day => Number.isInteger(day) && day >= 0 && day <= 6)));
+    if (!selected.length) return null;
+    for (let offset = 0; offset <= 7; offset++) {
+      const candidate = addDaysISO(baseIso, offset);
+      if (endIso && candidate > endIso) return null;
+      const weekday = new Date(`${candidate}T00:00:00`).getDay();
+      if (selected.includes(weekday)) return candidate;
+    }
+    return null;
+  }
+
   function getNextWeekdayISO(targetDay) {
     const d = new Date();
     const current = d.getDay();
@@ -2304,6 +2333,7 @@
     reschedulingTaskIds: [],
     repeatingTaskId: null,
     selectedRepeatDays: [],
+    selectedRepeatDuration: "forever",
     editingBoxId: null,
     editingTaskId: null,
     keepInlineAddOpenBoxId: null,
@@ -2838,7 +2868,9 @@
 
     const tasks = tasksRaw.map((t, idx) => {
       const due = String(t.dueDate || today);
-      const isResched = Boolean(due > today);
+      // A future date on an ordinary task is a reschedule. A recurring task can also
+      // have its next planned occurrence in the future without becoming a reprogrammed task.
+      const isResched = Boolean(due > today && (Boolean(t.isRescheduled) || freq === "once"));
       const freq = String(t.frequency || "once");
       let repDays = Array.isArray(t.repeatDays) ? t.repeatDays : [];
       if (freq === "daily" && repDays.length === 0) repDays = [0, 1, 2, 3, 4, 5, 6];
@@ -3193,7 +3225,8 @@
         Array.isArray(x.repeatDays) ? x.repeatDays : [],
         x.rescheduledCount || 0,
         x.isRescheduled ? 1 : 0,
-        x.order || 0
+        x.order || 0,
+        x.repeatUntil || ""
       ])
     });
   }
@@ -3225,7 +3258,8 @@
         repeatDays: Array.isArray(arr[7]) ? arr[7] : [],
         rescheduledCount: Number(arr[8] || 0),
         isRescheduled: Boolean(arr[9]),
-        order: typeof arr[10] === "number" ? arr[10] : idx
+        order: typeof arr[10] === "number" ? arr[10] : idx,
+        repeatUntil: arr[11] || null
       }));
       return normalizeDataPayload({
         boxes,
@@ -4034,13 +4068,22 @@
     const remaining = [];
 
     appState.data.tasks.forEach((task) => {
+      // A one-week repetition expires after Sunday. Incomplete work remains as an ordinary overdue task.
+      if (task.repeatUntil && String(task.repeatUntil) < today) {
+        task.frequency = "once";
+        task.repeatDays = [];
+        delete task.repeatUntil;
+        task.isRescheduled = Boolean(task.dueDate && task.dueDate > today);
+        changed = true;
+      }
+
       // If a rescheduled task's scheduled date has arrived (dueDate <= today), reactivate it in its Casilla!
       if (!task.done && task.isRescheduled && task.dueDate && task.dueDate <= today) {
         task.isRescheduled = false;
         changed = true;
       }
 
-      // If a task is marked done and either its completedDate is before today OR midnight just rolled over
+      // If a task is marked done on an earlier date, account for that completion and prepare its next occurrence.
       const completedOnPastDay = task.done && (
         (task.completedDate && task.completedDate < today) ||
         (!task.completedDate && dayRolledOver) ||
@@ -4052,15 +4095,24 @@
         appState.data.monthlyCompletedBase = (appState.data.monthlyCompletedBase || 66) + 1;
         const isRecurring = task.frequency !== "once" || (Array.isArray(task.repeatDays) && task.repeatDays.length > 0);
         if (isRecurring) {
-          // Recurring tasks reset automatically for the new day
-          remaining.push({
-            ...task,
-            done: false,
-            completedDate: null,
-            dueDate: today
-          });
+          const nextDate = getNextRepeatDateOnOrAfter(today, getTaskRepeatDays(task), task.repeatUntil || null);
+          if (nextDate) {
+            remaining.push({
+              ...task,
+              done: false,
+              completedDate: null,
+              dueDate: nextDate,
+              isRescheduled: false
+            });
+          } else {
+            // There are no selected repeat days left in this schedule (e.g. the final Friday).
+            // End the repeat chain instead of creating another occurrence on an unselected day.
+            task.frequency = "once";
+            task.repeatDays = [];
+            delete task.repeatUntil;
+          }
         }
-        // One-time completed tasks from previous days disappear automatically at 12:00 AM
+        // Completed one-off tasks are removed from the active board at rollover; the completion log keeps them.
       } else {
         if (task.done && !task.completedDate) {
           task.completedDate = today;
@@ -4618,7 +4670,7 @@
 
   function isTaskRescheduledFuture(task) {
     const today = getTodayISO();
-    return !task.done && Boolean(task.dueDate && task.dueDate > today);
+    return !task.done && Boolean(task.dueDate && task.dueDate > today && task.isRescheduled);
   }
 
   function isTaskOverdue(task) {
@@ -4634,23 +4686,21 @@
 
   // Format Repeat Schedule Label (Point 8)
   function formatRepeatBadgeLabel(task) {
-    const days = Array.isArray(task.repeatDays) ? task.repeatDays.slice().sort((a, b) => a - b) : [];
+    const days = getTaskRepeatDays(task);
+    let label = "";
     if (task.frequency === "daily" || days.length === 7) {
-      return "🔁 Todos los días";
+      label = "🔁 Todos los días";
+    } else if (task.frequency === "weekdays" || (days.length === 5 && days.join(",") === "1,2,3,4,5")) {
+      label = "🔁 Lunes a viernes";
+    } else if (task.frequency === "weekends" || (days.length === 2 && days.join(",") === "0,6")) {
+      label = "🔁 Fines de semana";
+    } else if (days.length === 1) {
+      label = `🔁 Solo ${DAY_FULL_NAMES[days[0]]}`;
+    } else if (days.length > 1) {
+      label = `🔁 ${days.map(d => DAY_SHORT_NAMES[d]).join(", ")}`;
     }
-    if (task.frequency === "weekdays" || (days.length === 5 && days.join(",") === "1,2,3,4,5")) {
-      return "🔁 Lunes a viernes";
-    }
-    if (task.frequency === "weekends" || (days.length === 2 && days.join(",") === "0,6")) {
-      return "🔁 Fines de semana";
-    }
-    if (days.length === 1) {
-      return `🔁 Solo ${DAY_FULL_NAMES[days[0]]}`;
-    }
-    if (days.length > 1) {
-      return `🔁 ${days.map(d => DAY_SHORT_NAMES[d]).join(", ")}`;
-    }
-    return "";
+    if (label && task.repeatUntil) label += " · esta semana";
+    return label;
   }
 
   function updateMetrics() {
@@ -6557,12 +6607,35 @@
       appState.selectedRepeatDays = task.repeatDays.slice();
     } else if (task.frequency === "daily") {
       appState.selectedRepeatDays = [0, 1, 2, 3, 4, 5, 6];
+    } else if (task.frequency === "weekdays") {
+      appState.selectedRepeatDays = [1, 2, 3, 4, 5];
+    } else if (task.frequency === "weekends") {
+      appState.selectedRepeatDays = [0, 6];
     } else {
       appState.selectedRepeatDays = [];
     }
 
+    appState.selectedRepeatDuration = task.repeatUntil && String(task.repeatUntil) >= getTodayISO()
+      ? "thisWeek"
+      : "forever";
     syncRepeatWeekdayChipsUI();
+    syncRepeatDurationUI();
     document.getElementById("modal-repeat-picker").classList.add("open");
+  }
+
+  function syncRepeatDurationUI() {
+    const selected = appState.selectedRepeatDuration === "thisWeek" ? "thisWeek" : "forever";
+    document.querySelectorAll("[data-repeat-duration]").forEach(button => {
+      const active = button.dataset.repeatDuration === selected;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+    const help = document.getElementById("repeat-duration-help");
+    if (help) {
+      help.textContent = selected === "thisWeek"
+        ? `La repetición termina el domingo ${formatLearningDate(getRepeatWeekEndISO(), { year: true })}. Si no completas la tarea, seguirá pendiente como atrasada y no volverá a repetirse la próxima semana.`
+        : "La tarea seguirá repitiéndose en los días elegidos cada semana, hasta que cambies su frecuencia.";
+    }
   }
 
   function syncRepeatWeekdayChipsUI() {
@@ -6575,8 +6648,36 @@
   function saveRepeatSchedule(freqType, daysArray) {
     const task = appState.data.tasks.find(t => t.id === appState.repeatingTaskId);
     if (!task) return;
-    task.frequency = freqType;
-    task.repeatDays = daysArray.slice().sort((a, b) => a - b);
+
+    const today = getTodayISO();
+    const days = Array.from(new Set((Array.isArray(daysArray) ? daysArray : [])
+      .map(Number).filter(day => Number.isInteger(day) && day >= 0 && day <= 6))).sort((a, b) => a - b);
+    const isRepeating = freqType !== "once" && days.length > 0;
+    const duration = appState.selectedRepeatDuration === "thisWeek" ? "thisWeek" : "forever";
+    const repeatUntil = isRepeating && duration === "thisWeek" ? getRepeatWeekEndISO(today) : null;
+    let nextDate = null;
+
+    if (isRepeating) {
+      nextDate = getNextRepeatDateOnOrAfter(today, days, repeatUntil);
+      if (!nextDate && duration === "thisWeek") {
+        showToast("Ya no quedan días seleccionados esta semana. Elige otros días o «Todas las semanas».", true);
+        return;
+      }
+      if (!nextDate) {
+        showToast("No se pudo calcular el próximo día de repetición.", true);
+        return;
+      }
+    }
+
+    task.frequency = isRepeating ? freqType : "once";
+    task.repeatDays = isRepeating ? days : [];
+    if (repeatUntil) task.repeatUntil = repeatUntil;
+    else delete task.repeatUntil;
+    if (nextDate) {
+      task.dueDate = nextDate;
+      task.isRescheduled = false;
+    }
+
     document.getElementById("modal-repeat-picker").classList.remove("open");
     playUiSound("repeat");
     saveData(true, `Repetición actualizada: ${task.title}`);
@@ -7824,6 +7925,14 @@
     if (multiClearBtn) multiClearBtn.addEventListener("click", clearTaskSelection);
 
     // Point 8: Repeat Modal Events
+    document.querySelectorAll("[data-repeat-duration]").forEach(button => {
+      button.addEventListener("click", () => {
+        appState.selectedRepeatDuration = button.dataset.repeatDuration === "thisWeek" ? "thisWeek" : "forever";
+        syncRepeatDurationUI();
+        playUiSound("tap");
+      });
+    });
+
     document.querySelectorAll("[data-repeat-preset]").forEach(btn => {
       btn.addEventListener("click", () => {
         const preset = btn.dataset.repeatPreset;
