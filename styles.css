@@ -4206,3 +4206,105 @@ body.focus-mode-open #boxes-container {
   line-height: 1.4;
   box-shadow: 0 3px 10px rgba(37, 99, 235, 0.22);
 }
+
+
+/* Optional emoji marker for each task casilla. */
+.box-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.box-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  font-size: 1.12em;
+  line-height: 1;
+  text-transform: none;
+}
+.box-name-text {
+  min-width: 0;
+}
+.box-emoji-optional {
+  color: var(--muted);
+  font-size: 0.88em;
+  font-weight: 500;
+}
+.box-emoji-form-group {
+  margin-top: 17px;
+}
+.box-emoji-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.box-emoji-input {
+  min-width: 0;
+  flex: 1;
+  font-size: 1rem;
+}
+.box-emoji-input::placeholder {
+  font-size: 0.83rem;
+}
+.box-emoji-clear {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 9px 12px;
+  white-space: nowrap;
+}
+.box-emoji-help {
+  margin: 7px 0 9px;
+  color: var(--muted);
+  font-size: 0.73rem;
+  line-height: 1.45;
+}
+.box-emoji-gallery {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 7px;
+}
+.box-emoji-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 42px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 1.28rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.14s ease, background 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+.box-emoji-choice:hover {
+  transform: translateY(-1px);
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.box-emoji-choice.is-active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 16%, transparent);
+}
+.box-emoji-choice:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+@media (max-width: 400px) {
+  .box-emoji-gallery {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .box-emoji-choice {
+    min-height: 38px;
+    font-size: 1.15rem;
+  }
+  .box-emoji-input::placeholder {
+    font-size: 0.75rem;
+  }
+}
