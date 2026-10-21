@@ -4063,3 +4063,68 @@ body.focus-mode-open #boxes-container {
   color: var(--danger);
   outline: none;
 }
+
+
+/* Duration choices for recurring tasks: every week or the current week only. */
+.repeat-duration-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 17px;
+}
+.repeat-duration-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.repeat-duration-option {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 5px;
+  padding: 11px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-family: var(--font);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+.repeat-duration-option:hover {
+  border-color: var(--primary);
+}
+.repeat-duration-option.is-active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 10%, transparent);
+}
+.repeat-duration-option:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.repeat-duration-title {
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.repeat-duration-subtitle {
+  color: var(--muted);
+  font-size: 0.69rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.repeat-duration-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+@media (max-width: 420px) {
+  .repeat-duration-options { grid-template-columns: 1fr; }
+  .repeat-duration-option { padding: 10px 12px; }
+}
