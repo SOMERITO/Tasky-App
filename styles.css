@@ -4007,3 +4007,59 @@ body.focus-mode-open #boxes-container {
   .completion-history-item { gap: 9px; padding: 10px; }
   .completion-history-list { max-height: 58vh; }
 }
+
+
+/* Dismiss unwanted task-memory suggestions without deleting real tasks. */
+.memory-suggestion-item {
+  padding: 4px 6px 4px 8px;
+  cursor: default;
+}
+.memory-suggestion-select {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.memory-suggestion-select:hover {
+  color: var(--primary);
+}
+.memory-suggestion-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.memory-suggestion-dismiss {
+  display: inline-flex;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font);
+  font-size: 1.15rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.memory-suggestion-dismiss:hover,
+.memory-suggestion-dismiss:focus-visible {
+  border-color: var(--danger-soft);
+  background: var(--danger-soft);
+  color: var(--danger);
+  outline: none;
+}
