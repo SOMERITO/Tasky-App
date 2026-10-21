@@ -2862,6 +2862,7 @@
       id: String(b.id || `box_${Date.now()}_${idx}`),
       name: String(b.name || b.title || "CASILLA").trim().toUpperCase(),
       color: String(b.color || "#2563eb"),
+      emoji: String(b.emoji || "").trim().slice(0, 16),
       collapsed: Boolean(b.collapsed),
       order: typeof b.order === "number" ? b.order : idx
     }));
@@ -7339,6 +7340,16 @@
     setTimeout(() => input.focus(), 60);
   }
 
+  function syncBoxEmojiPickerUI() {
+    const input = document.getElementById("input-box-emoji");
+    const selected = String(input ? input.value : "").trim();
+    document.querySelectorAll("[data-box-emoji]").forEach(button => {
+      const active = selected === button.dataset.boxEmoji;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
   function openBoxModal(boxId = null) {
     appState.editingBoxId = boxId;
     const modal = document.getElementById("modal-box");
@@ -8190,15 +8201,6 @@
 
     // Optional emoji for casillas: select from the quick gallery or paste an emoji directly.
     const boxEmojiInput = document.getElementById("input-box-emoji");
-    function syncBoxEmojiPickerUI() {
-      const selected = String(boxEmojiInput ? boxEmojiInput.value : "").trim();
-      document.querySelectorAll("[data-box-emoji]").forEach(button => {
-        const active = selected === button.dataset.boxEmoji;
-        button.classList.toggle("is-active", active);
-        button.setAttribute("aria-pressed", active ? "true" : "false");
-      });
-    }
-
     if (boxEmojiInput) {
       boxEmojiInput.addEventListener("input", syncBoxEmojiPickerUI);
       document.querySelectorAll("[data-box-emoji]").forEach(button => {
