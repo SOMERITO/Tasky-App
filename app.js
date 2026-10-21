@@ -4892,6 +4892,14 @@
       }
 
       const activeGroup = new Set((dragEngine.activeGroupIds || []).map(String));
+      const overSelectedTask = hitElements.find(
+        el => el.classList && el.classList.contains("task-item") &&
+          !el.classList.contains("drop-ghost-clone") &&
+          activeGroup.has(String(el.dataset.taskId))
+      );
+      // Do not let a selected source row become the destination while moving the group.
+      if (overSelectedTask) return;
+
       const overTask = hitElements.find(
         el => el.classList && el.classList.contains("task-item") &&
           !el.classList.contains("drop-ghost-clone") &&
