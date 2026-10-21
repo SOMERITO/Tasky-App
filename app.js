@@ -2246,6 +2246,7 @@
       completedBoxCollapsed: false,
       focusPlan: { date: "", byBox: {}, updatedAt: 0 },
       completionLog: [],
+      dismissedTaskSuggestionsByBox: {},
       taskMemoryByBox: {},
       deletedTaskIds: [],
       deletedBoxIds: [],
@@ -2264,6 +2265,7 @@
       learningGoals: { daily: {}, weekly: {} },
       focusPlan: { date: "", byBox: {}, updatedAt: 0 },
       completionLog: [],
+      dismissedTaskSuggestionsByBox: {},
       updatedAt: 0
     },
     settings: {
@@ -2770,6 +2772,55 @@
     ]);
   }
 
+  function normalizeSuggestionMatch(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+  }
+
+  function normalizeDismissedTaskSuggestions(raw) {
+    const result = {};
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return result;
+    Object.entries(raw).forEach(([rawKey, rawTitles]) => {
+      const key = String(rawKey || "").trim();
+      if (!key || !Array.isArray(rawTitles)) return;
+      const seen = new Set();
+      const titles = [];
+      rawTitles.forEach(rawTitle => {
+        const title = String(rawTitle || "").trim();
+        const normalized = normalizeSuggestionMatch(title);
+        if (!title || !normalized || seen.has(normalized)) return;
+        seen.add(normalized);
+        titles.push(title);
+      });
+      if (titles.length) result[key] = titles.slice(-500);
+    });
+    return result;
+  }
+
+  function mergeDismissedTaskSuggestions(primaryRaw, secondaryRaw) {
+    const merged = {};
+    [secondaryRaw, primaryRaw].forEach(raw => {
+      const clean = normalizeDismissedTaskSuggestions(raw);
+      Object.entries(clean).forEach(([key, titles]) => {
+        if (!merged[key]) merged[key] = [];
+        const seen = new Set(merged[key].map(normalizeSuggestionMatch));
+        titles.forEach(title => {
+          const normalized = normalizeSuggestionMatch(title);
+          if (normalized && !seen.has(normalized)) {
+            merged[key].push(title);
+            seen.add(normalized);
+          }
+        });
+        if (merged[key].length > 500) merged[key] = merged[key].slice(-500);
+      });
+    });
+    return merged;
+  }
+
   function normalizeDataPayload(raw) {
     if (!raw || typeof raw !== "object") return null;
     const today = getTodayISO();
@@ -2818,6 +2869,7 @@
       learningGoals: normalizeLearningGoalsData(raw.learningGoals),
       focusPlan: normalizeFocusPlanData(raw.focusPlan, tasks),
       completionLog: normalizeCompletionLog(raw.completionLog),
+      dismissedTaskSuggestionsByBox: normalizeDismissedTaskSuggestions(raw.dismissedTaskSuggestionsByBox),
       deletedTaskIds: Array.isArray(raw.deletedTaskIds) ? Array.from(new Set(raw.deletedTaskIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
       deletedBoxIds: Array.isArray(raw.deletedBoxIds) ? Array.from(new Set(raw.deletedBoxIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
       syncSchemaVersion: Number(raw.syncSchemaVersion || 0),
@@ -2910,6 +2962,20 @@
     safeStorage.setItem(STORAGE_KEYS.MEMORY, JSON.stringify(appState.taskMemory));
   }
 
+  function dismissTaskSuggestion(title, boxId) {
+    const cleanTitle = String(title || "").trim();
+    if (!cleanTitle || !boxId) return;
+    const key = getBoxMemoryKey(boxId);
+    const dismissed = normalizeDismissedTaskSuggestions(appState.data.dismissedTaskSuggestionsByBox);
+    const existing = Array.isArray(dismissed[key]) ? dismissed[key] : [];
+    if (!existing.some(item => normalizeSuggestionMatch(item) === normalizeSuggestionMatch(cleanTitle))) {
+      dismissed[key] = [...existing, cleanTitle].slice(-500);
+    }
+    appState.data.dismissedTaskSuggestionsByBox = dismissed;
+    saveData(true, `Ocultó la sugerencia «${cleanTitle}»`);
+    showToast("Sugerencia eliminada");
+  }
+
   function getTaskSuggestions(queryText, boxId) {
     const q = String(queryText || "").trim().toLowerCase();
     if (!q || !boxId) return [];
@@ -2918,6 +2984,11 @@
     const boxList = (appState.taskMemory && Array.isArray(appState.taskMemory[key]))
       ? appState.taskMemory[key]
       : [];
+    const dismissedTitles = new Set(
+      (appState.data.dismissedTaskSuggestionsByBox && Array.isArray(appState.data.dismissedTaskSuggestionsByBox[key])
+        ? appState.data.dismissedTaskSuggestionsByBox[key]
+        : []).map(normalizeSuggestionMatch)
+    );
 
     const prefixMatches = [];
     const containsMatches = [];
@@ -2926,7 +2997,7 @@
     boxList.forEach(item => {
       const text = String(item || "").trim();
       const lower = text.toLowerCase();
-      if (!text || lower === q || seen.has(lower)) return;
+      if (!text || dismissedTitles.has(normalizeSuggestionMatch(text)) || lower === q || seen.has(lower)) return;
       if (lower.startsWith(q)) {
         seen.add(lower);
         prefixMatches.push(text);
@@ -3109,6 +3180,7 @@
       lg: normalizeLearningGoalsData(d.learningGoals),
       fp: normalizeFocusPlanData(d.focusPlan, d.tasks),
       cl: normalizeCompletionLog(d.completionLog),
+      ds: normalizeDismissedTaskSuggestions(d.dismissedTaskSuggestionsByBox),
       b: d.boxes.map(x => [x.id, String(x.name || "").toUpperCase(), x.color || "#2563eb", x.collapsed ? 1 : 0, x.order || 0]),
       t: d.tasks.map(x => [
         x.id,
@@ -3165,6 +3237,7 @@
         learningGoals: normalizeLearningGoalsData(parsed.lg),
         focusPlan: normalizeFocusPlanData(parsed.fp, tasks),
         completionLog: normalizeCompletionLog(parsed.cl),
+        dismissedTaskSuggestionsByBox: normalizeDismissedTaskSuggestions(parsed.ds),
         syncSchemaVersion: Number(parsed.sv || 0),
         updatedAt: Number(parsed.u || 0)
       });
@@ -3187,6 +3260,7 @@
       focusPlan: normalizeFocusPlanData(d.focusPlan, d.tasks),
       history: d.history || {},
       completionLog: normalizeCompletionLog(d.completionLog),
+      dismissedTaskSuggestionsByBox: normalizeDismissedTaskSuggestions(d.dismissedTaskSuggestionsByBox),
       settings: d.settings || {}
     });
   }
@@ -3378,6 +3452,10 @@
       taskMemoryByBox: { ...(secondary.taskMemoryByBox || {}), ...(primary.taskMemoryByBox || {}) },
       history: { ...(secondary.history || {}), ...(primary.history || {}) },
       completionLog: mergeCompletionLogs(primary.completionLog, secondary.completionLog),
+      dismissedTaskSuggestionsByBox: mergeDismissedTaskSuggestions(
+        primary.dismissedTaskSuggestionsByBox,
+        secondary.dismissedTaskSuggestionsByBox
+      ),
       settings: { ...(secondary.settings || {}), ...(primary.settings || {}) },
       learningGoals: mergeLearningGoalsData(primary.learningGoals, secondary.learningGoals),
       focusPlan: mergeFocusPlanData(primary.focusPlan, secondary.focusPlan, primary.tasks, secondary.tasks),
@@ -5533,21 +5611,45 @@
         }
         suggestionsBox.innerHTML = "";
         matches.forEach((suggestionText, sIdx) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "memory-suggestion-item";
-          btn.innerHTML = `
-            <span>💡 ${escapeHtml(suggestionText)}</span>
+          const row = document.createElement("div");
+          row.className = "memory-suggestion-item";
+          row.setAttribute("role", "option");
+          row.setAttribute("aria-selected", "false");
+
+          const chooseButton = document.createElement("button");
+          chooseButton.type = "button";
+          chooseButton.className = "memory-suggestion-select";
+          chooseButton.innerHTML = `
+            <span class="memory-suggestion-label">💡 ${escapeHtml(suggestionText)}</span>
             <span class="memory-suggestion-hint">Clic o Tab</span>
           `;
-          btn.addEventListener("mousedown", (ev) => {
+          chooseButton.addEventListener("mousedown", (ev) => {
             ev.preventDefault();
             playUiSound("tap");
             inlineInput.value = suggestionText;
             suggestionsBox.classList.remove("open");
             inlineInput.focus();
           });
-          suggestionsBox.appendChild(btn);
+
+          const dismissButton = document.createElement("button");
+          dismissButton.type = "button";
+          dismissButton.className = "memory-suggestion-dismiss";
+          dismissButton.textContent = "×";
+          dismissButton.setAttribute("aria-label", `Eliminar «${suggestionText}» de las sugerencias`);
+          dismissButton.title = "Quitar de las sugerencias";
+          dismissButton.addEventListener("mousedown", ev => ev.preventDefault());
+          dismissButton.addEventListener("click", ev => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            dismissTaskSuggestion(suggestionText, box.id);
+            activeSuggestionIdx = -1;
+            renderInlineSuggestions();
+            inlineInput.focus();
+          });
+
+          row.appendChild(chooseButton);
+          row.appendChild(dismissButton);
+          suggestionsBox.appendChild(row);
         });
         suggestionsBox.classList.add("open");
       }
@@ -5569,11 +5671,17 @@
         if (ev.key === "ArrowDown") {
           ev.preventDefault();
           activeSuggestionIdx = (activeSuggestionIdx + 1) % items.length;
-          items.forEach((el, idx) => el.classList.toggle("active", idx === activeSuggestionIdx));
+          items.forEach((el, idx) => {
+            el.classList.toggle("active", idx === activeSuggestionIdx);
+            el.setAttribute("aria-selected", idx === activeSuggestionIdx ? "true" : "false");
+          });
         } else if (ev.key === "ArrowUp") {
           ev.preventDefault();
           activeSuggestionIdx = (activeSuggestionIdx - 1 + items.length) % items.length;
-          items.forEach((el, idx) => el.classList.toggle("active", idx === activeSuggestionIdx));
+          items.forEach((el, idx) => {
+            el.classList.toggle("active", idx === activeSuggestionIdx);
+            el.setAttribute("aria-selected", idx === activeSuggestionIdx ? "true" : "false");
+          });
         } else if (ev.key === "Tab") {
           ev.preventDefault();
           const chosenIdx = activeSuggestionIdx >= 0 ? activeSuggestionIdx : 0;
