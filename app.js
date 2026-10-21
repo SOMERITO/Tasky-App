@@ -3420,7 +3420,7 @@
     renderBoard();
     renderLearningGoalsPanel();
     const syncText = document.getElementById("sync-status-text");
-    if (syncText) syncText.textContent = "Firebase conciliando datos";
+    if (syncText) syncText.textContent = "Sincronizado";
     if (syncFingerprint(merged) !== syncFingerprint(norm)) pushCloudSync(false);
     if (showNotification) showToast("🔄 Datos fusionados sin perder tareas");
     return true;
@@ -3430,6 +3430,8 @@
   function pushCloudSync(forceImmediateToast = false) {
     if (!cloudSyncReady || cloudSyncReadyConfig !== getCloudSyncConfigKey()) {
       if (forceImmediateToast) showToast("Sincronización bloqueada por seguridad: primero hay que verificar la nube o usar «Rescatar y Subir Todo a Firebase».");
+      const blockedSyncText = document.getElementById("sync-status-text");
+      if (blockedSyncText) blockedSyncText.textContent = "Sin verificar";
       return;
     }
     if (syncBroadcastChannel) {
@@ -3441,9 +3443,13 @@
       } catch (e) {}
     }
     if (!isCloudNetworkAllowed()) {
+      const offlineSyncText = document.getElementById("sync-status-text");
+      if (offlineSyncText) offlineSyncText.textContent = "Sin conexión";
       if (forceImmediateToast) showToast("Guardado localmente (Firebase en espera de red)");
       return;
     }
+    const pendingSyncText = document.getElementById("sync-status-text");
+    if (pendingSyncText) pendingSyncText.textContent = "Sincronizando…";
     if (cloudPushTimer) clearTimeout(cloudPushTimer);
     cloudPushTimer = setTimeout(async () => {
       const fullPayload = {
@@ -3505,7 +3511,7 @@
       } catch (e) {}
 
       const syncText = document.getElementById("sync-status-text");
-      if (syncText) syncText.textContent = firebaseSaved ? "Firebase sincronizado" : "Nube no confirmada · datos locales protegidos";
+      if (syncText) syncText.textContent = firebaseSaved ? "Sincronizado" : "Sin confirmar";
       const modalSyncTime = document.getElementById("modal-sync-last-time");
       if (modalSyncTime) {
         const now = new Date();
@@ -3613,7 +3619,7 @@
         sourceStatus.firestore = "Documento creado automáticamente · " + candidate.boxes.length + " casillas, " + candidate.tasks.length + " tareas";
         renderSyncDiagnostics(sourceStatus);
         const syncText = document.getElementById("sync-status-text");
-        if (syncText) syncText.textContent = "Firebase inicializado · sincronización automática";
+        if (syncText) syncText.textContent = "Sincronizando…";
         const modalSyncTime = document.getElementById("modal-sync-last-time");
         if (modalSyncTime) modalSyncTime.textContent = "Copia inicial creada automáticamente en Firestore. Los cambios se sincronizarán sin pulsar botones.";
         lastCloudBootstrapError = "";
@@ -3782,7 +3788,7 @@
         cloudSyncReadyConfig = "";
         const summary = `Nube no verificada · FS ${compactProviderStatus(sourceStatus.firestore)} / RTDB ${compactProviderStatus(sourceStatus.rtdb)}`;
         const syncText = document.getElementById("sync-status-text");
-        if (syncText) syncText.textContent = summary;
+        if (syncText) syncText.textContent = "Sin verificar";
         const modalSyncTime = document.getElementById("modal-sync-last-time");
         if (modalSyncTime) modalSyncTime.textContent = "No se encontró una copia remota persistente válida. No se subieron datos automáticamente.";
         if (manual) showToast("La nube no se pudo verificar. Abre el menú «…» y revisa el diagnóstico de Firestore y Realtime Database. Tus datos locales siguen protegidos.", true);
@@ -3798,7 +3804,7 @@
       cloudSyncReady = true;
       cloudSyncReadyConfig = getCloudSyncConfigKey();
       const syncText = document.getElementById("sync-status-text");
-      if (syncText) syncText.textContent = "Nube verificada · conciliando datos";
+      if (syncText) syncText.textContent = "Sincronizando…";
       const modalSyncTime = document.getElementById("modal-sync-last-time");
       if (modalSyncTime) {
         modalSyncTime.textContent = `Copia remota verificada a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}; conciliando los dispositivos.`;
