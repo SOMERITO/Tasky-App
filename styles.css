@@ -895,10 +895,11 @@ body {
   border-color: rgba(34, 197, 94, 0.32);
 }
 
-/* Azul suave compartido por casillas vacías, completadas o sin pendientes hoy. */
+/* Azul suave para casillas vacías, sin tareas para hoy o completadas hoy. */
 .box-card.box-empty-theme,
 .box-card.box-fully-completed-theme,
-.box-card.box-today-completed-theme {
+.box-card.box-today-completed-theme,
+.box-card.box-no-tasks-today-theme {
   background: linear-gradient(135deg, #f2f7ff 0%, #e6f0ff 100%) !important;
   border: 1.5px solid #c7dcf8 !important;
   border-left: 5px solid #a6c8f5 !important;
@@ -907,13 +908,15 @@ body {
 
 .box-card.box-empty-theme .box-name,
 .box-card.box-fully-completed-theme .box-name,
-.box-card.box-today-completed-theme .box-name {
+.box-card.box-today-completed-theme .box-name,
+.box-card.box-no-tasks-today-theme .box-name {
   color: #365b86 !important;
 }
 
 [data-theme="dark"] .box-card.box-empty-theme,
 [data-theme="dark"] .box-card.box-fully-completed-theme,
-[data-theme="dark"] .box-card.box-today-completed-theme {
+[data-theme="dark"] .box-card.box-today-completed-theme,
+[data-theme="dark"] .box-card.box-no-tasks-today-theme {
   background: linear-gradient(135deg, #18283f 0%, #203754 100%) !important;
   border: 1.5px solid #3b587d !important;
   border-left: 5px solid #7199cf !important;
@@ -922,7 +925,8 @@ body {
 
 [data-theme="dark"] .box-card.box-empty-theme .box-name,
 [data-theme="dark"] .box-card.box-fully-completed-theme .box-name,
-[data-theme="dark"] .box-card.box-today-completed-theme .box-name {
+[data-theme="dark"] .box-card.box-today-completed-theme .box-name,
+[data-theme="dark"] .box-card.box-no-tasks-today-theme .box-name {
   color: #c2d8f5 !important;
 }
 
@@ -1104,9 +1108,9 @@ body {
 }
 
 .box-pending-count-box.zero-count {
-  background: linear-gradient(135deg, #64748b, #475569);
-  border-color: rgba(100, 116, 139, 0.32);
-  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+  background: linear-gradient(135deg, #4f83f1, #315fe5);
+  border-color: rgba(49, 95, 229, 0.26);
+  box-shadow: 0 3px 9px rgba(49, 95, 229, 0.18);
 }
 
 .box-pending-count-box.orange-count {
