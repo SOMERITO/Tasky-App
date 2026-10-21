@@ -4785,8 +4785,8 @@ body.focus-mode-open #boxes-container {
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    max-height: calc(100dvh - var(--safe-top));
     max-height: calc(100vh - var(--safe-top));
+    max-height: calc(100dvh - var(--safe-top));
     margin: 0;
     padding: 17px 13px calc(18px + var(--safe-bottom));
     border-radius: 21px 21px 0 0;
