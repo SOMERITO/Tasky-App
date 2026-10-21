@@ -4831,7 +4831,7 @@
 
       // Point 9: Transparent live clone of the exact task or Casilla being dragged
       const clone = element.cloneNode(true);
-      clone.classList.remove("is-held-dragging", "is-charging", "boot-animate");
+      clone.classList.remove("is-held-dragging", "is-charging", "boot-animate", "is-multi-drag-source", "multi-selected");
       clone.classList.add("drop-ghost-clone");
       clone.removeAttribute("data-task-id");
       clone.removeAttribute("data-box-id");
