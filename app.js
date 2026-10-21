@@ -6303,7 +6303,7 @@
       subBadges += `<span class="task-daily-pill">${escapeHtml(repeatLabel)}</span>`;
     }
     if (isUpcomingRepeat) {
-      subBadges += `<span class="task-resched-tag">🗓️ Próxima · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
+      subBadges += `<span class="task-upcoming-tag">🗓️ Próxima · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
     }
     if (isOverdue) {
       subBadges += `<span class="task-overdue-tag">⚠️ Atrasada · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
