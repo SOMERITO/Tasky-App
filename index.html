@@ -666,6 +666,16 @@
         <button type="button" class="modal-close-btn" data-close-modal="modal-productivity" aria-label="Cerrar">✕</button>
       </div>
 
+      <div class="completion-history-launch">
+        <div class="completion-history-launch-copy">
+          <strong>Registro de tareas completadas</strong>
+          <p>Consulta qué terminaste hoy o durante la semana, con su casilla y hora de finalización.</p>
+        </div>
+        <button type="button" id="btn-open-completion-history" class="btn-primary completion-history-launch-button">
+          📋 Ver registro
+        </button>
+      </div>
+
       <!-- 6 Executive KPIs -->
       <div class="prod-kpi-grid">
         <div class="prod-kpi-card">
@@ -737,6 +747,35 @@
     </div>
   </div>
 
+  <!-- MODAL 6B: Task Completion History -->
+  <div id="modal-completion-history" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="completion-history-title">
+    <div class="modal-dialog wide completion-history-dialog">
+      <div class="modal-header">
+        <div>
+          <div class="modal-eyebrow">📋 REGISTRO DE ACTIVIDAD</div>
+          <h3 id="completion-history-title" class="modal-title">Tareas completadas</h3>
+          <p class="completion-history-description">Un registro de lo que has terminado, aunque después la tarea se reinicie o salga del tablero.</p>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal="modal-completion-history" aria-label="Cerrar registro">✕</button>
+      </div>
+
+      <div class="completion-history-toolbar">
+        <div class="completion-history-period-switch" role="group" aria-label="Periodo del registro">
+          <button type="button" class="is-active" data-completion-period="today" aria-pressed="true">Hoy</button>
+          <button type="button" data-completion-period="week" aria-pressed="false">Esta semana</button>
+        </div>
+        <span id="completion-history-range" class="completion-history-range">Hoy</span>
+      </div>
+
+      <div id="completion-history-summary" class="completion-history-summary" aria-live="polite">Todavía no hay tareas registradas.</div>
+      <div id="completion-history-list" class="completion-history-list"></div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" data-close-modal="modal-completion-history">Cerrar registro</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL 7: Confirmation Dialog -->
   <div id="modal-confirm" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
     <div class="modal-dialog" style="max-width:420px;">
@@ -752,6 +791,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261021-recurring-task-order-1"></script>
+  <script src="app.js?v=20261021-completion-history-1"></script>
 </body>
 </html>
