@@ -5211,13 +5211,20 @@
         );
       }
 
-      // Pin P1, P2 and P3 above ordinary tasks without changing saved task order.
+      // Ordering within each box: focus priorities first, recurring tasks second, and one-off tasks last.
+      // Keep the saved order within the recurring and one-off groups.
       visibleTasks.sort((a, b) => {
         const aPriority = getFocusPriorityLevel(a.id);
         const bPriority = getFocusPriorityLevel(b.id);
         if (aPriority && bPriority) return aPriority - bPriority;
         if (aPriority) return -1;
         if (bPriority) return 1;
+
+        const aRepeats = a.frequency !== "once" || (Array.isArray(a.repeatDays) && a.repeatDays.length > 0);
+        const bRepeats = b.frequency !== "once" || (Array.isArray(b.repeatDays) && b.repeatDays.length > 0);
+        if (aRepeats && !bRepeats) return -1;
+        if (!aRepeats && bRepeats) return 1;
+
         return (a.order || 0) - (b.order || 0);
       });
 
