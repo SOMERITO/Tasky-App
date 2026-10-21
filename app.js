@@ -4758,6 +4758,7 @@
     activeId: null,
     activeEl: null,
     previewSlot: null,
+    activeGroupIds: [],
     autoScrollRaf: null,
     autoScrollVelocity: 0,
     startX: 0,
@@ -4806,8 +4807,25 @@
       dragEngine.activeType = type;
       dragEngine.activeId = id;
       dragEngine.activeEl = element;
-      dragEngine.justDragged = true;
+      dragEngine.activeGroupIds = [String(id)];
 
+      if (type === "task" && appState.selectedTaskIds &&
+          appState.selectedTaskIds.has(String(id)) && appState.selectedTaskIds.size > 1) {
+        const selectedIds = new Set(Array.from(appState.selectedTaskIds).map(String));
+        const visibleTaskIds = Array.from(document.querySelectorAll("#boxes-container .task-item[data-task-id]"))
+          .map(row => String(row.dataset.taskId));
+        const orderedGroup = visibleTaskIds.filter(taskId => selectedIds.has(taskId));
+        if (orderedGroup.includes(String(id)) && orderedGroup.length > 1) {
+          dragEngine.activeGroupIds = orderedGroup;
+          orderedGroup.forEach(taskId => {
+            const row = Array.from(document.querySelectorAll("#boxes-container .task-item[data-task-id]"))
+              .find(candidate => String(candidate.dataset.taskId) === taskId);
+            if (row) row.classList.add("is-multi-drag-source");
+          });
+        }
+      }
+
+      dragEngine.justDragged = true;
       element.classList.add("is-held-dragging");
       playUiSound("dragReady");
 
@@ -4818,6 +4836,15 @@
       clone.removeAttribute("data-task-id");
       clone.removeAttribute("data-box-id");
       dragEngine.previewSlot = clone;
+      if (dragEngine.activeGroupIds.length > 1) {
+        const textWrap = clone.querySelector(".task-text-wrap");
+        if (textWrap) {
+          const groupBadge = document.createElement("span");
+          groupBadge.className = "multi-drag-preview-badge";
+          groupBadge.textContent = `Moviendo ${dragEngine.activeGroupIds.length} tareas`;
+          textWrap.appendChild(groupBadge);
+        }
+      }
       element.parentNode.insertBefore(clone, element.nextSibling);
 
       runAutoScrollLoop();
@@ -4864,8 +4891,11 @@
         showToast(`📂 ${targetBoxObj ? targetBoxObj.name.toUpperCase() : "Casilla"} desplegada`);
       }
 
+      const activeGroup = new Set((dragEngine.activeGroupIds || []).map(String));
       const overTask = hitElements.find(
-        el => el.classList && el.classList.contains("task-item") && !el.classList.contains("drop-ghost-clone") && el !== dragEngine.activeEl
+        el => el.classList && el.classList.contains("task-item") &&
+          !el.classList.contains("drop-ghost-clone") &&
+          !activeGroup.has(String(el.dataset.taskId))
       );
       if (overTask && overTask.parentNode) {
         const rect = overTask.getBoundingClientRect();
@@ -4915,27 +4945,94 @@
         const listEl = previewSlot.closest(".tasks-list");
         const targetBoxId = listEl ? listEl.dataset.boxList : null;
         if (targetBoxId) {
-          const task = appState.data.tasks.find(t => t.id === activeId);
-          if (task) {
-            pushUndoSnapshot(`Mover tarea: ${task.title}`);
-            const boxChanged = task.boxId !== targetBoxId;
-            task.boxId = targetBoxId;
-            previewSlot.parentNode.insertBefore(activeEl, previewSlot);
-            previewSlot.remove();
-            const siblingIds = Array.from(listEl.querySelectorAll(".task-item[data-task-id]")).map(el => el.dataset.taskId);
-            siblingIds.forEach((id, idx) => {
-              const tObj = appState.data.tasks.find(x => x.id === id);
-              if (tObj) tObj.order = idx;
-            });
-            playUiSound("drop");
-            saveData(true, `Movió tarea: ${task.title}`);
-            // Point 9: Zero-flash update on drop (only re-render board if moved across different Casillas)
-            if (boxChanged) {
-              renderBoard();
+          const groupIds = Array.from(new Set((dragEngine.activeGroupIds || [activeId]).map(String)));
+          if (groupIds.length > 1) {
+            const board = document.getElementById("boxes-container");
+            const visibleRows = board ? Array.from(board.querySelectorAll(".task-item[data-task-id]")) : [];
+            const groupRows = groupIds.map(taskId =>
+              visibleRows.find(row => String(row.dataset.taskId) === taskId)
+            ).filter(Boolean);
+            const groupTasks = groupIds.map(taskId =>
+              appState.data.tasks.find(task => String(task.id) === taskId)
+            ).filter(Boolean);
+
+            if (groupRows.length > 1 && groupTasks.length === groupRows.length && groupRows.some(row => row === activeEl)) {
+              const oldBoxIds = new Set(groupTasks.map(task => String(task.boxId)));
+              const boxChanged = groupTasks.some(task => String(task.boxId) !== String(targetBoxId));
+              pushUndoSnapshot(`Mover ${groupRows.length} tareas seleccionadas`);
+
+              // Remove every selected row first so the placeholder's destination remains stable,
+              // then insert all rows together in the order they appeared in the board.
+              groupRows.forEach(row => {
+                row.classList.remove("is-multi-drag-source", "is-held-dragging");
+                if (row.parentNode) row.parentNode.removeChild(row);
+              });
+              groupTasks.forEach(task => { task.boxId = String(targetBoxId); });
+              groupRows.forEach(row => listEl.insertBefore(row, previewSlot));
+              previewSlot.remove();
+
+              const affectedBoxIds = new Set([...oldBoxIds, String(targetBoxId)]);
+              affectedBoxIds.forEach(boxId => {
+                const affectedList = board && Array.from(board.querySelectorAll(".tasks-list"))
+                  .find(candidate => String(candidate.dataset.boxList) === boxId);
+                if (!affectedList) return;
+                Array.from(affectedList.querySelectorAll(".task-item[data-task-id]")).forEach((row, index) => {
+                  const task = appState.data.tasks.find(entry => String(entry.id) === String(row.dataset.taskId));
+                  if (task) task.order = index;
+                });
+              });
+
+              playUiSound("drop");
+              clearTaskSelection();
+              saveData(true, `Movió ${groupRows.length} tareas seleccionadas`);
+              if (boxChanged) renderBoard();
+              else updateMetrics();
+              showToast(boxChanged
+                ? `${groupRows.length} tareas movidas a otra casilla`
+                : `${groupRows.length} tareas reordenadas`);
             } else {
-              updateMetrics();
+              // Fallback to the original single-task behavior if the whole group is not available in the board.
+              const task = appState.data.tasks.find(t => String(t.id) === String(activeId));
+              if (task) {
+                pushUndoSnapshot(`Mover tarea: ${task.title}`);
+                const boxChanged = String(task.boxId) !== String(targetBoxId);
+                task.boxId = String(targetBoxId);
+                previewSlot.parentNode.insertBefore(activeEl, previewSlot);
+                previewSlot.remove();
+                Array.from(listEl.querySelectorAll(".task-item[data-task-id]")).forEach((row, index) => {
+                  const tObj = appState.data.tasks.find(entry => String(entry.id) === String(row.dataset.taskId));
+                  if (tObj) tObj.order = index;
+                });
+                playUiSound("drop");
+                saveData(true, `Movió tarea: ${task.title}`);
+                if (boxChanged) renderBoard();
+                else updateMetrics();
+                showToast("Tarea reubicada");
+              }
             }
-            showToast("Tarea reubicada");
+          } else {
+            const task = appState.data.tasks.find(t => String(t.id) === String(activeId));
+            if (task) {
+              pushUndoSnapshot(`Mover tarea: ${task.title}`);
+              const boxChanged = String(task.boxId) !== String(targetBoxId);
+              task.boxId = String(targetBoxId);
+              previewSlot.parentNode.insertBefore(activeEl, previewSlot);
+              previewSlot.remove();
+              const siblingIds = Array.from(listEl.querySelectorAll(".task-item[data-task-id]")).map(el => el.dataset.taskId);
+              siblingIds.forEach((id, idx) => {
+                const tObj = appState.data.tasks.find(x => String(x.id) === String(id));
+                if (tObj) tObj.order = idx;
+              });
+              playUiSound("drop");
+              saveData(true, `Movió tarea: ${task.title}`);
+              // Point 9: Zero-flash update on drop (only re-render board if moved across different Casillas)
+              if (boxChanged) {
+                renderBoard();
+              } else {
+                updateMetrics();
+              }
+              showToast("Tarea reubicada");
+            }
           }
         }
       } else if (activeType === "box") {
@@ -4958,6 +5055,12 @@
       if (previewSlot.parentNode) previewSlot.remove();
     }
 
+    (dragEngine.activeGroupIds || []).forEach(taskId => {
+      const row = Array.from(document.querySelectorAll("#boxes-container .task-item[data-task-id]"))
+        .find(candidate => String(candidate.dataset.taskId) === String(taskId));
+      if (row) row.classList.remove("is-multi-drag-source", "is-held-dragging");
+    });
+
     setTimeout(() => {
       dragEngine.justDragged = false;
     }, 80);
@@ -4966,6 +5069,7 @@
     dragEngine.activeId = null;
     dragEngine.activeEl = null;
     dragEngine.previewSlot = null;
+    dragEngine.activeGroupIds = [];
   }
 
   function getFocusPlanForToday() {
