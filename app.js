@@ -5521,22 +5521,9 @@
         );
       }
 
-      // Ordering within each box: focus priorities first, recurring tasks second, and one-off tasks last.
-      // Keep the saved order within the recurring and one-off groups.
-      visibleTasks.sort((a, b) => {
-        const aPriority = getFocusPriorityLevel(a.id);
-        const bPriority = getFocusPriorityLevel(b.id);
-        if (aPriority && bPriority) return aPriority - bPriority;
-        if (aPriority) return -1;
-        if (bPriority) return 1;
-
-        const aRepeats = a.frequency !== "once" || (Array.isArray(a.repeatDays) && a.repeatDays.length > 0);
-        const bRepeats = b.frequency !== "once" || (Array.isArray(b.repeatDays) && b.repeatDays.length > 0);
-        if (aRepeats && !bRepeats) return -1;
-        if (!aRepeats && bRepeats) return 1;
-
-        return (a.order || 0) - (b.order || 0);
-      });
+      // Manual order is authoritative. Recurrence and focus priority stay visible as badges,
+      // but must never override the sequence the user chose by dragging tasks.
+      visibleTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
 
       if (appState.searchQuery && visibleTasks.length === 0 && !box.name.toLowerCase().includes(appState.searchQuery.toLowerCase())) {
         return;
