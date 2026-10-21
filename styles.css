@@ -4128,3 +4128,27 @@ body.focus-mode-open #boxes-container {
   .repeat-duration-options { grid-template-columns: 1fr; }
   .repeat-duration-option { padding: 10px 12px; }
 }
+
+
+/* A future repeat stays visible as an upcoming occurrence, but cannot be completed early. */
+.task-check-circle:disabled,
+.task-check-circle:disabled:hover {
+  cursor: not-allowed;
+  opacity: 0.48;
+  border-color: var(--line-strong);
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+.task-upcoming-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.45;
+}
