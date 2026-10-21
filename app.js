@@ -2357,7 +2357,7 @@
   // Point 6: Studio-Grade Warm Acoustic Marimba / Celeste Sound Engine (Things 3 / Apple Design Award Style)
   let sharedAudioCtx = null;
   let sharedAudioMasterGain = null;
-  const UI_SOUND_VOLUME_BOOST = 1.45; // Raise app effects by 45% while preserving per-effect balance.
+  const UI_SOUND_VOLUME_BOOST = 1.0; // Neutral gain: let the device/browser media volume be the master control.
   function playNoteLayer(ctx, freqStart, freqEnd, delaySec, durationSec, oscType, peakGain) {
     const start = ctx.currentTime + delaySec;
     const osc = ctx.createOscillator();
