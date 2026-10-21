@@ -4678,6 +4678,12 @@
     return !task.done && Boolean(task.dueDate && task.dueDate < today);
   }
 
+  function isTaskUpcomingRepeat(task) {
+    const today = getTodayISO();
+    return Boolean(task && !task.done && task.frequency !== "once" &&
+      task.dueDate && task.dueDate > today && !task.isRescheduled);
+  }
+
   function isTaskForToday(task) {
     const today = getTodayISO();
     // Completion status must not make a future-dated task count toward today's planned workload.
@@ -5396,6 +5402,7 @@
       } else {
         visibleTasks = pendingBoxTasks.filter(t =>
           (isTaskForToday(t) ||
+            isTaskUpcomingRepeat(t) ||
             getFocusPriorityLevel(t.id) > 0 ||
             String(t.id) === String(appState.focusRevealTaskId || "")) &&
           matchesSearch(t, box.name)
@@ -6284,6 +6291,7 @@
 
     const isResched = isTaskRescheduledFuture(task);
     const isOverdue = isTaskOverdue(task);
+    const isUpcomingRepeat = isTaskUpcomingRepeat(task);
     const repeatLabel = formatRepeatBadgeLabel(task);
     const hasRepeat = Boolean(repeatLabel);
 
@@ -6293,6 +6301,9 @@
     }
     if (hasRepeat) {
       subBadges += `<span class="task-daily-pill">${escapeHtml(repeatLabel)}</span>`;
+    }
+    if (isUpcomingRepeat) {
+      subBadges += `<span class="task-resched-tag">🗓️ Próxima · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
     }
     if (isOverdue) {
       subBadges += `<span class="task-overdue-tag">⚠️ Atrasada · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
@@ -6307,7 +6318,7 @@
       <div class="hold-charge-bar"><div class="hold-charge-fill"></div></div>
       <div class="task-left">
         <span class="drag-handle task-drag-handle" data-tip-title="⋮⋮ Mantén presionado para mover" data-tip-desc="Sostén el clic unos instantes hasta cargar la barra superior y arrastra la tarea.">⋮⋮</span>
-        <button type="button" class="task-check-circle" aria-label="Completar tarea" data-tip-title="✓ Marcar como completada" data-tip-desc="Registra el cumplimiento de esta tarea y actualiza tu progreso diario.">
+        <button type="button" class="task-check-circle" ${isUpcomingRepeat ? "disabled" : ""} aria-label="${isUpcomingRepeat ? `Disponible el ${escapeHtml(formatSpanishDateLong(task.dueDate))}` : "Completar tarea"}" data-tip-title="✓ Marcar como completada" data-tip-desc="${isUpcomingRepeat ? `Estará disponible el ${escapeHtml(formatSpanishDateLong(task.dueDate))}.` : "Registra el cumplimiento de esta tarea y actualiza tu progreso diario."}">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </button>
         <div class="task-text-wrap">
@@ -6562,6 +6573,10 @@
   function toggleTaskDone(taskId, checkBtnEl) {
     const task = appState.data.tasks.find(t => t.id === taskId);
     if (!task) return;
+    if (!task.done && isTaskUpcomingRepeat(task)) {
+      showToast(`Esta repetición estará disponible el ${formatSpanishDateLong(task.dueDate)}.`, true);
+      return;
+    }
     pushUndoSnapshot(`${task.done ? "Reabrir" : "Completar"}: ${task.title}`);
     task.done = !task.done;
     const today = getTodayISO();
