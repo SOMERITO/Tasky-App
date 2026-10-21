@@ -4308,3 +4308,619 @@ body.focus-mode-open #boxes-container {
     font-size: 0.75rem;
   }
 }
+
+
+/* ==========================================================================
+   MOBILE FIT PASS · phones and narrow in-app WebViews
+   Keep desktop styling intact; prevent clipped controls and horizontal overflow.
+   ========================================================================== */
+@media (max-width: 640px) {
+  html,
+  body {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    padding-bottom: calc(92px + var(--safe-bottom));
+  }
+
+  .top-navbar {
+    width: 100%;
+    max-width: 100%;
+    padding: 8px 10px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .brand-cluster {
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .brand-logo {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+
+  .nav-right-cluster {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
+    gap: 7px;
+  }
+
+  .search-wrapper {
+    grid-row: 1;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .search-input {
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    padding: 9px 34px 9px 38px;
+  }
+
+  .top-actions {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .sync-status-static {
+    min-width: 0;
+    max-width: min(42vw, 170px);
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    gap: 5px;
+    font-size: 0.69rem;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  #sync-status-text {
+    display: inline-block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .top-actions .icon-btn {
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .toast-stack {
+    top: calc(142px + var(--safe-top));
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-width: none;
+  }
+
+  .app-shell {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 14px 10px calc(42px + var(--safe-bottom));
+  }
+
+  .hero-header {
+    width: 100%;
+    min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .hero-left {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .hero-title {
+    display: block;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    font-size: clamp(1.7rem, 7vw, 2.25rem);
+    line-height: 1.08;
+  }
+
+  .quote-inline-box {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .date-card {
+    align-self: flex-start;
+    width: fit-content;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    min-width: 0;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .metric-card,
+  .completion-history-metric-card {
+    min-width: 0;
+    width: 100%;
+    padding: 12px;
+    gap: 7px;
+    border-radius: 16px;
+  }
+
+  .metric-info {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .metric-label {
+    font-size: 0.72rem;
+    line-height: 1.25;
+  }
+
+  .metric-value {
+    font-size: clamp(1.35rem, 6vw, 1.65rem);
+  }
+
+  .metric-sub {
+    font-size: 0.68rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .metric-icon-box {
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .controls-bar {
+    width: 100%;
+    min-width: 0;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 9px;
+    margin-bottom: 14px;
+    padding: 9px;
+    border-radius: 16px;
+  }
+
+  .controls-bar > *,
+  .multi-select-toolbar > *,
+  .multi-select-info,
+  .multi-select-actions {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .tabs-group {
+    width: 100%;
+    min-width: 0;
+    gap: 3px;
+    padding: 4px;
+  }
+
+  .tab-btn {
+    min-width: 0;
+    padding: 8px 5px;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .quick-pills {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    gap: 7px;
+  }
+
+  .pill-btn {
+    flex: 0 0 auto;
+    min-height: 38px;
+    padding: 8px 11px;
+    font-size: 0.78rem;
+  }
+
+  .multi-select-toolbar {
+    width: 100%;
+    min-width: 0;
+    padding: 10px;
+  }
+
+  .multi-select-info {
+    overflow-wrap: anywhere;
+    line-height: 1.4;
+  }
+
+  .multi-select-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .multi-select-actions > button {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.35;
+  }
+
+  .boxes-container {
+    width: 100%;
+    min-width: 0;
+    gap: 12px;
+  }
+
+  .box-card {
+    width: 100%;
+    min-width: 0;
+    padding: 12px 10px;
+    border-radius: 17px;
+    overflow: hidden;
+  }
+
+  /* Separate the heading from the action icons on small screens. */
+  .box-top-row {
+    width: 100%;
+    min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 9px;
+    margin-bottom: 10px;
+  }
+
+  .box-title-left {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .box-heading-line {
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .box-left-move-btns {
+    flex: 0 0 auto;
+    gap: 4px;
+  }
+
+  .box-name {
+    min-width: 0;
+    max-width: 100%;
+    flex: 1 1 auto;
+    padding: 3px 4px;
+    gap: 5px;
+    font-size: 0.92rem;
+    letter-spacing: 0;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .box-name-text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .box-badges-row {
+    width: 100%;
+    min-width: 0;
+    padding-left: 0;
+    gap: 5px;
+  }
+
+  .box-pill {
+    min-width: 0;
+    max-width: 100%;
+    padding: 3px 8px;
+    font-size: 0.68rem;
+    line-height: 1.3;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .box-header-actions {
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .box-progress-row {
+    width: 100%;
+    min-width: 0;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .box-progress-bar {
+    min-width: 0;
+  }
+
+  .box-progress-label {
+    flex: 0 0 auto;
+    min-width: 36px;
+    font-size: 0.68rem;
+  }
+
+  .task-item {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 9px;
+    border-radius: 13px;
+    gap: 7px;
+  }
+
+  .task-left {
+    min-width: 0;
+    gap: 7px;
+  }
+
+  .drag-handle {
+    flex: 0 0 auto;
+    padding: 4px 3px;
+  }
+
+  .task-check-circle {
+    flex: 0 0 24px;
+  }
+
+  .task-text-wrap {
+    width: auto;
+    min-width: 0;
+  }
+
+  .task-title {
+    max-width: 100%;
+    font-size: 0.88rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .task-sub-badges {
+    max-width: 100%;
+    gap: 5px;
+  }
+
+  .task-daily-pill,
+  .task-upcoming-tag,
+  .task-overdue-tag,
+  .task-resched-tag {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .task-right-actions {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+    padding-top: 6px;
+  }
+
+  .task-act-btn {
+    flex: 0 0 34px;
+    width: 34px;
+    height: 36px;
+  }
+
+  .inline-add-form {
+    width: 100%;
+    min-width: 0;
+    display: none;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .inline-add-form.open {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .inline-add-input {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 10px 4px;
+    font-size: 16px !important;
+  }
+
+  .inline-add-form .btn-primary,
+  .inline-add-form .btn-secondary {
+    min-height: 40px;
+  }
+
+  .fab-wrapper {
+    right: max(12px, env(safe-area-inset-right, 0px));
+    bottom: calc(12px + var(--safe-bottom));
+  }
+
+  /* Bottom-sheet dialogs use the actual visible phone height, including safe areas. */
+  .modal-backdrop {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+    align-items: flex-end;
+    overflow: hidden;
+  }
+
+  .modal-dialog,
+  .modal-dialog.wide,
+  .learning-modal-dialog {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    max-height: calc(100dvh - var(--safe-top));
+    max-height: calc(100vh - var(--safe-top));
+    margin: 0;
+    padding: 17px 13px calc(18px + var(--safe-bottom));
+    border-radius: 21px 21px 0 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .modal-header {
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .modal-title {
+    min-width: 0;
+    font-size: 1.18rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .modal-footer > button {
+    min-width: 0;
+    flex: 1 1 auto;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .weekdays-selector {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .weekday-chip {
+    min-width: 0;
+    height: 40px;
+    border-radius: 9px;
+    font-size: 0.76rem;
+  }
+
+  .box-emoji-gallery {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .box-emoji-choice {
+    min-width: 0;
+    min-height: 40px;
+    font-size: 1.15rem;
+  }
+
+  .learning-section,
+  .focus-mode-panel,
+  .rescheduled-search-panel {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .learning-cards-grid,
+  .learning-history-grid,
+  .learning-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .learning-card,
+  .learning-history-card {
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .learning-action-row > button {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  img,
+  svg,
+  canvas,
+  video {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .top-navbar {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .app-shell {
+    padding-right: 7px;
+    padding-left: 7px;
+  }
+
+  .metric-card,
+  .completion-history-metric-card {
+    padding: 10px;
+  }
+
+  .metric-icon-box {
+    display: none;
+  }
+
+  .box-card {
+    padding: 10px 8px;
+  }
+
+  .box-header-actions {
+    gap: 4px;
+  }
+
+  .box-header-actions .box-ctrl-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .task-item {
+    padding: 9px 7px;
+  }
+
+  .task-right-actions {
+    justify-content: space-between;
+  }
+
+  .modal-dialog,
+  .modal-dialog.wide,
+  .learning-modal-dialog {
+    padding-right: 11px;
+    padding-left: 11px;
+  }
+}
