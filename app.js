@@ -2869,10 +2869,10 @@
 
     const tasks = tasksRaw.map((t, idx) => {
       const due = String(t.dueDate || today);
+      const freq = String(t.frequency || "once");
       // A future date on an ordinary task is a reschedule. A recurring task can also
       // have its next planned occurrence in the future without becoming a reprogrammed task.
       const isResched = Boolean(due > today && (Boolean(t.isRescheduled) || freq === "once"));
-      const freq = String(t.frequency || "once");
       let repDays = Array.isArray(t.repeatDays) ? t.repeatDays : [];
       if (freq === "daily" && repDays.length === 0) repDays = [0, 1, 2, 3, 4, 5, 6];
       return {
