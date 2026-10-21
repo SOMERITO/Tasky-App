@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261021-suggestion-dismiss-1" />
+  <link rel="stylesheet" href="styles.css?v=20261021-week-repeat-scope-1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -500,6 +500,21 @@
         </div>
       </div>
 
+      <div class="repeat-duration-control">
+        <span class="form-label">¿Durante cuánto tiempo?</span>
+        <div class="repeat-duration-options" role="group" aria-label="Duración de la repetición">
+          <button type="button" class="repeat-duration-option is-active" data-repeat-duration="forever" aria-pressed="true">
+            <span class="repeat-duration-title">🔁 Todas las semanas</span>
+            <span class="repeat-duration-subtitle">Se repite cada semana</span>
+          </button>
+          <button type="button" class="repeat-duration-option" data-repeat-duration="thisWeek" aria-pressed="false">
+            <span class="repeat-duration-title">📅 Solo esta semana</span>
+            <span class="repeat-duration-subtitle">Termina el domingo</span>
+          </button>
+        </div>
+        <p id="repeat-duration-help" class="repeat-duration-help">La tarea seguirá repitiéndose en los días elegidos cada semana, hasta que cambies su frecuencia.</p>
+      </div>
+
       <div class="modal-footer">
         <button type="button" class="btn-secondary" data-close-modal="modal-repeat-picker">Cancelar</button>
         <button type="button" id="btn-save-custom-repeat" class="btn-primary">Guardar días seleccionados</button>
@@ -791,6 +806,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261021-suggestion-dismiss-1"></script>
+  <script src="app.js?v=20261021-week-repeat-scope-1"></script>
 </body>
 </html>
