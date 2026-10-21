@@ -2734,7 +2734,7 @@
       if (!entry || typeof entry !== "object") return;
       const taskId = String(entry.taskId || "").trim();
       const completedDate = String(entry.completedDate || "").slice(0, 10);
-      if (!taskId || !/^\\d{4}-\\d{2}-\\d{2}$/.test(completedDate)) return;
+      if (!taskId || !/^\d{4}-\d{2}-\d{2}$/.test(completedDate)) return;
       const id = String(entry.id || completionEventId(taskId, completedDate));
       const fallbackTime = new Date(`${completedDate}T12:00:00`).getTime();
       const rawCompletedAt = Number(entry.completedAt);
