@@ -6628,8 +6628,116 @@
 
   function openRescheduledModal() {
     appState.selectedRescheduledIds.clear();
+    const searchInput = document.getElementById("rescheduled-global-search");
+    if (searchInput) searchInput.value = "";
     renderRescheduledModalList();
     document.getElementById("modal-rescheduled-list").classList.add("open");
+  }
+
+  function renderRescheduledTaskSearchResults(rawQuery) {
+    const input = document.getElementById("rescheduled-global-search");
+    const clearButton = document.getElementById("rescheduled-global-search-clear");
+    const resultsContainer = document.getElementById("rescheduled-search-results");
+    const rescheduledContainer = document.getElementById("rescheduled-modal-items");
+    if (!resultsContainer || !rescheduledContainer) return;
+
+    const query = String(rawQuery || "").trim();
+    const normalize = value => String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+    const normalizedQuery = normalize(query);
+
+    if (clearButton) clearButton.hidden = !query;
+    resultsContainer.innerHTML = "";
+
+    if (!normalizedQuery) {
+      resultsContainer.hidden = true;
+      rescheduledContainer.hidden = false;
+      return;
+    }
+
+    resultsContainer.hidden = false;
+    rescheduledContainer.hidden = true;
+
+    const matches = appState.data.tasks.filter(task => {
+      const box = appState.data.boxes.find(entry => String(entry.id) === String(task.boxId));
+      const boxName = box ? box.name : "";
+      const status = task.done
+        ? "completada"
+        : isTaskRescheduledFuture(task)
+          ? "reprogramada"
+          : isTaskOverdue(task)
+            ? "atrasada"
+            : isTaskForToday(task)
+              ? "pendiente hoy"
+              : "pendiente";
+      const haystack = [task.title, boxName, task.dueDate, task.id, status].map(normalize).join(" ");
+      return haystack.includes(normalizedQuery);
+    });
+
+    const summary = document.createElement("div");
+    summary.className = "rescheduled-search-summary";
+    summary.textContent = matches.length
+      ? `${matches.length} resultado${matches.length === 1 ? "" : "s"} en todas tus tareas`
+      : "No encontré tareas que coincidan con tu búsqueda.";
+    resultsContainer.appendChild(summary);
+
+    matches.forEach(task => {
+      const box = appState.data.boxes.find(entry => String(entry.id) === String(task.boxId));
+      const boxName = box ? box.name : "Casilla no disponible";
+      let statusLabel = "Pendiente";
+      let statusClass = "neutral";
+      if (task.done) {
+        statusLabel = "Completada";
+        statusClass = "complete";
+      } else if (isTaskRescheduledFuture(task)) {
+        statusLabel = task.dueDate
+          ? `Reprogramada · ${formatSpanishDateLong(task.dueDate)}`
+          : "Reprogramada";
+        statusClass = "rescheduled";
+      } else if (isTaskOverdue(task)) {
+        statusLabel = "Atrasada";
+        statusClass = "overdue";
+      } else if (isTaskForToday(task)) {
+        statusLabel = "Pendiente hoy";
+        statusClass = "today";
+      } else if (task.dueDate) {
+        statusLabel = `Programada · ${formatSpanishDateLong(task.dueDate)}`;
+      }
+
+      const card = document.createElement("article");
+      card.className = "rescheduled-search-result";
+      const info = document.createElement("div");
+      info.className = "rescheduled-search-result-info";
+      const title = document.createElement("div");
+      title.className = "rescheduled-search-result-title";
+      title.textContent = String(task.title || "Tarea sin título");
+      const metadata = document.createElement("div");
+      metadata.className = "rescheduled-search-result-meta";
+      metadata.textContent = boxName;
+      const status = document.createElement("span");
+      status.className = `rescheduled-search-status ${statusClass}`;
+      status.textContent = statusLabel;
+      info.appendChild(title);
+      info.appendChild(metadata);
+      info.appendChild(status);
+
+      const openButton = document.createElement("button");
+      openButton.type = "button";
+      openButton.className = "btn-primary rescheduled-search-open";
+      openButton.textContent = "Ver tarea";
+      openButton.addEventListener("click", () => {
+        playUiSound("tap");
+        const modal = document.getElementById("modal-rescheduled-list");
+        if (modal) modal.classList.remove("open");
+        jumpToFocusTask(task.id);
+      });
+
+      card.appendChild(info);
+      card.appendChild(openButton);
+      resultsContainer.appendChild(card);
+    });
   }
 
   function renderRescheduledModalList() {
@@ -6642,6 +6750,8 @@
       datePrefixLabel: "Para",
       isOverdueStyle: false
     });
+    const searchInput = document.getElementById("rescheduled-global-search");
+    renderRescheduledTaskSearchResults(searchInput ? searchInput.value : "");
   }
 
   // Point 1: Dedicated Overdue Tasks Modal (shows ONLY overdue tasks, never future rescheduled tasks!)
@@ -7323,6 +7433,23 @@
       playUiSound("tap");
       openRescheduledModal();
     });
+
+    const rescheduledGlobalSearch = document.getElementById("rescheduled-global-search");
+    const rescheduledGlobalSearchClear = document.getElementById("rescheduled-global-search-clear");
+    if (rescheduledGlobalSearch) {
+      rescheduledGlobalSearch.addEventListener("input", () => {
+        renderRescheduledTaskSearchResults(rescheduledGlobalSearch.value);
+      });
+    }
+    if (rescheduledGlobalSearchClear) {
+      rescheduledGlobalSearchClear.addEventListener("click", () => {
+        if (rescheduledGlobalSearch) {
+          rescheduledGlobalSearch.value = "";
+          renderRescheduledTaskSearchResults("");
+          rescheduledGlobalSearch.focus();
+        }
+      });
+    }
 
     document.getElementById("btn-open-productivity").addEventListener("click", () => {
       playUiSound("tap");

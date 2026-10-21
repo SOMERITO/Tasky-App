@@ -339,6 +339,22 @@
         </div>
         <button type="button" class="modal-close-btn" data-close-modal="modal-rescheduled-list" aria-label="Cerrar">✕</button>
       </div>
+      <div class="rescheduled-search-panel">
+        <label class="rescheduled-search-label" for="rescheduled-global-search">Buscar entre todas tus tareas</label>
+        <div class="rescheduled-search-field">
+          <input
+            type="search"
+            id="rescheduled-global-search"
+            class="form-input"
+            placeholder="Escribe el nombre de una tarea o casilla..."
+            autocomplete="off"
+            aria-label="Buscar en todas las tareas"
+          />
+          <button type="button" id="rescheduled-global-search-clear" class="btn-secondary rescheduled-search-clear" hidden>Limpiar</button>
+        </div>
+        <p class="rescheduled-search-help">Incluye tareas pendientes, reprogramadas y completadas. Elige un resultado para localizarlo en el tablero.</p>
+      </div>
+      <div id="rescheduled-search-results" class="resched-modal-list rescheduled-search-results" hidden></div>
       <div id="rescheduled-modal-items" class="resched-modal-list"></div>
     </div>
   </div>
@@ -736,6 +752,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261020-volume-boost-1"></script>
+  <script src="app.js?v=20261021-global-task-search-1"></script>
 </body>
 </html>
