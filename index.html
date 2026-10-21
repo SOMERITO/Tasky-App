@@ -117,16 +117,16 @@
         </div>
       </div>
 
-      <div class="metric-card">
-        <div class="metric-info">
+      <button type="button" id="btn-open-completion-history" class="metric-card completion-history-metric-card" aria-haspopup="dialog" aria-controls="modal-completion-history" aria-label="Abrir el registro de tareas completadas">
+        <span class="metric-info">
           <span class="metric-label">Completadas</span>
           <span id="metric-completed-count" class="metric-value">66</span>
-          <span class="metric-sub">Tareas logradas este mes</span>
-        </div>
-        <div class="metric-icon-box" style="background:var(--success-soft);color:var(--success);">
+          <span class="metric-sub">Tareas logradas este mes · Ver registro</span>
+        </span>
+        <span class="metric-icon-box" aria-hidden="true" style="background:var(--success-soft);color:var(--success);">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-        </div>
-      </div>
+        </span>
+      </button>
     </section>
 
     <!-- Daily and weekly learning goals -->
@@ -681,16 +681,6 @@
         <button type="button" class="modal-close-btn" data-close-modal="modal-productivity" aria-label="Cerrar">✕</button>
       </div>
 
-      <div class="completion-history-launch">
-        <div class="completion-history-launch-copy">
-          <strong>Registro de tareas completadas</strong>
-          <p>Consulta qué terminaste hoy o durante la semana, con su casilla y hora de finalización.</p>
-        </div>
-        <button type="button" id="btn-open-completion-history" class="btn-primary completion-history-launch-button">
-          📋 Ver registro
-        </button>
-      </div>
-
       <!-- 6 Executive KPIs -->
       <div class="prod-kpi-grid">
         <div class="prod-kpi-card">
@@ -806,6 +796,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261021-auto-save-suggestions-1"></script>
+  <script src="app.js?v=20261021-completion-history-card-1"></script>
 </body>
 </html>
