@@ -3227,7 +3227,9 @@
         x.rescheduledCount || 0,
         x.isRescheduled ? 1 : 0,
         x.order || 0,
-        x.repeatUntil || ""
+        x.repeatUntil || "",
+        x.overdueSince || "",
+        x.overdueCarryDate || ""
       ])
     });
   }
@@ -3261,7 +3263,9 @@
         rescheduledCount: Number(arr[8] || 0),
         isRescheduled: Boolean(arr[9]),
         order: typeof arr[10] === "number" ? arr[10] : idx,
-        repeatUntil: arr[11] || null
+        repeatUntil: arr[11] || null,
+        overdueSince: arr[12] || null,
+        overdueCarryDate: arr[13] || null
       }));
       return normalizeDataPayload({
         boxes,
@@ -4070,6 +4074,14 @@
     const remaining = [];
 
     appState.data.tasks.forEach((task) => {
+      // Once a task assigned to today crosses midnight, its new missed date is its dueDate.
+      // Remove the one-day carryover marker so overdue status naturally follows dueDate.
+      if (task.overdueCarryDate && String(task.overdueCarryDate) < today) {
+        delete task.overdueCarryDate;
+        delete task.overdueSince;
+        changed = true;
+      }
+
       // A one-week repetition expires after Sunday. Incomplete work remains as an ordinary overdue task.
       if (task.repeatUntil && String(task.repeatUntil) < today) {
         task.frequency = "once";
@@ -4104,7 +4116,9 @@
               done: false,
               completedDate: null,
               dueDate: nextDate,
-              isRescheduled: false
+              isRescheduled: false,
+              overdueSince: null,
+              overdueCarryDate: null
             });
           } else {
             // There are no selected repeat days left in this schedule (e.g. the final Friday).
@@ -4675,9 +4689,26 @@
     return !task.done && Boolean(task.dueDate && task.dueDate > today && task.isRescheduled);
   }
 
+  function isTaskCarriedToTodayFromOverdue(task) {
+    const today = getTodayISO();
+    return Boolean(task && !task.done &&
+      task.overdueCarryDate === today &&
+      task.overdueSince && task.overdueSince < today &&
+      task.dueDate === today);
+  }
+
   function isTaskOverdue(task) {
     const today = getTodayISO();
-    return !task.done && Boolean(task.dueDate && task.dueDate < today);
+    return !task.done && (
+      Boolean(task.dueDate && task.dueDate < today) ||
+      isTaskCarriedToTodayFromOverdue(task)
+    );
+  }
+
+  function getTaskOverdueDisplayDate(task) {
+    return isTaskCarriedToTodayFromOverdue(task) && task.overdueSince
+      ? task.overdueSince
+      : (task && task.dueDate) || "";
   }
 
   function isTaskUpcomingRepeat(task) {
@@ -4697,15 +4728,20 @@
     const today = getTodayISO();
     if (!task) return false;
 
-    // Recurring tasks belong to the selected weekdays only.
-    // A past-due occurrence stays pending, but is shown only on another selected weekday.
+    // Unfinished missed work remains visible on any day until it is resolved,
+    // even when today is not one of the task's recurring weekdays.
+    if (isTaskOverdue(task)) return true;
+
+    // Future-dated tasks never count toward today's planned workload.
+    if (task.dueDate && task.dueDate > today) return false;
+
+    // New recurring occurrences belong only to their selected weekdays.
     if (isRecurringTask(task)) {
       const weekday = new Date(`${today}T00:00:00`).getDay();
       if (!getTaskRepeatDays(task).includes(weekday)) return false;
     }
 
-    // Future-dated tasks never count toward today's planned workload.
-    return Boolean(!task.dueDate || task.dueDate <= today);
+    return true;
   }
 
   // Format Repeat Schedule Label (Point 8)
@@ -6434,7 +6470,7 @@
       subBadges += `<span class="task-upcoming-tag">🗓️ Próxima · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
     }
     if (isOverdue) {
-      subBadges += `<span class="task-overdue-tag">⚠️ Atrasada · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
+      subBadges += `<span class="task-overdue-tag">⚠️ Atrasada · ${escapeHtml(formatSpanishDateLong(getTaskOverdueDisplayDate(task))}</span>`;
     } else if (isResched) {
       subBadges += `<span class="task-resched-tag">🕒 Reprogramada · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
     }
@@ -7038,9 +7074,18 @@
 
     appState.data.tasks.forEach((task) => {
       if (idsSet.has(task.id)) {
+        const wasOverdue = isTaskOverdue(task);
+        const originalOverdueDate = String(task.overdueSince || task.dueDate || "");
         task.dueDate = today;
         task.isRescheduled = false;
         task.rescheduledCount = 0;
+        if (wasOverdue && originalOverdueDate && originalOverdueDate < today) {
+          task.overdueSince = originalOverdueDate;
+          task.overdueCarryDate = today;
+        } else {
+          delete task.overdueSince;
+          delete task.overdueCarryDate;
+        }
         movedCount++;
       }
     });
@@ -7336,7 +7381,9 @@
   }
 
   function renderOverdueModalList() {
-    const overdueTasks = appState.data.tasks.filter(t => isTaskOverdue(t));
+    const overdueTasks = appState.data.tasks.filter(t =>
+      isTaskOverdue(t) && !isTaskCarriedToTodayFromOverdue(t)
+    );
     renderInteractiveTaskModalList({
       containerId: "overdue-modal-items",
       tasksList: overdueTasks,
