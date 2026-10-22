@@ -4686,10 +4686,26 @@
       task.dueDate && task.dueDate > today && !task.isRescheduled);
   }
 
+  function isRecurringTask(task) {
+    return Boolean(task && (
+      task.frequency !== "once" ||
+      (Array.isArray(task.repeatDays) && task.repeatDays.length > 0)
+    ));
+  }
+
   function isTaskForToday(task) {
     const today = getTodayISO();
-    // Completion status must not make a future-dated task count toward today's planned workload.
-    return Boolean(task && (!task.dueDate || task.dueDate <= today));
+    if (!task) return false;
+
+    // Recurring tasks belong to the selected weekdays only.
+    // A past-due occurrence stays pending, but is shown only on another selected weekday.
+    if (isRecurringTask(task)) {
+      const weekday = new Date(`${today}T00:00:00`).getDay();
+      if (!getTaskRepeatDays(task).includes(weekday)) return false;
+    }
+
+    // Future-dated tasks never count toward today's planned workload.
+    return Boolean(!task.dueDate || task.dueDate <= today);
   }
 
   // Format Repeat Schedule Label (Point 8)
@@ -5515,10 +5531,11 @@
         );
       } else {
         visibleTasks = pendingBoxTasks.filter(t =>
-          (isTaskForToday(t) ||
-            isTaskUpcomingRepeat(t) ||
-            getFocusPriorityLevel(t.id) > 0 ||
-            String(t.id) === String(appState.focusRevealTaskId || "")) &&
+          (
+            isTaskForToday(t) ||
+            (!isRecurringTask(t) && getFocusPriorityLevel(t.id) > 0) ||
+            String(t.id) === String(appState.focusRevealTaskId || "")
+          ) &&
           matchesSearch(t, box.name)
         );
       }
