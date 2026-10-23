@@ -5667,7 +5667,9 @@
         if (hasFocusPriority) {
           activeBoxesList.push(b);
         } else if (bToday.length === 0 && bResched.length > 0) {
-          allRescheduledBoxesList.push(b);
+          // A reschedule changes the task's date, not the user's chosen position for its box.
+          // Keep future-only boxes among active/pending boxes in their saved manual order.
+          activeBoxesList.push(b);
         } else {
           activeBoxesList.push(b);
         }
