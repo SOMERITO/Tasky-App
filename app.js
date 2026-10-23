@@ -3815,9 +3815,9 @@
         sourceStatus.firestore = "Documento creado automáticamente · " + candidate.boxes.length + " casillas, " + candidate.tasks.length + " tareas";
         renderSyncDiagnostics(sourceStatus);
         const syncText = document.getElementById("sync-status-text");
-        if (syncText) syncText.textContent = "Sincronizando…";
+        if (syncText) syncText.textContent = "Sincronizado";
         const modalSyncTime = document.getElementById("modal-sync-last-time");
-        if (modalSyncTime) modalSyncTime.textContent = "Copia inicial creada automáticamente en Firestore. Los cambios se sincronizarán sin pulsar botones.";
+        if (modalSyncTime) modalSyncTime.textContent = `Copia inicial confirmada en Firestore a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.`;
         lastCloudBootstrapError = "";
         showToast("✅ Nube inicializada. La sincronización automática ya está activa.");
         try {
@@ -4014,8 +4014,16 @@
         Number(localNow.updatedAt || 0) > Number(cloudCandidate.updatedAt || 0)
       ) {
         pushCloudSync(false);
-      } else if (manual) {
-        showToast("Sincronización verificada; los datos se conciliaron sin reemplazar tareas faltantes.");
+      } else {
+        const syncText = document.getElementById("sync-status-text");
+        if (syncText) syncText.textContent = "Sincronizado";
+        const modalSyncTime = document.getElementById("modal-sync-last-time");
+        if (modalSyncTime) {
+          modalSyncTime.textContent = `Sincronización verificada a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.`;
+        }
+        if (manual) {
+          showToast("Sincronización verificada; los datos se conciliaron sin reemplazar tareas faltantes.");
+        }
       }
     } finally {
       cloudPullInFlight = false;
