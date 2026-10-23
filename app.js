@@ -3177,6 +3177,8 @@
   let cloudSyncReadyConfig = "";
   let cloudPullInFlight = false;
   let cloudBootstrapInFlight = false;
+  let syncRecoveryIntervalId = null;
+  let lastSyncCatchupAt = 0;
   let lastCloudBootstrapError = "";
   let syncBroadcastChannel = null;
   try {
@@ -3868,7 +3870,7 @@
     }
   }
 
-  async function pullCloudSync(manual = false) {
+  async function pullCloudSync(manual = false, quiet = false) {
     if (!isCloudNetworkAllowed()) {
       if (manual) showToast("Modo local activo");
       return;
@@ -4000,9 +4002,9 @@
       cloudSyncReady = true;
       cloudSyncReadyConfig = getCloudSyncConfigKey();
       const syncText = document.getElementById("sync-status-text");
-      if (syncText) syncText.textContent = "Sincronizando…";
+      if (!quiet && syncText) syncText.textContent = "Sincronizando…";
       const modalSyncTime = document.getElementById("modal-sync-last-time");
-      if (modalSyncTime) {
+      if (!quiet && modalSyncTime) {
         modalSyncTime.textContent = `Copia remota verificada a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}; conciliando los dispositivos.`;
       }
       applyIncomingSyncPayload(cloudCandidate, manual);
@@ -4030,6 +4032,35 @@
     }
   }
 
+  function requestSyncCatchup() {
+    if (!isCloudNetworkAllowed() || document.visibilityState === "hidden") return;
+    const now = Date.now();
+    if (now - lastSyncCatchupAt < 2500) return;
+    if (cloudPullInFlight) return;
+    lastSyncCatchupAt = now;
+    cleanupCompletedTasksFromPreviousDays();
+    pullCloudSync(false, true);
+  }
+
+  function startCloudSyncRecovery() {
+    if (syncRecoveryIntervalId) clearInterval(syncRecoveryIntervalId);
+    // EventSource may pause or disconnect in mobile WebViews. Reconcile quietly while visible.
+    syncRecoveryIntervalId = window.setInterval(() => {
+      if (document.visibilityState !== "visible" || !isCloudNetworkAllowed() || cloudPullInFlight) return;
+      pullCloudSync(false, true);
+    }, 20000);
+
+    window.addEventListener("focus", requestSyncCatchup);
+    window.addEventListener("pageshow", requestSyncCatchup);
+    window.addEventListener("online", () => {
+      startCloudSyncStream();
+      requestSyncCatchup();
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") requestSyncCatchup();
+    });
+  }
+
   function startCloudSyncStream() {
     if (!isCloudNetworkAllowed() || typeof window.EventSource === "undefined") return;
     try {
@@ -4052,7 +4083,10 @@
           }
         } catch (err) {}
       };
-      es.onerror = () => {};
+      es.onerror = () => {
+        // EventSource reconnects automatically; use a lightweight catch-up as a fallback.
+        requestSyncCatchup();
+      };
       appState.cloudEventSource = es;
     } catch (e) {}
   }
@@ -8617,20 +8651,11 @@
     renderLearningGoalsPanel();
     document.documentElement.classList.remove("tasky-booting");
 
-    // One initial catch-up pull, then real-time SSE/BroadcastChannel for changes.
-    // Avoid periodic whole-dataset polling, which caused unnecessary redraws and visual flicker.
+    // Initial sync, real-time updates, and a quiet recovery poll for mobile WebViews.
+    // Incoming payloads are fingerprinted before rendering, so unchanged data won't redraw the board.
     pullCloudSync(false);
     startCloudSyncStream();
-    window.addEventListener("focus", () => {
-      cleanupCompletedTasksFromPreviousDays();
-      pullCloudSync(false);
-    });
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        cleanupCompletedTasksFromPreviousDays();
-        pullCloudSync(false);
-      }
-    });
+    startCloudSyncRecovery();
   }
 
   if (document.readyState === "loading") {
