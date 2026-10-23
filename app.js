@@ -5643,14 +5643,11 @@
 
     const sortedBoxes = appState.data.boxes.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    // Partition boxes by what needs attention first:
-    // 1. activeBoxesList: at least one pending task for today
-    // 2. emptyBoxesList: no tasks registered
-    // 3. allRescheduledBoxesList: pending tasks exist, but all are scheduled for future dates
-    // 4. completedBoxesList: every task is completed; keep these at the bottom of the board
+    // Keep every box with at least one unfinished task in the manual-order section.
+    // Rescheduling a task changes its date and badges, never the box's position on the board.
+    // Empty boxes and fully completed boxes remain in their dedicated sections.
     const activeBoxesList = [];
     const emptyBoxesList = [];
-    const allRescheduledBoxesList = [];
     const completedBoxesList = [];
 
     sortedBoxes.forEach((b) => {
@@ -5660,19 +5657,7 @@
       } else if (bTasks.every(t => t.done)) {
         completedBoxesList.push(b);
       } else {
-        const bPending = bTasks.filter(t => !t.done);
-        const bResched = bPending.filter(t => isTaskRescheduledFuture(t));
-        const bToday = bPending.filter(t => isTaskForToday(t));
-        const hasFocusPriority = bPending.some(t => getFocusPriorityLevel(t.id) > 0);
-        if (hasFocusPriority) {
-          activeBoxesList.push(b);
-        } else if (bToday.length === 0 && bResched.length > 0) {
-          // A reschedule changes the task's date, not the user's chosen position for its box.
-          // Keep future-only boxes among active/pending boxes in their saved manual order.
-          activeBoxesList.push(b);
-        } else {
-          activeBoxesList.push(b);
-        }
+        activeBoxesList.push(b);
       }
     });
 
@@ -5884,9 +5869,8 @@
       });
 
       function moveBoxWithinVisibleSection(direction) {
-        // The board groups active, empty, rescheduled and completed boxes separately.
-        // Reorder against the section's visible neighbors, not the raw global array.
-        const sectionLists = [activeBoxesList, emptyBoxesList, allRescheduledBoxesList, completedBoxesList];
+        // Reorder only against the visible section this box belongs to.
+        const sectionLists = [activeBoxesList, emptyBoxesList, completedBoxesList];
         const section = sectionLists.find(list => list.some(entry => String(entry.id) === String(box.id)));
         if (!section) {
           showToast("No pude identificar la sección de esta casilla", true);
@@ -6212,10 +6196,7 @@
     // 3. Render empty Casillas below the completed-task summary.
     emptyBoxesList.forEach(box => renderSingleBoxCard(box, true));
 
-    // 4. Render casillas with all pending tasks rescheduled below empty boxes.
-    allRescheduledBoxesList.forEach(box => renderSingleBoxCard(box, false));
-
-    // 5. Keep casillas with every task completed at the very bottom (e.g., MERCADO).
+    // 4. Keep casillas with every task completed at the very bottom (e.g., MERCADO).
     completedBoxesList.forEach(box => renderSingleBoxCard(box, false));
 
     appState.hasBootRendered = true;
