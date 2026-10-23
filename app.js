@@ -12,7 +12,8 @@
     HISTORY: "tasky_history",
     MEMORY: "tasky_task_memory",
     CLOUD_CHANNEL: "tasky_cloud_channel",
-    FIREBASE_CONFIG: "tasky_firebase_config_v1"
+    FIREBASE_CONFIG: "tasky_firebase_config_v1",
+    VIEW_STATE: "tasky_view_state_v1"
   };
 
   const memoryStorage = new Map();
@@ -2851,6 +2852,80 @@
     return merged;
   }
 
+  // View preferences (expand/collapse) belong to this device, never to the shared task dataset.
+  function readLocalViewState() {
+    try {
+      const raw = safeStorage.getItem(STORAGE_KEYS.VIEW_STATE);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return null;
+      return {
+        version: 1,
+        collapsedByBoxId: parsed.collapsedByBoxId && typeof parsed.collapsedByBoxId === "object"
+          ? parsed.collapsedByBoxId
+          : {},
+        completedBoxCollapsed: Boolean(parsed.completedBoxCollapsed)
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function persistLocalViewState() {
+    const collapsedByBoxId = {};
+    (appState.data.boxes || []).forEach(box => {
+      collapsedByBoxId[String(box.id)] = Boolean(box.collapsed);
+    });
+    safeStorage.setItem(STORAGE_KEYS.VIEW_STATE, JSON.stringify({
+      version: 1,
+      collapsedByBoxId,
+      completedBoxCollapsed: Boolean(appState.data.completedBoxCollapsed)
+    }));
+  }
+
+  function applyLocalViewStateToData(data, fallbackData = null, initializeFromData = false) {
+    if (!data || !Array.isArray(data.boxes)) return data;
+    let viewState = readLocalViewState();
+    if (!viewState) {
+      const seed = initializeFromData ? data : fallbackData;
+      if (seed && Array.isArray(seed.boxes)) {
+        const collapsedByBoxId = {};
+        seed.boxes.forEach(box => {
+          collapsedByBoxId[String(box.id)] = Boolean(box.collapsed);
+        });
+        viewState = {
+          version: 1,
+          collapsedByBoxId,
+          completedBoxCollapsed: Boolean(seed.completedBoxCollapsed)
+        };
+        safeStorage.setItem(STORAGE_KEYS.VIEW_STATE, JSON.stringify(viewState));
+      }
+    }
+
+    if (viewState) {
+      data.boxes.forEach(box => {
+        const id = String(box.id);
+        box.collapsed = Object.prototype.hasOwnProperty.call(viewState.collapsedByBoxId, id)
+          ? Boolean(viewState.collapsedByBoxId[id])
+          : false;
+      });
+      data.completedBoxCollapsed = Boolean(viewState.completedBoxCollapsed);
+    }
+    return data;
+  }
+
+  function buildSyncPayload(rawData) {
+    const source = rawData && typeof rawData === "object" ? rawData : {};
+    const { completedBoxCollapsed, ...syncableData } = source;
+    return {
+      ...syncableData,
+      boxes: (Array.isArray(source.boxes) ? source.boxes : []).map(box => {
+        const { collapsed, ...syncableBox } = box || {};
+        return syncableBox;
+      })
+    };
+  }
+
   function normalizeDataPayload(raw) {
     if (!raw || typeof raw !== "object") return null;
     const today = getTodayISO();
@@ -3068,7 +3143,7 @@
       label: last.label,
       snap: JSON.stringify(appState.data)
     });
-    appState.data = normalizeDataPayload(JSON.parse(last.snap));
+    appState.data = applyLocalViewStateToData(normalizeDataPayload(JSON.parse(last.snap)), appState.data);
     appState.data.updatedAt = Date.now();
     playUiSound("uncomplete");
     saveData(false, "Deshizo acción");
@@ -3086,7 +3161,7 @@
       label: next.label,
       snap: JSON.stringify(appState.data)
     });
-    appState.data = normalizeDataPayload(JSON.parse(next.snap));
+    appState.data = applyLocalViewStateToData(normalizeDataPayload(JSON.parse(next.snap)), appState.data);
     appState.data.updatedAt = Date.now();
     playUiSound("complete");
     saveData(false, "Rehizo acción");
@@ -3206,7 +3281,7 @@
       d: appState.deviceId,
       u: Number(d.updatedAt || Date.now()),
       m: Number(d.monthlyCompletedBase || 66),
-      cc: d.completedBoxCollapsed ? 1 : 0,
+      cc: 0,
       sv: 1,
       dt: Array.isArray(d.deletedTaskIds) ? d.deletedTaskIds : [],
       db: Array.isArray(d.deletedBoxIds) ? d.deletedBoxIds : [],
@@ -3214,7 +3289,7 @@
       fp: normalizeFocusPlanData(d.focusPlan, d.tasks),
       cl: normalizeCompletionLog(d.completionLog),
       ds: normalizeDismissedTaskSuggestions(d.dismissedTaskSuggestionsByBox),
-      b: d.boxes.map(x => [x.id, String(x.name || "").toUpperCase(), x.color || "#2563eb", x.collapsed ? 1 : 0, x.order || 0, String(x.emoji || "")]),
+      b: d.boxes.map(x => [x.id, String(x.name || "").toUpperCase(), x.color || "#2563eb", 0, x.order || 0, String(x.emoji || "")]),
       t: d.tasks.map(x => [
         x.id,
         x.boxId,
@@ -3247,7 +3322,7 @@
         id: arr[0],
         name: String(arr[1] || "CASILLA").toUpperCase(),
         color: arr[2] || "#2563eb",
-        collapsed: Boolean(arr[3]),
+        collapsed: false,
         order: typeof arr[4] === "number" ? arr[4] : idx,
         emoji: String(arr[5] || "")
       }));
@@ -3271,7 +3346,7 @@
         boxes,
         tasks,
         monthlyCompletedBase: Number(parsed.m || 66),
-        completedBoxCollapsed: Boolean(parsed.cc),
+        completedBoxCollapsed: false,
         deletedTaskIds: Array.isArray(parsed.dt) ? parsed.dt : [],
         deletedBoxIds: Array.isArray(parsed.db) ? parsed.db : [],
         learningGoals: normalizeLearningGoalsData(parsed.lg),
@@ -3289,12 +3364,14 @@
     const d = normalizeDataPayload(raw);
     if (!d) return "";
     return JSON.stringify({
-      boxes: d.boxes,
+      boxes: d.boxes.map(box => {
+        const { collapsed, ...syncableBox } = box;
+        return syncableBox;
+      }),
       tasks: d.tasks,
       deletedTaskIds: d.deletedTaskIds.slice().sort(),
       deletedBoxIds: d.deletedBoxIds.slice().sort(),
       monthlyCompletedBase: d.monthlyCompletedBase,
-      completedBoxCollapsed: d.completedBoxCollapsed,
       taskMemoryByBox: d.taskMemoryByBox || {},
       learningGoals: normalizeLearningGoalsData(d.learningGoals),
       focusPlan: normalizeFocusPlanData(d.focusPlan, d.tasks),
@@ -3519,6 +3596,7 @@
     const local = normalizeDataPayload(appState.data);
     const merged = mergeSyncDatasets(local, norm);
     if (!merged) return false;
+    applyLocalViewStateToData(merged, local);
 
     const currentSig = syncFingerprint(local);
     const nextSig = syncFingerprint(merged);
@@ -3556,7 +3634,7 @@
       try {
         syncBroadcastChannel.postMessage({
           deviceId: appState.deviceId,
-          payload: appState.data
+          payload: buildSyncPayload(appState.data)
         });
       } catch (e) {}
     }
@@ -3571,7 +3649,7 @@
     if (cloudPushTimer) clearTimeout(cloudPushTimer);
     cloudPushTimer = setTimeout(async () => {
       const fullPayload = {
-        ...appState.data,
+        ...buildSyncPayload(appState.data),
         syncSchemaVersion: 1,
         deletedTaskIds: Array.isArray(appState.data.deletedTaskIds) ? appState.data.deletedTaskIds : [],
         deletedBoxIds: Array.isArray(appState.data.deletedBoxIds) ? appState.data.deletedBoxIds : [],
@@ -3702,7 +3780,7 @@
       rebuildTaskMemoryFromTasks();
 
       const fullPayload = {
-        ...appState.data,
+        ...buildSyncPayload(appState.data),
         taskMemoryByBox: appState.taskMemory,
         history: appState.history,
         settings: appState.settings,
@@ -4054,7 +4132,7 @@
     if (!loaded.lastRolloverDate) {
       loaded.lastRolloverDate = getTodayISO();
     }
-    appState.data = loaded;
+    appState.data = applyLocalViewStateToData(loaded, null, true);
     appState.currentDayISO = getTodayISO();
     if (boxesUppercased) {
       safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(loaded));
@@ -4940,6 +5018,7 @@
         const targetBoxObj = appState.data.boxes.find(b => b.id === collapsedOverBox.dataset.boxId);
         if (targetBoxObj) {
           targetBoxObj.collapsed = false;
+          persistLocalViewState();
         }
         playUiSound("unfold");
         showToast(`📂 ${targetBoxObj ? targetBoxObj.name.toUpperCase() : "Casilla"} desplegada`);
@@ -5468,7 +5547,10 @@
     if (searchClear) searchClear.style.display = "none";
 
     const sourceBox = appState.data.boxes.find(box => String(box.id) === String(task.boxId));
-    if (sourceBox) sourceBox.collapsed = false;
+    if (sourceBox && sourceBox.collapsed) {
+      sourceBox.collapsed = false;
+      persistLocalViewState();
+    }
 
     const targetTab = task.done ? "completed" : "all";
     appState.activeTab = targetTab;
@@ -5716,7 +5798,7 @@
         box.collapsed = !box.collapsed;
         card.classList.toggle("collapsed", box.collapsed);
         playUiSound(box.collapsed ? "fold" : "unfold");
-        saveData(false);
+        persistLocalViewState();
         showToast(box.collapsed ? "Casilla plegada" : "Casilla desplegada");
       });
 
@@ -5746,7 +5828,7 @@
         box.collapsed = !box.collapsed;
         card.classList.toggle("collapsed", box.collapsed);
         playUiSound(box.collapsed ? "fold" : "unfold");
-        saveData(false);
+        persistLocalViewState();
       });
 
       card.querySelector(".box-name").addEventListener("click", () => {
@@ -6029,7 +6111,7 @@
         appState.data.completedBoxCollapsed = !appState.data.completedBoxCollapsed;
         compCard.classList.toggle("collapsed", appState.data.completedBoxCollapsed);
         playUiSound(appState.data.completedBoxCollapsed ? "fold" : "unfold");
-        saveData(false);
+        persistLocalViewState();
         if (showMsg) {
           showToast(appState.data.completedBoxCollapsed ? "Completadas plegadas" : "Completadas desplegadas");
         }
@@ -7545,7 +7627,7 @@
           `;
           row.querySelector("button").addEventListener("click", () => {
             if (!bkp.data) return;
-            appState.data = normalizeDataPayload(bkp.data);
+            appState.data = applyLocalViewStateToData(normalizeDataPayload(bkp.data), appState.data);
             saveData(false);
             renderBoard();
             modal.classList.remove("open");
