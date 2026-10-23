@@ -5847,20 +5847,23 @@
       const copyBoxBtn = card.querySelector('[data-box-action="copy-box"]');
       if (copyBoxBtn) {
         copyBoxBtn.addEventListener("click", () => {
-          const allRegisteredInBox = appState.data.tasks
-            .filter(t => t.boxId === box.id)
+          const pendingTasksInBox = appState.data.tasks
+            .filter(t => t.boxId === box.id && !t.done)
             .sort((a, b) => (a.order || 0) - (b.order || 0));
-          const lines = [`${box.emoji ? box.emoji + " " : ""}${box.name.toUpperCase()}`];
-          if (allRegisteredInBox.length === 0) {
-            lines.push("(Sin tareas registradas)");
+          const lines = [
+            `${box.emoji ? box.emoji + " " : ""}${box.name.toUpperCase()}`,
+            ""
+          ];
+          if (pendingTasksInBox.length === 0) {
+            lines.push("(Sin tareas pendientes)");
           } else {
-            allRegisteredInBox.forEach((t) => {
+            pendingTasksInBox.forEach((t) => {
               lines.push(`• ${t.title}`);
             });
           }
           copyTextToClipboard(
             lines.join("\n"),
-            `📋 Copiado: ${box.name.toUpperCase()} (${allRegisteredInBox.length} tarea${allRegisteredInBox.length === 1 ? "" : "s"})`,
+            `📋 Copiado: ${box.name.toUpperCase()} (${pendingTasksInBox.length} tarea${pendingTasksInBox.length === 1 ? "" : "s"} pendientes)`,
             copyBoxBtn
           );
         });
