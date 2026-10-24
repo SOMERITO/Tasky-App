@@ -5643,23 +5643,8 @@
 
     const sortedBoxes = appState.data.boxes.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    // Keep every box with at least one unfinished task in the manual-order section.
-    // Rescheduling a task changes its date and badges, never the box's position on the board.
-    // Empty boxes and fully completed boxes remain in their dedicated sections.
-    const activeBoxesList = [];
-    const emptyBoxesList = [];
-    const completedBoxesList = [];
-
-    sortedBoxes.forEach((b) => {
-      const bTasks = appState.data.tasks.filter(t => t.boxId === b.id);
-      if (bTasks.length === 0) {
-        emptyBoxesList.push(b);
-      } else if (bTasks.every(t => t.done)) {
-        completedBoxesList.push(b);
-      } else {
-        activeBoxesList.push(b);
-      }
-    });
+    // A task's status may change the card's appearance, but never its manual position.
+    // Keep one ordered list so completing or reopening tasks cannot move their casilla.
 
     function renderSingleBoxCard(box, isEmptyStandby) {
       const boxTasksAll = appState.data.tasks
@@ -5869,14 +5854,13 @@
       });
 
       function moveBoxWithinVisibleSection(direction) {
-        // Reorder only against the visible section this box belongs to.
-        const sectionLists = [activeBoxesList, emptyBoxesList, completedBoxesList];
-        const section = sectionLists.find(list => list.some(entry => String(entry.id) === String(box.id)));
-        if (!section) {
-          showToast("No pude identificar la sección de esta casilla", true);
+        // Up/down controls use the full board order, independent of completion status.
+        const section = sortedBoxes;
+        const currentIndex = section.findIndex(entry => String(entry.id) === String(box.id));
+        if (currentIndex < 0) {
+          showToast("No pude identificar esta casilla", true);
           return;
         }
-        const currentIndex = section.findIndex(entry => String(entry.id) === String(box.id));
         const targetIndex = currentIndex + direction;
         if (targetIndex < 0 || targetIndex >= section.length) {
           showToast(direction < 0
@@ -6101,8 +6085,11 @@
       container.appendChild(card);
     }
 
-    // 1. Render Active Casillas (with tasks)
-    activeBoxesList.forEach(box => renderSingleBoxCard(box, false));
+    // Render all casillas in their saved manual order, regardless of completion status.
+    sortedBoxes.forEach(box => {
+      const boxHasNoTasks = !appState.data.tasks.some(task => String(task.boxId) === String(box.id));
+      renderSingleBoxCard(box, boxHasNoTasks);
+    });
 
     // Point 10: AUTOMATIC "TAREAS COMPLETADAS" BOX WITH FOLD / UNFOLD SUPPORT
     const allCompletedTasks = appState.data.tasks.filter(t => t.done && matchesSearch(t, "Tareas completadas"));
@@ -6193,11 +6180,7 @@
       container.appendChild(compCard);
     }
 
-    // 3. Render empty Casillas below the completed-task summary.
-    emptyBoxesList.forEach(box => renderSingleBoxCard(box, true));
-
-    // 4. Keep casillas with every task completed at the very bottom (e.g., MERCADO).
-    completedBoxesList.forEach(box => renderSingleBoxCard(box, false));
+    // All casillas were rendered above in manual order; the completed-task summary is a separate panel.
 
     appState.hasBootRendered = true;
     updateMultiSelectUI();
