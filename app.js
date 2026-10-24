@@ -5632,6 +5632,40 @@
     }
   }
 
+  // Before a date change hides a task from its casilla, persist the order the user currently sees.
+  // Keep hidden (e.g. search-filtered) casillas in their existing relative slots.
+  function preserveVisibleBoxOrderBeforeTaskScheduleChange() {
+    const container = document.getElementById("boxes-container");
+    const boxes = Array.isArray(appState.data.boxes) ? appState.data.boxes : [];
+    if (!container || boxes.length < 2) return;
+
+    const currentOrder = boxes.slice().sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+    const boxById = new Map(boxes.map(box => [String(box.id), box]));
+    const seenIds = new Set();
+    const visibleIds = Array.from(container.querySelectorAll(".box-card[data-box-id]"))
+      .map(card => String(card.dataset.boxId))
+      .filter(id => {
+        if (!boxById.has(id) || seenIds.has(id)) return false;
+        seenIds.add(id);
+        return true;
+      });
+    if (visibleIds.length < 2) return;
+
+    const visibleSet = new Set(visibleIds);
+    const visiblePositions = [];
+    currentOrder.forEach((box, index) => {
+      if (visibleSet.has(String(box.id))) visiblePositions.push(index);
+    });
+    if (visiblePositions.length !== visibleIds.length) return;
+
+    visiblePositions.forEach((position, index) => {
+      currentOrder[position] = boxById.get(visibleIds[index]);
+    });
+    currentOrder.forEach((box, index) => {
+      box.order = index;
+    });
+  }
+
   function renderBoard() {
     // Save the viewport before rebuilding cards; detached controls can otherwise make mobile browsers jump.
     const viewportScrollX = Number.isFinite(window.scrollX) ? window.scrollX : (window.pageXOffset || 0);
@@ -6264,6 +6298,7 @@
       return;
     }
 
+    preserveVisibleBoxOrderBeforeTaskScheduleChange();
     pushUndoSnapshot(`Pasar ${tasks.length} tareas seleccionadas para mañana`);
     const tomorrowIso = addDaysISO(getTodayISO(), 1);
     tasks.forEach(task => {
@@ -6503,6 +6538,7 @@
         break;
       case "tomorrow": {
         if (task.done) return;
+        preserveVisibleBoxOrderBeforeTaskScheduleChange();
         pushUndoSnapshot(`Pasar para mañana: ${task.title}`);
         task.dueDate = addDaysISO(getTodayISO(), 1);
         task.isRescheduled = true;
@@ -6648,6 +6684,7 @@
 
     // Point 3: Sun button on task row passes the task to Tomorrow (Mañana)
     item.querySelector('[data-task-action="today"]').addEventListener("click", () => {
+      preserveVisibleBoxOrderBeforeTaskScheduleChange();
       pushUndoSnapshot(`Pasar para mañana: ${task.title}`);
       playUiSound("reschedule");
       const tomorrowIso = addDaysISO(getTodayISO(), 1);
@@ -7127,6 +7164,7 @@
     const actionLabel = isBulk
       ? `Reprogramó ${tasks.length} tareas seleccionadas`
       : `Reprogramó: ${tasks[0].title}`;
+    preserveVisibleBoxOrderBeforeTaskScheduleChange();
     pushUndoSnapshot(isBulk ? `Reprogramar ${tasks.length} tareas` : `Reprogramar: ${tasks[0].title}`);
 
     tasks.forEach(task => {
@@ -7161,6 +7199,7 @@
   function scheduleTaskIdsForToday(taskIds, actionDescription = "Programó tareas para hoy") {
     const idsSet = new Set(taskIds);
     if (idsSet.size === 0) return;
+    preserveVisibleBoxOrderBeforeTaskScheduleChange();
     pushUndoSnapshot(actionDescription);
     const today = getTodayISO();
     let movedCount = 0;
