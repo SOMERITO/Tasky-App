@@ -6538,6 +6538,12 @@
         break;
       case "tomorrow": {
         if (task.done) return;
+        // If this task belongs to a Ctrl/Cmd selection, apply tomorrow to every selected task.
+        if (appState.selectedTaskIds && appState.selectedTaskIds.size > 1 &&
+            appState.selectedTaskIds.has(String(task.id))) {
+          rescheduleSelectedTasksToTomorrow();
+          break;
+        }
         preserveVisibleBoxOrderBeforeTaskScheduleChange();
         pushUndoSnapshot(`Pasar para mañana: ${task.title}`);
         task.dueDate = addDaysISO(getTodayISO(), 1);
@@ -6684,6 +6690,12 @@
 
     // Point 3: Sun button on task row passes the task to Tomorrow (Mañana)
     item.querySelector('[data-task-action="today"]').addEventListener("click", () => {
+      // A row action on a selected task acts on the whole Ctrl/Cmd-selected group.
+      if (appState.selectedTaskIds && appState.selectedTaskIds.size > 1 &&
+          appState.selectedTaskIds.has(String(task.id))) {
+        rescheduleSelectedTasksToTomorrow();
+        return;
+      }
       preserveVisibleBoxOrderBeforeTaskScheduleChange();
       pushUndoSnapshot(`Pasar para mañana: ${task.title}`);
       playUiSound("reschedule");
@@ -7110,10 +7122,17 @@
 
   // Date Picker / Reschedule Modal
   function openDatePickerModal(taskIdOrIds) {
-    const isBulk = Array.isArray(taskIdOrIds);
-    const requestedIds = isBulk
+    // Clicking the calendar on a selected task should apply the same date to the full selection.
+    const useSelectedGroup = !Array.isArray(taskIdOrIds) &&
+      appState.selectedTaskIds &&
+      appState.selectedTaskIds.size > 1 &&
+      appState.selectedTaskIds.has(String(taskIdOrIds));
+    const isBulk = Array.isArray(taskIdOrIds) || Boolean(useSelectedGroup);
+    const requestedIds = Array.isArray(taskIdOrIds)
       ? Array.from(new Set(taskIdOrIds.map(id => String(id))))
-      : [String(taskIdOrIds)];
+      : (useSelectedGroup
+        ? Array.from(new Set(Array.from(appState.selectedTaskIds).map(id => String(id))))
+        : [String(taskIdOrIds)]);
     let tasks = appState.data.tasks.filter(task => requestedIds.includes(String(task.id)));
     if (isBulk) tasks = tasks.filter(task => !task.done);
     if (!tasks.length) return;
