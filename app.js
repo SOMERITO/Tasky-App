@@ -5708,8 +5708,39 @@
 
     const sortedBoxes = appState.data.boxes.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    // A task's status may change the card's appearance, but never its manual position.
-    // Keep one ordered list so completing or reopening tasks cannot move their casilla.
+    // Preserve manual order inside each board section while keeping the intended section hierarchy.
+    // Today's work comes first, fully completed casillas next, and blue no-work-today casillas below them.
+    const activeBoxesList = [];
+    const completedBoxesList = [];
+    const noTasksTodayBoxesList = [];
+    const emptyBoxesList = [];
+    const todayISO = getTodayISO();
+
+    sortedBoxes.forEach(box => {
+      const boxTasks = appState.data.tasks.filter(task => String(task.boxId) === String(box.id));
+      if (boxTasks.length === 0) {
+        emptyBoxesList.push(box);
+        return;
+      }
+      if (boxTasks.every(task => task.done)) {
+        completedBoxesList.push(box);
+        return;
+      }
+
+      const pendingTasks = boxTasks.filter(task => !task.done);
+      const hasPendingToday = pendingTasks.some(task => isTaskForToday(task));
+      const hasCompletionToday = boxTasks.some(task =>
+        task.done && String(task.completedDate || "").slice(0, 10) === todayISO
+      );
+      const hasFocusPriority = pendingTasks.some(task => getFocusPriorityLevel(task.id) > 0);
+
+      if (hasPendingToday || hasCompletionToday || hasFocusPriority) {
+        activeBoxesList.push(box);
+      } else {
+        // Future-only and upcoming-repeat casillas have no work scheduled for today.
+        noTasksTodayBoxesList.push(box);
+      }
+    });
 
     function renderSingleBoxCard(box, isEmptyStandby) {
       const boxTasksAll = appState.data.tasks
@@ -5919,13 +5950,14 @@
       });
 
       function moveBoxWithinVisibleSection(direction) {
-        // Up/down controls use the full board order, independent of completion status.
-        const section = sortedBoxes;
-        const currentIndex = section.findIndex(entry => String(entry.id) === String(box.id));
-        if (currentIndex < 0) {
-          showToast("No pude identificar esta casilla", true);
+        // Up/down controls move a casilla within its current visible section.
+        const sectionLists = [activeBoxesList, completedBoxesList, noTasksTodayBoxesList, emptyBoxesList];
+        const section = sectionLists.find(list => list.some(entry => String(entry.id) === String(box.id)));
+        if (!section) {
+          showToast("No pude identificar la sección de esta casilla", true);
           return;
         }
+        const currentIndex = section.findIndex(entry => String(entry.id) === String(box.id));
         const targetIndex = currentIndex + direction;
         if (targetIndex < 0 || targetIndex >= section.length) {
           showToast(direction < 0
@@ -6150,11 +6182,8 @@
       container.appendChild(card);
     }
 
-    // Render all casillas in their saved manual order, regardless of completion status.
-    sortedBoxes.forEach(box => {
-      const boxHasNoTasks = !appState.data.tasks.some(task => String(task.boxId) === String(box.id));
-      renderSingleBoxCard(box, boxHasNoTasks);
-    });
+    // First render casillas that have pending work for today (or an explicitly assigned focus priority).
+    activeBoxesList.forEach(box => renderSingleBoxCard(box, false));
 
     // Point 10: AUTOMATIC "TAREAS COMPLETADAS" BOX WITH FOLD / UNFOLD SUPPORT
     const allCompletedTasks = appState.data.tasks.filter(t => t.done && matchesSearch(t, "Tareas completadas"));
@@ -6245,7 +6274,10 @@
       container.appendChild(compCard);
     }
 
-    // All casillas were rendered above in manual order; the completed-task summary is a separate panel.
+    // Completed casillas appear before blue casillas with no work scheduled for today.
+    completedBoxesList.forEach(box => renderSingleBoxCard(box, false));
+    noTasksTodayBoxesList.forEach(box => renderSingleBoxCard(box, false));
+    emptyBoxesList.forEach(box => renderSingleBoxCard(box, true));
 
     appState.hasBootRendered = true;
     updateMultiSelectUI();
