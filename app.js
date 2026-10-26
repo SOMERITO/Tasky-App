@@ -4217,6 +4217,37 @@
         changed = true;
       }
 
+      // Preserve each missed recurring occurrence instead of letting it block today's occurrence.
+      // When a scheduled weekday arrives, archive the old overdue occurrence as a one-off task,
+      // then advance the recurring task to today. A deterministic ID prevents duplicate copies
+      // when startup, cloud catch-up, or another device runs this cleanup more than once.
+      const taskIsRecurring = task.frequency !== "once" ||
+        (Array.isArray(task.repeatDays) && task.repeatDays.length > 0);
+      if (!task.done && taskIsRecurring && task.dueDate && task.dueDate < today &&
+          getTaskRepeatDays(task).includes(new Date(`${today}T00:00:00`).getDay())) {
+        const missedOccurrenceId = `${task.id}__missed__${String(task.dueDate).slice(0, 10).replace(/-/g, "")}`;
+        const alreadyArchived = appState.data.tasks.some(existing =>
+          String(existing.id) === missedOccurrenceId
+        );
+        if (!alreadyArchived) {
+          remaining.push({
+            ...task,
+            id: missedOccurrenceId,
+            frequency: "once",
+            repeatDays: [],
+            repeatUntil: null,
+            isRescheduled: false,
+            rescheduledCount: 0,
+            overdueCarryDate: null
+          });
+        }
+        task.dueDate = today;
+        task.isRescheduled = false;
+        delete task.overdueSince;
+        delete task.overdueCarryDate;
+        changed = true;
+      }
+
       // If a task is marked done on an earlier date, account for that completion and prepare its next occurrence.
       const completedOnPastDay = task.done && (
         (task.completedDate && task.completedDate < today) ||
