@@ -4233,6 +4233,16 @@
     }
 
     appState.data.tasks.forEach((task) => {
+      // Reconcile stale task state against the durable ledger, e.g. when another device already
+      // completed this exact occurrence but its task snapshot has not arrived yet.
+      const currentDueDate = String(task.dueDate || "").slice(0, 10);
+      if (!task.done && currentDueDate &&
+          completedOccurrenceKeys.has(`${String(task.id)}::${currentDueDate}`)) {
+        task.done = true;
+        task.completedDate = currentDueDate;
+        changed = true;
+      }
+
       // Once a task assigned to today crosses midnight, its new missed date is its dueDate.
       // Remove the one-day carryover marker so overdue status naturally follows dueDate.
       if (task.overdueCarryDate && String(task.overdueCarryDate) < today) {
