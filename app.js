@@ -4194,8 +4194,13 @@
     const remaining = [];
     // Completion records are durable across recurring-task resets and sync. They prevent
     // catch-up from resurrecting an occurrence that was already completed on another device.
+    const normalizedCompletionEvents = normalizeCompletionLog(appState.data.completionLog);
+    const completionEventsByKey = new Map(normalizedCompletionEvents.map(entry => [
+      `${String(entry.taskId)}::${String(entry.completedDate).slice(0, 10)}`,
+      entry
+    ]));
     const completedOccurrenceKeys = new Set(
-      normalizeCompletionLog(appState.data.completionLog)
+      normalizedCompletionEvents
         .filter(entry => !entry.reversed)
         .map(entry => `${String(entry.taskId)}::${String(entry.completedDate).slice(0, 10)}`)
     );
@@ -4233,11 +4238,19 @@
     }
 
     appState.data.tasks.forEach((task) => {
-      // Reconcile stale task state against the durable ledger, e.g. when another device already
-      // completed this exact occurrence but its task snapshot has not arrived yet.
+      // Reconcile a task snapshot with the durable completion ledger if the cloud merge left it stale.
       const currentDueDate = String(task.dueDate || "").slice(0, 10);
-      if (!task.done && currentDueDate &&
+      const completedDateInTask = String(task.completedDate || currentDueDate).slice(0, 10);
+      const taskLedgerKey = `${String(task.id)}::${completedDateInTask}`;
+      const taskLedgerEvent = completionEventsByKey.get(taskLedgerKey);
+      if (task.done && taskLedgerEvent && taskLedgerEvent.reversed) {
+        // The latest ledger entry says this occurrence was reopened.
+        task.done = false;
+        task.completedDate = null;
+        changed = true;
+      } else if (!task.done && currentDueDate &&
           completedOccurrenceKeys.has(`${String(task.id)}::${currentDueDate}`)) {
+        // Another device may have completed this exact occurrence while its task snapshot is stale.
         task.done = true;
         task.completedDate = currentDueDate;
         changed = true;
