@@ -7088,10 +7088,15 @@
         ? "Prioridad completada; las siguientes avanzaron"
         : "Tarea completada");
     } else {
+      // Undo the completion on the date it was originally recorded, not on the date of reopening.
+      // This lets recurring catch-up correctly restore a missed occurrence that was reopened later.
+      const reopenedDate = String(task.completedDate || today).slice(0, 10);
       task.completedDate = null;
-      recordTaskCompletionEvent(task, false, today);
+      recordTaskCompletionEvent(task, false, reopenedDate);
       playUiSound("uncomplete");
-      if (appState.history[today] > 0) appState.history[today]--;
+      if (Number(appState.history[reopenedDate] || 0) > 0) {
+        appState.history[reopenedDate]--;
+      }
       showToast("Tarea reabierta");
     }
     saveData(true, `${task.done ? "Completó" : "Reabrió"}: ${task.title}`);
