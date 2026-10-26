@@ -4200,6 +4200,38 @@
         .map(entry => `${String(entry.taskId)}::${String(entry.completedDate).slice(0, 10)}`)
     );
 
+    function getUncompletedOccurrenceDates(task, dates) {
+      return dates.filter(missedDate => {
+        const missedOccurrenceId = `${task.id}__missed__${missedDate.replace(/-/g, "")}`;
+        const existingArchivedTask = appState.data.tasks.find(existing =>
+          String(existing.id) === missedOccurrenceId
+        );
+        return !completedOccurrenceKeys.has(`${String(task.id)}::${missedDate}`) &&
+          !completedOccurrenceKeys.has(`${missedOccurrenceId}::${missedDate}`) &&
+          !(existingArchivedTask && existingArchivedTask.done);
+      });
+    }
+
+    function archiveMissedOccurrence(task, missedDate) {
+      const missedOccurrenceId = `${task.id}__missed__${missedDate.replace(/-/g, "")}`;
+      if (appState.data.tasks.some(existing => String(existing.id) === missedOccurrenceId)) return;
+      const archivedOccurrence = {
+        ...task,
+        id: missedOccurrenceId,
+        dueDate: missedDate,
+        done: false,
+        completedDate: null,
+        frequency: "once",
+        repeatDays: [],
+        repeatUntil: null,
+        isRescheduled: false,
+        rescheduledCount: 0,
+        overdueCarryDate: null
+      };
+      delete archivedOccurrence.overdueSince;
+      remaining.push(archivedOccurrence);
+    }
+
     appState.data.tasks.forEach((task) => {
       // Once a task assigned to today crosses midnight, its new missed date is its dueDate.
       // Remove the one-day carryover marker so overdue status naturally follows dueDate.
@@ -4209,12 +4241,18 @@
         changed = true;
       }
 
-      // Expired schedules normally become one-off tasks. If an unfinished recurring task
-      // is overdue, first recover every missed scheduled occurrence below; do not erase its schedule early.
+      const completedOnPastDay = task.done && (
+        (task.completedDate && task.completedDate < today) ||
+        (!task.completedDate && dayRolledOver) ||
+        dayRolledOver
+      );
       const taskHasRecurringSchedule = task.frequency !== "once" ||
         (Array.isArray(task.repeatDays) && task.repeatDays.length > 0);
-      const needsMissedOccurrenceRecovery = !task.done && taskHasRecurringSchedule &&
-        task.dueDate && String(task.dueDate).slice(0, 10) < today;
+      // Do not expire a series before recovering missed occurrences after its last completion either.
+      const needsMissedOccurrenceRecovery = taskHasRecurringSchedule && (
+        (!task.done && task.dueDate && String(task.dueDate).slice(0, 10) < today) ||
+        completedOnPastDay
+      );
       if (task.repeatUntil && String(task.repeatUntil) < today && !needsMissedOccurrenceRecovery) {
         task.frequency = "once";
         task.repeatDays = [];
@@ -4261,17 +4299,8 @@
             isFirstOccurrenceDate = false;
           }
 
-          // Exclude missed dates already completed in the durable log or already marked done
-          // in their own archived occurrence record.
-          const missedOccurrenceDates = scheduledMissedDates.filter(missedDate => {
-            const missedOccurrenceId = `${task.id}__missed__${missedDate.replace(/-/g, "")}`;
-            const existingArchivedTask = appState.data.tasks.find(existing =>
-              String(existing.id) === missedOccurrenceId
-            );
-            return !completedOccurrenceKeys.has(`${String(task.id)}::${missedDate}`) &&
-              !completedOccurrenceKeys.has(`${missedOccurrenceId}::${missedDate}`) &&
-              !(existingArchivedTask && existingArchivedTask.done);
-          });
+          // Exclude dates already completed or already represented by a completed archived occurrence.
+          const missedOccurrenceDates = getUncompletedOccurrenceDates(task, scheduledMissedDates);
 
           const todayWeekday = new Date(`${today}T00:00:00`).getDay();
           const hasOccurrenceToday = (!repeatUntil || today <= repeatUntil) &&
@@ -4286,29 +4315,7 @@
             ? missedOccurrenceDates
             : missedOccurrenceDates.slice(0, -1);
 
-          datesToArchive.forEach(missedDate => {
-            const missedOccurrenceId = `${task.id}__missed__${missedDate.replace(/-/g, "")}`;
-            const alreadyArchived = appState.data.tasks.some(existing =>
-              String(existing.id) === missedOccurrenceId
-            );
-            if (alreadyArchived) return;
-
-            const archivedOccurrence = {
-              ...task,
-              id: missedOccurrenceId,
-              dueDate: missedDate,
-              done: false,
-              completedDate: null,
-              frequency: "once",
-              repeatDays: [],
-              repeatUntil: null,
-              isRescheduled: false,
-              rescheduledCount: 0,
-              overdueCarryDate: null
-            };
-            delete archivedOccurrence.overdueSince;
-            remaining.push(archivedOccurrence);
-          });
+          datesToArchive.forEach(missedDate => archiveMissedOccurrence(task, missedDate));
 
           if (nextOccurrenceDate) {
             // Keep the active recurring task reserved for today or the next scheduled day.
@@ -4346,38 +4353,75 @@
         }
       }
 
-      // If a task is marked done on an earlier date, account for that completion and prepare its next occurrence.
-      const completedOnPastDay = task.done && (
-        (task.completedDate && task.completedDate < today) ||
-        (!task.completedDate && dayRolledOver) ||
-        dayRolledOver
-      );
-
+      // A completed occurrence is kept in the durable log. If several days passed while the app was closed,
+      // recreate every scheduled-but-uncompleted day after it, then create today's or the next valid occurrence.
       if (completedOnPastDay) {
         changed = true;
         appState.data.monthlyCompletedBase = (appState.data.monthlyCompletedBase || 66) + 1;
-        const isRecurring = task.frequency !== "once" || (Array.isArray(task.repeatDays) && task.repeatDays.length > 0);
-        if (isRecurring) {
-          const nextDate = getNextRepeatDateOnOrAfter(today, getTaskRepeatDays(task), task.repeatUntil || null);
-          if (nextDate) {
+        if (taskHasRecurringSchedule) {
+          const completedDateCandidate = String(task.completedDate || task.dueDate || addDaysISO(today, -1)).slice(0, 10);
+          const lastCompletedDate = /^\d{4}-\d{2}-\d{2}$/.test(completedDateCandidate) &&
+            completedDateCandidate < today
+            ? completedDateCandidate
+            : addDaysISO(today, -1);
+          const repeatDays = getTaskRepeatDays(task);
+          const repeatUntil = task.repeatUntil ? String(task.repeatUntil).slice(0, 10) : null;
+          const scheduledMissedDates = [];
+          let cursorDate = addDaysISO(lastCompletedDate, 1);
+          while (cursorDate < today) {
+            const isInsideRepeatWindow = !repeatUntil || cursorDate <= repeatUntil;
+            const weekday = new Date(`${cursorDate}T00:00:00`).getDay();
+            if (isInsideRepeatWindow && repeatDays.includes(weekday)) scheduledMissedDates.push(cursorDate);
+            cursorDate = addDaysISO(cursorDate, 1);
+          }
+          const missedOccurrenceDates = getUncompletedOccurrenceDates(task, scheduledMissedDates);
+          const todayWeekday = new Date(`${today}T00:00:00`).getDay();
+          const hasOccurrenceToday = (!repeatUntil || today <= repeatUntil) && repeatDays.includes(todayWeekday);
+          const nextOccurrenceDate = hasOccurrenceToday
+            ? today
+            : getNextRepeatDateOnOrAfter(addDaysISO(today, 1), repeatDays, repeatUntil);
+          const datesToArchive = nextOccurrenceDate
+            ? missedOccurrenceDates
+            : missedOccurrenceDates.slice(0, -1);
+          datesToArchive.forEach(missedDate => archiveMissedOccurrence(task, missedDate));
+
+          if (nextOccurrenceDate) {
             remaining.push({
               ...task,
               done: false,
               completedDate: null,
-              dueDate: nextDate,
+              dueDate: nextOccurrenceDate,
               isRescheduled: false,
               overdueSince: null,
               overdueCarryDate: null
             });
           } else {
-            // There are no selected repeat days left in this schedule (e.g. the final Friday).
-            // End the repeat chain instead of creating another occurrence on an unselected day.
-            task.frequency = "once";
-            task.repeatDays = [];
-            delete task.repeatUntil;
+            // The repeat schedule ended. Keep the latest unresolved missed occurrence, if any.
+            const latestMissedDate = missedOccurrenceDates[missedOccurrenceDates.length - 1];
+            if (latestMissedDate) {
+              const latestMissedId = `${task.id}__missed__${latestMissedDate.replace(/-/g, "")}`;
+              const latestAlreadyArchived = appState.data.tasks.some(existing =>
+                String(existing.id) === latestMissedId
+              );
+              if (!latestAlreadyArchived &&
+                  !completedOccurrenceKeys.has(`${latestMissedId}::${latestMissedDate}`)) {
+                remaining.push({
+                  ...task,
+                  done: false,
+                  completedDate: null,
+                  dueDate: latestMissedDate,
+                  frequency: "once",
+                  repeatDays: [],
+                  repeatUntil: null,
+                  isRescheduled: false,
+                  overdueSince: null,
+                  overdueCarryDate: null
+                });
+              }
+            }
           }
         }
-        // Completed one-off tasks are removed from the active board at rollover; the completion log keeps them.
+        // Completed one-off tasks and completed series with no remaining occurrences stay in the completion log.
       } else {
         if (task.done && !task.completedDate) {
           task.completedDate = today;
