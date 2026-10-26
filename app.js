@@ -4192,6 +4192,13 @@
 
     let changed = false;
     const remaining = [];
+    // Completion records are durable across recurring-task resets and sync. They prevent
+    // catch-up from resurrecting an occurrence that was already completed on another device.
+    const completedOccurrenceKeys = new Set(
+      normalizeCompletionLog(appState.data.completionLog)
+        .filter(entry => !entry.reversed)
+        .map(entry => `${String(entry.taskId)}::${String(entry.completedDate).slice(0, 10)}`)
+    );
 
     appState.data.tasks.forEach((task) => {
       // Once a task assigned to today crosses midnight, its new missed date is its dueDate.
@@ -4237,7 +4244,7 @@
         if (originalDateIsValid) {
           const repeatDays = getTaskRepeatDays(task);
           const repeatUntil = task.repeatUntil ? String(task.repeatUntil).slice(0, 10) : null;
-          const missedOccurrenceDates = [];
+          const scheduledMissedDates = [];
           let cursorDate = originalDueDate;
           let isFirstOccurrenceDate = true;
 
@@ -4248,11 +4255,23 @@
               isFirstOccurrenceDate ||
               (isInsideRepeatWindow && repeatDays.includes(weekday))
             ) {
-              missedOccurrenceDates.push(cursorDate);
+              scheduledMissedDates.push(cursorDate);
             }
             cursorDate = addDaysISO(cursorDate, 1);
             isFirstOccurrenceDate = false;
           }
+
+          // Exclude missed dates already completed in the durable log or already marked done
+          // in their own archived occurrence record.
+          const missedOccurrenceDates = scheduledMissedDates.filter(missedDate => {
+            const missedOccurrenceId = `${task.id}__missed__${missedDate.replace(/-/g, "")}`;
+            const existingArchivedTask = appState.data.tasks.find(existing =>
+              String(existing.id) === missedOccurrenceId
+            );
+            return !completedOccurrenceKeys.has(`${String(task.id)}::${missedDate}`) &&
+              !completedOccurrenceKeys.has(`${missedOccurrenceId}::${missedDate}`) &&
+              !(existingArchivedTask && existingArchivedTask.done);
+          });
 
           const todayWeekday = new Date(`${today}T00:00:00`).getDay();
           const hasOccurrenceToday = (!repeatUntil || today <= repeatUntil) &&
@@ -4298,20 +4317,26 @@
             delete task.overdueSince;
             delete task.overdueCarryDate;
           } else {
-            // No future occurrence remains. Leave the latest missed occurrence as one ordinary overdue task.
-            const latestMissedDate = missedOccurrenceDates[missedOccurrenceDates.length - 1] || originalDueDate;
-            const latestMissedId = `${task.id}__missed__${latestMissedDate.replace(/-/g, "")}`;
-            const latestAlreadyArchived = appState.data.tasks.some(existing =>
-              String(existing.id) === latestMissedId
-            );
-            if (latestAlreadyArchived) {
-              // A previous device/version already preserved this occurrence; don't show the source twice.
+            // No future occurrence remains. Keep the latest unresolved occurrence as one overdue task.
+            // If every past occurrence was completed, remove the stale source instead of resurrecting it.
+            const latestMissedDate = missedOccurrenceDates[missedOccurrenceDates.length - 1];
+            if (!latestMissedDate) {
               omitCurrentTaskAfterRecovery = true;
             } else {
-              task.dueDate = latestMissedDate;
-              task.frequency = "once";
-              task.repeatDays = [];
-              delete task.repeatUntil;
+              const latestMissedId = `${task.id}__missed__${latestMissedDate.replace(/-/g, "")}`;
+              const latestAlreadyArchived = appState.data.tasks.some(existing =>
+                String(existing.id) === latestMissedId
+              );
+              if (latestAlreadyArchived ||
+                  completedOccurrenceKeys.has(`${latestMissedId}::${latestMissedDate}`)) {
+                // A previous device/version already preserved this occurrence; don't show the source twice.
+                omitCurrentTaskAfterRecovery = true;
+              } else {
+                task.dueDate = latestMissedDate;
+                task.frequency = "once";
+                task.repeatDays = [];
+                delete task.repeatUntil;
+              }
             }
             task.isRescheduled = false;
             delete task.overdueSince;
@@ -5781,8 +5806,8 @@
 
     const sortedBoxes = appState.data.boxes.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    // Preserve manual order inside each board section while keeping the intended section hierarchy.
-    // Today's work comes first, fully completed casillas next, and blue no-work-today casillas below them.
+    // Preserve manual order inside each section: work due today first, then the completion summary,
+    // then fully completed casillas and blue casillas with no unfinished task due today.
     const activeBoxesList = [];
     const completedBoxesList = [];
     const noTasksTodayBoxesList = [];
