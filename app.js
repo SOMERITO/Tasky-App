@@ -4202,8 +4202,13 @@
         changed = true;
       }
 
-      // A one-week repetition expires after Sunday. Incomplete work remains as an ordinary overdue task.
-      if (task.repeatUntil && String(task.repeatUntil) < today) {
+      // Expired schedules normally become one-off tasks. If an unfinished recurring task
+      // is overdue, first recover every missed scheduled occurrence below; do not erase its schedule early.
+      const taskHasRecurringSchedule = task.frequency !== "once" ||
+        (Array.isArray(task.repeatDays) && task.repeatDays.length > 0);
+      const needsMissedOccurrenceRecovery = !task.done && taskHasRecurringSchedule &&
+        task.dueDate && String(task.dueDate).slice(0, 10) < today;
+      if (task.repeatUntil && String(task.repeatUntil) < today && !needsMissedOccurrenceRecovery) {
         task.frequency = "once";
         task.repeatDays = [];
         delete task.repeatUntil;
@@ -4217,35 +4222,103 @@
         changed = true;
       }
 
-      // Preserve each missed recurring occurrence instead of letting it block today's occurrence.
-      // When a scheduled weekday arrives, archive the old overdue occurrence as a one-off task,
-      // then advance the recurring task to today. A deterministic ID prevents duplicate copies
-      // when startup, cloud catch-up, or another device runs this cleanup more than once.
+      // Preserve every missed occurrence of an unfinished recurring task.
+      // The original due date is always an occurrence (including a manually rescheduled date);
+      // later dates are occurrences only on selected repeat weekdays and before repeatUntil.
+      // Then keep the recurring task on today's occurrence, the next future occurrence, or—if
+      // the schedule has ended—the latest overdue occurrence. Deterministic IDs make this idempotent.
       const taskIsRecurring = task.frequency !== "once" ||
         (Array.isArray(task.repeatDays) && task.repeatDays.length > 0);
-      if (!task.done && taskIsRecurring && task.dueDate && task.dueDate < today &&
-          getTaskRepeatDays(task).includes(new Date(`${today}T00:00:00`).getDay())) {
-        const missedOccurrenceId = `${task.id}__missed__${String(task.dueDate).slice(0, 10).replace(/-/g, "")}`;
-        const alreadyArchived = appState.data.tasks.some(existing =>
-          String(existing.id) === missedOccurrenceId
-        );
-        if (!alreadyArchived) {
-          remaining.push({
-            ...task,
-            id: missedOccurrenceId,
-            frequency: "once",
-            repeatDays: [],
-            repeatUntil: null,
-            isRescheduled: false,
-            rescheduledCount: 0,
-            overdueCarryDate: null
+      let omitCurrentTaskAfterRecovery = false;
+      if (!task.done && taskIsRecurring && task.dueDate && String(task.dueDate).slice(0, 10) < today) {
+        const originalDueDate = String(task.dueDate).slice(0, 10);
+        const originalDateIsValid = /^\\d{4}-\\d{2}-\\d{2}$/.test(originalDueDate) &&
+          !Number.isNaN(new Date(`${originalDueDate}T00:00:00`).getTime());
+        if (originalDateIsValid) {
+          const repeatDays = getTaskRepeatDays(task);
+          const repeatUntil = task.repeatUntil ? String(task.repeatUntil).slice(0, 10) : null;
+          const missedOccurrenceDates = [];
+          let cursorDate = originalDueDate;
+          let isFirstOccurrenceDate = true;
+
+          while (cursorDate < today) {
+            const isInsideRepeatWindow = !repeatUntil || cursorDate <= repeatUntil;
+            const weekday = new Date(`${cursorDate}T00:00:00`).getDay();
+            if (
+              isFirstOccurrenceDate ||
+              (isInsideRepeatWindow && repeatDays.includes(weekday))
+            ) {
+              missedOccurrenceDates.push(cursorDate);
+            }
+            cursorDate = addDaysISO(cursorDate, 1);
+            isFirstOccurrenceDate = false;
+          }
+
+          const todayWeekday = new Date(`${today}T00:00:00`).getDay();
+          const hasOccurrenceToday = (!repeatUntil || today <= repeatUntil) &&
+            repeatDays.includes(todayWeekday);
+          const nextOccurrenceDate = hasOccurrenceToday
+            ? today
+            : getNextRepeatDateOnOrAfter(addDaysISO(today, 1), repeatDays, repeatUntil);
+
+          // If another occurrence exists today or later, archive all past due occurrences separately.
+          // If the series has ended, keep only the latest overdue occurrence on the original task.
+          const datesToArchive = nextOccurrenceDate
+            ? missedOccurrenceDates
+            : missedOccurrenceDates.slice(0, -1);
+
+          datesToArchive.forEach(missedDate => {
+            const missedOccurrenceId = `${task.id}__missed__${missedDate.replace(/-/g, "")}`;
+            const alreadyArchived = appState.data.tasks.some(existing =>
+              String(existing.id) === missedOccurrenceId
+            );
+            if (alreadyArchived) return;
+
+            const archivedOccurrence = {
+              ...task,
+              id: missedOccurrenceId,
+              dueDate: missedDate,
+              done: false,
+              completedDate: null,
+              frequency: "once",
+              repeatDays: [],
+              repeatUntil: null,
+              isRescheduled: false,
+              rescheduledCount: 0,
+              overdueCarryDate: null
+            };
+            delete archivedOccurrence.overdueSince;
+            remaining.push(archivedOccurrence);
           });
+
+          if (nextOccurrenceDate) {
+            // Keep the active recurring task reserved for today or the next scheduled day.
+            task.dueDate = nextOccurrenceDate;
+            task.isRescheduled = false;
+            delete task.overdueSince;
+            delete task.overdueCarryDate;
+          } else {
+            // No future occurrence remains. Leave the latest missed occurrence as one ordinary overdue task.
+            const latestMissedDate = missedOccurrenceDates[missedOccurrenceDates.length - 1] || originalDueDate;
+            const latestMissedId = `${task.id}__missed__${latestMissedDate.replace(/-/g, "")}`;
+            const latestAlreadyArchived = appState.data.tasks.some(existing =>
+              String(existing.id) === latestMissedId
+            );
+            if (latestAlreadyArchived) {
+              // A previous device/version already preserved this occurrence; don't show the source twice.
+              omitCurrentTaskAfterRecovery = true;
+            } else {
+              task.dueDate = latestMissedDate;
+              task.frequency = "once";
+              task.repeatDays = [];
+              delete task.repeatUntil;
+            }
+            task.isRescheduled = false;
+            delete task.overdueSince;
+            delete task.overdueCarryDate;
+          }
+          changed = true;
         }
-        task.dueDate = today;
-        task.isRescheduled = false;
-        delete task.overdueSince;
-        delete task.overdueCarryDate;
-        changed = true;
       }
 
       // If a task is marked done on an earlier date, account for that completion and prepare its next occurrence.
@@ -4284,7 +4357,7 @@
         if (task.done && !task.completedDate) {
           task.completedDate = today;
         }
-        remaining.push(task);
+        if (!omitCurrentTaskAfterRecovery) remaining.push(task);
       }
     });
 
@@ -5729,15 +5802,12 @@
 
       const pendingTasks = boxTasks.filter(task => !task.done);
       const hasPendingToday = pendingTasks.some(task => isTaskForToday(task));
-      const hasCompletionToday = boxTasks.some(task =>
-        task.done && String(task.completedDate || "").slice(0, 10) === todayISO
-      );
-      const hasFocusPriority = pendingTasks.some(task => getFocusPriorityLevel(task.id) > 0);
 
-      if (hasPendingToday || hasCompletionToday || hasFocusPriority) {
+      // Section membership depends on unfinished work due today (including genuine overdue work).
+      // A task completed today or a future focus/repeat task alone must not keep a blue box above the summary.
+      if (hasPendingToday) {
         activeBoxesList.push(box);
       } else {
-        // Future-only and upcoming-repeat casillas have no work scheduled for today.
         noTasksTodayBoxesList.push(box);
       }
     });
