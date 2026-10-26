@@ -4232,7 +4232,7 @@
       let omitCurrentTaskAfterRecovery = false;
       if (!task.done && taskIsRecurring && task.dueDate && String(task.dueDate).slice(0, 10) < today) {
         const originalDueDate = String(task.dueDate).slice(0, 10);
-        const originalDateIsValid = /^\\d{4}-\\d{2}-\\d{2}$/.test(originalDueDate) &&
+        const originalDateIsValid = /^\d{4}-\d{2}-\d{2}$/.test(originalDueDate) &&
           !Number.isNaN(new Date(`${originalDueDate}T00:00:00`).getTime());
         if (originalDateIsValid) {
           const repeatDays = getTaskRepeatDays(task);
@@ -5787,8 +5787,6 @@
     const completedBoxesList = [];
     const noTasksTodayBoxesList = [];
     const emptyBoxesList = [];
-    const todayISO = getTodayISO();
-
     sortedBoxes.forEach(box => {
       const boxTasks = appState.data.tasks.filter(task => String(task.boxId) === String(box.id));
       if (boxTasks.length === 0) {
