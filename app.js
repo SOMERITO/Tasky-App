@@ -4241,11 +4241,16 @@
         changed = true;
       }
 
-      const completedOnPastDay = task.done && (
-        (task.completedDate && task.completedDate < today) ||
-        (!task.completedDate && dayRolledOver) ||
-        dayRolledOver
-      );
+      const completedDateForRollover = task.completedDate
+        ? String(task.completedDate).slice(0, 10)
+        : "";
+      // Only roll over a completion that belongs to an earlier date. A task completed today
+      // must not be reset just because the app's tracked-day marker was stale across midnight.
+      const completedOnPastDay = Boolean(task.done && (
+        completedDateForRollover
+          ? completedDateForRollover < today
+          : dayRolledOver
+      ));
       const taskHasRecurringSchedule = task.frequency !== "once" ||
         (Array.isArray(task.repeatDays) && task.repeatDays.length > 0);
       // Do not expire a series before recovering missed occurrences after its last completion either.
