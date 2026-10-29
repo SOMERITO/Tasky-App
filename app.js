@@ -2278,6 +2278,7 @@
       completionLog: [],
       dismissedTaskSuggestionsByBox: {},
       taskMemoryByBox: {},
+      birthdays: [],
       deletedTaskIds: [],
       deletedBoxIds: [],
       syncSchemaVersion: 1,
@@ -2296,6 +2297,7 @@
       focusPlan: { date: "", byBox: {}, updatedAt: 0 },
       completionLog: [],
       dismissedTaskSuggestionsByBox: {},
+      birthdays: [],
       updatedAt: 0
     },
     settings: {
@@ -2926,6 +2928,51 @@
     };
   }
 
+  function normalizeBirthdayRecord(raw, index = 0) {
+    if (!raw || typeof raw !== "object") return null;
+    const id = String(raw.id || `birthday_${Date.now()}_${index}`).trim();
+    const name = String(raw.name || "").trim().slice(0, 100);
+    const month = Number(raw.month);
+    const day = Number(raw.day);
+    const maxDay = month === 2 ? 29 : (month >= 1 && month <= 12 ? new Date(2024, month, 0).getDate() : 0);
+    if (!id || !name || !Number.isInteger(month) || month < 1 || month > 12 ||
+        !Number.isInteger(day) || day < 1 || day > maxDay) return null;
+    const yearInput = raw.birthYear === "" || raw.birthYear == null ? null : Number(raw.birthYear);
+    const birthYear = Number.isInteger(yearInput) && yearInput >= 1000 && yearInput <= 9999 ? yearInput : null;
+    return {
+      id,
+      name,
+      month,
+      day,
+      birthYear,
+      notes: String(raw.notes || "").trim().slice(0, 500),
+      updatedAt: Number(raw.updatedAt || 0),
+      deleted: Boolean(raw.deleted)
+    };
+  }
+
+  function normalizeBirthdays(raw) {
+    const byId = new Map();
+    (Array.isArray(raw) ? raw : []).forEach((entry, index) => {
+      const birthday = normalizeBirthdayRecord(entry, index);
+      if (!birthday) return;
+      const previous = byId.get(birthday.id);
+      if (!previous || birthday.updatedAt >= previous.updatedAt) byId.set(birthday.id, birthday);
+    });
+    return Array.from(byId.values()).sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  function mergeBirthdays(primaryRaw, secondaryRaw) {
+    const merged = new Map();
+    // Apply secondary first; the primary record wins timestamp ties.
+    normalizeBirthdays(secondaryRaw).forEach(entry => merged.set(entry.id, entry));
+    normalizeBirthdays(primaryRaw).forEach(entry => {
+      const current = merged.get(entry.id);
+      if (!current || Number(entry.updatedAt || 0) >= Number(current.updatedAt || 0)) merged.set(entry.id, entry);
+    });
+    return Array.from(merged.values()).sort((a, b) => a.id.localeCompare(b.id));
+  }
+
   function normalizeDataPayload(raw) {
     if (!raw || typeof raw !== "object") return null;
     const today = getTodayISO();
@@ -2978,6 +3025,7 @@
       focusPlan: normalizeFocusPlanData(raw.focusPlan, tasks),
       completionLog: normalizeCompletionLog(raw.completionLog),
       dismissedTaskSuggestionsByBox: normalizeDismissedTaskSuggestions(raw.dismissedTaskSuggestionsByBox),
+      birthdays: normalizeBirthdays(raw.birthdays),
       deletedTaskIds: Array.isArray(raw.deletedTaskIds) ? Array.from(new Set(raw.deletedTaskIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
       deletedBoxIds: Array.isArray(raw.deletedBoxIds) ? Array.from(new Set(raw.deletedBoxIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
       syncSchemaVersion: Number(raw.syncSchemaVersion || 0),
@@ -3291,6 +3339,7 @@
       fp: normalizeFocusPlanData(d.focusPlan, d.tasks),
       cl: normalizeCompletionLog(d.completionLog),
       ds: normalizeDismissedTaskSuggestions(d.dismissedTaskSuggestionsByBox),
+      bd: normalizeBirthdays(d.birthdays),
       b: d.boxes.map(x => [x.id, String(x.name || "").toUpperCase(), x.color || "#2563eb", 0, x.order || 0, String(x.emoji || "")]),
       t: d.tasks.map(x => [
         x.id,
@@ -3355,6 +3404,7 @@
         focusPlan: normalizeFocusPlanData(parsed.fp, tasks),
         completionLog: normalizeCompletionLog(parsed.cl),
         dismissedTaskSuggestionsByBox: normalizeDismissedTaskSuggestions(parsed.ds),
+        birthdays: normalizeBirthdays(parsed.bd),
         syncSchemaVersion: Number(parsed.sv || 0),
         updatedAt: Number(parsed.u || 0)
       });
@@ -3380,6 +3430,7 @@
       history: d.history || {},
       completionLog: normalizeCompletionLog(d.completionLog),
       dismissedTaskSuggestionsByBox: normalizeDismissedTaskSuggestions(d.dismissedTaskSuggestionsByBox),
+      birthdays: normalizeBirthdays(d.birthdays),
       settings: d.settings || {}
     });
   }
@@ -3575,6 +3626,7 @@
         primary.dismissedTaskSuggestionsByBox,
         secondary.dismissedTaskSuggestionsByBox
       ),
+      birthdays: mergeBirthdays(primary.birthdays, secondary.birthdays),
       settings: { ...(secondary.settings || {}), ...(primary.settings || {}) },
       learningGoals: mergeLearningGoalsData(primary.learningGoals, secondary.learningGoals),
       focusPlan: mergeFocusPlanData(primary.focusPlan, secondary.focusPlan, primary.tasks, secondary.tasks),
@@ -7060,6 +7112,351 @@
     });
   }
 
+  const BIRTHDAY_MONTH_NAMES = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+  ];
+  const BIRTHDAY_WEEKDAY_NAMES = ["D", "L", "M", "X", "J", "V", "S"];
+  let birthdayCalendarYear = new Date().getFullYear();
+  let birthdayCalendarMonth = new Date().getMonth();
+  let birthdayCalendarMode = "year";
+
+  function getActiveBirthdays() {
+    return normalizeBirthdays(appState.data.birthdays).filter(entry => !entry.deleted);
+  }
+
+  function getBirthdayMonthDayKey(birthday) {
+    return String(birthday.month).padStart(2, "0") + "-" + String(birthday.day).padStart(2, "0");
+  }
+
+  function getNextBirthdayOccurrence(birthday, fromDate = getTodayISO()) {
+    const currentYear = Number(String(fromDate).slice(0, 4));
+    for (let offset = 0; offset <= 8; offset++) {
+      const year = currentYear + offset;
+      const candidate = `${year}-${String(birthday.month).padStart(2, "0")}-${String(birthday.day).padStart(2, "0")}`;
+      const candidateDate = new Date(`${candidate}T12:00:00`);
+      if (candidateDate.getMonth() + 1 !== birthday.month || candidateDate.getDate() !== birthday.day) continue;
+      if (candidate >= fromDate) return candidate;
+    }
+    return "";
+  }
+
+  function getBirthdayDayDifference(fromDate, toDate) {
+    const from = new Date(`${String(fromDate).slice(0, 10)}T12:00:00`);
+    const to = new Date(`${String(toDate).slice(0, 10)}T12:00:00`);
+    return Math.round((to.getTime() - from.getTime()) / 86400000);
+  }
+
+  function formatBirthdayAge(birthday, occurrenceDate) {
+    if (!birthday.birthYear) return "";
+    const age = Number(String(occurrenceDate).slice(0, 4)) - Number(birthday.birthYear);
+    return age >= 0 ? `Cumple ${age}` : "";
+  }
+
+  function groupBirthdaysByDay(month, year) {
+    const grouped = new Map();
+    getActiveBirthdays().forEach(birthday => {
+      const maxDay = month === 2 ? 29 : new Date(2024, month, 0).getDate();
+      if (birthday.month !== month || birthday.day < 1 || birthday.day > maxDay) return;
+      const list = grouped.get(birthday.day) || [];
+      list.push(birthday);
+      grouped.set(birthday.day, list);
+    });
+    grouped.forEach(list => list.sort((a, b) => a.name.localeCompare(b.name, "es")));
+    return grouped;
+  }
+
+  function buildBirthdayMonthHtml(year, zeroBasedMonth, compact = false) {
+    const month = zeroBasedMonth + 1;
+    const firstDay = new Date(year, zeroBasedMonth, 1).getDay();
+    const daysInMonth = new Date(year, zeroBasedMonth + 1, 0).getDate();
+    const birthdaysByDay = groupBirthdaysByDay(month, year);
+    const today = getTodayISO();
+    const monthTitle = BIRTHDAY_MONTH_NAMES[zeroBasedMonth];
+
+    let html = `<div class="birthday-month-weekdays" aria-hidden="true">${BIRTHDAY_WEEKDAY_NAMES.map(day => `<span>${day}</span>`).join("")}</div><div class="birthday-month-days ${compact ? "is-compact" : "is-expanded"}">`;
+    for (let blank = 0; blank < firstDay; blank++) html += `<span class="birthday-day-blank" aria-hidden="true"></span>`;
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateIso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const birthdays = birthdaysByDay.get(day) || [];
+      const isToday = dateIso === today;
+      const names = birthdays.map(item => item.name).join(", ");
+      const marker = birthdays.length
+        ? `<span class="birthday-day-marker">${compact ? (birthdays.length > 1 ? birthdays.length : "•") : "🎂"}</span>`
+        : "";
+      const eventNames = !compact && birthdays.length
+        ? `<span class="birthday-day-names">${birthdays.slice(0, 2).map(item => `<span>${escapeHtml(item.name)}</span>`).join("")}${birthdays.length > 2 ? `<span>+${birthdays.length - 2}</span>` : ""}</span>`
+        : "";
+      html += `<button type="button" class="birthday-day-cell ${birthdays.length ? "has-birthday" : ""} ${isToday ? "is-today" : ""} ${compact ? "is-compact" : "is-expanded"}" data-birthday-date="${dateIso}" title="${escapeHtml(names ? `${names} · Agregar cumpleaños en esta fecha` : `Agregar cumpleaños el ${day} de ${monthTitle.toLowerCase()}`)}" aria-label="${escapeHtml(`${day} de ${monthTitle.toLowerCase()} de ${year}${names ? `: ${names}` : ""}`)}"><span class="birthday-day-number">${day}</span>${marker}${eventNames}</button>`;
+    }
+    html += "</div>";
+    return html;
+  }
+
+  function renderBirthdayMonthEvents() {
+    const list = document.getElementById("birthday-month-events-list");
+    const title = document.getElementById("birthday-month-events-title");
+    const count = document.getElementById("birthday-month-events-count");
+    if (!list || !title || !count) return;
+    const birthdays = getActiveBirthdays()
+      .filter(entry => entry.month === birthdayCalendarMonth + 1)
+      .sort((a, b) => a.day - b.day || a.name.localeCompare(b.name, "es"));
+    title.textContent = `Cumpleaños de ${BIRTHDAY_MONTH_NAMES[birthdayCalendarMonth]}`;
+    count.textContent = String(birthdays.length);
+    if (!birthdays.length) {
+      list.innerHTML = `<div class="birthday-empty-state"><span>🌷</span><strong>No hay cumpleaños este mes</strong><p>Pulsa un día del calendario o «Agregar cumpleaños» para registrar uno.</p></div>`;
+      return;
+    }
+    list.innerHTML = birthdays.map(entry => {
+      const occurrence = `${birthdayCalendarYear}-${String(entry.month).padStart(2, "0")}-${String(entry.day).padStart(2, "0")}`;
+      const dateLabel = new Date(`${occurrence}T12:00:00`).toLocaleDateString("es-PE", { day: "numeric", month: "long" });
+      return `<button type="button" class="birthday-event-row" data-birthday-edit-id="${escapeHtml(entry.id)}">
+        <span class="birthday-event-day"><strong>${entry.day}</strong><small>${BIRTHDAY_MONTH_NAMES[entry.month - 1].slice(0, 3)}</small></span>
+        <span class="birthday-event-copy"><strong>${escapeHtml(entry.name)}</strong><span>${escapeHtml(dateLabel)}${entry.birthYear ? ` · Nació en ${entry.birthYear}` : ""}</span>${entry.notes ? `<small>${escapeHtml(entry.notes)}</small>` : ""}</span>
+        <span class="birthday-event-edit" aria-hidden="true">Editar ›</span>
+      </button>`;
+    }).join("");
+  }
+
+  function renderBirthdayUpcomingList() {
+    const list = document.getElementById("birthday-upcoming-list");
+    const total = document.getElementById("birthday-total-count");
+    const buttonCount = document.getElementById("birthday-count");
+    const highlightTitle = document.getElementById("birthday-upcoming-title");
+    const highlightSubtitle = document.getElementById("birthday-upcoming-subtitle");
+    if (!list || !total || !buttonCount || !highlightTitle || !highlightSubtitle) return;
+
+    const today = getTodayISO();
+    const upcoming = getActiveBirthdays().map(entry => ({
+      ...entry,
+      nextDate: getNextBirthdayOccurrence(entry, today)
+    })).filter(entry => entry.nextDate)
+      .sort((a, b) => a.nextDate.localeCompare(b.nextDate) || a.name.localeCompare(b.name, "es"));
+
+    total.textContent = String(upcoming.length);
+    buttonCount.textContent = String(upcoming.length);
+
+    if (!upcoming.length) {
+      highlightTitle.textContent = "Todavía no hay cumpleaños registrados";
+      highlightSubtitle.textContent = "Agrega el primero para empezar tu calendario.";
+      list.innerHTML = `<div class="birthday-empty-state"><span>🎈</span><strong>Tu calendario está esperando sus primeras fechas</strong><p>Registra un nombre y su cumpleaños para verlo cada año.</p></div>`;
+      return;
+    }
+
+    const next = upcoming[0];
+    const daysUntil = getBirthdayDayDifference(today, next.nextDate);
+    const nextLabel = new Date(`${next.nextDate}T12:00:00`).toLocaleDateString("es-PE", { day: "numeric", month: "long", year: "numeric" });
+    highlightTitle.textContent = next.name;
+    highlightSubtitle.textContent = daysUntil === 0
+      ? `¡Hoy es su cumpleaños! · ${nextLabel}`
+      : `${nextLabel} · ${daysUntil === 1 ? "Mañana" : `Faltan ${daysUntil} días`}`;
+
+    list.innerHTML = upcoming.map(entry => {
+      const daysUntilEntry = getBirthdayDayDifference(today, entry.nextDate);
+      const dateLabel = new Date(`${entry.nextDate}T12:00:00`).toLocaleDateString("es-PE", { day: "numeric", month: "short" });
+      const ageLabel = formatBirthdayAge(entry, entry.nextDate);
+      const status = daysUntilEntry === 0 ? "Hoy 🎉" : (daysUntilEntry === 1 ? "Mañana" : `En ${daysUntilEntry} días`);
+      return `<button type="button" class="birthday-upcoming-row" data-birthday-edit-id="${escapeHtml(entry.id)}">
+        <span class="birthday-upcoming-avatar" aria-hidden="true">🎂</span>
+        <span class="birthday-upcoming-details"><strong>${escapeHtml(entry.name)}</strong><span>${escapeHtml(dateLabel)}${ageLabel ? ` · ${escapeHtml(ageLabel)}` : ""}</span>${entry.notes ? `<small>${escapeHtml(entry.notes)}</small>` : ""}</span>
+        <span class="birthday-upcoming-status ${daysUntilEntry === 0 ? "is-today" : ""}">${escapeHtml(status)}</span>
+      </button>`;
+    }).join("");
+  }
+
+  function renderBirthdayCalendar() {
+    const modal = document.getElementById("modal-birthdays");
+    if (!modal) return;
+    const period = document.getElementById("birthday-period-label");
+    const hint = document.getElementById("birthday-period-hint");
+    const yearView = document.getElementById("birthday-year-view");
+    const monthView = document.getElementById("birthday-single-month-view");
+    const yearButton = document.getElementById("btn-birthday-year-view");
+    const monthButton = document.getElementById("btn-birthday-month-view-toggle");
+    const prev = document.getElementById("btn-birthday-prev-period");
+    const next = document.getElementById("btn-birthday-next-period");
+    if (!period || !hint || !yearView || !monthView || !yearButton || !monthButton || !prev || !next) return;
+
+    if (birthdayCalendarMode === "year") {
+      period.textContent = String(birthdayCalendarYear);
+      hint.textContent = "Vista anual · 12 meses";
+      yearView.hidden = false;
+      monthView.hidden = true;
+      yearButton.classList.add("is-active");
+      yearButton.setAttribute("aria-pressed", "true");
+      monthButton.classList.remove("is-active");
+      monthButton.setAttribute("aria-pressed", "false");
+      yearView.innerHTML = BIRTHDAY_MONTH_NAMES.map((name, index) => {
+        const activeCount = getActiveBirthdays().filter(entry => entry.month === index + 1).length;
+        return `<article class="birthday-month-card">
+          <div class="birthday-mini-month-header">
+            <button type="button" data-birthday-open-month="${index}" aria-label="Ver ${name} de ${birthdayCalendarYear}">${name}</button>
+            <span>${activeCount || ""}</span>
+          </div>
+          ${buildBirthdayMonthHtml(birthdayCalendarYear, index, true)}
+        </article>`;
+      }).join("");
+    } else {
+      period.textContent = `${BIRTHDAY_MONTH_NAMES[birthdayCalendarMonth]} ${birthdayCalendarYear}`;
+      hint.textContent = "Vista mensual · toca un día para registrar";
+      yearView.hidden = true;
+      monthView.hidden = false;
+      yearButton.classList.remove("is-active");
+      yearButton.setAttribute("aria-pressed", "false");
+      monthButton.classList.add("is-active");
+      monthButton.setAttribute("aria-pressed", "true");
+      document.getElementById("birthday-single-month-grid").innerHTML = `
+        <div class="birthday-single-month-heading">
+          <span>${BIRTHDAY_MONTH_NAMES[birthdayCalendarMonth]} ${birthdayCalendarYear}</span>
+          <small>Los días con 🎂 tienen cumpleaños registrados</small>
+        </div>
+        ${buildBirthdayMonthHtml(birthdayCalendarYear, birthdayCalendarMonth, false)}
+      `;
+      renderBirthdayMonthEvents();
+    }
+
+    prev.setAttribute("aria-label", birthdayCalendarMode === "year" ? "Año anterior" : "Mes anterior");
+    next.setAttribute("aria-label", birthdayCalendarMode === "year" ? "Año siguiente" : "Mes siguiente");
+    renderBirthdayUpcomingList();
+  }
+
+  function openBirthdayEditor({ month = birthdayCalendarMonth + 1, day = 1, birthday = null } = {}) {
+    const form = document.getElementById("birthday-editor");
+    if (!form) return;
+    const record = birthday || null;
+    document.getElementById("birthday-edit-id").value = record ? record.id : "";
+    document.getElementById("birthday-name").value = record ? record.name : "";
+    document.getElementById("birthday-month").value = String(record ? record.month : month);
+    updateBirthdayDayOptions(record ? record.month : month, record ? record.day : day);
+    document.getElementById("birthday-year").value = record && record.birthYear ? String(record.birthYear) : "";
+    document.getElementById("birthday-notes").value = record ? record.notes : "";
+    document.getElementById("birthday-editor-title").textContent = record ? "Editar cumpleaños" : "Nuevo cumpleaños";
+    document.getElementById("btn-birthday-save").textContent = record ? "Guardar cambios" : "Guardar cumpleaños";
+    document.getElementById("btn-birthday-delete").hidden = !record;
+    form.hidden = false;
+    form.classList.add("is-open");
+    document.getElementById("birthday-name").focus();
+    form.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function updateBirthdayDayOptions(month, selectedDay = 1) {
+    const daySelect = document.getElementById("birthday-day");
+    if (!daySelect) return;
+    const normalizedMonth = Number(month);
+    const maxDay = normalizedMonth === 2 ? 29 : new Date(2024, normalizedMonth, 0).getDate();
+    daySelect.innerHTML = Array.from({ length: maxDay }, (_, index) => {
+      const day = index + 1;
+      return `<option value="${day}">${day}</option>`;
+    }).join("");
+    daySelect.value = String(Math.min(Math.max(1, Number(selectedDay) || 1), maxDay));
+  }
+
+  function closeBirthdayEditor() {
+    const form = document.getElementById("birthday-editor");
+    if (!form) return;
+    form.hidden = true;
+    form.classList.remove("is-open");
+    form.reset();
+    document.getElementById("birthday-edit-id").value = "";
+  }
+
+  function openBirthdayCalendarModal() {
+    const now = new Date();
+    birthdayCalendarYear = now.getFullYear();
+    birthdayCalendarMonth = now.getMonth();
+    birthdayCalendarMode = "year";
+    renderBirthdayCalendar();
+    document.getElementById("modal-birthdays").classList.add("open");
+  }
+
+  function handleBirthdayCalendarClick(event) {
+    const openMonth = event.target.closest("[data-birthday-open-month]");
+    if (openMonth) {
+      birthdayCalendarMonth = Number(openMonth.dataset.birthdayOpenMonth);
+      birthdayCalendarMode = "month";
+      renderBirthdayCalendar();
+      return;
+    }
+    const dateButton = event.target.closest("[data-birthday-date]");
+    if (dateButton) {
+      const parts = String(dateButton.dataset.birthdayDate).split("-");
+      birthdayCalendarYear = Number(parts[0]);
+      birthdayCalendarMonth = Number(parts[1]) - 1;
+      birthdayCalendarMode = "month";
+      renderBirthdayCalendar();
+      openBirthdayEditor({ month: Number(parts[1]), day: Number(parts[2]) });
+      return;
+    }
+    const editButton = event.target.closest("[data-birthday-edit-id]");
+    if (editButton) {
+      const birthday = getActiveBirthdays().find(entry => entry.id === editButton.dataset.birthdayEditId);
+      if (birthday) openBirthdayEditor({ birthday });
+    }
+  }
+
+  function handleBirthdayFormSubmit(event) {
+    event.preventDefault();
+    const id = String(document.getElementById("birthday-edit-id").value || "");
+    const name = String(document.getElementById("birthday-name").value || "").trim();
+    const month = Number(document.getElementById("birthday-month").value);
+    const day = Number(document.getElementById("birthday-day").value);
+    const yearText = String(document.getElementById("birthday-year").value || "").trim();
+    const birthYear = yearText ? Number(yearText) : null;
+    const notes = String(document.getElementById("birthday-notes").value || "").trim();
+    const maxDay = month === 2 ? 29 : new Date(2024, month, 0).getDate();
+
+    if (!name || !Number.isInteger(month) || month < 1 || month > 12 ||
+        !Number.isInteger(day) || day < 1 || day > maxDay) {
+      showToast("Completa el nombre y una fecha válida.", true);
+      return;
+    }
+    if (birthYear !== null && (!Number.isInteger(birthYear) || birthYear < 1000 || birthYear > new Date().getFullYear())) {
+      showToast("Revisa el año de nacimiento o déjalo vacío.", true);
+      return;
+    }
+
+    const existing = id ? appState.data.birthdays.find(entry => entry.id === id) : null;
+    const birthday = normalizeBirthdayRecord({
+      ...(existing || {}),
+      id: id || `birthday_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      month,
+      day,
+      birthYear,
+      notes,
+      deleted: false,
+      updatedAt: Date.now()
+    });
+    if (!birthday) {
+      showToast("No se pudo validar ese cumpleaños.", true);
+      return;
+    }
+    const list = normalizeBirthdays(appState.data.birthdays);
+    const index = list.findIndex(entry => entry.id === birthday.id);
+    if (index >= 0) list[index] = birthday;
+    else list.push(birthday);
+    appState.data.birthdays = normalizeBirthdays(list);
+    saveData(true, `${id ? "Actualizó" : "Registró"} cumpleaños: ${name}`);
+    closeBirthdayEditor();
+    renderBirthdayCalendar();
+    showToast(id ? "🎉 Cumpleaños actualizado" : "🎂 Cumpleaños registrado");
+  }
+
+  function deleteEditingBirthday() {
+    const id = String(document.getElementById("birthday-edit-id").value || "");
+    const birthday = appState.data.birthdays.find(entry => entry.id === id && !entry.deleted);
+    if (!birthday) return;
+    const confirmed = window.confirm(`¿Eliminar el cumpleaños de ${birthday.name}? Esta acción se sincronizará con tus dispositivos.`);
+    if (!confirmed) return;
+    appState.data.birthdays = normalizeBirthdays(appState.data.birthdays.map(entry =>
+      entry.id === id ? { ...entry, deleted: true, updatedAt: Date.now() } : entry
+    ));
+    saveData(true, `Eliminó cumpleaños: ${birthday.name}`);
+    closeBirthdayEditor();
+    renderBirthdayCalendar();
+    showToast("Cumpleaños eliminado");
+  }
+
   function openCompletionHistoryModal() {
     ensureCompletionLogIncludesCurrentDoneTasks();
     renderCompletionHistory();
@@ -8434,6 +8831,73 @@
       playUiSound("tap");
       openProductivityModal();
     });
+
+    const birthdayOpenButton = document.getElementById("btn-open-birthdays");
+    if (birthdayOpenButton) birthdayOpenButton.addEventListener("click", () => {
+      playUiSound("tap");
+      openBirthdayCalendarModal();
+    });
+    const birthdayYearViewButton = document.getElementById("btn-birthday-year-view");
+    if (birthdayYearViewButton) birthdayYearViewButton.addEventListener("click", () => {
+      birthdayCalendarMode = "year";
+      playUiSound("tap");
+      renderBirthdayCalendar();
+    });
+    const birthdayMonthViewButton = document.getElementById("btn-birthday-month-view-toggle");
+    if (birthdayMonthViewButton) birthdayMonthViewButton.addEventListener("click", () => {
+      birthdayCalendarMode = "month";
+      playUiSound("tap");
+      renderBirthdayCalendar();
+    });
+    const birthdayPrevButton = document.getElementById("btn-birthday-prev-period");
+    if (birthdayPrevButton) birthdayPrevButton.addEventListener("click", () => {
+      if (birthdayCalendarMode === "year") birthdayCalendarYear--;
+      else {
+        birthdayCalendarMonth--;
+        if (birthdayCalendarMonth < 0) {
+          birthdayCalendarMonth = 11;
+          birthdayCalendarYear--;
+        }
+      }
+      playUiSound("tap");
+      renderBirthdayCalendar();
+    });
+    const birthdayNextButton = document.getElementById("btn-birthday-next-period");
+    if (birthdayNextButton) birthdayNextButton.addEventListener("click", () => {
+      if (birthdayCalendarMode === "year") birthdayCalendarYear++;
+      else {
+        birthdayCalendarMonth++;
+        if (birthdayCalendarMonth > 11) {
+          birthdayCalendarMonth = 0;
+          birthdayCalendarYear++;
+        }
+      }
+      playUiSound("tap");
+      renderBirthdayCalendar();
+    });
+    const birthdayYearGrid = document.getElementById("birthday-year-view");
+    const birthdaySingleMonthGrid = document.getElementById("birthday-single-month-grid");
+    if (birthdayYearGrid) birthdayYearGrid.addEventListener("click", handleBirthdayCalendarClick);
+    if (birthdaySingleMonthGrid) birthdaySingleMonthGrid.addEventListener("click", handleBirthdayCalendarClick);
+    const birthdayMonthEventsList = document.getElementById("birthday-month-events-list");
+    if (birthdayMonthEventsList) birthdayMonthEventsList.addEventListener("click", handleBirthdayCalendarClick);
+    const birthdayUpcomingList = document.getElementById("birthday-upcoming-list");
+    if (birthdayUpcomingList) birthdayUpcomingList.addEventListener("click", handleBirthdayCalendarClick);
+    const birthdayAddButton = document.getElementById("btn-birthday-add");
+    if (birthdayAddButton) birthdayAddButton.addEventListener("click", () => {
+      openBirthdayEditor({ month: birthdayCalendarMonth + 1, day: 1 });
+    });
+    const birthdayMonthSelect = document.getElementById("birthday-month");
+    if (birthdayMonthSelect) birthdayMonthSelect.addEventListener("change", () => {
+      const oldDay = Number(document.getElementById("birthday-day").value) || 1;
+      updateBirthdayDayOptions(Number(birthdayMonthSelect.value), oldDay);
+    });
+    const birthdayForm = document.getElementById("birthday-editor");
+    if (birthdayForm) birthdayForm.addEventListener("submit", handleBirthdayFormSubmit);
+    const birthdayCancelButton = document.getElementById("btn-birthday-editor-cancel");
+    if (birthdayCancelButton) birthdayCancelButton.addEventListener("click", closeBirthdayEditor);
+    const birthdayDeleteButton = document.getElementById("btn-birthday-delete");
+    if (birthdayDeleteButton) birthdayDeleteButton.addEventListener("click", deleteEditingBirthday);
 
     const openCompletionHistoryButton = document.getElementById("btn-open-completion-history");
     if (openCompletionHistoryButton) {
