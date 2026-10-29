@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261029-today-grey-calendar-1" />
+  <link rel="stylesheet" href="styles.css?v=20261029-date-birthday-shortcut-1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -86,7 +86,14 @@
         </div>
       </div>
 
-      <div id="current-date-display" class="date-card">Viernes, 16 de octubre</div>
+      <div class="hero-date-stack">
+        <div id="current-date-display" class="date-card">Viernes, 16 de octubre</div>
+        <button type="button" id="btn-date-birthday-shortcut" class="date-birthday-shortcut" aria-haspopup="dialog" aria-controls="modal-birthdays" aria-label="Consultar próximos cumpleaños" data-tip-title="Próximo cumpleaños" data-tip-desc="Abre el calendario para consultar los cumpleaños de hoy y los próximos.">
+          <span class="date-birthday-icon" aria-hidden="true">🎂</span>
+          <span id="date-birthday-shortcut-label">Consultar cumpleaños</span>
+          <span class="date-birthday-chevron" aria-hidden="true">›</span>
+        </button>
+      </div>
     </section>
 
     <!-- 3-Card Metrics Grid -->
@@ -1051,6 +1058,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261029-icon-toggle-boxes-2"></script>
+  <script src="app.js?v=20261029-date-birthday-shortcut-1"></script>
 </body>
 </html>
