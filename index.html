@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261029-delete-recurring-1" />
+  <link rel="stylesheet" href="styles.css?v=20261029-repeat-audit-1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -950,6 +950,51 @@
     </div>
   </div>
 
+  <!-- Per-casilla recurrence registry and weekday workload audit -->
+  <div id="modal-recurring-audit" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="recurring-audit-title">
+    <div class="modal-dialog wide recurring-audit-dialog">
+      <div class="modal-header recurring-audit-header">
+        <div>
+          <div class="modal-eyebrow">REGISTRO DE REPETICIONES</div>
+          <h3 id="recurring-audit-title" class="modal-title">Tareas repetidas</h3>
+          <p id="recurring-audit-subtitle" class="recurring-audit-subtitle">Consulta qué días se repite cada tarea.</p>
+        </div>
+        <button type="button" id="btn-close-recurring-audit" class="modal-close-btn" aria-label="Cerrar registro">✕</button>
+      </div>
+      <div class="recurring-audit-overview">
+        <div class="recurring-audit-overview-icon" aria-hidden="true">🔁</div>
+        <div class="recurring-audit-overview-copy">
+          <strong id="recurring-audit-summary-title">Distribución semanal</strong>
+          <span id="recurring-audit-summary-text">Cada número muestra cuántas tareas recurrentes están programadas para ese día.</span>
+        </div>
+      </div>
+      <section class="recurring-audit-weekdays-section">
+        <div class="recurring-audit-section-heading">
+          <div>
+            <h4>Repeticiones por día de la semana</h4>
+            <p>Los días con más tareas aparecen resaltados para detectar acumulaciones.</p>
+          </div>
+          <span class="recurring-audit-legend">Tareas programadas</span>
+        </div>
+        <div id="recurring-audit-weekday-load" class="recurring-audit-weekday-load"></div>
+      </section>
+      <section class="recurring-audit-list-section">
+        <div class="recurring-audit-section-heading">
+          <div>
+            <h4>Todas las tareas recurrentes</h4>
+            <p>Consulta el patrón, sus próximas fechas y las ocurrencias atrasadas conservadas.</p>
+          </div>
+          <span id="recurring-audit-task-count" class="recurring-audit-count-total">0</span>
+        </div>
+        <div id="recurring-audit-task-list" class="recurring-audit-task-list"></div>
+      </section>
+      <div class="modal-footer recurring-audit-footer">
+        <span class="recurring-audit-footnote">Este registro es de consulta; edita una tarea para cambiar sus días de repetición.</span>
+        <button type="button" id="btn-close-recurring-audit-footer" class="btn-secondary">Cerrar registro</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Confirmation: delete one occurrence or change a repeating schedule -->
   <div id="modal-delete-task" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-task-modal-title">
     <div class="modal-dialog delete-task-dialog">
@@ -1003,6 +1048,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261029-delete-recurring-1"></script>
+  <script src="app.js?v=20261029-repeat-audit-1"></script>
 </body>
 </html>
