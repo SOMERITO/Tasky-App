@@ -3669,7 +3669,8 @@
     rebuildTaskMemoryFromTasks();
     renderBoard();
     renderLearningGoalsPanel();
-    // Keep the birthday calendar live when another device changes its records.
+    // Keep the count fresh even with the calendar closed; redraw its contents when it is open.
+    renderBirthdayUpcomingList();
     const birthdayModal = document.getElementById("modal-birthdays");
     if (birthdayModal && birthdayModal.classList.contains("open")) renderBirthdayCalendar();
     const syncText = document.getElementById("sync-status-text");
@@ -9337,6 +9338,7 @@
     initEvents();
     renderBoard();
     renderLearningGoalsPanel();
+    renderBirthdayUpcomingList();
     document.documentElement.classList.remove("tasky-booting");
 
     // Initial sync, real-time updates, and a quiet recovery poll for mobile WebViews.
