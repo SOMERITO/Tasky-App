@@ -5873,28 +5873,37 @@ body.focus-mode-open #boxes-container {
 }
 
 
-/* Global collapse / expand control in the board quick-actions row */
+/* Compact icon-only global fold/unfold control beside the overdue button. */
 .all-boxes-toggle {
-  margin-left: auto;
-  flex: 0 0 auto;
-  border-color: rgba(100, 116, 139, .24);
-  background: linear-gradient(135deg, var(--surface-solid), var(--surface-muted));
-  color: var(--text-secondary);
-  white-space: nowrap;
+  flex: 0 0 36px;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 11px;
+  border: 1px solid rgba(37, 99, 235, .30);
+  background: var(--primary-soft);
+  color: var(--primary);
 }
 .all-boxes-toggle:hover {
-  border-color: rgba(99, 102, 241, .35);
-  background: var(--primary-soft);
-  color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 13px rgba(37, 99, 235, .12);
 }
-.all-boxes-toggle[aria-expanded="false"] {
-  border-color: rgba(99, 102, 241, .28);
-  background: var(--primary-soft);
-  color: var(--primary);
+.all-boxes-toggle.is-collapsed {
+  border-color: rgba(22, 163, 74, .34);
+  background: var(--success-soft);
+  color: var(--success);
+}
+.all-boxes-toggle.is-collapsed:hover {
+  border-color: var(--success);
+  background: rgba(22, 163, 74, .20);
 }
 .all-boxes-toggle svg { flex: 0 0 auto; }
-@media (max-width: 720px) {
-  .all-boxes-toggle {
-    margin-left: 0;
-  }
+.all-boxes-toggle:focus-visible {
+  outline: 3px solid var(--primary-soft);
+  outline-offset: 2px;
+}
+[data-theme="dark"] .all-boxes-toggle.is-collapsed {
+  color: var(--success);
 }
