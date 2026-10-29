@@ -5913,17 +5913,17 @@
 
   function updateAllBoxesToggleButton() {
     const button = document.getElementById("btn-toggle-all-boxes");
-    const label = document.getElementById("all-boxes-toggle-label");
-    if (!button || !label) return;
+    if (!button) return;
     const allCollapsed = areAllBoxesCollapsed();
-    const actionLabel = allCollapsed ? "Desplegar casillas" : "Plegar casillas";
-    label.textContent = actionLabel;
+    const actionLabel = allCollapsed ? "Desplegar todas las casillas" : "Plegar todas las casillas";
     button.setAttribute("aria-label", actionLabel);
     button.setAttribute("aria-expanded", allCollapsed ? "false" : "true");
-    button.dataset.tipTitle = allCollapsed ? "Desplegar todas las casillas" : "Plegar todas las casillas";
+    button.dataset.tipTitle = actionLabel;
     button.dataset.tipDesc = allCollapsed
-      ? "Vuelve a mostrar todas las tareas de las casillas."
-      : "Pliega todas las casillas de una vez sin modificar ni eliminar tareas.";
+      ? "Vuelve a mostrar las tareas de todas las casillas."
+      : "Pliega todas las casillas de una vez, sin modificar ni eliminar sus tareas.";
+    button.classList.toggle("is-collapsed", allCollapsed);
+    button.classList.toggle("is-expanded", !allCollapsed);
     const icon = document.getElementById("all-boxes-toggle-icon");
     if (icon) icon.innerHTML = allCollapsed
       ? '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="m8 16 4-3 4 3"/>'
