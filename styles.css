@@ -1129,10 +1129,17 @@ body {
 }
 
 .pro-cal-day.is-today.is-disabled-day {
-  opacity: 0.48 !important;
-  border: 1.5px dashed var(--line-strong) !important;
-  background: transparent !important;
-  color: var(--muted) !important;
+  opacity: 1 !important;
+  border: 1.5px solid #9ca3af !important;
+  background: #e5e7eb !important;
+  color: #374151 !important;
+  font-weight: 900 !important;
+}
+
+[data-theme="dark"] .pro-cal-day.is-today.is-disabled-day {
+  border-color: #64748b !important;
+  background: #334155 !important;
+  color: #f1f5f9 !important;
 }
 
 .box-ctrl-btn {
