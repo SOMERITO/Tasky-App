@@ -5784,3 +5784,88 @@ body.focus-mode-open #boxes-container {
   .delete-task-modal-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .delete-task-modal-actions button { width: 100%; justify-content: center; }
 }
+
+
+/* PER-BOX REPEATING TASK REGISTER */
+.recurring-audit-btn {
+  position: relative;
+  color: var(--primary);
+  border-color: rgba(99, 102, 241, .23);
+  background: rgba(99, 102, 241, .07);
+}
+.recurring-audit-btn:hover {
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border-color: transparent;
+}
+.recurring-audit-count {
+  position: absolute; top: -5px; right: -5px; min-width: 15px; height: 15px; padding: 0 3px;
+  display: inline-flex; align-items: center; justify-content: center; border-radius: 999px;
+  background: #7c3aed; color: #fff; border: 1px solid var(--surface-solid);
+  font-size: .58rem; font-weight: 950; line-height: 1;
+}
+.recurring-audit-dialog { width: min(900px, calc(100vw - 28px)); max-width: 900px; max-height: min(90vh, 900px); overflow-y: auto; }
+.recurring-audit-header { margin-bottom: 14px; }
+.recurring-audit-subtitle { margin: 5px 0 0; color: var(--muted); font-size: .78rem; }
+.recurring-audit-overview {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin-bottom: 16px;
+  border: 1px solid rgba(99, 102, 241, .17); border-radius: 16px;
+  background: linear-gradient(110deg, rgba(224, 231, 255, .62), rgba(237, 233, 254, .64), rgba(224, 242, 254, .55));
+}
+[data-theme="dark"] .recurring-audit-overview { background: linear-gradient(110deg, rgba(49, 46, 129, .32), rgba(76, 29, 149, .25), rgba(30, 64, 175, .18)); }
+.recurring-audit-overview-icon { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 auto; border-radius: 13px; background: var(--surface-solid); box-shadow: var(--shadow-xs); font-size: 1.3rem; }
+.recurring-audit-overview-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.recurring-audit-overview-copy strong { color: var(--text); font-size: .9rem; }
+.recurring-audit-overview-copy span { color: var(--text-secondary); font-size: .73rem; line-height: 1.4; }
+.recurring-audit-weekdays-section, .recurring-audit-list-section { margin-top: 16px; }
+.recurring-audit-section-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 14px; margin-bottom: 10px; }
+.recurring-audit-section-heading h4 { margin: 0; color: var(--text); font-size: .9rem; font-weight: 900; }
+.recurring-audit-section-heading p { margin: 4px 0 0; color: var(--muted); font-size: .72rem; line-height: 1.4; }
+.recurring-audit-legend { color: var(--muted); font-size: .68rem; }
+.recurring-audit-weekday-load { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.recurring-audit-day-card { min-width: 0; padding: 10px 9px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-muted); }
+.recurring-audit-day-card.is-most-loaded { border-color: rgba(245, 158, 11, .45); background: rgba(245, 158, 11, .09); }
+.recurring-audit-day-top { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+.recurring-audit-day-top span { color: var(--text-secondary); font-size: .7rem; font-weight: 800; }
+.recurring-audit-day-top strong { color: var(--text); font-size: .85rem; }
+.recurring-audit-day-card.is-most-loaded .recurring-audit-day-top strong { color: #b45309; }
+.recurring-audit-day-track { height: 5px; margin: 8px 0 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.recurring-audit-day-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #6366f1, #a78bfa); }
+.recurring-audit-day-card.is-most-loaded .recurring-audit-day-track span { background: linear-gradient(90deg, #f59e0b, #f97316); }
+.recurring-audit-day-card small { display: block; color: var(--muted); font-size: .58rem; line-height: 1.3; }
+.recurring-audit-day-card.is-most-loaded small { color: #b45309; font-weight: 800; }
+.recurring-audit-count-total { display: inline-flex; align-items: center; justify-content: center; min-width: 27px; height: 27px; padding: 0 8px; border-radius: 99px; color: var(--primary); background: var(--primary-soft); font-size: .75rem; font-weight: 900; }
+.recurring-audit-task-list { display: flex; flex-direction: column; gap: 9px; }
+.recurring-audit-task-card { padding: 14px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface-solid); }
+.recurring-audit-task-heading { display: flex; align-items: center; gap: 10px; }
+.recurring-audit-task-emoji { display: grid; place-items: center; flex: 0 0 auto; width: 36px; height: 36px; border-radius: 11px; background: var(--primary-soft); font-size: 1.05rem; }
+.recurring-audit-task-title-wrap { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.recurring-audit-task-title-wrap strong { color: var(--text); font-size: .83rem; overflow-wrap: anywhere; }
+.recurring-audit-task-title-wrap span { color: var(--muted); font-size: .69rem; }
+.recurring-audit-edit-btn { flex: 0 0 auto; padding: 7px 10px; font-size: .7rem; }
+.recurring-audit-weekday-chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
+.recurring-audit-weekday-chip { padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--surface-muted); font-size: .67rem; font-weight: 800; }
+.recurring-audit-weekday-chip.is-selected { color: #4338ca; border-color: rgba(99, 102, 241, .23); background: rgba(99, 102, 241, .1); }
+[data-theme="dark"] .recurring-audit-weekday-chip.is-selected { color: #c7d2fe; }
+.recurring-audit-task-details { display: flex; flex-wrap: wrap; gap: 6px 18px; padding-top: 9px; border-top: 1px solid var(--line); color: var(--text-secondary); font-size: .69rem; }
+.recurring-audit-task-details strong { color: var(--text); }
+.recurring-audit-task-meta { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; font-size: .68rem; color: var(--text-secondary); }
+.recurring-audit-task-meta small { color: var(--muted); font-size: .65rem; line-height: 1.4; }
+.recurring-audit-task-meta.is-overdue > span { color: var(--danger); font-weight: 800; }
+.recurring-audit-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 14px; text-align: center; color: var(--muted); }
+.recurring-audit-empty > span { font-size: 1.7rem; }
+.recurring-audit-empty strong { color: var(--text-secondary); font-size: .83rem; }
+.recurring-audit-empty p { max-width: 390px; margin: 0; font-size: .72rem; line-height: 1.5; }
+.recurring-audit-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 17px; }
+.recurring-audit-footnote { color: var(--muted); font-size: .68rem; }
+@media (max-width: 700px) {
+  .recurring-audit-dialog { width: calc(100vw - 16px); max-height: 94vh; padding: 15px 12px; }
+  .recurring-audit-weekday-load { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .recurring-audit-day-card { padding: 8px 7px; }
+  .recurring-audit-task-card { padding: 11px; }
+  .recurring-audit-task-heading { flex-wrap: wrap; }
+  .recurring-audit-task-title-wrap { flex-basis: calc(100% - 60px); }
+  .recurring-audit-edit-btn { margin-left: 45px; }
+  .recurring-audit-footer { align-items: stretch; flex-direction: column; }
+  .recurring-audit-footer button { width: 100%; justify-content: center; }
+}
