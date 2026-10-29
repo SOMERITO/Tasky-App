@@ -7391,6 +7391,7 @@
     })).filter(entry => entry.nextDate)
       .sort((a, b) => a.nextDate.localeCompare(b.nextDate) || a.name.localeCompare(b.name, "es"));
 
+    renderDateBirthdayShortcut();
     total.textContent = String(upcoming.length);
     buttonCount.textContent = String(upcoming.length);
 
