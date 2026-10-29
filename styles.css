@@ -575,6 +575,10 @@ body {
   text-align: center;
 }
 
+.date-birthday-shortcut[hidden] {
+  display: none !important;
+}
+
 .date-birthday-shortcut {
   width: 100%;
   min-width: 0;
