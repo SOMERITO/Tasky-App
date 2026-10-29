@@ -5946,6 +5946,7 @@
         .sort((a, b) => (a.order || 0) - (b.order || 0));
 
       const pendingBoxTasks = boxTasksAll.filter(t => !t.done);
+      const recurringTasksInBox = boxTasksAll.filter(t => isRecurringTaskRecord(t));
       const doneBoxTasks = boxTasksAll.filter(t => t.done);
       const doneTodayBoxTasks = doneBoxTasks.filter(t => isTaskForToday(t));
 
@@ -6037,6 +6038,9 @@
       const countSquareTipDesc = isAllTasksRescheduled
         ? `Todas las tareas de esta casilla (${reschedInBox.length}) están reprogramadas para otros días.`
         : `Número de tareas pendientes para hoy en ${box.name.toUpperCase()}.`;
+      const recurringAuditButtonHtml = recurringTasksInBox.length
+        ? '<button type="button" class="box-ctrl-btn recurring-audit-btn" data-box-action="recurring-audit" aria-label="Ver registro de tareas repetidas en ' + escapeHtml(box.name) + '" data-tip-title="Registro de tareas repetidas" data-tip-desc="Consulta las tareas recurrentes de esta casilla, los días configurados y las ocurrencias atrasadas."><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg><span class="recurring-audit-count">' + recurringTasksInBox.length + '</span></button>'
+        : "";
 
       // Point 9: Up/Down buttons on LEFT side, Colored Pending Number Square + Collapse/Expand + Delete on RIGHT side
       card.innerHTML = `
@@ -6059,6 +6063,7 @@
 
           <div class="box-header-actions">
             <span class="${countSquareClass}" data-tip-title="${escapeHtml(countSquareTipTitle)}" data-tip-desc="${escapeHtml(countSquareTipDesc)}">${countSquareNumber}</span>
+            ${recurringAuditButtonHtml}
             <button type="button" class="box-ctrl-btn copy-box-btn" data-box-action="copy-box" aria-label="Copiar casilla y tareas" data-tip-title="📋 Copiar casilla y tareas" data-tip-desc="Copia el título de esta casilla y todas las tareas registradas en ella al portapapeles.">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             </button>
@@ -6108,6 +6113,12 @@
         playUiSound(box.collapsed ? "fold" : "unfold");
         persistLocalViewState();
         showToast(box.collapsed ? "Casilla plegada" : "Casilla desplegada");
+      });
+
+      const recurringAuditBtn = card.querySelector('[data-box-action="recurring-audit"]');
+      if (recurringAuditBtn) recurringAuditBtn.addEventListener("click", () => {
+        playUiSound("tap");
+        openBoxRecurringAudit(box.id);
       });
 
       const copyBoxBtn = card.querySelector('[data-box-action="copy-box"]');
@@ -7654,6 +7665,117 @@
     }
     saveData(true, `${task.done ? "Completó" : "Reabrió"}: ${task.title}`);
     renderBoard();
+  }
+
+  const RECURRING_AUDIT_DAY_NAMES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  const RECURRING_AUDIT_DAY_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+  function describeRepeatDays(days) {
+    const selected = Array.from(new Set((Array.isArray(days) ? days : []).map(Number)
+      .filter(day => Number.isInteger(day) && day >= 0 && day <= 6))).sort((a, b) => a - b);
+    if (!selected.length) return "Sin días de repetición configurados";
+    if (selected.length === 7) return "Todos los días";
+    if (selected.join(",") === "1,2,3,4,5") return "De lunes a viernes";
+    if (selected.join(",") === "0,6") return "Fines de semana";
+    return selected.map(day => RECURRING_AUDIT_DAY_NAMES[day]).join(", ");
+  }
+
+  function renderBoxRecurringAudit(boxId) {
+    const box = appState.data.boxes.find(item => String(item.id) === String(boxId));
+    const summaryTitle = document.getElementById("recurring-audit-summary-title");
+    const summaryText = document.getElementById("recurring-audit-summary-text");
+    const weekdayLoad = document.getElementById("recurring-audit-weekday-load");
+    const taskList = document.getElementById("recurring-audit-task-list");
+    const taskCount = document.getElementById("recurring-audit-task-count");
+    if (!box || !summaryTitle || !summaryText || !weekdayLoad || !taskList || !taskCount) return;
+
+    const tasks = appState.data.tasks
+      .filter(task => String(task.boxId) === String(box.id) && isRecurringTaskRecord(task))
+      .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || a.title.localeCompare(b.title, "es"));
+    const weekdayCounts = Array(7).fill(0);
+    tasks.forEach(task => getTaskRepeatDays(task).forEach(day => { weekdayCounts[day]++; }));
+    const maxDayCount = Math.max(0, ...weekdayCounts);
+    const busyDayNames = RECURRING_AUDIT_DAY_NAMES.filter((name, day) =>
+      maxDayCount > 0 && weekdayCounts[day] === maxDayCount
+    );
+
+    document.getElementById("recurring-audit-title").textContent = "Repeticiones · " + box.name;
+    document.getElementById("recurring-audit-subtitle").textContent =
+      tasks.length + (tasks.length === 1 ? " tarea recurrente en esta casilla" : " tareas recurrentes en esta casilla");
+    summaryTitle.textContent = tasks.length
+      ? tasks.length + " tareas con programación semanal"
+      : "No hay tareas recurrentes";
+    summaryText.textContent = tasks.length
+      ? (busyDayNames.length
+        ? "Mayor carga: " + busyDayNames.join(" y ") + " (" + maxDayCount + (maxDayCount === 1 ? " tarea" : " tareas") + " cada día)."
+        : "Distribución de las tareas por día de la semana.")
+      : "Cuando configures una tarea para que se repita, aparecerá aquí.";
+    taskCount.textContent = String(tasks.length);
+
+    weekdayLoad.innerHTML = RECURRING_AUDIT_DAY_NAMES.map((name, day) => {
+      const count = weekdayCounts[day];
+      const isMostLoaded = count > 0 && count === maxDayCount;
+      const width = maxDayCount > 0 ? Math.max(count > 0 ? 8 : 0, Math.round((count / maxDayCount) * 100)) : 0;
+      return `<div class="recurring-audit-day-card ${isMostLoaded ? "is-most-loaded" : ""}">
+        <div class="recurring-audit-day-top"><span>${RECURRING_AUDIT_DAY_SHORT[day]}</span><strong>${count}</strong></div>
+        <div class="recurring-audit-day-track"><span style="width:${width}%"></span></div>
+        <small>${isMostLoaded ? "Más cargado" : count === 0 ? "Sin tareas" : count === 1 ? "1 tarea" : count + " tareas"}</small>
+      </div>`;
+    }).join("");
+
+    if (!tasks.length) {
+      taskList.innerHTML = `<div class="recurring-audit-empty"><span aria-hidden="true">🗓️</span><strong>Esta casilla no tiene tareas repetidas</strong><p>Abre la configuración de repetición de una tarea para elegir los días de la semana.</p></div>`;
+      return;
+    }
+
+    const today = getTodayISO();
+    taskList.innerHTML = tasks.map(task => {
+      const days = getTaskRepeatDays(task);
+      const until = task.repeatUntil ? String(task.repeatUntil).slice(0, 10) : null;
+      const nextDate = getNextRepeatDateOnOrAfter(today, days, until);
+      const missed = appState.data.tasks
+        .filter(item => String(item.boxId) === String(box.id) &&
+          String(item.id).startsWith(`${task.id}__missed__`) && !item.done)
+        .sort((a, b) => String(a.dueDate || "").localeCompare(String(b.dueDate || "")));
+      const skipped = Array.from(new Set((Array.isArray(task.skippedDates) ? task.skippedDates : [])
+        .map(date => String(date || "").slice(0, 10)))).sort();
+      const nextLabel = nextDate ? formatSpanishDateLong(nextDate) : "Sin próximas fechas programadas";
+      const endLabel = until ? "Termina el " + formatSpanishDateLong(until) : "Sin fecha de finalización";
+      const daysHtml = days.map(day => `<span class="recurring-audit-weekday-chip is-selected">${RECURRING_AUDIT_DAY_NAMES[day]}</span>`).join("");
+      const missedHtml = missed.length
+        ? `<div class="recurring-audit-task-meta is-overdue"><span>⚠️ ${missed.length} ${missed.length === 1 ? "ocurrencia atrasada conservada" : "ocurrencias atrasadas conservadas"}</span><small>${missed.map(item => formatSpanishDateLong(String(item.dueDate || "").slice(0, 10))).join(" · ")}</small></div>`
+        : `<div class="recurring-audit-task-meta"><span>✓ Sin ocurrencias atrasadas separadas</span></div>`;
+      const skippedHtml = skipped.length
+        ? `<div class="recurring-audit-task-meta"><span>Fechas omitidas: ${skipped.length}</span><small>${skipped.map(date => formatSpanishDateLong(date)).join(" · ")}</small></div>`
+        : "";
+      return `<article class="recurring-audit-task-card">
+        <div class="recurring-audit-task-heading">
+          <div class="recurring-audit-task-emoji" aria-hidden="true">🔁</div>
+          <div class="recurring-audit-task-title-wrap"><strong>${escapeHtml(task.title)}</strong><span>${escapeHtml(describeRepeatDays(days))}</span></div>
+          <button type="button" class="btn-secondary recurring-audit-edit-btn" data-repeat-audit-edit-task="${escapeHtml(task.id)}">Editar días</button>
+        </div>
+        <div class="recurring-audit-weekday-chips">${daysHtml}</div>
+        <div class="recurring-audit-task-details">
+          <span><strong>Próxima:</strong> ${escapeHtml(nextLabel)}</span>
+          <span>${escapeHtml(endLabel)}</span>
+        </div>
+        ${missedHtml}
+        ${skippedHtml}
+      </article>`;
+    }).join("");
+  }
+
+  function openBoxRecurringAudit(boxId) {
+    appState.recurringAuditBoxId = String(boxId);
+    renderBoxRecurringAudit(boxId);
+    const modal = document.getElementById("modal-recurring-audit");
+    if (modal) modal.classList.add("open");
+  }
+
+  function closeBoxRecurringAudit() {
+    const modal = document.getElementById("modal-recurring-audit");
+    if (modal) modal.classList.remove("open");
+    appState.recurringAuditBoxId = null;
   }
 
   let pendingTaskDeletionId = null;
@@ -9221,6 +9343,23 @@
     if (birthdayCancelButton) birthdayCancelButton.addEventListener("click", closeBirthdayEditor);
     const birthdayDeleteButton = document.getElementById("btn-birthday-delete");
     if (birthdayDeleteButton) birthdayDeleteButton.addEventListener("click", deleteEditingBirthday);
+
+    const recurringAuditModal = document.getElementById("modal-recurring-audit");
+    const recurringAuditClose = document.getElementById("btn-close-recurring-audit");
+    const recurringAuditCloseFooter = document.getElementById("btn-close-recurring-audit-footer");
+    const recurringAuditTaskList = document.getElementById("recurring-audit-task-list");
+    if (recurringAuditClose) recurringAuditClose.addEventListener("click", closeBoxRecurringAudit);
+    if (recurringAuditCloseFooter) recurringAuditCloseFooter.addEventListener("click", closeBoxRecurringAudit);
+    if (recurringAuditModal) recurringAuditModal.addEventListener("click", event => {
+      if (event.target === recurringAuditModal) closeBoxRecurringAudit();
+    });
+    if (recurringAuditTaskList) recurringAuditTaskList.addEventListener("click", event => {
+      const editButton = event.target.closest("[data-repeat-audit-edit-task]");
+      if (!editButton) return;
+      const taskId = String(editButton.dataset.repeatAuditEditTask || "");
+      closeBoxRecurringAudit();
+      openRepeatPickerModal(taskId);
+    });
 
     const deleteTaskModal = document.getElementById("modal-delete-task");
     const deleteTaskCancel = document.getElementById("btn-cancel-delete-task");
