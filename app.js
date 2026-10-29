@@ -5137,7 +5137,7 @@
     const days = getTaskRepeatDays(task);
     let label = "";
     if (task.frequency === "daily" || days.length === 7) {
-      label = "🔁 Todos los días";
+      label = "🔁 Diario";
     } else if (task.frequency === "weekdays" || (days.length === 5 && days.join(",") === "1,2,3,4,5")) {
       label = "🔁 Lunes a viernes";
     } else if (task.frequency === "weekends" || (days.length === 2 && days.join(",") === "0,6")) {
@@ -5145,7 +5145,9 @@
     } else if (days.length === 1) {
       label = `🔁 Solo ${DAY_FULL_NAMES[days[0]]}`;
     } else if (days.length > 1) {
-      label = `🔁 ${days.map(d => DAY_SHORT_NAMES[d]).join(", ")}`;
+      const mondayFirstOrder = [1, 2, 3, 4, 5, 6, 0];
+      const orderedDays = mondayFirstOrder.filter(day => days.includes(day));
+      label = `🔁 ${orderedDays.map(d => DAY_SHORT_NAMES[d]).join(", ")}`;
     }
     if (label && task.repeatUntil) label += " · esta semana";
     return label;
@@ -7184,7 +7186,7 @@
     "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
   ];
-  const BIRTHDAY_WEEKDAY_NAMES = ["D", "L", "M", "X", "J", "V", "S"];
+  const BIRTHDAY_WEEKDAY_NAMES = ["L", "M", "X", "J", "V", "S", "D"];
   let birthdayCalendarYear = new Date().getFullYear();
   let birthdayCalendarMonth = new Date().getMonth();
   let birthdayCalendarMode = "year";
@@ -7264,7 +7266,7 @@
 
   function buildBirthdayMonthHtml(year, zeroBasedMonth, compact = false) {
     const month = zeroBasedMonth + 1;
-    const firstDay = new Date(year, zeroBasedMonth, 1).getDay();
+    const firstDay = (new Date(year, zeroBasedMonth, 1).getDay() + 6) % 7;
     const daysInMonth = new Date(year, zeroBasedMonth + 1, 0).getDate();
     const birthdaysByDay = groupBirthdaysByDay(month, year);
     const today = getTodayISO();
@@ -7711,15 +7713,17 @@
 
   const RECURRING_AUDIT_DAY_NAMES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
   const RECURRING_AUDIT_DAY_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  const RECURRING_AUDIT_WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
   function describeRepeatDays(days) {
     const selected = Array.from(new Set((Array.isArray(days) ? days : []).map(Number)
       .filter(day => Number.isInteger(day) && day >= 0 && day <= 6))).sort((a, b) => a - b);
     if (!selected.length) return "Sin días de repetición configurados";
-    if (selected.length === 7) return "Todos los días";
+    if (selected.length === 7) return "Diario";
     if (selected.join(",") === "1,2,3,4,5") return "De lunes a viernes";
     if (selected.join(",") === "0,6") return "Fines de semana";
-    return selected.map(day => RECURRING_AUDIT_DAY_NAMES[day]).join(", ");
+    return RECURRING_AUDIT_WEEK_ORDER.filter(day => selected.includes(day))
+      .map(day => RECURRING_AUDIT_DAY_NAMES[day]).join(", ");
   }
 
   function renderBoxRecurringAudit(boxId) {
@@ -7737,9 +7741,9 @@
     const weekdayCounts = Array(7).fill(0);
     tasks.forEach(task => getTaskRepeatDays(task).forEach(day => { weekdayCounts[day]++; }));
     const maxDayCount = Math.max(0, ...weekdayCounts);
-    const busyDayNames = RECURRING_AUDIT_DAY_NAMES.filter((name, day) =>
-      maxDayCount > 0 && weekdayCounts[day] === maxDayCount
-    );
+    const busyDayNames = RECURRING_AUDIT_WEEK_ORDER
+      .filter(day => maxDayCount > 0 && weekdayCounts[day] === maxDayCount)
+      .map(day => RECURRING_AUDIT_DAY_NAMES[day]);
 
     document.getElementById("recurring-audit-title").textContent = "Repeticiones · " + box.name;
     document.getElementById("recurring-audit-subtitle").textContent =
@@ -7754,7 +7758,7 @@
       : "Cuando configures una tarea para que se repita, aparecerá aquí.";
     taskCount.textContent = String(tasks.length);
 
-    weekdayLoad.innerHTML = RECURRING_AUDIT_DAY_NAMES.map((name, day) => {
+    weekdayLoad.innerHTML = RECURRING_AUDIT_WEEK_ORDER.map(day => {
       const count = weekdayCounts[day];
       const isMostLoaded = count > 0 && count === maxDayCount;
       const width = maxDayCount > 0 ? Math.max(count > 0 ? 8 : 0, Math.round((count / maxDayCount) * 100)) : 0;
@@ -7783,7 +7787,10 @@
         .map(date => String(date || "").slice(0, 10)))).sort();
       const nextLabel = nextDate ? formatSpanishDateLong(nextDate) : "Sin próximas fechas programadas";
       const endLabel = until ? "Termina el " + formatSpanishDateLong(until) : "Sin fecha de finalización";
-      const daysHtml = days.map(day => `<span class="recurring-audit-weekday-chip is-selected">${RECURRING_AUDIT_DAY_NAMES[day]}</span>`).join("");
+      const daysHtml = days.length === 7
+        ? `<span class="recurring-audit-weekday-chip is-selected">Diario</span>`
+        : RECURRING_AUDIT_WEEK_ORDER.filter(day => days.includes(day))
+          .map(day => `<span class="recurring-audit-weekday-chip is-selected">${RECURRING_AUDIT_DAY_NAMES[day]}</span>`).join("");
       const missedHtml = missed.length
         ? `<div class="recurring-audit-task-meta is-overdue"><span>⚠️ ${missed.length} ${missed.length === 1 ? "ocurrencia atrasada conservada" : "ocurrencias atrasadas conservadas"}</span><small>${missed.map(item => formatSpanishDateLong(String(item.dueDate || "").slice(0, 10))).join(" · ")}</small></div>`
         : `<div class="recurring-audit-task-meta"><span>✓ Sin ocurrencias atrasadas separadas</span></div>`;
