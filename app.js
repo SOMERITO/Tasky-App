@@ -4649,10 +4649,63 @@
 
   function renderHeroDate() {
     const el = document.getElementById("current-date-display");
-    if (!el) return;
-    const now = new Date();
-    const months = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-    el.textContent = `${DAY_FULL_NAMES[now.getDay()]}, ${now.getDate()} de ${months[now.getMonth()]}`;
+    if (el) {
+      const now = new Date();
+      const months = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+      el.textContent = `${DAY_FULL_NAMES[now.getDay()]}, ${now.getDate()} de ${months[now.getMonth()]}`;
+    }
+    renderDateBirthdayShortcut();
+  }
+
+  function renderDateBirthdayShortcut() {
+    const button = document.getElementById("btn-date-birthday-shortcut");
+    const label = document.getElementById("date-birthday-shortcut-label");
+    if (!button || !label) return;
+
+    const today = getTodayISO();
+    const upcoming = getActiveBirthdays()
+      .map(entry => ({ ...entry, nextDate: getNextBirthdayOccurrence(entry, today) }))
+      .filter(entry => entry.nextDate)
+      .sort((a, b) => a.nextDate.localeCompare(b.nextDate) || a.name.localeCompare(b.name, "es"));
+    const todayBirthdays = upcoming.filter(entry => entry.nextDate === today);
+    const formatShortDate = iso => new Date(iso + "T12:00:00")
+      .toLocaleDateString("es-PE", { day: "numeric", month: "short" });
+
+    let buttonLabel = "Añadir cumpleaños";
+    let tooltipTitle = "Registrar cumpleaños";
+    let tooltipDescription = "Abre el calendario para registrar cumpleaños importantes.";
+
+    if (todayBirthdays.length === 1) {
+      buttonLabel = "Hoy: " + todayBirthdays[0].name;
+      tooltipTitle = "Cumpleaños de hoy";
+      tooltipDescription = "Pulsa para ver todos los cumpleaños registrados para hoy.";
+    } else if (todayBirthdays.length === 2) {
+      buttonLabel = "Hoy: " + todayBirthdays[0].name + " y " + todayBirthdays[1].name;
+      tooltipTitle = "Cumpleaños de hoy";
+      tooltipDescription = "Pulsa para ver todos los cumpleaños registrados para hoy.";
+    } else if (todayBirthdays.length > 2) {
+      buttonLabel = "Cumpleaños hoy · " + todayBirthdays.length + " personas";
+      tooltipTitle = "Cumpleaños de hoy";
+      tooltipDescription = "Pulsa para ver todos los cumpleaños registrados para hoy.";
+    } else if (upcoming.length) {
+      const nextDate = upcoming[0].nextDate;
+      const nextGroup = upcoming.filter(entry => entry.nextDate === nextDate);
+      if (nextGroup.length === 1) {
+        buttonLabel = "Próximo: " + nextGroup[0].name + " · " + formatShortDate(nextDate);
+      } else if (nextGroup.length === 2) {
+        buttonLabel = "Próximos: " + nextGroup[0].name + " y " + nextGroup[1].name + " · " + formatShortDate(nextDate);
+      } else {
+        buttonLabel = "Próximos cumpleaños · " + formatShortDate(nextDate) + " (" + nextGroup.length + ")";
+      }
+      tooltipTitle = "Próximo cumpleaños";
+      tooltipDescription = "Pulsa para ver a quién le toca cumplir años y consultar el resto de fechas.";
+    }
+
+    label.textContent = buttonLabel;
+    button.setAttribute("aria-label", tooltipTitle + ": " + buttonLabel);
+    button.dataset.tipTitle = tooltipTitle;
+    button.dataset.tipDesc = tooltipDescription;
+    button.classList.toggle("has-today-birthday", todayBirthdays.length > 0);
   }
 
   function getLearningWeekStartISO(baseIso = getTodayISO()) {
@@ -7367,6 +7420,7 @@
         <span class="birthday-upcoming-status ${daysUntilEntry === 0 ? "is-today" : ""}">${escapeHtml(status)}</span>
       </button>`;
     }).join("");
+    renderDateBirthdayShortcut();
   }
 
   function renderBirthdayHistory() {
@@ -7569,9 +7623,9 @@
     document.getElementById("birthday-edit-id").value = "";
   }
 
-  function openBirthdayCalendarModal() {
+  function openBirthdayCalendarModal(options = {}) {
     const now = new Date();
-    birthdayUpcomingExpanded = false;
+    birthdayUpcomingExpanded = Boolean(options.expandUpcoming);
     birthdayCalendarYear = now.getFullYear();
     birthdayCalendarMonth = now.getMonth();
     birthdayCalendarMode = "year";
@@ -9308,6 +9362,11 @@
     if (birthdayOpenButton) birthdayOpenButton.addEventListener("click", () => {
       playUiSound("tap");
       openBirthdayCalendarModal();
+    });
+    const dateBirthdayShortcut = document.getElementById("btn-date-birthday-shortcut");
+    if (dateBirthdayShortcut) dateBirthdayShortcut.addEventListener("click", () => {
+      playUiSound("tap");
+      openBirthdayCalendarModal({ expandUpcoming: true });
     });
     const birthdayYearViewButton = document.getElementById("btn-birthday-year-view");
     if (birthdayYearViewButton) birthdayYearViewButton.addEventListener("click", () => {
