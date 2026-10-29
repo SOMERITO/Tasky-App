@@ -5900,6 +5900,47 @@
     }
   }
 
+  function areAllBoxesCollapsed() {
+    const boxes = Array.isArray(appState.data.boxes) ? appState.data.boxes : [];
+    if (!boxes.length) return false;
+    const hasCompletedSummary = appState.activeTab !== "completed" &&
+      appState.data.tasks.some(task => task.done && matchesSearch(task, "Tareas completadas"));
+    return boxes.every(box => Boolean(box.collapsed)) &&
+      (!hasCompletedSummary || Boolean(appState.data.completedBoxCollapsed));
+  }
+
+  function updateAllBoxesToggleButton() {
+    const button = document.getElementById("btn-toggle-all-boxes");
+    const label = document.getElementById("all-boxes-toggle-label");
+    if (!button || !label) return;
+    const allCollapsed = areAllBoxesCollapsed();
+    const actionLabel = allCollapsed ? "Desplegar casillas" : "Plegar casillas";
+    label.textContent = actionLabel;
+    button.setAttribute("aria-label", actionLabel);
+    button.setAttribute("aria-expanded", allCollapsed ? "false" : "true");
+    button.dataset.tipTitle = allCollapsed ? "Desplegar todas las casillas" : "Plegar todas las casillas";
+    button.dataset.tipDesc = allCollapsed
+      ? "Vuelve a mostrar todas las tareas de las casillas."
+      : "Pliega todas las casillas de una vez sin modificar ni eliminar tareas.";
+    const icon = document.getElementById("all-boxes-toggle-icon");
+    if (icon) icon.innerHTML = allCollapsed
+      ? '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="m8 16 4-3 4 3"/>'
+      : '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="m8 13 4 3 4-3"/>';
+  }
+
+  function toggleAllBoxes() {
+    const shouldCollapse = !areAllBoxesCollapsed();
+    (appState.data.boxes || []).forEach(box => {
+      box.collapsed = shouldCollapse;
+    });
+    appState.data.completedBoxCollapsed = shouldCollapse;
+    persistLocalViewState();
+    playUiSound(shouldCollapse ? "fold" : "unfold");
+    renderBoard();
+    updateAllBoxesToggleButton();
+    showToast(shouldCollapse ? "Todas las casillas se plegaron" : "Todas las casillas se desplegaron");
+  }
+
   function renderBoard() {
     // Save the viewport before rebuilding cards; detached controls can otherwise make mobile browsers jump.
     const viewportScrollX = Number.isFinite(window.scrollX) ? window.scrollX : (window.pageXOffset || 0);
@@ -6491,6 +6532,7 @@
     appState.hasBootRendered = true;
     updateMultiSelectUI();
     renderFocusModePanel();
+    updateAllBoxesToggleButton();
 
     // Restore after the layout settles, for completion, deletion, reorder and remote-sync updates too.
     const restoreViewport = () => {
@@ -8931,6 +8973,9 @@
   }
 
   function initEvents() {
+    const toggleAllBoxesButton = document.getElementById("btn-toggle-all-boxes");
+    if (toggleAllBoxesButton) toggleAllBoxesButton.addEventListener("click", toggleAllBoxes);
+
     // Global pointer listeners for Hold-to-Drag & Auto-Scroll (Point 7)
     window.addEventListener("pointermove", handleGlobalPointerMove, { passive: true });
     window.addEventListener("pointerup", handleGlobalPointerUp);
