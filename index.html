@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261029-toggle-all-boxes-1" />
+  <link rel="stylesheet" href="styles.css?v=20261029-icon-toggle-boxes-2" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -282,9 +282,8 @@
           <span>⚠️ Atrasadas</span>
           <span id="badge-overdue-count">0</span>
         </button>
-        <button type="button" id="btn-toggle-all-boxes" class="pill-btn all-boxes-toggle" aria-expanded="true" data-tip-title="Plegar o desplegar todas las casillas" data-tip-desc="Pliega todas las casillas de una vez o vuelve a desplegarlas, sin modificar sus tareas.">
-          <svg id="all-boxes-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="m8 13 4 3 4-3"/></svg>
-          <span id="all-boxes-toggle-label">Plegar casillas</span>
+        <button type="button" id="btn-toggle-all-boxes" class="pill-btn all-boxes-toggle" aria-label="Plegar todas las casillas" aria-expanded="true" data-tip-title="Plegar todas las casillas" data-tip-desc="Pliega todas las casillas de una vez, sin modificar ni eliminar sus tareas.">
+          <svg id="all-boxes-toggle-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="m8 13 4 3 4-3"/></svg>
         </button>
       </div>
     </nav>
@@ -1052,6 +1051,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261029-monday-daily-repeat-1"></script>
+  <script src="app.js?v=20261029-icon-toggle-boxes-2"></script>
 </body>
 </html>
