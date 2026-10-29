@@ -5502,3 +5502,129 @@ body.focus-mode-open #boxes-container {
   .birthday-period-controls { gap: 6px; }
   .birthday-period-title { min-width: 90px; }
 }
+
+
+/* BIRTHDAY BALLOONS · DISTINCT COLORS FOR EACH PERSON ON THE SAME DATE */
+.birthday-day-cell.is-compact {
+  flex-wrap: wrap;
+  align-content: center;
+  gap: 2px 2px;
+}
+.birthday-day-cell.is-expanded {
+  gap: 4px;
+  overflow: hidden;
+}
+.birthday-day-balloons {
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1;
+}
+.birthday-day-balloons.is-compact {
+  min-height: 10px;
+  gap: 1px;
+}
+.birthday-day-balloons.is-expanded {
+  min-height: 17px;
+  gap: 3px;
+}
+.birthday-balloon {
+  --birthday-balloon-color: #ec4899;
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 10px;
+  height: 17px;
+}
+.birthday-balloon::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 1px;
+  width: 8px;
+  height: 11px;
+  border-radius: 52% 48% 48% 48%;
+  background: linear-gradient(135deg, rgba(255,255,255,.65), transparent 42%), var(--birthday-balloon-color);
+  box-shadow: inset -1px -1px 0 rgba(0,0,0,.08), 0 1px 2px rgba(15,23,42,.13);
+  transform: rotate(-7deg);
+}
+.birthday-balloon > i {
+  position: absolute;
+  top: 10px;
+  left: 4px;
+  width: 3px;
+  height: 3px;
+  background: var(--birthday-balloon-color);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.birthday-balloon::after {
+  content: "";
+  position: absolute;
+  top: 13px;
+  left: 5px;
+  height: 4px;
+  border-left: 1px solid var(--birthday-balloon-color);
+  transform: rotate(7deg);
+  opacity: .9;
+}
+.birthday-day-balloons.is-compact .birthday-balloon {
+  width: 7px;
+  height: 11px;
+}
+.birthday-day-balloons.is-compact .birthday-balloon::before {
+  left: 1px;
+  width: 6px;
+  height: 7px;
+}
+.birthday-day-balloons.is-compact .birthday-balloon > i {
+  top: 6px;
+  left: 3px;
+  width: 2px;
+  height: 2px;
+}
+.birthday-day-balloons.is-compact .birthday-balloon::after {
+  top: 8px;
+  left: 4px;
+  height: 3px;
+}
+.birthday-balloon--0 { --birthday-balloon-color: #ec4899; }
+.birthday-balloon--1 { --birthday-balloon-color: #8b5cf6; }
+.birthday-balloon--2 { --birthday-balloon-color: #0ea5e9; }
+.birthday-balloon--3 { --birthday-balloon-color: #14b8a6; }
+.birthday-balloon--4 { --birthday-balloon-color: #f59e0b; }
+.birthday-balloon--5 { --birthday-balloon-color: #f97316; }
+.birthday-balloon--6 { --birthday-balloon-color: #84cc16; }
+.birthday-balloon--7 { --birthday-balloon-color: #6366f1; }
+.birthday-balloons-overflow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .56rem;
+  font-weight: 900;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.birthday-name-chip--0 { background: rgba(236,72,153,.14) !important; color: #9d174d !important; }
+.birthday-name-chip--1 { background: rgba(139,92,246,.14) !important; color: #6d28d9 !important; }
+.birthday-name-chip--2 { background: rgba(14,165,233,.14) !important; color: #0369a1 !important; }
+.birthday-name-chip--3 { background: rgba(20,184,166,.14) !important; color: #0f766e !important; }
+.birthday-name-chip--4 { background: rgba(245,158,11,.16) !important; color: #92400e !important; }
+.birthday-name-chip--5 { background: rgba(249,115,22,.14) !important; color: #9a3412 !important; }
+.birthday-name-chip--6 { background: rgba(132,204,22,.16) !important; color: #3f6212 !important; }
+.birthday-name-chip--7 { background: rgba(99,102,241,.14) !important; color: #4338ca !important; }
+[data-theme="dark"] .birthday-name-chip--0 { color: #fbcfe8 !important; }
+[data-theme="dark"] .birthday-name-chip--1 { color: #ddd6fe !important; }
+[data-theme="dark"] .birthday-name-chip--2 { color: #bae6fd !important; }
+[data-theme="dark"] .birthday-name-chip--3 { color: #99f6e4 !important; }
+[data-theme="dark"] .birthday-name-chip--4 { color: #fde68a !important; }
+[data-theme="dark"] .birthday-name-chip--5 { color: #fed7aa !important; }
+[data-theme="dark"] .birthday-name-chip--6 { color: #d9f99d !important; }
+[data-theme="dark"] .birthday-name-chip--7 { color: #c7d2fe !important; }
+@media (max-width: 700px) {
+  .birthday-day-balloons.is-expanded { gap: 2px; }
+  .birthday-balloon { width: 9px; height: 15px; }
+  .birthday-balloon::before { width: 7px; height: 10px; }
+  .birthday-balloon::after { top: 12px; height: 3px; }
+}
