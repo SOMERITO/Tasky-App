@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261029-birthday-calendar-1" />
+  <link rel="stylesheet" href="styles.css?v=20261029-birthday-fullscreen-history-1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -817,7 +817,7 @@
   </div>
 
   <!-- MODAL: Annual Birthday Calendar -->
-  <div id="modal-birthdays" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="birthday-calendar-title">
+  <div id="modal-birthdays" class="modal-backdrop birthday-fullscreen" role="dialog" aria-modal="true" aria-labelledby="birthday-calendar-title">
     <div class="modal-dialog wide birthday-dialog">
       <div class="modal-header birthday-modal-header">
         <div>
@@ -849,6 +849,7 @@
         <div class="birthday-view-switch" role="group" aria-label="Vista del calendario">
           <button type="button" id="btn-birthday-year-view" class="is-active" aria-pressed="true">12 meses</button>
           <button type="button" id="btn-birthday-month-view-toggle" aria-pressed="false">Mes a mes</button>
+          <button type="button" id="btn-birthday-history-view" aria-pressed="false">Historial</button>
         </div>
         <button type="button" id="btn-birthday-add" class="btn-primary birthday-add-button">＋ Agregar cumpleaños</button>
       </div>
@@ -912,7 +913,7 @@
         </div>
       </section>
 
-      <section class="birthday-upcoming-section">
+      <section id="birthday-upcoming-section" class="birthday-upcoming-section">
         <div class="birthday-events-heading">
           <div>
             <h4>Próximos cumpleaños</h4>
@@ -921,6 +922,25 @@
           <span id="birthday-total-count" class="birthday-events-count">0</span>
         </div>
         <div id="birthday-upcoming-list" class="birthday-upcoming-list"></div>
+      </section>
+
+      <section id="birthday-history-view" class="birthday-history-view" hidden aria-label="Registro permanente de cumpleaños">
+        <div class="birthday-history-intro">
+          <div>
+            <h4>Todos tus cumpleaños</h4>
+            <p>Un directorio permanente: los registros no desaparecen cuando termina el año.</p>
+          </div>
+          <span class="birthday-history-book" aria-hidden="true">📚</span>
+        </div>
+        <div class="birthday-history-toolbar">
+          <label class="birthday-history-search-wrap">
+            <span aria-hidden="true">⌕</span>
+            <input id="birthday-history-search" class="form-input" type="search" placeholder="Buscar por nombre, mes o nota…" autocomplete="off" aria-label="Buscar en el historial de cumpleaños" />
+          </label>
+          <button type="button" id="btn-birthday-export" class="btn-secondary birthday-export-button">↧ Exportar CSV</button>
+        </div>
+        <div class="birthday-history-summary"><strong id="birthday-history-count">0 cumpleaños registrados</strong><span>Ordenados por fecha de registro, del más reciente al más antiguo</span></div>
+        <div id="birthday-history-list" class="birthday-history-list"></div>
       </section>
 
       <div class="modal-footer birthday-modal-footer">
@@ -945,6 +965,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261029-birthday-calendar-2"></script>
+  <script src="app.js?v=20261029-birthday-fullscreen-history-1"></script>
 </body>
 </html>
