@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261029-birthday-compact-list-1" />
+  <link rel="stylesheet" href="styles.css?v=20261029-delete-recurring-1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -950,6 +950,44 @@
     </div>
   </div>
 
+  <!-- Confirmation: delete one occurrence or change a repeating schedule -->
+  <div id="modal-delete-task" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-task-modal-title">
+    <div class="modal-dialog delete-task-dialog">
+      <div class="modal-header">
+        <div><div class="modal-eyebrow">ELIMINAR TAREA</div><h3 id="delete-task-modal-title" class="modal-title">¿Qué deseas eliminar?</h3></div>
+        <button type="button" id="btn-close-delete-task" class="modal-close-btn" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="delete-task-summary">
+        <span class="delete-task-summary-icon" aria-hidden="true">🗑️</span>
+        <div><strong id="delete-task-name">Tarea</strong><span id="delete-task-date">Fecha de la ocurrencia</span></div>
+      </div>
+      <div id="delete-task-recurring-options" class="delete-task-recurring-options">
+        <p class="delete-task-intro">Esta tarea tiene una repetición. Elige qué debe eliminarse para no perder futuros registros por accidente.</p>
+        <label class="delete-choice-card">
+          <input type="radio" name="delete-task-mode" value="occurrence" checked />
+          <span class="delete-choice-copy"><strong>Solo esta ocurrencia</strong><small>Quita únicamente esta fecha pendiente y conserva las próximas repeticiones.</small></span>
+        </label>
+        <label class="delete-choice-card">
+          <input type="radio" name="delete-task-mode" value="weekdays" />
+          <span class="delete-choice-copy"><strong>Dejar de repetir en días específicos</strong><small>Marca miércoles, sábados u otros días que quieras quitar de la programación futura.</small></span>
+        </label>
+        <div id="delete-task-weekdays-panel" class="delete-task-weekdays-panel" hidden>
+          <span class="delete-task-weekdays-label">Días que dejarán de repetirse</span>
+          <div id="delete-task-weekday-list" class="delete-task-weekday-list"></div>
+        </div>
+        <label class="delete-choice-card delete-choice-danger">
+          <input type="radio" name="delete-task-mode" value="series" />
+          <span class="delete-choice-copy"><strong>Eliminar toda la repetición</strong><small>Quita la programación y sus ocurrencias pendientes relacionadas. El historial de tareas completadas se conserva.</small></span>
+        </label>
+      </div>
+      <div id="delete-task-single-warning" class="delete-task-single-warning" hidden>Esta tarea no tiene una repetición activa. Solo se eliminará este registro.</div>
+      <div class="delete-task-modal-actions">
+        <button type="button" id="btn-cancel-delete-task" class="btn-secondary">Cancelar</button>
+        <button type="button" id="btn-confirm-delete-task" class="btn-primary delete-task-confirm-btn">Confirmar eliminación</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL 7: Confirmation Dialog -->
   <div id="modal-confirm" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
     <div class="modal-dialog" style="max-width:420px;">
@@ -965,6 +1003,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261029-birthday-compact-list-1"></script>
+  <script src="app.js?v=20261029-delete-recurring-1"></script>
 </body>
 </html>
