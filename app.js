@@ -3738,7 +3738,7 @@
             return [error.status, error.message].filter(Boolean).join(": ").slice(0, 180);
           }
         } catch (e) {}
-        return source.replace(/\\s+/g, " ").slice(0, 180);
+        return source.replace(/\s+/g, " ").slice(0, 180);
       };
       const bytesOf = value => {
         try { return new Blob([value]).size; } catch (e) { return String(value).length; }
@@ -3749,7 +3749,6 @@
         details.textContent = `Última escritura — Firestore: ${firestoreWriteStatus} · Realtime Database: ${rtdbWriteStatus} · Canal auxiliar: ${streamWriteStatus}`;
       };
       const firestoreBytes = (() => {
-        const cfg = appState.firebaseConfig || {};
         const fsBody = {
           fields: {
             payloadJson: { stringValue: JSON.stringify(fullPayload) },
