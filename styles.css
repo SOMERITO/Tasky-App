@@ -5842,6 +5842,7 @@ body.focus-mode-open #boxes-container {
 .recurring-audit-task-title-wrap { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
 .recurring-audit-task-title-wrap strong { color: var(--text); font-size: .83rem; overflow-wrap: anywhere; }
 .recurring-audit-task-title-wrap span { color: var(--muted); font-size: .69rem; }
+.recurring-audit-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .recurring-audit-edit-btn { flex: 0 0 auto; padding: 7px 10px; font-size: .7rem; }
 .recurring-audit-weekday-chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
 .recurring-audit-weekday-chip { padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--surface-muted); font-size: .67rem; font-weight: 800; }
@@ -5865,7 +5866,8 @@ body.focus-mode-open #boxes-container {
   .recurring-audit-task-card { padding: 11px; }
   .recurring-audit-task-heading { flex-wrap: wrap; }
   .recurring-audit-task-title-wrap { flex-basis: calc(100% - 60px); }
-  .recurring-audit-edit-btn { margin-left: 45px; }
+  .recurring-audit-actions { margin-left: 45px; width: calc(100% - 45px); }
+  .recurring-audit-actions .recurring-audit-edit-btn { flex: 1 1 0; }
   .recurring-audit-footer { align-items: stretch; flex-direction: column; }
   .recurring-audit-footer button { width: 100%; justify-content: center; }
 }
