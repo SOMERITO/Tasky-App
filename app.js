@@ -7186,13 +7186,14 @@
       const birthdays = birthdaysByDay.get(day) || [];
       const isToday = dateIso === today;
       const names = birthdays.map(item => item.name).join(", ");
-      const marker = birthdays.length
-        ? `<span class="birthday-day-marker">${compact ? (birthdays.length > 1 ? birthdays.length : "•") : "🎂"}</span>`
+      const visibleBirthdays = birthdays.slice(0, 3);
+      const birthdayBalloons = birthdays.length
+        ? `<span class="birthday-day-balloons ${compact ? "is-compact" : "is-expanded"}">${visibleBirthdays.map((item, index) => `<span class="birthday-balloon birthday-balloon--${index % 8}" title="${escapeHtml(item.name)}" aria-hidden="true"><i></i></span>`).join("")}${birthdays.length > visibleBirthdays.length ? `<span class="birthday-balloons-overflow">+${birthdays.length - visibleBirthdays.length}</span>` : ""}</span>`
         : "";
       const eventNames = !compact && birthdays.length
-        ? `<span class="birthday-day-names">${birthdays.slice(0, 2).map(item => `<span>${escapeHtml(item.name)}</span>`).join("")}${birthdays.length > 2 ? `<span>+${birthdays.length - 2}</span>` : ""}</span>`
+        ? `<span class="birthday-day-names">${birthdays.slice(0, 2).map((item, index) => `<span class="birthday-name-chip birthday-name-chip--${index % 8}">${escapeHtml(item.name)}</span>`).join("")}${birthdays.length > 2 ? `<span>+${birthdays.length - 2}</span>` : ""}</span>`
         : "";
-      html += `<button type="button" class="birthday-day-cell ${birthdays.length ? "has-birthday" : ""} ${isToday ? "is-today" : ""} ${compact ? "is-compact" : "is-expanded"}" data-birthday-date="${dateIso}" title="${escapeHtml(names ? `${names} · Agregar cumpleaños en esta fecha` : `Agregar cumpleaños el ${day} de ${monthTitle.toLowerCase()}`)}" aria-label="${escapeHtml(`${day} de ${monthTitle.toLowerCase()} de ${year}${names ? `: ${names}` : ""}`)}"><span class="birthday-day-number">${day}</span>${marker}${eventNames}</button>`;
+      html += `<button type="button" class="birthday-day-cell ${birthdays.length ? "has-birthday" : ""} ${isToday ? "is-today" : ""} ${compact ? "is-compact" : "is-expanded"}" data-birthday-date="${dateIso}" title="${escapeHtml(names ? `${names} · Agregar cumpleaños en esta fecha` : `Agregar cumpleaños el ${day} de ${monthTitle.toLowerCase()}`)}" aria-label="${escapeHtml(`${day} de ${monthTitle.toLowerCase()} de ${year}${names ? `: ${names}` : ""}`)}"><span class="birthday-day-number">${day}</span>${birthdayBalloons}${eventNames}</button>`;
     }
     html += "</div>";
     return html;
