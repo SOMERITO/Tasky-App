@@ -3669,6 +3669,9 @@
     rebuildTaskMemoryFromTasks();
     renderBoard();
     renderLearningGoalsPanel();
+    // Keep the birthday calendar live when another device changes its records.
+    const birthdayModal = document.getElementById("modal-birthdays");
+    if (birthdayModal && birthdayModal.classList.contains("open")) renderBirthdayCalendar();
     const syncText = document.getElementById("sync-status-text");
     if (syncText) syncText.textContent = "Sincronizado";
     if (syncFingerprint(merged) !== syncFingerprint(norm)) pushCloudSync(false);
