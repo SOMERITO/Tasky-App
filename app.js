@@ -3725,10 +3725,31 @@
       };
       const compactStr = packCompactEnvelope();
       let firebaseSaved = false;
-
-      // 1. Push to Cloud Firestore Document (Native Firebase v1 REST)
-      try {
-        const fsUrl = getFirebaseFirestoreUrl();
+      let firestoreWriteStatus = "No se intentó la escritura";
+      let rtdbWriteStatus = "URL no configurada";
+      let streamWriteStatus = "No comprobado";
+      const describeResponseError = raw => {
+        const source = String(raw || "").trim();
+        if (!source) return "";
+        try {
+          const parsed = JSON.parse(source);
+          const error = parsed && parsed.error;
+          if (error) {
+            return [error.status, error.message].filter(Boolean).join(": ").slice(0, 180);
+          }
+        } catch (e) {}
+        return source.replace(/\\s+/g, " ").slice(0, 180);
+      };
+      const bytesOf = value => {
+        try { return new Blob([value]).size; } catch (e) { return String(value).length; }
+      };
+      const updateWriteDiagnostic = () => {
+        const details = document.getElementById("sync-write-diagnostic-details");
+        if (!details) return;
+        details.textContent = `Última escritura — Firestore: ${firestoreWriteStatus} · Realtime Database: ${rtdbWriteStatus} · Canal auxiliar: ${streamWriteStatus}`;
+      };
+      const firestoreBytes = (() => {
+        const cfg = appState.firebaseConfig || {};
         const fsBody = {
           fields: {
             payloadJson: { stringValue: JSON.stringify(fullPayload) },
@@ -3737,38 +3758,68 @@
             deviceId: { stringValue: String(appState.deviceId) }
           }
         };
-        const res = await window.fetch(fsUrl, {
+        return { url: getFirebaseFirestoreUrl(), body: JSON.stringify(fsBody) };
+      })();
+      const writePayloadBytes = bytesOf(firestoreBytes.body);
+
+      // 1. Push to Firestore. Do not set keepalive: true for large sync payloads:
+      // Fetch keepalive bodies are limited to 64 KiB and can throw before reaching Firebase.
+      try {
+        const res = await window.fetch(firestoreBytes.url, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(fsBody),
-          keepalive: true
+          body: firestoreBytes.body
         });
-        if (res && res.ok) firebaseSaved = true;
-      } catch (e) {}
+        if (res && res.ok) {
+          firebaseSaved = true;
+          firestoreWriteStatus = `OK (HTTP ${res.status}; ${(writePayloadBytes / 1024).toFixed(1)} KiB)`;
+        } else {
+          const responseText = res ? await res.text().catch(() => "") : "";
+          const detail = describeResponseError(responseText);
+          firestoreWriteStatus = `HTTP ${res ? res.status : "sin respuesta"}${detail ? ` · ${detail}` : ""}`;
+        }
+      } catch (e) {
+        firestoreWriteStatus = `Error de red · ${String(e && e.message || e).slice(0, 180)} (${(writePayloadBytes / 1024).toFixed(1)} KiB)`;
+      }
+      updateWriteDiagnostic();
 
-      // 2. Push to Firebase Realtime Database (if databaseURL or default rtdb is active)
+      // 2. Realtime Database is optional; try it only if its exact URL was configured.
       try {
         const rtdbUrl = getFirebaseRtdbUrl();
         if (rtdbUrl) {
+          const rtdbBody = JSON.stringify(fullPayload);
           const resRt = await window.fetch(rtdbUrl, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(fullPayload),
-            keepalive: true
+            body: rtdbBody
           });
-          if (resRt && resRt.ok) firebaseSaved = true;
+          if (resRt && resRt.ok) {
+            firebaseSaved = true;
+            rtdbWriteStatus = `OK (HTTP ${resRt.status})`;
+          } else {
+            const responseText = resRt ? await resRt.text().catch(() => "") : "";
+            const detail = describeResponseError(responseText);
+            rtdbWriteStatus = `HTTP ${resRt ? resRt.status : "sin respuesta"}${detail ? ` · ${detail}` : ""}`;
+          }
         }
-      } catch (e) {}
+      } catch (e) {
+        rtdbWriteStatus = `Error de red · ${String(e && e.message || e).slice(0, 180)}`;
+      }
+      updateWriteDiagnostic();
 
-      // 3. Mirror compact envelope to real-time SSE stream for instant sub-second push across open windows
+      // 3. ntfy is only a real-time transport, not durable confirmation of a cloud save.
+      // This request also avoids keepalive so large compact envelopes are not rejected.
       try {
-        await window.fetch(getCloudTopicUrl(""), {
+        const streamResponse = await window.fetch(getCloudTopicUrl(""), {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=UTF-8", "Cache": "yes" },
-          body: compactStr,
-          keepalive: true
+          body: compactStr
         });
-      } catch (e) {}
+        streamWriteStatus = streamResponse.ok ? `OK (HTTP ${streamResponse.status}; transporte auxiliar)` : `HTTP ${streamResponse.status}`;
+      } catch (e) {
+        streamWriteStatus = `No disponible · ${String(e && e.message || e).slice(0, 120)}`;
+      }
+      updateWriteDiagnostic();
 
       const syncText = document.getElementById("sync-status-text");
       if (syncText) syncText.textContent = firebaseSaved ? "Sincronizado" : "Sin confirmar";
@@ -3777,11 +3828,13 @@
         const now = new Date();
         modalSyncTime.textContent = firebaseSaved
           ? `${now.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} (escritura confirmada en Firebase ${appState.firebaseConfig.projectId || "Cloud"})`
-          : "No se confirmó la escritura remota; los datos locales se conservaron.";
+          : "No se confirmó la escritura remota; los datos locales se conservaron. Consulta el diagnóstico de escritura para ver el motivo.";
       }
       if (forceImmediateToast) {
         showToast(
-          firebaseSaved ? "🔥 Escritura confirmada en Firebase" : "⚠️ No se confirmó el guardado remoto; tus datos locales se conservaron.",
+          firebaseSaved
+            ? "🔥 Escritura confirmada en Firebase"
+            : `⚠️ No se confirmó el guardado remoto. ${firestoreWriteStatus}. Revisa Diagnóstico de escritura.`,
           !firebaseSaved
         );
       }
