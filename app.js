@@ -7125,6 +7125,7 @@
   let birthdayCalendarYear = new Date().getFullYear();
   let birthdayCalendarMonth = new Date().getMonth();
   let birthdayCalendarMode = "year";
+  let birthdayUpcomingExpanded = false;
 
   function getActiveBirthdays() {
     return normalizeBirthdays(appState.data.birthdays).filter(entry => !entry.deleted);
@@ -7254,10 +7255,16 @@
   function renderBirthdayUpcomingList() {
     const list = document.getElementById("birthday-upcoming-list");
     const total = document.getElementById("birthday-total-count");
+    const toggle = document.getElementById("btn-toggle-birthday-upcoming");
     const buttonCount = document.getElementById("birthday-count");
     const highlightTitle = document.getElementById("birthday-upcoming-title");
     const highlightSubtitle = document.getElementById("birthday-upcoming-subtitle");
     if (!list || !total || !buttonCount || !highlightTitle || !highlightSubtitle) return;
+    list.hidden = !birthdayUpcomingExpanded;
+    if (toggle) {
+      toggle.setAttribute("aria-expanded", birthdayUpcomingExpanded ? "true" : "false");
+      toggle.classList.toggle("is-expanded", birthdayUpcomingExpanded);
+    }
 
     const today = getTodayISO();
     const upcoming = getActiveBirthdays().map(entry => ({
@@ -7499,6 +7506,7 @@
 
   function openBirthdayCalendarModal() {
     const now = new Date();
+    birthdayUpcomingExpanded = false;
     birthdayCalendarYear = now.getFullYear();
     birthdayCalendarMonth = now.getMonth();
     birthdayCalendarMode = "year";
@@ -9033,9 +9041,11 @@
     if (birthdayMonthEventsList) birthdayMonthEventsList.addEventListener("click", handleBirthdayCalendarClick);
     const birthdayUpcomingList = document.getElementById("birthday-upcoming-list");
     if (birthdayUpcomingList) birthdayUpcomingList.addEventListener("click", handleBirthdayCalendarClick);
-    const birthdayAddButton = document.getElementById("btn-birthday-add");
-    if (birthdayAddButton) birthdayAddButton.addEventListener("click", () => {
-      openBirthdayEditor({ month: birthdayCalendarMonth + 1, day: 1 });
+    const birthdayUpcomingToggle = document.getElementById("btn-toggle-birthday-upcoming");
+    if (birthdayUpcomingToggle) birthdayUpcomingToggle.addEventListener("click", () => {
+      birthdayUpcomingExpanded = !birthdayUpcomingExpanded;
+      playUiSound("tap");
+      renderBirthdayUpcomingList();
     });
     const birthdayMonthSelect = document.getElementById("birthday-month");
     if (birthdayMonthSelect) birthdayMonthSelect.addEventListener("change", () => {
