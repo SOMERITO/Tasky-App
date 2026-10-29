@@ -4663,49 +4663,31 @@
     if (!button || !label) return;
 
     const today = getTodayISO();
-    const upcoming = getActiveBirthdays()
-      .map(entry => ({ ...entry, nextDate: getNextBirthdayOccurrence(entry, today) }))
-      .filter(entry => entry.nextDate)
-      .sort((a, b) => a.nextDate.localeCompare(b.nextDate) || a.name.localeCompare(b.name, "es"));
-    const todayBirthdays = upcoming.filter(entry => entry.nextDate === today);
-    const formatShortDate = iso => new Date(iso + "T12:00:00")
-      .toLocaleDateString("es-PE", { day: "numeric", month: "short" });
+    const todayMonth = today.slice(5, 7);
+    const todayDay = today.slice(8, 10);
+    const todayBirthdays = getActiveBirthdays()
+      .filter(entry =>
+        String(entry.month).padStart(2, "0") === todayMonth &&
+        String(entry.day).padStart(2, "0") === todayDay
+      )
+      .sort((a, b) => a.name.localeCompare(b.name, "es"));
 
-    let buttonLabel = "Añadir cumpleaños";
-    let tooltipTitle = "Registrar cumpleaños";
-    let tooltipDescription = "Abre el calendario para registrar cumpleaños importantes.";
+    // The shortcut exists only when at least one birthday is registered for today.
+    button.hidden = todayBirthdays.length === 0;
+    button.classList.toggle("has-today-birthday", todayBirthdays.length > 0);
+    if (!todayBirthdays.length) return;
 
-    if (todayBirthdays.length === 1) {
-      buttonLabel = "Hoy: " + todayBirthdays[0].name;
-      tooltipTitle = "Cumpleaños de hoy";
-      tooltipDescription = "Pulsa para ver todos los cumpleaños registrados para hoy.";
-    } else if (todayBirthdays.length === 2) {
-      buttonLabel = "Hoy: " + todayBirthdays[0].name + " y " + todayBirthdays[1].name;
-      tooltipTitle = "Cumpleaños de hoy";
-      tooltipDescription = "Pulsa para ver todos los cumpleaños registrados para hoy.";
-    } else if (todayBirthdays.length > 2) {
-      buttonLabel = "Cumpleaños hoy · " + todayBirthdays.length + " personas";
-      tooltipTitle = "Cumpleaños de hoy";
-      tooltipDescription = "Pulsa para ver todos los cumpleaños registrados para hoy.";
-    } else if (upcoming.length) {
-      const nextDate = upcoming[0].nextDate;
-      const nextGroup = upcoming.filter(entry => entry.nextDate === nextDate);
-      if (nextGroup.length === 1) {
-        buttonLabel = "Próximo: " + nextGroup[0].name + " · " + formatShortDate(nextDate);
-      } else if (nextGroup.length === 2) {
-        buttonLabel = "Próximos: " + nextGroup[0].name + " y " + nextGroup[1].name + " · " + formatShortDate(nextDate);
-      } else {
-        buttonLabel = "Próximos cumpleaños · " + formatShortDate(nextDate) + " (" + nextGroup.length + ")";
-      }
-      tooltipTitle = "Próximo cumpleaños";
-      tooltipDescription = "Pulsa para ver a quién le toca cumplir años y consultar el resto de fechas.";
-    }
+    const names = todayBirthdays.map(entry => entry.name);
+    const buttonLabel = names.length === 1
+      ? names[0]
+      : names.length === 2
+        ? names[0] + " y " + names[1]
+        : names.slice(0, -1).join(", ") + " y " + names[names.length - 1];
 
     label.textContent = buttonLabel;
-    button.setAttribute("aria-label", tooltipTitle + ": " + buttonLabel);
-    button.dataset.tipTitle = tooltipTitle;
-    button.dataset.tipDesc = tooltipDescription;
-    button.classList.toggle("has-today-birthday", todayBirthdays.length > 0);
+    button.setAttribute("aria-label", "Cumpleaños de hoy: " + buttonLabel);
+    button.dataset.tipTitle = "Cumpleaños de hoy";
+    button.dataset.tipDesc = "Pulsa para ver todos los cumpleaños registrados para hoy.";
   }
 
   function getLearningWeekStartISO(baseIso = getTodayISO()) {
@@ -7244,6 +7226,7 @@
   let birthdayCalendarMonth = new Date().getMonth();
   let birthdayCalendarMode = "year";
   let birthdayUpcomingExpanded = false;
+  let birthdayUpcomingTodayOnly = false;
 
   function getActiveBirthdays() {
     return normalizeBirthdays(appState.data.birthdays).filter(entry => !entry.deleted);
@@ -7390,19 +7373,34 @@
       nextDate: getNextBirthdayOccurrence(entry, today)
     })).filter(entry => entry.nextDate)
       .sort((a, b) => a.nextDate.localeCompare(b.nextDate) || a.name.localeCompare(b.name, "es"));
+    const visibleBirthdays = birthdayUpcomingTodayOnly
+      ? upcoming.filter(entry => entry.nextDate === today)
+      : upcoming;
 
     renderDateBirthdayShortcut();
-    total.textContent = String(upcoming.length);
+    total.textContent = String(visibleBirthdays.length);
     buttonCount.textContent = String(upcoming.length);
+    const toggleTitle = toggle && toggle.querySelector(".birthday-upcoming-toggle-copy strong");
+    const toggleSubtitle = toggle && toggle.querySelector(".birthday-upcoming-toggle-copy small");
+    if (toggleTitle) toggleTitle.textContent = birthdayUpcomingTodayOnly ? "Cumpleaños de hoy" : "Próximos cumpleaños";
+    if (toggleSubtitle) toggleSubtitle.textContent = birthdayUpcomingTodayOnly
+      ? "Personas que cumplen años hoy"
+      : "Consulta las siguientes fechas importantes";
 
-    if (!upcoming.length) {
-      highlightTitle.textContent = "Todavía no hay cumpleaños registrados";
-      highlightSubtitle.textContent = "Agrega el primero para empezar tu calendario.";
-      list.innerHTML = `<div class="birthday-empty-state"><span>🎈</span><strong>Tu calendario está esperando sus primeras fechas</strong><p>Registra un nombre y su cumpleaños para verlo cada año.</p></div>`;
+    if (!visibleBirthdays.length) {
+      highlightTitle.textContent = birthdayUpcomingTodayOnly
+        ? "No hay cumpleaños registrados para hoy"
+        : "Todavía no hay cumpleaños registrados";
+      highlightSubtitle.textContent = birthdayUpcomingTodayOnly
+        ? "No hay cumpleaños para mostrar en esta fecha."
+        : "Agrega el primero para empezar tu calendario.";
+      list.innerHTML = birthdayUpcomingTodayOnly
+        ? `<div class="birthday-empty-state"><span>🎈</span><strong>Hoy no hay cumpleaños registrados</strong><p>Cuando exista uno, aparecerá aquí.</p></div>`
+        : `<div class="birthday-empty-state"><span>🎈</span><strong>Tu calendario está esperando sus primeras fechas</strong><p>Registra un nombre y su cumpleaños para verlo cada año.</p></div>`;
       return;
     }
 
-    const next = upcoming[0];
+    const next = visibleBirthdays[0];
     const daysUntil = getBirthdayDayDifference(today, next.nextDate);
     const nextLabel = new Date(`${next.nextDate}T12:00:00`).toLocaleDateString("es-PE", { day: "numeric", month: "long", year: "numeric" });
     highlightTitle.textContent = next.name;
@@ -7410,7 +7408,7 @@
       ? `¡Hoy es su cumpleaños! · ${nextLabel}`
       : `${nextLabel} · ${daysUntil === 1 ? "Mañana" : `Faltan ${daysUntil} días`}`;
 
-    list.innerHTML = upcoming.map(entry => {
+    list.innerHTML = visibleBirthdays.map(entry => {
       const daysUntilEntry = getBirthdayDayDifference(today, entry.nextDate);
       const dateLabel = new Date(`${entry.nextDate}T12:00:00`).toLocaleDateString("es-PE", { day: "numeric", month: "short" });
       const ageLabel = formatBirthdayAge(entry, entry.nextDate);
@@ -7627,6 +7625,7 @@
   function openBirthdayCalendarModal(options = {}) {
     const now = new Date();
     birthdayUpcomingExpanded = Boolean(options.expandUpcoming);
+    birthdayUpcomingTodayOnly = Boolean(options.todayOnly);
     birthdayCalendarYear = now.getFullYear();
     birthdayCalendarMonth = now.getMonth();
     birthdayCalendarMode = "year";
@@ -9367,7 +9366,7 @@
     const dateBirthdayShortcut = document.getElementById("btn-date-birthday-shortcut");
     if (dateBirthdayShortcut) dateBirthdayShortcut.addEventListener("click", () => {
       playUiSound("tap");
-      openBirthdayCalendarModal({ expandUpcoming: true });
+      openBirthdayCalendarModal({ expandUpcoming: true, todayOnly: true });
     });
     const birthdayYearViewButton = document.getElementById("btn-birthday-year-view");
     if (birthdayYearViewButton) birthdayYearViewButton.addEventListener("click", () => {
