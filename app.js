@@ -2946,6 +2946,7 @@
       day,
       birthYear,
       notes: String(raw.notes || "").trim().slice(0, 500),
+      createdAt: Number(raw.createdAt || raw.updatedAt || 0),
       updatedAt: Number(raw.updatedAt || 0),
       deleted: Boolean(raw.deleted)
     };
@@ -7268,6 +7269,92 @@
     }).join("");
   }
 
+  function renderBirthdayHistory() {
+    const list = document.getElementById("birthday-history-list");
+    const count = document.getElementById("birthday-history-count");
+    const searchInput = document.getElementById("birthday-history-search");
+    if (!list || !count) return;
+
+    const query = String(searchInput ? searchInput.value : "").trim().toLocaleLowerCase("es");
+    const allBirthdays = getActiveBirthdays().slice().sort((a, b) =>
+      Number(b.createdAt || 0) - Number(a.createdAt || 0) || a.name.localeCompare(b.name, "es")
+    );
+    count.textContent = `${allBirthdays.length} ${allBirthdays.length === 1 ? "cumpleaños registrado" : "cumpleaños registrados"}`;
+
+    const filtered = allBirthdays.filter(entry => {
+      if (!query) return true;
+      const monthName = BIRTHDAY_MONTH_NAMES[entry.month - 1] || "";
+      const dateLabel = `${String(entry.day).padStart(2, "0")}/${String(entry.month).padStart(2, "0")}`;
+      return [entry.name, entry.notes, monthName, dateLabel, entry.birthYear || ""]
+        .some(value => String(value).toLocaleLowerCase("es").includes(query));
+    });
+
+    if (!filtered.length) {
+      list.innerHTML = query
+        ? `<div class="birthday-empty-state"><span>🔎</span><strong>No encontramos coincidencias</strong><p>Prueba con otro nombre, mes o nota.</p></div>`
+        : `<div class="birthday-empty-state"><span>📚</span><strong>Tu historial está listo para comenzar</strong><p>Cada cumpleaños que registres quedará en esta lista y se conservará al cambiar de año.</p></div>`;
+      return;
+    }
+
+    const today = getTodayISO();
+    list.innerHTML = filtered.map(entry => {
+      const nextDate = getNextBirthdayOccurrence(entry, today);
+      const birthdayDate = new Date(2000, entry.month - 1, entry.day, 12);
+      const dateLabel = birthdayDate.toLocaleDateString("es-PE", { day: "numeric", month: "long" });
+      const nextLabel = nextDate
+        ? new Date(`${nextDate}T12:00:00`).toLocaleDateString("es-PE", { day: "numeric", month: "short", year: "numeric" })
+        : "";
+      const registered = Number(entry.createdAt || 0) > 0
+        ? new Date(entry.createdAt).toLocaleDateString("es-PE", { day: "numeric", month: "short", year: "numeric" })
+        : "Registro anterior";
+      const age = nextDate ? formatBirthdayAge(entry, nextDate) : "";
+      return `<button type="button" class="birthday-history-row" data-birthday-edit-id="${escapeHtml(entry.id)}">
+        <span class="birthday-history-date"><strong>${entry.day}</strong><small>${BIRTHDAY_MONTH_NAMES[entry.month - 1].slice(0, 3)}</small></span>
+        <span class="birthday-history-copy">
+          <strong>${escapeHtml(entry.name)}</strong>
+          <span>${escapeHtml(dateLabel)} cada año${age ? ` · ${escapeHtml(age)}` : ""}</span>
+          ${entry.notes ? `<small>${escapeHtml(entry.notes)}</small>` : ""}
+          <small class="birthday-history-registered">Registrado el ${escapeHtml(registered)}</small>
+        </span>
+        <span class="birthday-history-next"><small>Próxima fecha</small><strong>${escapeHtml(nextLabel || "—")}</strong><span>Editar ›</span></span>
+      </button>`;
+    }).join("");
+  }
+
+  function exportBirthdaysCsv() {
+    const entries = getActiveBirthdays().slice().sort((a, b) =>
+      a.month - b.month || a.day - b.day || a.name.localeCompare(b.name, "es")
+    );
+    if (!entries.length) {
+      showToast("No hay cumpleaños para exportar.", true);
+      return;
+    }
+    const escapeCsv = value => `"${String(value == null ? "" : value).replace(/"/g, '""')}"`;
+    const rows = [
+      ["Nombre", "Día", "Mes", "Año de nacimiento", "Notas", "Fecha de registro"],
+      ...entries.map(entry => [
+        entry.name,
+        entry.day,
+        BIRTHDAY_MONTH_NAMES[entry.month - 1],
+        entry.birthYear || "",
+        entry.notes || "",
+        entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("es-PE") : ""
+      ])
+    ];
+    const csv = "\uFEFF" + rows.map(row => row.map(escapeCsv).join(";")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `tasky-cumpleanos-${getTodayISO()}.csv`;
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast("📥 Lista de cumpleaños exportada");
+  }
+
   function renderBirthdayCalendar() {
     const modal = document.getElementById("modal-birthdays");
     if (!modal) return;
@@ -7275,21 +7362,37 @@
     const hint = document.getElementById("birthday-period-hint");
     const yearView = document.getElementById("birthday-year-view");
     const monthView = document.getElementById("birthday-single-month-view");
+    const historyView = document.getElementById("birthday-history-view");
+    const highlight = document.getElementById("birthday-upcoming-highlight");
+    const upcomingSection = document.getElementById("birthday-upcoming-section");
     const yearButton = document.getElementById("btn-birthday-year-view");
     const monthButton = document.getElementById("btn-birthday-month-view-toggle");
+    const historyButton = document.getElementById("btn-birthday-history-view");
     const prev = document.getElementById("btn-birthday-prev-period");
     const next = document.getElementById("btn-birthday-next-period");
-    if (!period || !hint || !yearView || !monthView || !yearButton || !monthButton || !prev || !next) return;
+    if (!period || !hint || !yearView || !monthView || !historyView || !yearButton || !monthButton || !historyButton || !prev || !next) return;
 
-    if (birthdayCalendarMode === "year") {
+    const isYear = birthdayCalendarMode === "year";
+    const isMonth = birthdayCalendarMode === "month";
+    const isHistory = birthdayCalendarMode === "history";
+    yearView.hidden = !isYear;
+    monthView.hidden = !isMonth;
+    historyView.hidden = !isHistory;
+    if (highlight) highlight.hidden = isHistory;
+    if (upcomingSection) upcomingSection.hidden = isHistory;
+
+    yearButton.classList.toggle("is-active", isYear);
+    yearButton.setAttribute("aria-pressed", isYear ? "true" : "false");
+    monthButton.classList.toggle("is-active", isMonth);
+    monthButton.setAttribute("aria-pressed", isMonth ? "true" : "false");
+    historyButton.classList.toggle("is-active", isHistory);
+    historyButton.setAttribute("aria-pressed", isHistory ? "true" : "false");
+
+    if (isYear) {
       period.textContent = String(birthdayCalendarYear);
       hint.textContent = "Vista anual · 12 meses";
-      yearView.hidden = false;
-      monthView.hidden = true;
-      yearButton.classList.add("is-active");
-      yearButton.setAttribute("aria-pressed", "true");
-      monthButton.classList.remove("is-active");
-      monthButton.setAttribute("aria-pressed", "false");
+      prev.hidden = false;
+      next.hidden = false;
       yearView.innerHTML = BIRTHDAY_MONTH_NAMES.map((name, index) => {
         const activeCount = getActiveBirthdays().filter(entry => entry.month === index + 1).length;
         return `<article class="birthday-month-card">
@@ -7300,15 +7403,11 @@
           ${buildBirthdayMonthHtml(birthdayCalendarYear, index, true)}
         </article>`;
       }).join("");
-    } else {
+    } else if (isMonth) {
       period.textContent = `${BIRTHDAY_MONTH_NAMES[birthdayCalendarMonth]} ${birthdayCalendarYear}`;
       hint.textContent = "Vista mensual · toca un día para registrar";
-      yearView.hidden = true;
-      monthView.hidden = false;
-      yearButton.classList.remove("is-active");
-      yearButton.setAttribute("aria-pressed", "false");
-      monthButton.classList.add("is-active");
-      monthButton.setAttribute("aria-pressed", "true");
+      prev.hidden = false;
+      next.hidden = false;
       document.getElementById("birthday-single-month-grid").innerHTML = `
         <div class="birthday-single-month-heading">
           <span>${BIRTHDAY_MONTH_NAMES[birthdayCalendarMonth]} ${birthdayCalendarYear}</span>
@@ -7317,10 +7416,16 @@
         ${buildBirthdayMonthHtml(birthdayCalendarYear, birthdayCalendarMonth, false)}
       `;
       renderBirthdayMonthEvents();
+    } else {
+      period.textContent = "Registro completo";
+      hint.textContent = "Historial permanente · no se reinicia al cambiar de año";
+      prev.hidden = true;
+      next.hidden = true;
+      renderBirthdayHistory();
     }
 
-    prev.setAttribute("aria-label", birthdayCalendarMode === "year" ? "Año anterior" : "Mes anterior");
-    next.setAttribute("aria-label", birthdayCalendarMode === "year" ? "Año siguiente" : "Mes siguiente");
+    prev.setAttribute("aria-label", isYear ? "Año anterior" : "Mes anterior");
+    next.setAttribute("aria-label", isYear ? "Año siguiente" : "Mes siguiente");
     renderBirthdayUpcomingList();
   }
 
@@ -7428,6 +7533,7 @@
       day,
       birthYear,
       notes,
+      createdAt: existing ? Number(existing.createdAt || existing.updatedAt || Date.now()) : Date.now(),
       deleted: false,
       updatedAt: Date.now()
     });
@@ -8853,6 +8959,18 @@
       playUiSound("tap");
       renderBirthdayCalendar();
     });
+    const birthdayHistoryViewButton = document.getElementById("btn-birthday-history-view");
+    if (birthdayHistoryViewButton) birthdayHistoryViewButton.addEventListener("click", () => {
+      birthdayCalendarMode = "history";
+      playUiSound("tap");
+      renderBirthdayCalendar();
+    });
+    const birthdayHistoryList = document.getElementById("birthday-history-list");
+    if (birthdayHistoryList) birthdayHistoryList.addEventListener("click", handleBirthdayCalendarClick);
+    const birthdayHistorySearch = document.getElementById("birthday-history-search");
+    if (birthdayHistorySearch) birthdayHistorySearch.addEventListener("input", renderBirthdayHistory);
+    const birthdayExportButton = document.getElementById("btn-birthday-export");
+    if (birthdayExportButton) birthdayExportButton.addEventListener("click", exportBirthdaysCsv);
     const birthdayPrevButton = document.getElementById("btn-birthday-prev-period");
     if (birthdayPrevButton) birthdayPrevButton.addEventListener("click", () => {
       if (birthdayCalendarMode === "year") birthdayCalendarYear--;
