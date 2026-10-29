@@ -7779,37 +7779,26 @@
       const days = getTaskRepeatDays(task);
       const until = task.repeatUntil ? String(task.repeatUntil).slice(0, 10) : null;
       const nextDate = getNextRepeatDateOnOrAfter(today, days, until);
-      const missed = appState.data.tasks
-        .filter(item => String(item.boxId) === String(box.id) &&
-          String(item.id).startsWith(`${task.id}__missed__`) && !item.done)
-        .sort((a, b) => String(a.dueDate || "").localeCompare(String(b.dueDate || "")));
-      const skipped = Array.from(new Set((Array.isArray(task.skippedDates) ? task.skippedDates : [])
-        .map(date => String(date || "").slice(0, 10)))).sort();
       const nextLabel = nextDate ? formatSpanishDateLong(nextDate) : "Sin próximas fechas programadas";
       const endLabel = until ? "Termina el " + formatSpanishDateLong(until) : "Sin fecha de finalización";
       const daysHtml = days.length === 7
         ? `<span class="recurring-audit-weekday-chip is-selected">Diario</span>`
         : RECURRING_AUDIT_WEEK_ORDER.filter(day => days.includes(day))
           .map(day => `<span class="recurring-audit-weekday-chip is-selected">${RECURRING_AUDIT_DAY_NAMES[day]}</span>`).join("");
-      const missedHtml = missed.length
-        ? `<div class="recurring-audit-task-meta is-overdue"><span>⚠️ ${missed.length} ${missed.length === 1 ? "ocurrencia atrasada conservada" : "ocurrencias atrasadas conservadas"}</span><small>${missed.map(item => formatSpanishDateLong(String(item.dueDate || "").slice(0, 10))).join(" · ")}</small></div>`
-        : `<div class="recurring-audit-task-meta"><span>✓ Sin ocurrencias atrasadas separadas</span></div>`;
-      const skippedHtml = skipped.length
-        ? `<div class="recurring-audit-task-meta"><span>Fechas omitidas: ${skipped.length}</span><small>${skipped.map(date => formatSpanishDateLong(date)).join(" · ")}</small></div>`
-        : "";
       return `<article class="recurring-audit-task-card">
         <div class="recurring-audit-task-heading">
           <div class="recurring-audit-task-emoji" aria-hidden="true">🔁</div>
           <div class="recurring-audit-task-title-wrap"><strong>${escapeHtml(task.title)}</strong><span>${escapeHtml(describeRepeatDays(days))}</span></div>
-          <button type="button" class="btn-secondary recurring-audit-edit-btn" data-repeat-audit-edit-task="${escapeHtml(task.id)}">Editar días</button>
+          <div class="recurring-audit-actions">
+            <button type="button" class="btn-secondary recurring-audit-edit-btn" data-repeat-audit-edit-title-task="${escapeHtml(task.id)}">Editar tarea</button>
+            <button type="button" class="btn-secondary recurring-audit-edit-btn" data-repeat-audit-edit-task="${escapeHtml(task.id)}">Editar días</button>
+          </div>
         </div>
         <div class="recurring-audit-weekday-chips">${daysHtml}</div>
         <div class="recurring-audit-task-details">
           <span><strong>Próxima:</strong> ${escapeHtml(nextLabel)}</span>
           <span>${escapeHtml(endLabel)}</span>
         </div>
-        ${missedHtml}
-        ${skippedHtml}
       </article>`;
     }).join("");
   }
@@ -9406,11 +9395,21 @@
       if (event.target === recurringAuditModal) closeBoxRecurringAudit();
     });
     if (recurringAuditTaskList) recurringAuditTaskList.addEventListener("click", event => {
-      const editButton = event.target.closest("[data-repeat-audit-edit-task]");
-      if (!editButton) return;
-      const taskId = String(editButton.dataset.repeatAuditEditTask || "");
+      const daysEditButton = event.target.closest("[data-repeat-audit-edit-task]");
+      const titleEditButton = event.target.closest("[data-repeat-audit-edit-title-task]");
+      if (!daysEditButton && !titleEditButton) return;
+
+      const taskId = String((titleEditButton || daysEditButton).dataset.repeatAuditEditTitleTask ||
+        (titleEditButton || daysEditButton).dataset.repeatAuditEditTask || "");
+      const task = appState.data.tasks.find(item => String(item.id) === taskId);
+      if (!task) return;
+
       closeBoxRecurringAudit();
-      openRepeatPickerModal(taskId);
+      if (titleEditButton) {
+        openEditTaskTitleModal(task.id);
+      } else {
+        openRepeatPickerModal(task.id);
+      }
     });
 
     const deleteTaskModal = document.getElementById("modal-delete-task");
