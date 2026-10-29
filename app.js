@@ -6657,9 +6657,11 @@
 
     const toolbar = document.getElementById("multi-select-toolbar");
     const countLabel = document.getElementById("multi-select-count");
+    const deleteButton = document.getElementById("btn-multi-delete");
     const count = appState.selectedTaskIds.size;
     if (toolbar) toolbar.style.display = count > 0 ? "flex" : "none";
     if (countLabel) countLabel.textContent = String(count);
+    if (deleteButton) deleteButton.style.display = count > 1 ? "inline-flex" : "none";
 
     document.querySelectorAll(".task-item[data-task-id]").forEach(row => {
       const selected = appState.selectedTaskIds.has(String(row.dataset.taskId));
@@ -6684,6 +6686,49 @@
   function clearTaskSelection() {
     appState.selectedTaskIds.clear();
     updateMultiSelectUI();
+  }
+
+  function confirmDeleteSelectedTasks() {
+    const selectedIds = Array.from(appState.selectedTaskIds || []).map(String);
+    const selectedIdSet = new Set(selectedIds);
+    const selectedTasks = appState.data.tasks.filter(task =>
+      selectedIdSet.has(String(task.id)) && !task.done
+    );
+    if (!selectedTasks.length) {
+      clearTaskSelection();
+      showToast("Selecciona al menos una tarea pendiente para eliminar.", true);
+      return;
+    }
+
+    const count = selectedTasks.length;
+    const title = document.getElementById("confirm-modal-title");
+    const message = document.getElementById("confirm-modal-msg");
+    if (!title || !message) return;
+
+    title.textContent = count === 1
+      ? "¿Eliminar la tarea seleccionada?"
+      : `¿Eliminar las ${count} tareas seleccionadas?`;
+    message.textContent = `Se eliminarán ${count === 1 ? "el registro seleccionado" : "los registros seleccionados"}. Las demás tareas y las otras ocurrencias de sus repeticiones se conservarán.`;
+
+    appState.confirmCallback = () => {
+      const idsToRemove = selectedIds.filter(id =>
+        appState.data.tasks.some(task => String(task.id) === id && !task.done)
+      );
+      if (!idsToRemove.length) {
+        clearTaskSelection();
+        showToast("Las tareas seleccionadas ya no están disponibles.", true);
+        return;
+      }
+      removeTaskRecords(
+        idsToRemove,
+        `Eliminar ${idsToRemove.length} tareas seleccionadas`,
+        idsToRemove.length === 1
+          ? "Se eliminó 1 tarea seleccionada"
+          : `Se eliminaron ${idsToRemove.length} tareas seleccionadas`
+      );
+      clearTaskSelection();
+    };
+    document.getElementById("modal-confirm").classList.add("open");
   }
 
   function updateTaskActionModalsAfterBulkChange() {
@@ -8082,6 +8127,12 @@
   }
 
   function deleteTask(taskId) {
+    const id = String(taskId);
+    const selectedIds = appState.selectedTaskIds;
+    if (selectedIds && selectedIds.size > 1 && selectedIds.has(id)) {
+      confirmDeleteSelectedTasks();
+      return;
+    }
     openDeleteTaskDialog(taskId);
   }
 
@@ -9581,6 +9632,11 @@
     }
     const multiTomorrowBtn = document.getElementById("btn-multi-tomorrow");
     if (multiTomorrowBtn) multiTomorrowBtn.addEventListener("click", rescheduleSelectedTasksToTomorrow);
+    const multiDeleteBtn = document.getElementById("btn-multi-delete");
+    if (multiDeleteBtn) multiDeleteBtn.addEventListener("click", () => {
+      playUiSound("tap");
+      confirmDeleteSelectedTasks();
+    });
     const multiClearBtn = document.getElementById("btn-multi-clear");
     if (multiClearBtn) multiClearBtn.addEventListener("click", clearTaskSelection);
 
