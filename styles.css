@@ -5729,3 +5729,58 @@ body.focus-mode-open #boxes-container {
   .birthday-upcoming-toggle-copy small { font-size: .66rem; }
   .birthday-calendar-toolbar .birthday-view-switch { margin-left: 0; }
 }
+
+
+/* DELETE TASK SAFETY — distinguish one occurrence from future recurring schedule */
+.delete-task-dialog { width: min(560px, calc(100vw - 28px)); max-width: 560px; padding: 22px; }
+.delete-task-summary {
+  display: flex; align-items: center; gap: 12px; padding: 13px; margin: 12px 0 16px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--surface-muted);
+}
+.delete-task-summary-icon {
+  display: grid; place-items: center; flex: 0 0 auto; width: 42px; height: 42px;
+  border-radius: 12px; background: var(--danger-soft); font-size: 1.2rem;
+}
+.delete-task-summary > div { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.delete-task-summary strong { color: var(--text); font-size: .9rem; overflow-wrap: anywhere; }
+.delete-task-summary span:not(.delete-task-summary-icon) { color: var(--muted); font-size: .74rem; }
+.delete-task-intro { margin: 0 0 12px; color: var(--text-secondary); font-size: .8rem; line-height: 1.45; }
+.delete-task-recurring-options { display: flex; flex-direction: column; gap: 9px; }
+.delete-task-recurring-options[hidden], .delete-task-single-warning[hidden], .delete-task-weekdays-panel[hidden] { display: none !important; }
+.delete-choice-card {
+  display: flex; align-items: flex-start; gap: 11px; padding: 12px;
+  border: 1px solid var(--line); border-radius: 13px; background: var(--surface-solid); cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+.delete-choice-card:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+.delete-choice-card input { margin-top: 3px; accent-color: var(--primary); flex: 0 0 auto; }
+.delete-choice-copy { display: flex; flex-direction: column; gap: 4px; }
+.delete-choice-copy strong { color: var(--text); font-size: .82rem; }
+.delete-choice-copy small { color: var(--muted); font-size: .72rem; line-height: 1.4; }
+.delete-choice-danger:has(input:checked) { border-color: var(--danger); background: var(--danger-soft); }
+.delete-task-weekdays-panel {
+  margin: -2px 0 4px 29px; padding: 11px; border: 1px dashed var(--line-strong);
+  border-radius: 12px; background: var(--surface-muted);
+}
+.delete-task-weekdays-label { display: block; margin-bottom: 8px; color: var(--text-secondary); font-size: .7rem; font-weight: 850; }
+.delete-task-weekday-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.delete-task-day-chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--surface-solid);
+  color: var(--text-secondary); font-size: .7rem; font-weight: 750; cursor: pointer;
+}
+.delete-task-day-chip:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.delete-task-day-chip input { margin: 0; accent-color: var(--primary); }
+.delete-task-single-warning {
+  padding: 13px; border: 1px solid var(--line); border-radius: 13px;
+  background: var(--surface-muted); color: var(--text-secondary); font-size: .8rem; line-height: 1.45;
+}
+.delete-task-modal-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 9px; margin-top: 17px; }
+.delete-task-confirm-btn { background: var(--danger) !important; border-color: var(--danger) !important; color: #fff !important; }
+.delete-task-confirm-btn:hover { filter: brightness(.96); }
+@media (max-width: 560px) {
+  .delete-task-dialog { padding: 16px; }
+  .delete-task-weekdays-panel { margin-left: 0; }
+  .delete-task-modal-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .delete-task-modal-actions button { width: 100%; justify-content: center; }
+}
