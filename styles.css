@@ -5869,3 +5869,30 @@ body.focus-mode-open #boxes-container {
   .recurring-audit-footer { align-items: stretch; flex-direction: column; }
   .recurring-audit-footer button { width: 100%; justify-content: center; }
 }
+
+
+/* Global collapse / expand control in the board quick-actions row */
+.all-boxes-toggle {
+  margin-left: auto;
+  flex: 0 0 auto;
+  border-color: rgba(100, 116, 139, .24);
+  background: linear-gradient(135deg, var(--surface-solid), var(--surface-muted));
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.all-boxes-toggle:hover {
+  border-color: rgba(99, 102, 241, .35);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.all-boxes-toggle[aria-expanded="false"] {
+  border-color: rgba(99, 102, 241, .28);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.all-boxes-toggle svg { flex: 0 0 auto; }
+@media (max-width: 720px) {
+  .all-boxes-toggle {
+    margin-left: 0;
+  }
+}
