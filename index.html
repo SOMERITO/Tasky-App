@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261029-birthday-initials-1" />
+  <link rel="stylesheet" href="styles.css?v=20261029-birthday-compact-list-1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -851,7 +851,6 @@
           <button type="button" id="btn-birthday-month-view-toggle" aria-pressed="false">Mes a mes</button>
           <button type="button" id="btn-birthday-history-view" aria-pressed="false">Historial</button>
         </div>
-        <button type="button" id="btn-birthday-add" class="btn-primary birthday-add-button">＋ Agregar cumpleaños</button>
       </div>
 
       <form id="birthday-editor" class="birthday-editor" hidden>
@@ -914,14 +913,15 @@
       </section>
 
       <section id="birthday-upcoming-section" class="birthday-upcoming-section">
-        <div class="birthday-events-heading">
-          <div>
-            <h4>Próximos cumpleaños</h4>
-            <p>Las siguientes fechas importantes, en orden cronológico.</p>
-          </div>
+        <button type="button" id="btn-toggle-birthday-upcoming" class="birthday-upcoming-toggle" aria-expanded="false" aria-controls="birthday-upcoming-list">
+          <span class="birthday-upcoming-toggle-copy">
+            <strong>Próximos cumpleaños</strong>
+            <small>Consulta las siguientes fechas importantes</small>
+          </span>
           <span id="birthday-total-count" class="birthday-events-count">0</span>
-        </div>
-        <div id="birthday-upcoming-list" class="birthday-upcoming-list"></div>
+          <span class="birthday-upcoming-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div id="birthday-upcoming-list" class="birthday-upcoming-list" hidden></div>
       </section>
 
       <section id="birthday-history-view" class="birthday-history-view" hidden aria-label="Registro permanente de cumpleaños">
@@ -965,6 +965,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261029-birthday-initials-1"></script>
+  <script src="app.js?v=20261029-birthday-compact-list-1"></script>
 </body>
 </html>
