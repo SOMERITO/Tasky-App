@@ -269,6 +269,11 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           <span>Mi productividad</span>
         </button>
+        <button type="button" id="btn-open-birthdays" class="pill-btn birthday-calendar-btn" aria-haspopup="dialog" aria-controls="modal-birthdays" data-tip-title="🎂 Calendario de cumpleaños" data-tip-desc="Consulta los 12 meses, registra cumpleaños y edita fechas importantes.">
+          <span aria-hidden="true">🎂</span>
+          <span>Cumpleaños</span>
+          <span id="birthday-count" class="pill-badge-circle">0</span>
+        </button>
         <button type="button" id="btn-filter-rescheduled" class="pill-btn pill-rescheduled" data-tip-title="☀️ Gestión de Reprogramadas" data-tip-desc="Consulta las tareas postergadas a fechas futuras o tráelas de vuelta al día de hoy.">
           <span>☀️ Tareas reprogramadas</span>
           <span id="badge-rescheduled-count" class="pill-badge-circle">3</span>
@@ -807,6 +812,120 @@
 
       <div class="modal-footer">
         <button type="button" class="btn-secondary" data-close-modal="modal-completion-history">Cerrar registro</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Annual Birthday Calendar -->
+  <div id="modal-birthdays" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="birthday-calendar-title">
+    <div class="modal-dialog wide birthday-dialog">
+      <div class="modal-header birthday-modal-header">
+        <div>
+          <div class="modal-eyebrow">🎈 CALENDARIO PERSONAL</div>
+          <h3 id="birthday-calendar-title" class="modal-title">Cumpleaños</h3>
+          <p class="birthday-modal-description">Doce meses para recordar a las personas importantes. Los cumpleaños se repiten cada año.</p>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal="modal-birthdays" aria-label="Cerrar calendario">✕</button>
+      </div>
+
+      <div id="birthday-upcoming-highlight" class="birthday-upcoming-highlight" aria-live="polite">
+        <div class="birthday-highlight-icon" aria-hidden="true">🎉</div>
+        <div class="birthday-highlight-copy">
+          <span class="birthday-highlight-label">PRÓXIMO CUMPLEAÑOS</span>
+          <strong id="birthday-upcoming-title">Todavía no hay cumpleaños registrados</strong>
+          <span id="birthday-upcoming-subtitle">Agrega el primero para empezar tu calendario.</span>
+        </div>
+      </div>
+
+      <div class="birthday-calendar-toolbar">
+        <div class="birthday-period-controls">
+          <button type="button" id="btn-birthday-prev-period" class="birthday-nav-btn" aria-label="Periodo anterior">‹</button>
+          <div class="birthday-period-title">
+            <strong id="birthday-period-label">2026</strong>
+            <span id="birthday-period-hint">Vista anual</span>
+          </div>
+          <button type="button" id="btn-birthday-next-period" class="birthday-nav-btn" aria-label="Periodo siguiente">›</button>
+        </div>
+        <div class="birthday-view-switch" role="group" aria-label="Vista del calendario">
+          <button type="button" id="btn-birthday-year-view" class="is-active" aria-pressed="true">12 meses</button>
+          <button type="button" id="btn-birthday-month-view-toggle" aria-pressed="false">Mes a mes</button>
+        </div>
+        <button type="button" id="btn-birthday-add" class="btn-primary birthday-add-button">＋ Agregar cumpleaños</button>
+      </div>
+
+      <form id="birthday-editor" class="birthday-editor" hidden>
+        <div class="birthday-editor-heading">
+          <div>
+            <strong id="birthday-editor-title">Nuevo cumpleaños</strong>
+            <p>Elige la fecha. Se mostrará cada año en el calendario.</p>
+          </div>
+          <span class="birthday-editor-emoji" aria-hidden="true">🎂</span>
+        </div>
+        <input type="hidden" id="birthday-edit-id" value="" />
+        <div class="birthday-form-grid">
+          <div class="form-group birthday-name-field">
+            <label class="form-label" for="birthday-name">Nombre</label>
+            <input class="form-input" id="birthday-name" name="name" maxlength="100" placeholder="Ej. Mamá, Leah, un amigo…" autocomplete="off" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="birthday-month">Mes</label>
+            <select class="form-select" id="birthday-month" name="month" required>
+              <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+              <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+              <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+              <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="birthday-day">Día</label>
+            <select class="form-select" id="birthday-day" name="day" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="birthday-year">Año de nacimiento <span>(opcional)</span></label>
+            <input class="form-input" id="birthday-year" name="birthYear" type="number" min="1000" max="9999" placeholder="Ej. 1995" inputmode="numeric" />
+          </div>
+          <div class="form-group birthday-notes-field">
+            <label class="form-label" for="birthday-notes">Nota o recordatorio <span>(opcional)</span></label>
+            <input class="form-input" id="birthday-notes" name="notes" maxlength="500" placeholder="Regalo, plan, mensaje…" autocomplete="off" />
+          </div>
+        </div>
+        <div class="birthday-editor-actions">
+          <button type="button" id="btn-birthday-editor-cancel" class="btn-secondary">Cancelar</button>
+          <button type="button" id="btn-birthday-delete" class="btn-danger-soft" hidden>Eliminar</button>
+          <button type="submit" class="btn-primary" id="btn-birthday-save">Guardar cumpleaños</button>
+        </div>
+      </form>
+
+      <section id="birthday-year-view" class="birthday-year-view" aria-label="Calendario de los doce meses"></section>
+
+      <section id="birthday-single-month-view" class="birthday-single-month-view" hidden>
+        <div id="birthday-single-month-grid" class="birthday-single-month-grid" aria-label="Días del mes"></div>
+        <div class="birthday-month-events-panel">
+          <div class="birthday-events-heading">
+            <div>
+              <h4 id="birthday-month-events-title">Cumpleaños del mes</h4>
+              <p>Pulsa una fecha del calendario para registrar un cumpleaños.</p>
+            </div>
+            <span id="birthday-month-events-count" class="birthday-events-count">0</span>
+          </div>
+          <div id="birthday-month-events-list" class="birthday-month-events-list"></div>
+        </div>
+      </section>
+
+      <section class="birthday-upcoming-section">
+        <div class="birthday-events-heading">
+          <div>
+            <h4>Próximos cumpleaños</h4>
+            <p>Las siguientes fechas importantes, en orden cronológico.</p>
+          </div>
+          <span id="birthday-total-count" class="birthday-events-count">0</span>
+        </div>
+        <div id="birthday-upcoming-list" class="birthday-upcoming-list"></div>
+      </section>
+
+      <div class="modal-footer birthday-modal-footer">
+        <span class="birthday-sync-note"><span aria-hidden="true">☁️</span> Se guardan con los datos sincronizados de Tasky.</span>
+        <button type="button" class="btn-secondary" data-close-modal="modal-birthdays">Cerrar calendario</button>
       </div>
     </div>
   </div>
