@@ -7171,6 +7171,33 @@
     return grouped;
   }
 
+  function getBirthdayBalloonInitial(birthday) {
+    const name = String(birthday && birthday.name || "").trim();
+    if (!name) return "?";
+    const tokens = name.split(/\s+/).filter(Boolean);
+    const normalizeToken = token => String(token || "").normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z]/g, "")
+      .toLocaleLowerCase("es");
+    // Relationship labels describe the person; use the actual name that follows.
+    const roleLabels = new Set([
+      "hermanito", "hermanita", "hermano", "hermana", "hermanos",
+      "mama", "papa", "abuela", "abuelo", "abuelita", "abuelito",
+      "tia", "tio", "tita", "tito", "prima", "primo",
+      "sobrina", "sobrino", "madrina", "padrino", "madrinita", "padrinito",
+      "bebe", "nene", "nena", "hijito", "hijita", "hijo", "hija"
+    ]);
+    const firstName = tokens.find(token => !roleLabels.has(normalizeToken(token))) || tokens[0];
+    const key = normalizeToken(firstName);
+    // "Cati" is shown as K, as requested for this calendar.
+    const initialOverrides = { cati: "K" };
+    if (initialOverrides[key]) return initialOverrides[key];
+    const letters = firstName.normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .match(/[a-zA-Z0-9]/);
+    return letters ? letters[0].toLocaleUpperCase("es") : "?";
+  }
+
   function buildBirthdayMonthHtml(year, zeroBasedMonth, compact = false) {
     const month = zeroBasedMonth + 1;
     const firstDay = new Date(year, zeroBasedMonth, 1).getDay();
@@ -7188,12 +7215,12 @@
       const names = birthdays.map(item => item.name).join(", ");
       const visibleBirthdays = birthdays.slice(0, 3);
       const birthdayBalloons = birthdays.length
-        ? `<span class="birthday-day-balloons ${compact ? "is-compact" : "is-expanded"}">${visibleBirthdays.map((item, index) => `<span class="birthday-balloon birthday-balloon--${index % 8}" title="${escapeHtml(item.name)}" aria-hidden="true"><i></i></span>`).join("")}${birthdays.length > visibleBirthdays.length ? `<span class="birthday-balloons-overflow">+${birthdays.length - visibleBirthdays.length}</span>` : ""}</span>`
+        ? `<span class="birthday-day-balloons ${compact ? "is-compact" : "is-expanded"}">${visibleBirthdays.map((item, index) => {
+            const initial = getBirthdayBalloonInitial(item);
+            return `<span class="birthday-balloon birthday-balloon--${index % 8}" title="${escapeHtml(item.name)}" aria-label="${escapeHtml(item.name)}"><span class="birthday-balloon-initial" aria-hidden="true">${escapeHtml(initial)}</span><i></i></span>`;
+          }).join("")}${birthdays.length > visibleBirthdays.length ? `<span class="birthday-balloons-overflow">+${birthdays.length - visibleBirthdays.length}</span>` : ""}</span>`
         : "";
-      const eventNames = !compact && birthdays.length
-        ? `<span class="birthday-day-names">${birthdays.slice(0, 2).map((item, index) => `<span class="birthday-name-chip birthday-name-chip--${index % 8}">${escapeHtml(item.name)}</span>`).join("")}${birthdays.length > 2 ? `<span>+${birthdays.length - 2}</span>` : ""}</span>`
-        : "";
-      html += `<button type="button" class="birthday-day-cell ${birthdays.length ? "has-birthday" : ""} ${isToday ? "is-today" : ""} ${compact ? "is-compact" : "is-expanded"}" data-birthday-date="${dateIso}" title="${escapeHtml(names ? `${names} · Agregar cumpleaños en esta fecha` : `Agregar cumpleaños el ${day} de ${monthTitle.toLowerCase()}`)}" aria-label="${escapeHtml(`${day} de ${monthTitle.toLowerCase()} de ${year}${names ? `: ${names}` : ""}`)}"><span class="birthday-day-number">${day}</span>${birthdayBalloons}${eventNames}</button>`;
+      html += `<button type="button" class="birthday-day-cell ${birthdays.length ? "has-birthday" : ""} ${isToday ? "is-today" : ""} ${compact ? "is-compact" : "is-expanded"}" data-birthday-date="${dateIso}" title="${escapeHtml(names ? `${names} · Agregar cumpleaños en esta fecha` : `Agregar cumpleaños el ${day} de ${monthTitle.toLowerCase()}`)}" aria-label="${escapeHtml(`${day} de ${monthTitle.toLowerCase()} de ${year}${names ? `: ${names}` : ""}`)}"><span class="birthday-day-number">${day}</span>${birthdayBalloons}</button>`;
     }
     html += "</div>";
     return html;
