@@ -3934,7 +3934,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-overdue-search-4";
+  const TASKY_BUILD_ID = "20261030-overdue-move-today-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -7058,6 +7058,11 @@
     addTaskContextMenuButton(menu, task.done ? "↩ Reabrir tarea" : "✓ Marcar como completada", "toggle-done");
     addTaskContextMenuButton(menu, "✏️ Editar tarea", "edit");
     addTaskContextMenuButton(menu, "📋 Copiar texto", "copy");
+    if (!task.done && isTaskOverdue(task)) {
+      addTaskContextMenuButton(menu, "☀️ Pasar para hoy", "move-today", {
+        title: "Mueve esta tarea atrasada a la lista de hoy y conserva su fecha de vencimiento original."
+      });
+    }
     if (!task.done) addTaskContextMenuButton(menu, "☀️ Pasar para mañana", "tomorrow");
     addTaskContextMenuButton(menu, "📅 Reprogramar fecha", "reschedule");
     addTaskContextMenuButton(menu, "🔁 Configurar repetición", "repeat");
@@ -7189,6 +7194,11 @@
       case "copy":
         copyTextToClipboard(task.title, "📋 Tarea copiada al portapapeles");
         break;
+      case "move-today": {
+        if (task.done || !isTaskOverdue(task)) return;
+        scheduleTaskIdsForToday([task.id], `Pasar atrasada para hoy: ${task.title}`);
+        break;
+      }
       case "tomorrow": {
         if (task.done) return;
         // If this task belongs to a Ctrl/Cmd selection, apply tomorrow to every selected task.
@@ -7285,6 +7295,15 @@
         <button type="button" class="task-act-btn" data-task-action="edit" data-tip-title="✏️ Editar texto" data-tip-desc="Abre el editor para modificar el texto de esta tarea (también puedes hacer clic en el título).">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         </button>
+        ${isOverdue ? `
+        <button type="button" class="task-act-btn overdue-today-btn" data-task-action="move-today" aria-label="Pasar tarea atrasada para hoy" data-tip-title="☀️ Pasar para hoy" data-tip-desc="Mueve esta tarea atrasada a tu lista de hoy. Se conserva su fecha de vencimiento original.">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="17" rx="2"/>
+            <path d="M16 2v4M8 2v4M3 10h18"/>
+            <path d="m8.5 15 2.2 2.2 4.8-4.8"/>
+          </svg>
+        </button>
+        ` : ""}
         <button type="button" class="task-act-btn ${isResched ? "sun-active" : ""}" data-task-action="today" data-tip-title="☀️ Pasar para Mañana" data-tip-desc="Pasa inmediatamente esta tarea para el día de mañana (+1 día).">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
         </button>
@@ -7342,6 +7361,15 @@
       playUiSound("modalOpen");
       openEditTaskTitleModal(task.id);
     });
+
+    const moveOverdueToTodayButton = item.querySelector('[data-task-action="move-today"]');
+    if (moveOverdueToTodayButton) {
+      moveOverdueToTodayButton.addEventListener("click", event => {
+        event.stopPropagation();
+        if (task.done || !isTaskOverdue(task)) return;
+        scheduleTaskIdsForToday([task.id], `Pasar atrasada para hoy: ${task.title}`);
+      });
+    }
 
     // Point 3: Sun button on task row passes the task to Tomorrow (Mañana)
     item.querySelector('[data-task-action="today"]').addEventListener("click", () => {
