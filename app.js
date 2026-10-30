@@ -3510,10 +3510,6 @@
       : (rightTime >= leftTime ? right : left);
     let secondary = primary === left ? right : left;
 
-    const leftDeletedTaskIds = new Set(left.deletedTaskIds || []);
-    const rightDeletedTaskIds = new Set(right.deletedTaskIds || []);
-    const leftDeletedBoxIds = new Set(left.deletedBoxIds || []);
-    const rightDeletedBoxIds = new Set(right.deletedBoxIds || []);
     const ignoreUnversionedSecondary = Number(primary.updatedAt || 0) > 0 && Number(secondary.updatedAt || 0) <= 0;
     const primaryIsSeed = Boolean(primary.bootstrapSeedData);
     const secondaryIsSeed = Boolean(secondary.bootstrapSeedData);
