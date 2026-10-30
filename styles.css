@@ -6278,3 +6278,8 @@ body.focus-mode-open #boxes-container {
   border-color: #16a34a;
   box-shadow: 0 5px 12px rgba(22, 163, 74, 0.20);
 }
+
+/* Keep hidden scope choices out of the recurring deletion dialog. */
+.delete-choice-card[hidden] {
+  display: none !important;
+}
