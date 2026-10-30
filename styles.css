@@ -6484,3 +6484,26 @@ body.focus-mode-open #boxes-container {
   background: rgba(37, 99, 235, .16);
   color: #93c5fd;
 }
+
+
+/* Bulk action to bring the selected tasks into today's list. */
+.btn-multi-today {
+  border-color: rgba(22, 163, 74, .24);
+  background: rgba(22, 163, 74, .09);
+  color: #15803d;
+  font-weight: 800;
+}
+.btn-multi-today:hover {
+  border-color: #16a34a;
+  background: #16a34a;
+  color: #fff;
+}
+[data-theme="dark"] .btn-multi-today {
+  border-color: rgba(74, 222, 128, .28);
+  background: rgba(22, 163, 74, .16);
+  color: #86efac;
+}
+[data-theme="dark"] .btn-multi-today:hover {
+  background: #15803d;
+  color: #fff;
+}

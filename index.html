@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261030-overdue-carry-history-badge-1" />
+  <link rel="stylesheet" href="styles.css?v=20261030-multi-overdue-today-1" />
   <link rel="stylesheet" href="mobile-app.css?v=20261030-mobile-pull-refresh-1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -316,6 +316,7 @@
       </div>
       <div class="multi-select-actions">
         <button type="button" id="btn-multi-reschedule" class="btn-primary">📅 Reprogramar seleccionadas</button>
+        <button type="button" id="btn-multi-today" class="btn-secondary btn-multi-today" style="display:none;">☀️ Pasar seleccionadas para hoy</button>
         <button type="button" id="btn-multi-tomorrow" class="btn-secondary">☀️ Pasar a mañana</button>
         <button type="button" id="btn-multi-delete" class="btn-danger-soft" style="display:none;">🗑️ Eliminar seleccionadas</button>
         <button type="button" id="btn-multi-clear" class="btn-secondary">Cancelar selección</button>
@@ -1109,7 +1110,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261030-overdue-carry-history-badge-1"></script>
+  <script src="app.js?v=20261030-multi-overdue-today-1"></script>
   <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
 </body>
 </html>

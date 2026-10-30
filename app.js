@@ -3934,7 +3934,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-overdue-carry-history-badge-1";
+  const TASKY_BUILD_ID = "20261030-multi-overdue-today-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -6865,10 +6865,12 @@
     const toolbar = document.getElementById("multi-select-toolbar");
     const countLabel = document.getElementById("multi-select-count");
     const deleteButton = document.getElementById("btn-multi-delete");
+    const todayButton = document.getElementById("btn-multi-today");
     const count = appState.selectedTaskIds.size;
     if (toolbar) toolbar.style.display = count > 0 ? "flex" : "none";
     if (countLabel) countLabel.textContent = String(count);
     if (deleteButton) deleteButton.style.display = count > 1 ? "inline-flex" : "none";
+    if (todayButton) todayButton.style.display = count > 1 ? "inline-flex" : "none";
 
     document.querySelectorAll(".task-item[data-task-id]").forEach(row => {
       const selected = appState.selectedTaskIds.has(String(row.dataset.taskId));
@@ -7196,8 +7198,7 @@
         copyTextToClipboard(task.title, "📋 Tarea copiada al portapapeles");
         break;
       case "move-today": {
-        if (task.done || !isTaskOverdue(task)) return;
-        scheduleTaskIdsForToday([task.id], `Pasar atrasada para hoy: ${task.title}`);
+        scheduleOverdueTaskOrSelectedGroup(task);
         break;
       }
       case "tomorrow": {
@@ -7371,8 +7372,7 @@
     if (moveOverdueToTodayButton) {
       moveOverdueToTodayButton.addEventListener("click", event => {
         event.stopPropagation();
-        if (task.done || !isTaskOverdue(task)) return;
-        scheduleTaskIdsForToday([task.id], `Pasar atrasada para hoy: ${task.title}`);
+        scheduleOverdueTaskOrSelectedGroup(task);
       });
     }
 
@@ -8838,15 +8838,43 @@
     }
   }
 
+  function scheduleSelectedTasksForToday() {
+    const selectedIds = Array.from(appState.selectedTaskIds || []).map(String);
+    const selectedIdSet = new Set(selectedIds);
+    const selectedTasks = appState.data.tasks.filter(task =>
+      selectedIdSet.has(String(task.id)) && !task.done
+    );
+    if (!selectedTasks.length) {
+      clearTaskSelection();
+      showToast("Selecciona al menos una tarea pendiente para pasarla a hoy.", true);
+      return;
+    }
+    clearTaskSelection();
+    scheduleTaskIdsForToday(
+      selectedTasks.map(task => String(task.id)),
+      `Pasó ${selectedTasks.length} tareas seleccionadas para hoy`
+    );
+  }
+
+  function scheduleOverdueTaskOrSelectedGroup(task) {
+    if (!task || task.done || !isTaskOverdue(task)) return;
+    const selectedIds = appState.selectedTaskIds;
+    if (selectedIds && selectedIds.size > 1 && selectedIds.has(String(task.id))) {
+      scheduleSelectedTasksForToday();
+      return;
+    }
+    scheduleTaskIdsForToday([String(task.id)], `Pasar atrasada para hoy: ${task.title}`);
+  }
+
   function scheduleTaskIdsForToday(taskIds, actionDescription = "Programó tareas para hoy") {
-    const idsSet = new Set(taskIds);
+    const idsSet = new Set((Array.isArray(taskIds) ? taskIds : []).map(id => String(id)));
     if (idsSet.size === 0) return;
     pushUndoSnapshot(actionDescription);
     const today = getTodayISO();
     let movedCount = 0;
 
     appState.data.tasks.forEach((task) => {
-      if (idsSet.has(task.id)) {
+      if (idsSet.has(String(task.id))) {
         const wasOverdue = isTaskOverdue(task);
         const originalOverdueDate = String(task.overdueSince || task.dueDate || "");
         task.dueDate = today;
@@ -10135,6 +10163,11 @@
         openDatePickerModal(ids);
       });
     }
+    const multiTodayBtn = document.getElementById("btn-multi-today");
+    if (multiTodayBtn) multiTodayBtn.addEventListener("click", () => {
+      playUiSound("tap");
+      scheduleSelectedTasksForToday();
+    });
     const multiTomorrowBtn = document.getElementById("btn-multi-tomorrow");
     if (multiTomorrowBtn) multiTomorrowBtn.addEventListener("click", rescheduleSelectedTasksToTomorrow);
     const multiDeleteBtn = document.getElementById("btn-multi-delete");
