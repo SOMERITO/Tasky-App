@@ -4814,35 +4814,23 @@
 
   function renderDateBirthdayShortcut() {
     const button = document.getElementById("btn-date-birthday-shortcut");
-    const label = document.getElementById("date-birthday-shortcut-label");
-    if (!button || !label) return;
+    if (!button) return;
 
     const today = getTodayISO();
     const todayMonth = today.slice(5, 7);
     const todayDay = today.slice(8, 10);
-    const todayBirthdays = getActiveBirthdays()
-      .filter(entry =>
-        String(entry.month).padStart(2, "0") === todayMonth &&
-        String(entry.day).padStart(2, "0") === todayDay
-      )
-      .sort((a, b) => a.name.localeCompare(b.name, "es"));
+    const hasBirthdayToday = getActiveBirthdays().some(entry =>
+      String(entry.month).padStart(2, "0") === todayMonth &&
+      String(entry.day).padStart(2, "0") === todayDay
+    );
 
-    // The shortcut exists only when at least one birthday is registered for today.
-    button.hidden = todayBirthdays.length === 0;
-    button.classList.toggle("has-today-birthday", todayBirthdays.length > 0);
-    if (!todayBirthdays.length) return;
-
-    const names = todayBirthdays.map(entry => entry.name);
-    const buttonLabel = names.length === 1
-      ? names[0]
-      : names.length === 2
-        ? names[0] + " y " + names[1]
-        : names.slice(0, -1).join(", ") + " y " + names[names.length - 1];
-
-    label.textContent = buttonLabel;
-    button.setAttribute("aria-label", "Cumpleaños de hoy: " + buttonLabel);
-    button.dataset.tipTitle = "Cumpleaños de hoy";
-    button.dataset.tipDesc = "Pulsa para ver todos los cumpleaños registrados para hoy.";
+    // Show only the cake icon when there is at least one birthday today.
+    // Never expose names or future birthdays in the home-screen shortcut.
+    button.hidden = !hasBirthdayToday;
+    button.classList.toggle("has-today-birthday", hasBirthdayToday);
+    button.setAttribute("aria-label", hasBirthdayToday ? "Abrir registro de cumpleaños: hay cumpleaños hoy" : "Cumpleaños");
+    button.dataset.tipTitle = "Cumpleaños hoy";
+    button.dataset.tipDesc = "Pulsa para abrir el registro completo de cumpleaños.";
   }
 
   function getLearningWeekStartISO(baseIso = getTodayISO()) {
@@ -9572,7 +9560,7 @@
     const dateBirthdayShortcut = document.getElementById("btn-date-birthday-shortcut");
     if (dateBirthdayShortcut) dateBirthdayShortcut.addEventListener("click", () => {
       playUiSound("tap");
-      openBirthdayCalendarModal({ expandUpcoming: true, todayOnly: true });
+      openBirthdayCalendarModal({ expandUpcoming: true, todayOnly: false });
     });
     const birthdayYearViewButton = document.getElementById("btn-birthday-year-view");
     if (birthdayYearViewButton) birthdayYearViewButton.addEventListener("click", () => {
