@@ -3934,7 +3934,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-overdue-search-3";
+  const TASKY_BUILD_ID = "20261030-overdue-search-4";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -8775,6 +8775,7 @@
       const isChecked = selectedSet.has(task.id);
       const card = document.createElement("div");
       card.className = `resched-modal-card ${isChecked ? "is-checked" : ""}`;
+      card.dataset.taskId = String(task.id);
       card.innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;">
           <input type="checkbox" class="modal-task-check row-task-checkbox" aria-label="Seleccionar tarea" ${isChecked ? "checked" : ""} />
@@ -8972,36 +8973,51 @@
     );
     const searchInput = document.getElementById("overdue-global-search");
     const query = String(searchInput ? searchInput.value : "").trim();
-    // Normalize the query and stored text identically across Android WebViews.
-    const normalize = value => String(value || "")
-      .normalize("NFD")
-      .replace(/[\\u0300-\\u036f]/g, "")
-      .toLowerCase();
-    const normalizedQuery = normalize(query);
-    const overdueTasks = normalizedQuery
-      ? allOverdueTasks.filter(task => {
-          const box = appState.data.boxes.find(entry => String(entry.id) === String(task.boxId));
-          const searchableText = [
-            task.title,
-            box ? box.name : "",
-            task.dueDate,
-            task.dueDate ? formatSpanishDateLong(task.dueDate) : ""
-          ].map(normalize).join(" ");
-          return searchableText.includes(normalizedQuery);
-        })
-      : allOverdueTasks;
+
+    // Search the exact visible text rendered in each overdue card.
+    // This avoids mismatches between the stored title and its displayed text,
+    // while normalizing case, accents, whitespace and invisible Unicode marks.
+    const normalizeSearchText = value => String(value || "")
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+
+    const normalizedQuery = normalizeSearchText(query);
     const clearButton = document.getElementById("overdue-global-search-clear");
     if (clearButton) clearButton.hidden = !normalizedQuery;
 
-    renderInteractiveTaskModalList({
+    const listOptions = {
       containerId: "overdue-modal-items",
-      tasksList: overdueTasks,
+      tasksList: allOverdueTasks,
       selectedSet: appState.selectedOverdueIds,
-      emptyMessage: normalizedQuery
-        ? "No encontré tareas atrasadas que coincidan con tu búsqueda."
-        : "🎉 ¡Excelente! No tienes ninguna tarea atrasada pendiente.",
+      emptyMessage: "🎉 ¡Excelente! No tienes ninguna tarea atrasada pendiente.",
       datePrefixLabel: "⚠️ Venció el",
       isOverdueStyle: true
+    };
+
+    // First render the real overdue cards; their textContent is the source of truth
+    // for what the user can actually see and search.
+    renderInteractiveTaskModalList(listOptions);
+    if (!normalizedQuery) return;
+
+    const container = document.getElementById("overdue-modal-items");
+    if (!container) return;
+    const renderedCards = Array.from(container.querySelectorAll(".resched-modal-card"));
+    const matchingIds = new Set(
+      renderedCards
+        .filter(card => normalizeSearchText(card.textContent).includes(normalizedQuery))
+        .map(card => String(card.dataset.taskId || ""))
+        .filter(Boolean)
+    );
+
+    const matchingTasks = allOverdueTasks.filter(task => matchingIds.has(String(task.id)));
+    renderInteractiveTaskModalList({
+      ...listOptions,
+      tasksList: matchingTasks,
+      emptyMessage: "No encontré tareas atrasadas que coincidan con tu búsqueda."
     });
   }
 
