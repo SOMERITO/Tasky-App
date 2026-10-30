@@ -158,7 +158,7 @@
     document.body.appendChild(indicator);
 
     const label = indicator.querySelector("#tasky-pull-refresh-label");
-    const threshold = 76;
+    const threshold = 52;
     let tracking = false;
     let pulling = false;
     let refreshing = false;
