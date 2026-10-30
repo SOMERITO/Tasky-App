@@ -3000,15 +3000,21 @@
       }
       const existingKey = canonicalBoxKey(existing.name);
       const candidateKey = canonicalBoxKey(box.name);
-      const chooseCandidate =
-        (existingKey === "oficina" && candidateKey === "asesortelefonico") ||
-        (Number(box.updatedAt || 0) > Number(existing.updatedAt || 0)) ||
-        (existing.bootstrapSeed === true && box.bootstrapSeed !== true);
-      const keepCandidate =
-        (candidateKey === "oficina" && existingKey === "asesortelefonico") ||
-        (Number(existing.updatedAt || 0) > Number(box.updatedAt || 0)) ||
-        (box.bootstrapSeed === true && existing.bootstrapSeed !== true);
-      if (chooseCandidate && !keepCandidate) boxesById.set(box.id, box);
+      let preferred = existing;
+      if (existingKey === "oficina" && candidateKey === "asesortelefonico") {
+        preferred = box;
+      } else if (candidateKey === "oficina" && existingKey === "asesortelefonico") {
+        preferred = existing;
+      } else if (Number(box.updatedAt || 0) > Number(existing.updatedAt || 0)) {
+        preferred = box;
+      } else if (Number(existing.updatedAt || 0) > Number(box.updatedAt || 0)) {
+        preferred = existing;
+      } else if (existing.bootstrapSeed === true && box.bootstrapSeed !== true) {
+        preferred = box;
+      } else if (box.bootstrapSeed === true && existing.bootstrapSeed !== true) {
+        preferred = existing;
+      }
+      if (preferred === box) boxesById.set(box.id, box);
     });
     const boxes = Array.from(boxesById.values());
 
