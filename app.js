@@ -3934,7 +3934,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-overdue-move-today-2";
+  const TASKY_BUILD_ID = "20261030-recurring-delete-scope-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -8222,14 +8222,21 @@
   function openDeleteTaskDialog(taskId) {
     const task = appState.data.tasks.find(item => String(item.id) === String(taskId));
     if (!task) return;
+
     pendingTaskDeletionId = String(task.id);
-    const recurring = isRecurringTaskRecord(task);
+    const seriesRoot = getTaskRecurringSeriesRoot(task);
+    pendingTaskDeletionSeriesRootId = seriesRoot ? String(seriesRoot.id) : null;
+    const recurring = Boolean(seriesRoot);
+    const isArchivedOccurrence = recurring && String(task.id) !== String(seriesRoot.id);
+
     const summaryName = document.getElementById("delete-task-name");
     const summaryDate = document.getElementById("delete-task-date");
     const options = document.getElementById("delete-task-recurring-options");
     const singleWarning = document.getElementById("delete-task-single-warning");
     const weekdayPanel = document.getElementById("delete-task-weekdays-panel");
     const weekdayList = document.getElementById("delete-task-weekday-list");
+    const weekdayChoice = document.getElementById("delete-task-weekdays-choice");
+    const intro = document.getElementById("delete-task-intro");
     const confirmButton = document.getElementById("btn-confirm-delete-task");
     if (!summaryName || !summaryDate || !options || !singleWarning || !weekdayPanel || !weekdayList || !confirmButton) return;
 
@@ -8238,11 +8245,18 @@
     options.hidden = !recurring;
     singleWarning.hidden = recurring;
     weekdayPanel.hidden = true;
-    confirmButton.textContent = recurring ? "Confirmar eliminación" : "Eliminar esta tarea";
+    if (weekdayChoice) weekdayChoice.hidden = !recurring || isArchivedOccurrence;
+    if (intro) {
+      intro.textContent = isArchivedOccurrence
+        ? "Esta tarea pertenece a una repetición. Elige si quieres quitar solo esta fecha, terminar la serie desde aquí o eliminar todas sus ocurrencias pendientes."
+        : "Esta tarea tiene una repetición. Elige qué debe eliminarse. Las tareas ya completadas se conservarán en tu historial.";
+    }
+
     const defaultRadio = document.querySelector('input[name="delete-task-mode"][value="occurrence"]');
     if (defaultRadio) defaultRadio.checked = true;
+    confirmButton.textContent = recurring ? "Eliminar solo esta ocurrencia" : "Eliminar esta tarea";
 
-    const days = recurring ? getTaskRepeatDays(task) : [];
+    const days = recurring ? getTaskRepeatDays(seriesRoot) : [];
     const dayNames = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
     const occurrenceWeekday = task.dueDate ? new Date(`${String(task.dueDate).slice(0, 10)}T00:00:00`).getDay() : -1;
     const defaultDay = days.includes(occurrenceWeekday) ? occurrenceWeekday : days[0];
@@ -8252,6 +8266,7 @@
         <span>${dayNames[day].charAt(0).toLocaleUpperCase("es") + dayNames[day].slice(1)}</span>
       </label>
     `).join("");
+
     const modal = document.getElementById("modal-delete-task");
     if (modal) modal.classList.add("open");
   }
@@ -8260,12 +8275,27 @@
     const modal = document.getElementById("modal-delete-task");
     if (modal) modal.classList.remove("open");
     pendingTaskDeletionId = null;
+    pendingTaskDeletionSeriesRootId = null;
   }
 
   function getTaskSeriesRecordIds(task) {
     const rootId = String(task.id);
     return appState.data.tasks
       .filter(item => String(item.id) === rootId || String(item.id).startsWith(`${rootId}__missed__`))
+      .map(item => String(item.id));
+  }
+
+  function getTaskSeriesRecordIdsFromDate(task, cutoffDate) {
+    const rootId = String(task.id);
+    const cutoff = String(cutoffDate || "").slice(0, 10);
+    return appState.data.tasks
+      .filter(item => {
+        const id = String(item.id);
+        if (id === rootId) return true;
+        if (!id.startsWith(`${rootId}__missed__`)) return false;
+        const occurrenceDate = String(item.dueDate || "").slice(0, 10);
+        return Boolean(occurrenceDate && occurrenceDate >= cutoff);
+      })
       .map(item => String(item.id));
   }
 
@@ -8289,12 +8319,17 @@
   function confirmDeleteTask() {
     const task = appState.data.tasks.find(item => String(item.id) === String(pendingTaskDeletionId));
     if (!task) { closeDeleteTaskDialog(); return; }
-    const recurring = isRecurringTaskRecord(task);
+
+    const seriesRoot = pendingTaskDeletionSeriesRootId
+      ? appState.data.tasks.find(item => String(item.id) === pendingTaskDeletionSeriesRootId)
+      : getTaskRecurringSeriesRoot(task);
+    const recurring = Boolean(seriesRoot && isRecurringTaskRecord(seriesRoot));
+    const isSelectedSeriesRoot = recurring && String(task.id) === String(seriesRoot.id);
     const radio = document.querySelector('input[name="delete-task-mode"]:checked');
     const mode = recurring ? String(radio && radio.value || "occurrence") : "occurrence";
     const occurrenceDate = String(task.dueDate || getTodayISO()).slice(0, 10);
-    const repeatDays = recurring ? getTaskRepeatDays(task) : [];
-    const repeatUntil = task.repeatUntil ? String(task.repeatUntil).slice(0, 10) : null;
+    const repeatDays = recurring ? getTaskRepeatDays(seriesRoot) : [];
+    const repeatUntil = recurring && seriesRoot.repeatUntil ? String(seriesRoot.repeatUntil).slice(0, 10) : null;
 
     if (!recurring) {
       const taskId = String(task.id);
@@ -8304,13 +8339,46 @@
     }
 
     if (mode === "series") {
-      const ids = getTaskSeriesRecordIds(task);
+      const ids = getTaskSeriesRecordIds(seriesRoot);
       closeDeleteTaskDialog();
-      removeTaskRecords(ids, `Eliminar repetición completa: ${task.title}`, `Se eliminó la repetición y sus ocurrencias pendientes: ${task.title}`);
+      removeTaskRecords(ids, `Eliminar repetición completa: ${task.title}`, `Se eliminó toda la repetición y sus ocurrencias pendientes: ${task.title}. El historial completado se conserva.`);
+      return;
+    }
+
+    if (mode === "future") {
+      const ids = getTaskSeriesRecordIdsFromDate(seriesRoot, occurrenceDate);
+      if (!ids.length) {
+        showToast("No encontré ocurrencias de esta repetición para eliminar.", true);
+        return;
+      }
+      const previousDate = addDaysISO(occurrenceDate, -1);
+      closeDeleteTaskDialog();
+      removeTaskRecords(
+        ids,
+        `Eliminar repetición desde ${occurrenceDate}: ${task.title}`,
+        `Se eliminó esta ocurrencia y las siguientes desde ${formatSpanishDateLong(occurrenceDate)}. Las anteriores y el historial completado se conservaron.`
+      );
+      return;
+    }
+
+    // A missed occurrence is stored as an independent child record. Deleting
+    // only that occurrence must not advance or alter the active recurring root.
+    if (mode === "occurrence" && !isSelectedSeriesRoot) {
+      const taskId = String(task.id);
+      closeDeleteTaskDialog();
+      removeTaskRecords(
+        [taskId],
+        `Eliminar solo esta ocurrencia: ${task.title}`,
+        `Se eliminó solo la ocurrencia del ${formatSpanishDateLong(occurrenceDate)}; la repetición continúa.`
+      );
       return;
     }
 
     if (mode === "weekdays") {
+      if (!isSelectedSeriesRoot) {
+        showToast("Para cambiar los días, abre la tarea principal de esta repetición.", true);
+        return;
+      }
       const daysToRemove = Array.from(document.querySelectorAll("#delete-task-weekday-list [data-delete-weekday]:checked"))
         .map(input => Number(input.value)).filter(day => Number.isInteger(day) && day >= 0 && day <= 6);
       if (!daysToRemove.length) {
@@ -8319,27 +8387,27 @@
       }
       const remainingDays = repeatDays.filter(day => !daysToRemove.includes(day));
       if (!remainingDays.length) {
-        const ids = getTaskSeriesRecordIds(task);
+        const ids = getTaskSeriesRecordIds(seriesRoot);
         closeDeleteTaskDialog();
         removeTaskRecords(ids, `Eliminar todos los días de repetición: ${task.title}`, `Se eliminó la repetición de ${task.title}`);
         return;
       }
       pushUndoSnapshot(`Cambiar días de repetición: ${task.title}`);
-      task.repeatDays = remainingDays;
+      seriesRoot.repeatDays = remainingDays;
       const currentWeekday = new Date(`${occurrenceDate}T00:00:00`).getDay();
       if (daysToRemove.includes(currentWeekday)) {
-        task.skippedDates = Array.from(new Set([...(Array.isArray(task.skippedDates) ? task.skippedDates : []), occurrenceDate]));
+        seriesRoot.skippedDates = Array.from(new Set([...(Array.isArray(seriesRoot.skippedDates) ? seriesRoot.skippedDates : []), occurrenceDate]));
         const nextDate = getNextRepeatDateOnOrAfter(addDaysISO(occurrenceDate, 1), remainingDays, repeatUntil);
         if (nextDate) {
-          task.dueDate = nextDate;
-          task.isRescheduled = false;
-          task.done = false;
-          task.completedDate = null;
-          delete task.overdueSince;
-          delete task.overdueCarryDate;
+          seriesRoot.dueDate = nextDate;
+          seriesRoot.isRescheduled = false;
+          seriesRoot.done = false;
+          seriesRoot.completedDate = null;
+          delete seriesRoot.overdueSince;
+          delete seriesRoot.overdueCarryDate;
         } else {
           closeDeleteTaskDialog();
-          removeTaskRecords([String(task.id)], `Eliminar última ocurrencia: ${task.title}`, `Se quitó la última ocurrencia de ${task.title}`, true);
+          removeTaskRecords([String(seriesRoot.id)], `Eliminar última ocurrencia: ${task.title}`, `Se quitó la última ocurrencia de ${task.title}`, true);
           return;
         }
       }
@@ -8351,20 +8419,24 @@
     }
 
     // Default: skip only this date while keeping the recurrence intact.
+    if (!isSelectedSeriesRoot) {
+      showToast("No pude identificar la ocurrencia principal de esta repetición.", true);
+      return;
+    }
     const nextDate = getNextRepeatDateOnOrAfter(addDaysISO(occurrenceDate, 1), repeatDays, repeatUntil);
     if (!nextDate) {
       closeDeleteTaskDialog();
-      removeTaskRecords([String(task.id)], `Eliminar última ocurrencia: ${task.title}`, `Se eliminó esta ocurrencia de ${task.title}`);
+      removeTaskRecords([String(seriesRoot.id)], `Eliminar última ocurrencia: ${task.title}`, `Se eliminó esta ocurrencia de ${task.title}`);
       return;
     }
     pushUndoSnapshot(`Eliminar solo esta ocurrencia: ${task.title}`);
-    task.skippedDates = Array.from(new Set([...(Array.isArray(task.skippedDates) ? task.skippedDates : []), occurrenceDate]));
-    task.dueDate = nextDate;
-    task.done = false;
-    task.completedDate = null;
-    task.isRescheduled = false;
-    delete task.overdueSince;
-    delete task.overdueCarryDate;
+    seriesRoot.skippedDates = Array.from(new Set([...(Array.isArray(seriesRoot.skippedDates) ? seriesRoot.skippedDates : []), occurrenceDate]));
+    seriesRoot.dueDate = nextDate;
+    seriesRoot.done = false;
+    seriesRoot.completedDate = null;
+    seriesRoot.isRescheduled = false;
+    delete seriesRoot.overdueSince;
+    delete seriesRoot.overdueCarryDate;
     closeDeleteTaskDialog();
     saveData(true, `Eliminó una ocurrencia de: ${task.title}`);
     renderBoard();
@@ -9869,7 +9941,19 @@
     const deleteTaskWeekdaysPanel = document.getElementById("delete-task-weekdays-panel");
     document.querySelectorAll('input[name="delete-task-mode"]').forEach(input => {
       input.addEventListener("change", () => {
-        if (deleteTaskWeekdaysPanel) deleteTaskWeekdaysPanel.hidden = input.value !== "weekdays" || !input.checked;
+        if (!input.checked) return;
+        if (deleteTaskWeekdaysPanel) deleteTaskWeekdaysPanel.hidden = input.value !== "weekdays";
+        if (deleteTaskConfirm) {
+          const labels = {
+            occurrence: "Eliminar solo esta ocurrencia",
+            future: "Eliminar esta y las siguientes",
+            weekdays: "Aplicar cambios de repetición",
+            series: "Eliminar toda la repetición"
+          };
+          deleteTaskConfirm.textContent = pendingTaskDeletionSeriesRootId
+            ? labels[input.value] || "Confirmar eliminación"
+            : "Eliminar esta tarea";
+        }
       });
     });
     const deleteTaskWeekdayList = document.getElementById("delete-task-weekday-list");
