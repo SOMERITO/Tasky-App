@@ -3934,7 +3934,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-overdue-search-1";
+  const TASKY_BUILD_ID = "20261030-overdue-search-2";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -8960,11 +8960,7 @@
   function openOverdueModal() {
     appState.selectedOverdueIds.clear();
     const searchInput = document.getElementById("overdue-global-search");
-    const searchPanel = document.getElementById("overdue-search-panel");
-    const searchToggle = document.getElementById("btn-overdue-search-toggle");
     if (searchInput) searchInput.value = "";
-    if (searchPanel) searchPanel.hidden = true;
-    if (searchToggle) searchToggle.setAttribute("aria-expanded", "false");
     renderOverdueModalList();
     const modal = document.getElementById("modal-overdue-list");
     if (modal) modal.classList.add("open");
@@ -9867,21 +9863,8 @@
       openOverdueModal();
     });
 
-    const overdueSearchToggle = document.getElementById("btn-overdue-search-toggle");
-    const overdueSearchPanel = document.getElementById("overdue-search-panel");
     const overdueSearchInput = document.getElementById("overdue-global-search");
     const overdueSearchClear = document.getElementById("overdue-global-search-clear");
-    if (overdueSearchToggle && overdueSearchPanel) {
-      overdueSearchToggle.addEventListener("click", () => {
-        playUiSound("tap");
-        const willOpen = overdueSearchPanel.hidden;
-        overdueSearchPanel.hidden = !willOpen;
-        overdueSearchToggle.setAttribute("aria-expanded", willOpen ? "true" : "false");
-        if (willOpen && overdueSearchInput) {
-          window.setTimeout(() => overdueSearchInput.focus(), 80);
-        }
-      });
-    }
     if (overdueSearchInput) {
       overdueSearchInput.addEventListener("input", renderOverdueModalList);
     }
