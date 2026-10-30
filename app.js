@@ -3934,7 +3934,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-mobile-polish-1";
+  const TASKY_BUILD_ID = "20261030-mobile-pull-refresh-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -4090,12 +4090,23 @@
     }
   }
 
+  let queuedManualPullPromise = null;
+  let resolveQueuedManualPull = null;
+
   async function pullCloudSync(manual = false, quiet = false) {
     if (!isCloudNetworkAllowed()) {
       if (manual) showToast("Modo local activo");
-      return;
+      return "offline";
     }
-    if (cloudPullInFlight) return;
+    if (cloudPullInFlight) {
+      if (!manual) return "busy";
+      if (!queuedManualPullPromise) {
+        queuedManualPullPromise = new Promise(resolve => {
+          resolveQueuedManualPull = resolve;
+        });
+      }
+      return queuedManualPullPromise;
+    }
     cloudPullInFlight = true;
 
     try {
@@ -4198,7 +4209,8 @@
           bootstrapDataset = mergeSyncDatasets(bootstrapDataset, candidate);
         }
         const bootstrapResult = await autoBootstrapFirestoreDocument(bootstrapDataset, sourceStatus);
-        if (bootstrapResult === "created" || bootstrapResult === "exists" || bootstrapResult === "busy") return;
+        if (bootstrapResult === "created") return "syncing";
+        if (bootstrapResult === "exists" || bootstrapResult === "busy") return "syncing";
       }
 
       if (durableCandidateCount === 0 || !candidates.length) {
@@ -4210,7 +4222,7 @@
         const modalSyncTime = document.getElementById("modal-sync-last-time");
         if (modalSyncTime) modalSyncTime.textContent = "No se encontró una copia remota persistente válida. No se subieron datos automáticamente.";
         if (manual) showToast("La nube no se pudo verificar. Abre el menú «…» y revisa el diagnóstico de Firestore y Realtime Database. Tus datos locales siguen protegidos.", true);
-        return;
+        return "unverified";
       }
 
       let cloudCandidate = candidates[0];
@@ -4244,18 +4256,44 @@
           modalSyncTime.textContent = `Sincronización verificada a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.`;
         }
         if (manual) {
-          showToast("Sincronización verificada; los datos se conciliaron sin reemplazar tareas faltantes.");
+          showToast("Sincronización verificada; los cambios de tus dispositivos ya fueron conciliados.");
         }
+        return "synced";
       }
+      return "syncing";
     } catch (error) {
       setRealtimeSyncStatus(`Error de sincronización: ${String(error && error.message || error).slice(0, 150)}`);
       const syncText = document.getElementById("sync-status-text");
       if (syncText) syncText.textContent = "Error de sincronización";
       if (manual) showToast("No se pudo completar la sincronización. Revisa el diagnóstico del canal en tiempo real.", true);
+      return "error";
     } finally {
       cloudPullInFlight = false;
+      if (queuedManualPullPromise) {
+        const resolveQueued = resolveQueuedManualPull;
+        queuedManualPullPromise = null;
+        resolveQueuedManualPull = null;
+        window.setTimeout(async () => {
+          const queuedResult = await pullCloudSync(true, false);
+          if (typeof resolveQueued === "function") resolveQueued(queuedResult);
+        }, 80);
+      }
     }
   }
+
+  window.addEventListener("tasky:manual-refresh", async event => {
+    let status = "error";
+    try {
+      status = await pullCloudSync(true, false) || "synced";
+      // Always redraw after a manual pull so the visible board reflects the reconciled state.
+      if (status === "synced" || status === "syncing") renderBoard();
+    } catch (error) {
+      status = "error";
+    } finally {
+      const complete = event && event.detail && event.detail.complete;
+      if (typeof complete === "function") complete(status);
+    }
+  });
 
   function requestSyncCatchup() {
     if (!isCloudNetworkAllowed() || document.visibilityState === "hidden") return;
