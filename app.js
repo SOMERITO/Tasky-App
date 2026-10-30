@@ -3934,7 +3934,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-mobile-pull-refresh-1";
+  const TASKY_BUILD_ID = "20261030-overdue-search-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -8959,20 +8959,50 @@
   // Point 1: Dedicated Overdue Tasks Modal (shows ONLY overdue tasks, never future rescheduled tasks!)
   function openOverdueModal() {
     appState.selectedOverdueIds.clear();
+    const searchInput = document.getElementById("overdue-global-search");
+    const searchPanel = document.getElementById("overdue-search-panel");
+    const searchToggle = document.getElementById("btn-overdue-search-toggle");
+    if (searchInput) searchInput.value = "";
+    if (searchPanel) searchPanel.hidden = true;
+    if (searchToggle) searchToggle.setAttribute("aria-expanded", "false");
     renderOverdueModalList();
     const modal = document.getElementById("modal-overdue-list");
     if (modal) modal.classList.add("open");
   }
 
   function renderOverdueModalList() {
-    const overdueTasks = appState.data.tasks.filter(t =>
+    const allOverdueTasks = appState.data.tasks.filter(t =>
       isTaskOverdue(t) && !isTaskCarriedToTodayFromOverdue(t)
     );
+    const searchInput = document.getElementById("overdue-global-search");
+    const query = String(searchInput ? searchInput.value : "").trim();
+    const normalize = value => String(value || "")
+      .normalize("NFD")
+      .replace(/[\\u0300-\\u036f]/g, "")
+      .toLocaleLowerCase("es");
+    const normalizedQuery = normalize(query);
+    const overdueTasks = normalizedQuery
+      ? allOverdueTasks.filter(task => {
+          const box = appState.data.boxes.find(entry => String(entry.id) === String(task.boxId));
+          const searchableText = [
+            task.title,
+            box ? box.name : "",
+            task.dueDate,
+            task.dueDate ? formatSpanishDateLong(task.dueDate) : ""
+          ].map(normalize).join(" ");
+          return searchableText.includes(normalizedQuery);
+        })
+      : allOverdueTasks;
+    const clearButton = document.getElementById("overdue-global-search-clear");
+    if (clearButton) clearButton.hidden = !normalizedQuery;
+
     renderInteractiveTaskModalList({
       containerId: "overdue-modal-items",
       tasksList: overdueTasks,
       selectedSet: appState.selectedOverdueIds,
-      emptyMessage: "🎉 ¡Excelente! No tienes ninguna tarea atrasada pendiente.",
+      emptyMessage: normalizedQuery
+        ? "No encontré tareas atrasadas que coincidan con tu búsqueda."
+        : "🎉 ¡Excelente! No tienes ninguna tarea atrasada pendiente.",
       datePrefixLabel: "⚠️ Venció el",
       isOverdueStyle: true
     });
@@ -9836,6 +9866,33 @@
       playUiSound("tap");
       openOverdueModal();
     });
+
+    const overdueSearchToggle = document.getElementById("btn-overdue-search-toggle");
+    const overdueSearchPanel = document.getElementById("overdue-search-panel");
+    const overdueSearchInput = document.getElementById("overdue-global-search");
+    const overdueSearchClear = document.getElementById("overdue-global-search-clear");
+    if (overdueSearchToggle && overdueSearchPanel) {
+      overdueSearchToggle.addEventListener("click", () => {
+        playUiSound("tap");
+        const willOpen = overdueSearchPanel.hidden;
+        overdueSearchPanel.hidden = !willOpen;
+        overdueSearchToggle.setAttribute("aria-expanded", willOpen ? "true" : "false");
+        if (willOpen && overdueSearchInput) {
+          window.setTimeout(() => overdueSearchInput.focus(), 80);
+        }
+      });
+    }
+    if (overdueSearchInput) {
+      overdueSearchInput.addEventListener("input", renderOverdueModalList);
+    }
+    if (overdueSearchClear) {
+      overdueSearchClear.addEventListener("click", () => {
+        if (!overdueSearchInput) return;
+        overdueSearchInput.value = "";
+        renderOverdueModalList();
+        overdueSearchInput.focus();
+      });
+    }
 
     const multiRescheduleBtn = document.getElementById("btn-multi-reschedule");
     if (multiRescheduleBtn) {
