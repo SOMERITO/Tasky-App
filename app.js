@@ -3934,7 +3934,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-recurring-delete-scope-1";
+  const TASKY_BUILD_ID = "20261030-recurring-delete-scope-2";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -8213,10 +8213,20 @@
   }
 
   let pendingTaskDeletionId = null;
+  let pendingTaskDeletionSeriesRootId = null;
 
   function isRecurringTaskRecord(task) {
     return Boolean(task && (task.frequency !== "once" ||
       (Array.isArray(task.repeatDays) && task.repeatDays.length > 0)));
+  }
+
+  function getTaskRecurringSeriesRoot(task) {
+    if (!task) return null;
+    if (isRecurringTaskRecord(task)) return task;
+    const match = String(task.id || "").match(/^(.*)__missed__\d{8}$/);
+    if (!match) return null;
+    const root = appState.data.tasks.find(item => String(item.id) === match[1]);
+    return isRecurringTaskRecord(root) ? root : null;
   }
 
   function openDeleteTaskDialog(taskId) {
@@ -8351,7 +8361,6 @@
         showToast("No encontré ocurrencias de esta repetición para eliminar.", true);
         return;
       }
-      const previousDate = addDaysISO(occurrenceDate, -1);
       closeDeleteTaskDialog();
       removeTaskRecords(
         ids,
