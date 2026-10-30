@@ -3934,7 +3934,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-recurring-delete-scope-3";
+  const TASKY_BUILD_ID = "20261030-recurring-audit-search-sort-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -8133,7 +8133,9 @@
 
     const tasks = appState.data.tasks
       .filter(task => String(task.boxId) === String(box.id) && isRecurringTaskRecord(task))
-      .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || a.title.localeCompare(b.title, "es"));
+      // Show the most frequent habits first. Keep alphabetical order for ties.
+      .sort((a, b) => getTaskRepeatDays(b).length - getTaskRepeatDays(a).length ||
+        String(a.title || "").localeCompare(String(b.title || ""), "es"));
     const weekdayCounts = Array(7).fill(0);
     tasks.forEach(task => getTaskRepeatDays(task).forEach(day => { weekdayCounts[day]++; }));
     const maxDayCount = Math.max(0, ...weekdayCounts);
@@ -8170,8 +8172,46 @@
       return;
     }
 
+    const searchInput = document.getElementById("recurring-audit-search");
+    const searchClear = document.getElementById("recurring-audit-search-clear");
+    const searchResultCount = document.getElementById("recurring-audit-search-result-count");
+    const normalizeAuditSearch = value => String(value || "")
+      .normalize("NFKD")
+      .replace(/[\\u0300-\\u036f]/g, "")
+      .replace(/[\\u200B-\\u200D\\uFEFF\\u2060\\u00AD]/g, "")
+      .toLowerCase()
+      .replace(/\\s+/g, " ")
+      .trim();
+    const searchQuery = normalizeAuditSearch(searchInput ? searchInput.value : "");
+    const filteredTasks = searchQuery
+      ? tasks.filter(task => {
+          const days = getTaskRepeatDays(task);
+          const searchable = [
+            task.title,
+            describeRepeatDays(days),
+            ...days.map(day => RECURRING_AUDIT_DAY_NAMES[day])
+          ].join(" ");
+          return normalizeAuditSearch(searchable).includes(searchQuery);
+        })
+      : tasks;
+
+    if (searchClear) searchClear.hidden = !searchQuery;
+    if (searchResultCount) {
+      searchResultCount.textContent = searchQuery
+        ? `${filteredTasks.length} de ${tasks.length} tareas`
+        : `Ordenadas por frecuencia · ${tasks.length} tareas`;
+    }
+    taskCount.textContent = searchQuery ? `${filteredTasks.length}/${tasks.length}` : String(tasks.length);
+
+    if (!filteredTasks.length) {
+      taskList.innerHTML = searchQuery
+        ? `<div class="recurring-audit-empty"><span aria-hidden="true">🔎</span><strong>No encontré tareas que coincidan</strong><p>Prueba con otro nombre o con un día de la semana.</p></div>`
+        : `<div class="recurring-audit-empty"><span aria-hidden="true">🗓️</span><strong>Esta casilla no tiene tareas repetidas</strong><p>Abre la configuración de repetición de una tarea para elegir los días de la semana.</p></div>`;
+      return;
+    }
+
     const today = getTodayISO();
-    taskList.innerHTML = tasks.map(task => {
+    taskList.innerHTML = filteredTasks.map(task => {
       const days = getTaskRepeatDays(task);
       const until = task.repeatUntil ? String(task.repeatUntil).slice(0, 10) : null;
       const nextDate = getNextRepeatDateOnOrAfter(today, days, until);
@@ -8185,6 +8225,7 @@
         <div class="recurring-audit-task-heading">
           <div class="recurring-audit-task-emoji" aria-hidden="true">🔁</div>
           <div class="recurring-audit-task-title-wrap"><strong>${escapeHtml(task.title)}</strong><span>${escapeHtml(describeRepeatDays(days))}</span></div>
+          <span class="recurring-audit-days-count">${days.length}/7 días</span>
           <div class="recurring-audit-actions">
             <button type="button" class="btn-secondary recurring-audit-edit-btn" data-repeat-audit-edit-title-task="${escapeHtml(task.id)}">Editar tarea</button>
             <button type="button" class="btn-secondary recurring-audit-edit-btn" data-repeat-audit-edit-task="${escapeHtml(task.id)}">Editar días</button>
@@ -8201,6 +8242,8 @@
 
   function openBoxRecurringAudit(boxId) {
     appState.recurringAuditBoxId = String(boxId);
+    const searchInput = document.getElementById("recurring-audit-search");
+    if (searchInput) searchInput.value = "";
     renderBoxRecurringAudit(boxId);
     const modal = document.getElementById("modal-recurring-audit");
     if (modal) modal.classList.add("open");
@@ -9920,6 +9963,18 @@
     const recurringAuditClose = document.getElementById("btn-close-recurring-audit");
     const recurringAuditCloseFooter = document.getElementById("btn-close-recurring-audit-footer");
     const recurringAuditTaskList = document.getElementById("recurring-audit-task-list");
+    const recurringAuditSearch = document.getElementById("recurring-audit-search");
+    const recurringAuditSearchClear = document.getElementById("recurring-audit-search-clear");
+    if (recurringAuditSearch) recurringAuditSearch.addEventListener("input", () => {
+      if (appState.recurringAuditBoxId) renderBoxRecurringAudit(appState.recurringAuditBoxId);
+    });
+    if (recurringAuditSearchClear) recurringAuditSearchClear.addEventListener("click", () => {
+      if (recurringAuditSearch) {
+        recurringAuditSearch.value = "";
+        recurringAuditSearch.focus();
+      }
+      if (appState.recurringAuditBoxId) renderBoxRecurringAudit(appState.recurringAuditBoxId);
+    });
     if (recurringAuditClose) recurringAuditClose.addEventListener("click", closeBoxRecurringAudit);
     if (recurringAuditCloseFooter) recurringAuditCloseFooter.addEventListener("click", closeBoxRecurringAudit);
     if (recurringAuditModal) recurringAuditModal.addEventListener("click", event => {

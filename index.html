@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261030-overdue-move-today-1" />
+  <link rel="stylesheet" href="styles.css?v=20261030-recurring-audit-search-sort-1" />
   <link rel="stylesheet" href="mobile-app.css?v=20261030-mobile-pull-refresh-1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -1029,10 +1029,18 @@
         <div class="recurring-audit-section-heading">
           <div>
             <h4>Todas las tareas recurrentes</h4>
-            <p>Consulta el patrón, sus próximas fechas y las ocurrencias atrasadas conservadas.</p>
+            <p>Ordenadas de mayor a menor cantidad de días por semana.</p>
           </div>
           <span id="recurring-audit-task-count" class="recurring-audit-count-total">0</span>
         </div>
+        <div class="recurring-audit-search-toolbar">
+          <label class="recurring-audit-search-wrap" for="recurring-audit-search">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7.5"/><path d="m20 20-4.2-4.2"/></svg>
+            <input id="recurring-audit-search" type="search" class="form-input" placeholder="Buscar una tarea o día de repetición..." autocomplete="off" aria-label="Buscar tareas recurrentes" />
+          </label>
+          <button type="button" id="recurring-audit-search-clear" class="btn-secondary recurring-audit-search-clear" hidden>Limpiar</button>
+        </div>
+        <div id="recurring-audit-search-result-count" class="recurring-audit-search-result-count">Ordenadas por frecuencia</div>
         <div id="recurring-audit-task-list" class="recurring-audit-task-list"></div>
       </section>
       <div class="modal-footer recurring-audit-footer">
@@ -1099,7 +1107,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261030-recurring-delete-scope-3"></script>
+  <script src="app.js?v=20261030-recurring-audit-search-sort-1"></script>
   <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
 </body>
 </html>
