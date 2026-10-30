@@ -156,7 +156,14 @@
 
   installOverlayObserver("modal-productivity", "progress");
   installOverlayObserver("modal-options", "more");
-  initializeMobileExperience();
+
+  // app.js registers its controls during DOMContentLoaded; initialize mobile
+  // navigation afterwards so the initial "Hoy" filter is not lost.
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeMobileExperience, { once: true });
+  } else {
+    initializeMobileExperience();
+  }
 
   if (typeof media.addEventListener === "function") {
     media.addEventListener("change", initializeMobileExperience);
