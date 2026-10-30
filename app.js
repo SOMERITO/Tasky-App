@@ -2980,15 +2980,37 @@
     const boxesRaw = Array.isArray(raw.boxes) ? raw.boxes : [];
     const tasksRaw = Array.isArray(raw.tasks) ? raw.tasks : [];
 
-    const boxes = boxesRaw.map((b, idx) => ({
-      ...b,
-      id: String(b.id || `box_${Date.now()}_${idx}`),
-      name: String(b.name || b.title || "CASILLA").trim().toUpperCase(),
-      color: String(b.color || "#2563eb"),
-      emoji: String(b.emoji || "").trim().slice(0, 16),
-      collapsed: Boolean(b.collapsed),
-      order: typeof b.order === "number" ? b.order : idx
-    }));
+    // A box ID must render only once. Older sync merges could store two names for
+    // the same ID after a rename, causing the same tasks to appear in two cards.
+    const boxesById = new Map();
+    boxesRaw.forEach((b, idx) => {
+      const box = {
+        ...b,
+        id: String(b.id || `box_${Date.now()}_${idx}`),
+        name: String(b.name || b.title || "CASILLA").trim().toUpperCase(),
+        color: String(b.color || "#2563eb"),
+        emoji: String(b.emoji || "").trim().slice(0, 16),
+        collapsed: Boolean(b.collapsed),
+        order: typeof b.order === "number" ? b.order : idx
+      };
+      const existing = boxesById.get(box.id);
+      if (!existing) {
+        boxesById.set(box.id, box);
+        return;
+      }
+      const existingKey = canonicalBoxKey(existing.name);
+      const candidateKey = canonicalBoxKey(box.name);
+      const chooseCandidate =
+        (existingKey === "oficina" && candidateKey === "asesortelefonico") ||
+        (Number(box.updatedAt || 0) > Number(existing.updatedAt || 0)) ||
+        (existing.bootstrapSeed === true && box.bootstrapSeed !== true);
+      const keepCandidate =
+        (candidateKey === "oficina" && existingKey === "asesortelefonico") ||
+        (Number(existing.updatedAt || 0) > Number(box.updatedAt || 0)) ||
+        (box.bootstrapSeed === true && existing.bootstrapSeed !== true);
+      if (chooseCandidate && !keepCandidate) boxesById.set(box.id, box);
+    });
+    const boxes = Array.from(boxesById.values());
 
     const tasks = tasksRaw.map((t, idx) => {
       const due = String(t.dueDate || today);
