@@ -3526,45 +3526,102 @@
     const deletedTasks = new Set(deletedTaskIds);
     const deletedBoxes = new Set(deletedBoxIds);
 
-    // Map semantically identical boxes by normalized display name. The chosen primary box ID
-    // becomes the canonical ID for tasks coming from either device.
-    const primaryBoxesByKey = new Map();
-    (primary.boxes || []).forEach(box => {
-      const key = canonicalBoxKey(box.name);
-      if (!primaryBoxesByKey.has(key) && !deletedBoxes.has(String(box.id))) primaryBoxesByKey.set(key, box);
-    });
-    const secondaryBoxesByKey = new Map();
-    (secondary.boxes || []).forEach(box => {
-      const key = canonicalBoxKey(box.name);
-      if (!secondaryBoxesByKey.has(key) && !deletedBoxes.has(String(box.id))) secondaryBoxesByKey.set(key, box);
-    });
-
-    const canonicalBoxesByKey = new Map();
-    primaryBoxesByKey.forEach((box, key) => {
-      const other = secondaryBoxesByKey.get(key);
-      let chosen = box;
-      if (box.bootstrapSeed === true && other && other.bootstrapSeed !== true && !secondaryIsSeed) chosen = other;
-      canonicalBoxesByKey.set(key, chosen);
-    });
-    if (!ignoreUnversionedSecondary) {
-      secondaryBoxesByKey.forEach((box, key) => {
-        if (canonicalBoxesByKey.has(key)) return;
-        if (box.bootstrapSeed === true && !primaryIsSeed) return;
-        canonicalBoxesByKey.set(key, box);
-      });
+    // Stable box IDs are the source of truth. Names can change on one device before
+    // another device has pulled the edit; matching by name first creates two cards
+    // with the same ID, which makes every task appear twice.
+    function chooseSameIdentityBox(existing, candidate) {
+      const existingKey = canonicalBoxKey(existing && existing.name);
+      const candidateKey = canonicalBoxKey(candidate && candidate.name);
+      // The user confirmed that ASESOR TELEFÓNICO is the renamed OFICINA box.
+      // Keep the new label when an older device still has the previous label.
+      if (existingKey === "oficina" && candidateKey === "asesortelefonico") return candidate;
+      if (candidateKey === "oficina" && existingKey === "asesortelefonico") return existing;
+      const existingUpdatedAt = Number(existing && existing.updatedAt || 0);
+      const candidateUpdatedAt = Number(candidate && candidate.updatedAt || 0);
+      if (existingUpdatedAt !== candidateUpdatedAt) return candidateUpdatedAt > existingUpdatedAt ? candidate : existing;
+      if (existing && existing.bootstrapSeed === true && candidate && candidate.bootstrapSeed !== true) return candidate;
+      if (candidate && candidate.bootstrapSeed === true && existing && existing.bootstrapSeed !== true) return existing;
+      return existing || candidate;
     }
 
-    const primaryIdToCanonical = new Map();
-    const secondaryIdToCanonical = new Map();
+    const primaryBoxesById = new Map();
     (primary.boxes || []).forEach(box => {
-      const canonical = canonicalBoxesByKey.get(canonicalBoxKey(box.name));
-      if (canonical) primaryIdToCanonical.set(String(box.id), String(canonical.id));
+      if (!box || box.id == null) return;
+      const id = String(box.id);
+      if (deletedBoxes.has(id)) return;
+      const existing = primaryBoxesById.get(id);
+      primaryBoxesById.set(id, existing ? chooseSameIdentityBox(existing, box) : box);
     });
+    const secondaryBoxesById = new Map();
     (secondary.boxes || []).forEach(box => {
-      const canonical = canonicalBoxesByKey.get(canonicalBoxKey(box.name));
-      if (canonical) secondaryIdToCanonical.set(String(box.id), String(canonical.id));
+      if (!box || box.id == null) return;
+      const id = String(box.id);
+      if (deletedBoxes.has(id)) return;
+      const existing = secondaryBoxesById.get(id);
+      secondaryBoxesById.set(id, existing ? chooseSameIdentityBox(existing, box) : box);
     });
 
+    const canonicalBoxesById = new Map();
+    const primaryIdToCanonical = new Map();
+    const secondaryIdToCanonical = new Map();
+
+    // First reconcile boxes that share the exact same permanent ID, even when their names differ.
+    primaryBoxesById.forEach((box, id) => {
+      const other = secondaryBoxesById.get(id);
+      const chosen = other ? chooseSameIdentityBox(box, other) : box;
+      canonicalBoxesById.set(id, chosen);
+      primaryIdToCanonical.set(id, id);
+      if (other) secondaryIdToCanonical.set(id, id);
+    });
+
+    // Preserve the legacy name-based reconciliation only for different IDs with the same name.
+    // This still folds duplicate bootstrap casillas created independently on older devices.
+    const unmatchedPrimaryByName = new Map();
+    primaryBoxesById.forEach((box, id) => {
+      if (secondaryBoxesById.has(id)) return;
+      const key = canonicalBoxKey(box.name);
+      if (!unmatchedPrimaryByName.has(key)) unmatchedPrimaryByName.set(key, box);
+    });
+    const unmatchedSecondaryByName = new Map();
+    secondaryBoxesById.forEach((box, id) => {
+      if (primaryBoxesById.has(id)) return;
+      const key = canonicalBoxKey(box.name);
+      if (!unmatchedSecondaryByName.has(key)) unmatchedSecondaryByName.set(key, box);
+    });
+
+    unmatchedPrimaryByName.forEach((primaryBox, key) => {
+      const secondaryBox = unmatchedSecondaryByName.get(key);
+      if (!secondaryBox) return;
+      let chosen = primaryBox;
+      if (primaryBox.bootstrapSeed === true && secondaryBox.bootstrapSeed !== true && !secondaryIsSeed) chosen = secondaryBox;
+      const canonicalId = String(chosen.id);
+      canonicalBoxesById.delete(String(primaryBox.id));
+      canonicalBoxesById.delete(String(secondaryBox.id));
+      canonicalBoxesById.set(canonicalId, chosen);
+      primaryIdToCanonical.set(String(primaryBox.id), canonicalId);
+      secondaryIdToCanonical.set(String(secondaryBox.id), canonicalId);
+    });
+
+    // Keep unmatched secondary boxes unless they are unversioned seed data that should be ignored.
+    secondaryBoxesById.forEach((box, id) => {
+      if (primaryBoxesById.has(id)) return;
+      if (unmatchedPrimaryByName.has(canonicalBoxKey(box.name))) return;
+      if (ignoreUnversionedSecondary) return;
+      if (box.bootstrapSeed === true && !primaryIsSeed) return;
+      if (!canonicalBoxesById.has(id)) canonicalBoxesById.set(id, box);
+      secondaryIdToCanonical.set(id, id);
+    });
+
+    // Any primary box that was not paired by name retains its own ID.
+    primaryBoxesById.forEach((box, id) => {
+      if (!primaryIdToCanonical.has(id)) primaryIdToCanonical.set(id, id);
+      if (!canonicalBoxesById.has(id) && !deletedBoxes.has(id)) canonicalBoxesById.set(id, box);
+    });
+
+    // Ensure both datasets resolve to the surviving stable box ID.
+    secondaryBoxesById.forEach((box, id) => {
+      if (!secondaryIdToCanonical.has(id) && canonicalBoxesById.has(id)) secondaryIdToCanonical.set(id, id);
+    });
     const canonicalPrimaryTasks = (primary.tasks || []).map(task => ({
       ...task,
       boxId: primaryIdToCanonical.get(String(task.boxId)) || String(task.boxId)
@@ -3606,11 +3663,11 @@
       canonicalSecondaryTasks,
       deletedTasks,
       "id",
-      task => Array.from(canonicalBoxesByKey.values()).some(box => String(box.id) === String(task.boxId))
+      task => Array.from(canonicalBoxesById.values()).some(box => String(box.id) === String(task.boxId))
     );
 
     const usedCanonicalBoxIds = new Set(tasks.map(task => String(task.boxId)));
-    const boxes = Array.from(canonicalBoxesByKey.values()).filter(box =>
+    const boxes = Array.from(canonicalBoxesById.values()).filter(box =>
       !deletedBoxes.has(String(box.id)) &&
       (usedCanonicalBoxIds.has(String(box.id)) || !box.bootstrapSeed || canonicalBoxesByKey.size <= 7)
     );
@@ -3679,9 +3736,10 @@
     renderBirthdayUpcomingList();
     const birthdayModal = document.getElementById("modal-birthdays");
     if (birthdayModal && birthdayModal.classList.contains("open")) renderBirthdayCalendar();
+    const mergedMatchesIncoming = syncFingerprint(merged) === syncFingerprint(norm);
     const syncText = document.getElementById("sync-status-text");
-    if (syncText) syncText.textContent = "Sincronizado";
-    if (syncFingerprint(merged) !== syncFingerprint(norm)) pushCloudSync(false);
+    if (syncText) syncText.textContent = mergedMatchesIncoming ? "Sincronizado" : "Conciliando…";
+    if (!mergedMatchesIncoming) pushCloudSync(false);
     if (showNotification) showToast("🔄 Datos fusionados sin perder tareas");
     return true;
   }
@@ -3821,7 +3879,8 @@
       updateWriteDiagnostic();
 
       const syncText = document.getElementById("sync-status-text");
-      if (syncText) syncText.textContent = firebaseSaved ? "Sincronizado" : "Sin confirmar";
+      // A successful write confirms the cloud save, not that another device has pulled it yet.
+      if (syncText) syncText.textContent = firebaseSaved ? "Guardado en nube" : "Sin confirmar";
       const modalSyncTime = document.getElementById("modal-sync-last-time");
       if (modalSyncTime) {
         const now = new Date();
@@ -3840,6 +3899,8 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
+  const TASKY_BUILD_ID = "20261030-stable-box-id-sync-1";
+
   function renderSyncDiagnostics(statuses) {
     const entries = [
       ["Firestore", statuses.firestore || "sin respuesta"],
@@ -3849,6 +3910,15 @@
     const fullText = entries.map(([name, value]) => `${name}: ${value}`).join(" · ");
     const details = document.getElementById("sync-diagnostic-details");
     if (details) details.textContent = fullText;
+
+    const localDetails = document.getElementById("sync-device-diagnostic-details");
+    if (localDetails) {
+      const cfg = appState.firebaseConfig || {};
+      const local = normalizeDataPayload(appState.data);
+      const projectId = String(cfg.projectId || "sin proyecto").trim();
+      const docPath = String(cfg.docPath || "sin ruta").replace(/^\\/+|\\/+$/g, "");
+      localDetails.textContent = `Este dispositivo · versión ${TASKY_BUILD_ID} · destino ${projectId}/${docPath} · ${local ? local.boxes.length : 0} casillas y ${local ? local.tasks.length : 0} tareas · revisión local ${local ? local.updatedAt : 0} · dispositivo ${String(appState.deviceId || "").slice(0, 18)}`;
+    }
     return fullText;
   }
 
@@ -4003,7 +4073,7 @@
       const isValidSnapshot = (norm) => Boolean(norm && Array.isArray(norm.boxes) &&
         norm.boxes.length && Array.isArray(norm.tasks) && Number(norm.updatedAt || 0) > 0);
       const describeSnapshot = (norm) => isValidSnapshot(norm)
-        ? `OK · ${norm.boxes.length} casillas, ${norm.tasks.length} tareas · revisión ${norm.updatedAt}`
+        ? `OK · ${norm.boxes.length} casillas, ${norm.tasks.length} tareas · revisión ${norm.updatedAt} · emisor ${String(norm.deviceId || "no indicado").slice(0, 22)}`
         : "respuesta sin una copia válida (faltan casillas/tareas o updatedAt)";
 
       try {
@@ -9816,6 +9886,7 @@
         if (box) {
           box.name = name;
           box.emoji = emoji;
+          box.updatedAt = Date.now();
         }
         showToast("Casilla actualizada");
       } else {
@@ -9825,7 +9896,8 @@
           emoji,
           color: "#2563eb",
           collapsed: false,
-          order: appState.data.boxes.length
+          order: appState.data.boxes.length,
+          updatedAt: Date.now()
         });
         showToast("Casilla creada");
       }
