@@ -3927,7 +3927,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-stable-box-id-sync-1";
+  const TASKY_BUILD_ID = "20261030-stable-box-id-sync-6";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
