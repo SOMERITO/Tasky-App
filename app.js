@@ -3934,7 +3934,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-recurring-audit-day-filters-1";
+  const TASKY_BUILD_ID = "20261030-overdue-carry-history-badge-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -7253,6 +7253,7 @@
 
     const isResched = isTaskRescheduledFuture(task);
     const isOverdue = isTaskOverdue(task);
+    const isCarriedToTodayFromOverdue = isTaskCarriedToTodayFromOverdue(task);
     const isUpcomingRepeat = isTaskUpcomingRepeat(task);
     const repeatLabel = formatRepeatBadgeLabel(task);
     const hasRepeat = Boolean(repeatLabel);
@@ -7267,7 +7268,10 @@
     if (isUpcomingRepeat) {
       subBadges += `<span class="task-upcoming-tag">🗓️ Próxima · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
     }
-    if (isOverdue) {
+    if (isCarriedToTodayFromOverdue) {
+      const originalOverdueDate = task.overdueSince || getTaskOverdueDisplayDate(task);
+      subBadges += `<span class="task-carried-today-tag" title="Esta tarea estaba atrasada y fue trasladada a la lista de hoy.">↪ Venía atrasada · Pasada para hoy · Vencía el ${escapeHtml(formatSpanishDateLong(originalOverdueDate))}</span>`;
+    } else if (isOverdue) {
       subBadges += `<span class="task-overdue-tag">⚠️ Atrasada · ${escapeHtml(formatSpanishDateLong(getTaskOverdueDisplayDate(task)))}</span>`;
     } else if (isResched) {
       subBadges += `<span class="task-resched-tag">🕒 Reprogramada · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;

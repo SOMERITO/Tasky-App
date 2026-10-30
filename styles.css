@@ -4800,7 +4800,8 @@ body.focus-mode-open #boxes-container {
   .task-daily-pill,
   .task-upcoming-tag,
   .task-overdue-tag,
-  .task-resched-tag {
+  .task-resched-tag,
+  .task-carried-today-tag {
     max-width: 100%;
     white-space: normal;
     overflow-wrap: anywhere;
@@ -6458,4 +6459,28 @@ body.focus-mode-open #boxes-container {
     flex: 0 0 auto;
     min-height: 36px;
   }
+}
+
+
+/* Keeps a visible history note when an overdue task is explicitly moved to today. */
+.task-carried-today-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 3px 9px;
+  border: 1px solid rgba(37, 99, 235, .16);
+  border-radius: 999px;
+  background: rgba(37, 99, 235, .08);
+  color: #2563eb;
+  font-size: .72rem;
+  font-weight: 750;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+[data-theme="dark"] .task-carried-today-tag {
+  border-color: rgba(96, 165, 250, .24);
+  background: rgba(37, 99, 235, .16);
+  color: #93c5fd;
 }
