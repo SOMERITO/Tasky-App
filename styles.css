@@ -6263,3 +6263,18 @@ body.focus-mode-open #boxes-container {
     margin-top: 0;
   }
 }
+
+
+/* Direct action to bring an overdue task into today's list. */
+.task-act-btn.overdue-today-btn {
+  color: var(--success);
+  background: rgba(22, 163, 74, 0.08);
+  border-color: rgba(22, 163, 74, 0.18);
+}
+
+.task-act-btn.overdue-today-btn:hover {
+  color: #fff;
+  background: #16a34a;
+  border-color: #16a34a;
+  box-shadow: 0 5px 12px rgba(22, 163, 74, 0.20);
+}
