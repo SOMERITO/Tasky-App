@@ -400,7 +400,35 @@
           <h3 id="overdue-modal-title" class="modal-title">Tareas atrasadas</h3>
           <p style="font-size:0.82rem;color:var(--muted);margin-top:3px;">Tareas pendientes con fecha anterior a hoy. Elige varias con las casillas o programa todas para hoy.</p>
         </div>
-        <button type="button" class="modal-close-btn" data-close-modal="modal-overdue-list" aria-label="Cerrar">✕</button>
+        <div class="overdue-modal-header-actions">
+          <button
+            type="button"
+            id="btn-overdue-search-toggle"
+            class="icon-btn overdue-search-toggle"
+            aria-label="Buscar tareas atrasadas"
+            aria-controls="overdue-search-panel"
+            aria-expanded="false"
+            title="Buscar tareas atrasadas"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7.5"/><path d="m20 20-4.2-4.2"/></svg>
+          </button>
+          <button type="button" class="modal-close-btn" data-close-modal="modal-overdue-list" aria-label="Cerrar">✕</button>
+        </div>
+      </div>
+      <div id="overdue-search-panel" class="rescheduled-search-panel overdue-search-panel" hidden>
+        <label class="rescheduled-search-label" for="overdue-global-search">Buscar en tareas atrasadas</label>
+        <div class="rescheduled-search-field">
+          <input
+            type="search"
+            id="overdue-global-search"
+            class="form-input"
+            placeholder="Nombre de la tarea, casilla o fecha..."
+            autocomplete="off"
+            aria-label="Buscar tareas atrasadas"
+          />
+          <button type="button" id="overdue-global-search-clear" class="btn-secondary rescheduled-search-clear" hidden>Limpiar</button>
+        </div>
+        <p class="rescheduled-search-help">La búsqueda solo filtra las tareas atrasadas; no modifica tus registros.</p>
       </div>
       <div id="overdue-modal-items" class="resched-modal-list"></div>
     </div>
