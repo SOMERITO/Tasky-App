@@ -3372,7 +3372,7 @@
       cl: normalizeCompletionLog(d.completionLog),
       ds: normalizeDismissedTaskSuggestions(d.dismissedTaskSuggestionsByBox),
       bd: normalizeBirthdays(d.birthdays),
-      b: d.boxes.map(x => [x.id, String(x.name || "").toUpperCase(), x.color || "#2563eb", 0, x.order || 0, String(x.emoji || "")]),
+      b: d.boxes.map(x => [x.id, String(x.name || "").toUpperCase(), x.color || "#2563eb", 0, x.order || 0, String(x.emoji || ""), Number(x.updatedAt || 0)]),
       t: d.tasks.map(x => [
         x.id,
         x.boxId,
@@ -3388,7 +3388,8 @@
         x.repeatUntil || "",
         x.overdueSince || "",
         x.overdueCarryDate || "",
-        Array.isArray(x.skippedDates) ? x.skippedDates : []
+        Array.isArray(x.skippedDates) ? x.skippedDates : [],
+        Number(x.updatedAt || 0)
       ])
     });
   }
@@ -3408,7 +3409,8 @@
         color: arr[2] || "#2563eb",
         collapsed: false,
         order: typeof arr[4] === "number" ? arr[4] : idx,
-        emoji: String(arr[5] || "")
+        emoji: String(arr[5] || ""),
+        updatedAt: Number(arr[6] || 0)
       }));
       const tasks = parsed.t.map((arr, idx) => ({
         id: arr[0],
@@ -3425,7 +3427,8 @@
         repeatUntil: arr[11] || null,
         overdueSince: arr[12] || null,
         overdueCarryDate: arr[13] || null,
-        skippedDates: Array.isArray(arr[14]) ? arr[14] : []
+        skippedDates: Array.isArray(arr[14]) ? arr[14] : [],
+        updatedAt: Number(arr[15] || 0)
       }));
       return normalizeDataPayload({
         boxes,
@@ -3511,37 +3514,6 @@
     const rightDeletedTaskIds = new Set(right.deletedTaskIds || []);
     const leftDeletedBoxIds = new Set(left.deletedBoxIds || []);
     const rightDeletedBoxIds = new Set(right.deletedBoxIds || []);
-    const leftTaskIds = new Set(left.tasks.map(task => String(task.id)));
-    const rightTaskIds = new Set(right.tasks.map(task => String(task.id)));
-
-    const leftBoxKeys = new Set(left.boxes.map(box => canonicalBoxKey(box.name)));
-    const rightBoxKeys = new Set(right.boxes.map(box => canonicalBoxKey(box.name)));
-    const leftMissingCount =
-      left.tasks.filter(task => !rightTaskIds.has(String(task.id)) && !rightDeletedTaskIds.has(String(task.id))).length +
-      left.boxes.filter(box => !rightBoxKeys.has(canonicalBoxKey(box.name)) && !rightDeletedBoxIds.has(String(box.id))).length;
-    const rightMissingCount =
-      right.tasks.filter(task => !leftTaskIds.has(String(task.id)) && !leftDeletedTaskIds.has(String(task.id))).length +
-      right.boxes.filter(box => !leftBoxKeys.has(canonicalBoxKey(box.name)) && !leftDeletedBoxIds.has(String(box.id))).length;
-
-    // Prefer the materially more complete dataset even when its clock is older.
-    if (leftMissingCount > rightMissingCount + 3) {
-      primary = left;
-      secondary = right;
-    } else if (rightMissingCount > leftMissingCount + 3) {
-      primary = right;
-      secondary = left;
-    } else {
-      const leftMissingKnownData = rightMissingCount > 0;
-      const rightMissingKnownData = leftMissingCount > 0;
-      if (leftMissingKnownData && !rightMissingKnownData) {
-        primary = right;
-        secondary = left;
-      } else if (rightMissingKnownData && !leftMissingKnownData) {
-        primary = left;
-        secondary = right;
-      }
-    }
-
     const ignoreUnversionedSecondary = Number(primary.updatedAt || 0) > 0 && Number(secondary.updatedAt || 0) <= 0;
     const primaryIsSeed = Boolean(primary.bootstrapSeedData);
     const secondaryIsSeed = Boolean(secondary.bootstrapSeedData);
@@ -3557,15 +3529,14 @@
     // Stable box IDs are the source of truth. Names can change on one device before
     // another device has pulled the edit; matching by name first creates two cards
     // with the same ID, which makes every task appear twice.
-    function chooseSameIdentityBox(existing, candidate) {
+    function chooseSameIdentityBox(existing, candidate, existingSourceUpdatedAt = 0, candidateSourceUpdatedAt = 0) {
       const existingKey = canonicalBoxKey(existing && existing.name);
       const candidateKey = canonicalBoxKey(candidate && candidate.name);
       // The user confirmed that ASESOR TELEFÓNICO is the renamed OFICINA box.
-      // Keep the new label when an older device still has the previous label.
       if (existingKey === "oficina" && candidateKey === "asesortelefonico") return candidate;
       if (candidateKey === "oficina" && existingKey === "asesortelefonico") return existing;
-      const existingUpdatedAt = Number(existing && existing.updatedAt || 0);
-      const candidateUpdatedAt = Number(candidate && candidate.updatedAt || 0);
+      const existingUpdatedAt = Number(existing && existing.updatedAt || existingSourceUpdatedAt || 0);
+      const candidateUpdatedAt = Number(candidate && candidate.updatedAt || candidateSourceUpdatedAt || 0);
       if (existingUpdatedAt !== candidateUpdatedAt) return candidateUpdatedAt > existingUpdatedAt ? candidate : existing;
       if (existing && existing.bootstrapSeed === true && candidate && candidate.bootstrapSeed !== true) return candidate;
       if (candidate && candidate.bootstrapSeed === true && existing && existing.bootstrapSeed !== true) return existing;
@@ -3578,7 +3549,7 @@
       const id = String(box.id);
       if (deletedBoxes.has(id)) return;
       const existing = primaryBoxesById.get(id);
-      primaryBoxesById.set(id, existing ? chooseSameIdentityBox(existing, box) : box);
+      primaryBoxesById.set(id, existing ? chooseSameIdentityBox(existing, box, primaryTime, primaryTime) : box);
     });
     const secondaryBoxesById = new Map();
     (secondary.boxes || []).forEach(box => {
@@ -3586,7 +3557,7 @@
       const id = String(box.id);
       if (deletedBoxes.has(id)) return;
       const existing = secondaryBoxesById.get(id);
-      secondaryBoxesById.set(id, existing ? chooseSameIdentityBox(existing, box) : box);
+      secondaryBoxesById.set(id, existing ? chooseSameIdentityBox(existing, box, secondaryTime, secondaryTime) : box);
     });
 
     const canonicalBoxesById = new Map();
@@ -3596,7 +3567,7 @@
     // First reconcile boxes that share the exact same permanent ID, even when their names differ.
     primaryBoxesById.forEach((box, id) => {
       const other = secondaryBoxesById.get(id);
-      const chosen = other ? chooseSameIdentityBox(box, other) : box;
+      const chosen = other ? chooseSameIdentityBox(box, other, primaryTime, secondaryTime) : box;
       canonicalBoxesById.set(id, chosen);
       primaryIdToCanonical.set(id, id);
       if (other) secondaryIdToCanonical.set(id, id);
@@ -3622,6 +3593,7 @@
       if (!secondaryBox) return;
       let chosen = primaryBox;
       if (primaryBox.bootstrapSeed === true && secondaryBox.bootstrapSeed !== true && !secondaryIsSeed) chosen = secondaryBox;
+      else chosen = chooseSameIdentityBox(primaryBox, secondaryBox, primaryTime, secondaryTime);
       const canonicalId = String(chosen.id);
       canonicalBoxesById.delete(String(primaryBox.id));
       canonicalBoxesById.delete(String(secondaryBox.id));
@@ -3670,7 +3642,12 @@
         const otherItem = secondaryById.get(id);
         const suppressSeed = item.bootstrapSeed === true && !secondaryIsSeed && !otherItem;
         const useOtherAuthoritativeItem = item.bootstrapSeed === true && otherItem && otherItem.bootstrapSeed !== true && !secondaryIsSeed;
-        const chosenItem = useOtherAuthoritativeItem ? otherItem : item;
+        let chosenItem = useOtherAuthoritativeItem ? otherItem : item;
+        if (otherItem && !useOtherAuthoritativeItem) {
+          const primaryItemVersion = Number(item.updatedAt || primaryTime || 0);
+          const secondaryItemVersion = Number(otherItem.updatedAt || secondaryTime || 0);
+          if (secondaryItemVersion > primaryItemVersion) chosenItem = otherItem;
+        }
         if (!suppressSeed && (!extraFilter || extraFilter(chosenItem))) byId.set(id, chosenItem);
       });
       if (!ignoreUnversionedSecondary) {
@@ -3697,7 +3674,7 @@
     const usedCanonicalBoxIds = new Set(tasks.map(task => String(task.boxId)));
     const boxes = Array.from(canonicalBoxesById.values()).filter(box =>
       !deletedBoxes.has(String(box.id)) &&
-      (usedCanonicalBoxIds.has(String(box.id)) || !box.bootstrapSeed || canonicalBoxesByKey.size <= 7)
+      (usedCanonicalBoxIds.has(String(box.id)) || !box.bootstrapSeed || canonicalBoxesById.size <= 7)
     );
 
     const normalizedTasks = tasks
@@ -3927,7 +3904,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-stable-box-id-sync-6";
+  const TASKY_BUILD_ID = "20261030-record-version-realtime-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -4721,13 +4698,22 @@
       .filter(task => task && task.id != null).map(task => [String(task.id), task]));
     const previousBoxesById = new Map((Array.isArray(previousData && previousData.boxes) ? previousData.boxes : [])
       .filter(box => box && box.id != null).map(box => [String(box.id), box]));
+    const recordChangeTime = Date.now();
     (appState.data.tasks || []).forEach(task => {
       const previous = previousTasksById.get(String(task.id));
       if (task.bootstrapSeed && previous && JSON.stringify(task) !== JSON.stringify(previous)) delete task.bootstrapSeed;
+      const changed = !previous || JSON.stringify(task) !== JSON.stringify(previous);
+      if (changed) {
+        task.updatedAt = Math.max(recordChangeTime, Number(task.updatedAt || 0) + 1, Number(previous && previous.updatedAt || 0) + 1);
+      }
     });
     (appState.data.boxes || []).forEach(box => {
       const previous = previousBoxesById.get(String(box.id));
       if (box.bootstrapSeed && previous && JSON.stringify(box) !== JSON.stringify(previous)) delete box.bootstrapSeed;
+      const changed = !previous || JSON.stringify(box) !== JSON.stringify(previous);
+      if (changed) {
+        box.updatedAt = Math.max(recordChangeTime, Number(box.updatedAt || 0) + 1, Number(previous && previous.updatedAt || 0) + 1);
+      }
     });
 
     const currentTaskIds = new Set((appState.data.tasks || []).map(task => String(task.id)));
