@@ -3934,7 +3934,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-overdue-search-2";
+  const TASKY_BUILD_ID = "20261030-overdue-search-3";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -8972,10 +8972,11 @@
     );
     const searchInput = document.getElementById("overdue-global-search");
     const query = String(searchInput ? searchInput.value : "").trim();
+    // Normalize the query and stored text identically across Android WebViews.
     const normalize = value => String(value || "")
       .normalize("NFD")
       .replace(/[\\u0300-\\u036f]/g, "")
-      .toLocaleLowerCase("es");
+      .toLowerCase();
     const normalizedQuery = normalize(query);
     const overdueTasks = normalizedQuery
       ? allOverdueTasks.filter(task => {
