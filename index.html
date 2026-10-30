@@ -1054,14 +1054,18 @@
         <div><strong id="delete-task-name">Tarea</strong><span id="delete-task-date">Fecha de la ocurrencia</span></div>
       </div>
       <div id="delete-task-recurring-options" class="delete-task-recurring-options">
-        <p class="delete-task-intro">Esta tarea tiene una repetición. Elige qué debe eliminarse para no perder futuros registros por accidente.</p>
+        <p id="delete-task-intro" class="delete-task-intro">Esta tarea tiene una repetición. Elige qué debe eliminarse. Las tareas ya completadas se conservarán en tu historial.</p>
         <label class="delete-choice-card">
           <input type="radio" name="delete-task-mode" value="occurrence" checked />
           <span class="delete-choice-copy"><strong>Solo esta ocurrencia</strong><small>Quita únicamente esta fecha pendiente y conserva las próximas repeticiones.</small></span>
         </label>
         <label class="delete-choice-card">
+          <input type="radio" name="delete-task-mode" value="future" />
+          <span class="delete-choice-copy"><strong>Esta y las siguientes</strong><small>Elimina esta fecha y detiene la repetición desde aquí. Conserva las ocurrencias anteriores y el historial de completadas.</small></span>
+        </label>
+        <label id="delete-task-weekdays-choice" class="delete-choice-card">
           <input type="radio" name="delete-task-mode" value="weekdays" />
-          <span class="delete-choice-copy"><strong>Dejar de repetir en días específicos</strong><small>Marca miércoles, sábados u otros días que quieras quitar de la programación futura.</small></span>
+          <span class="delete-choice-copy"><strong>Cambiar días de repetición</strong><small>Quita uno o varios días de la programación futura, sin eliminar toda la serie.</small></span>
         </label>
         <div id="delete-task-weekdays-panel" class="delete-task-weekdays-panel" hidden>
           <span class="delete-task-weekdays-label">Días que dejarán de repetirse</span>
@@ -1069,7 +1073,7 @@
         </div>
         <label class="delete-choice-card delete-choice-danger">
           <input type="radio" name="delete-task-mode" value="series" />
-          <span class="delete-choice-copy"><strong>Eliminar toda la repetición</strong><small>Quita la programación y sus ocurrencias pendientes relacionadas. El historial de tareas completadas se conserva.</small></span>
+          <span class="delete-choice-copy"><strong>Eliminar toda la repetición</strong><small>Elimina la serie y todas sus ocurrencias pendientes, incluidas las anteriores no completadas. El historial de tareas completadas se conserva.</small></span>
         </label>
       </div>
       <div id="delete-task-single-warning" class="delete-task-single-warning" hidden>Esta tarea no tiene una repetición activa. Solo se eliminará este registro.</div>
