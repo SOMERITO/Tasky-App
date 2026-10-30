@@ -3261,6 +3261,12 @@
   let lastSyncCatchupAt = 0;
   let lastCloudBootstrapError = "";
   let syncBroadcastChannel = null;
+  let realtimeSyncStatus = "Canal pendiente de conexión";
+  function setRealtimeSyncStatus(status) {
+    realtimeSyncStatus = String(status || "Estado desconocido");
+    const details = document.getElementById("sync-realtime-status-details");
+    if (details) details.textContent = `Canal en tiempo real: ${realtimeSyncStatus}`;
+  }
   try {
     if (typeof window.BroadcastChannel !== "undefined") {
       syncBroadcastChannel = new window.BroadcastChannel("tasky_firebase_realtime_bus");
@@ -3509,8 +3515,10 @@
       : (rightTime <= 0 && leftTime > 0) ? left
       : (rightTime >= leftTime ? right : left);
     let secondary = primary === left ? right : left;
+    const primaryTime = Number(primary.updatedAt || 0);
+    const secondaryTime = Number(secondary.updatedAt || 0);
 
-    const ignoreUnversionedSecondary = Number(primary.updatedAt || 0) > 0 && Number(secondary.updatedAt || 0) <= 0;
+    const ignoreUnversionedSecondary = primaryTime > 0 && secondaryTime <= 0;
     const primaryIsSeed = Boolean(primary.bootstrapSeedData);
     const secondaryIsSeed = Boolean(secondary.bootstrapSeedData);
     const deletedTaskIds = Array.from(new Set([
@@ -3712,7 +3720,13 @@
     const norm = normalizeDataPayload(incomingRaw);
     if (!norm || !Array.isArray(norm.boxes) || !norm.boxes.length) return false;
     const local = normalizeDataPayload(appState.data);
-    const merged = mergeSyncDatasets(local, norm);
+    let merged;
+    try {
+      merged = mergeSyncDatasets(local, norm);
+    } catch (error) {
+      setRealtimeSyncStatus(`Error al conciliar: ${String(error && error.message || error).slice(0, 150)}`);
+      return false;
+    }
     if (!merged) return false;
     applyLocalViewStateToData(merged, local);
 
@@ -3920,7 +3934,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-mobile-realtime-native-1";
+  const TASKY_BUILD_ID = "20261030-mobile-app-sync-fix-2";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -3931,6 +3945,7 @@
     const fullText = entries.map(([name, value]) => `${name}: ${value}`).join(" · ");
     const details = document.getElementById("sync-diagnostic-details");
     if (details) details.textContent = fullText;
+    setRealtimeSyncStatus(realtimeSyncStatus);
 
     const localDetails = document.getElementById("sync-device-diagnostic-details");
     if (localDetails) {
@@ -3944,8 +3959,8 @@
   }
 
   function compactProviderStatus(value) {
-    const match = String(value || "").match(/HTTP\\s+\\d+/i);
-    if (match) return match[0].replace(/\\s+/g, "");
+    const match = String(value || "").match(/HTTP\s+\d+/i);
+    if (match) return match[0].replace(/\s+/g, "");
     if (String(value || "").startsWith("OK")) return "OK";
     if (String(value || "").includes("vacía") || String(value || "").includes("sin una copia válida") || String(value || "").includes("sin campo payloadJson")) return "200 sin datos válidos";
     return "error";
@@ -4153,7 +4168,7 @@
           sourceStatus.ntfy = `HTTP ${resStream.status} ${resStream.statusText || ""}`.trim();
         } else {
           const responseText = await resStream.text();
-          const rows = responseText ? responseText.trim().split(/\\r?\\n/) : [];
+          const rows = responseText ? responseText.trim().split(/\r?\n/) : [];
           let found = false;
           for (let i = rows.length - 1; i >= 0; i--) {
             try {
@@ -4232,6 +4247,11 @@
           showToast("Sincronización verificada; los datos se conciliaron sin reemplazar tareas faltantes.");
         }
       }
+    } catch (error) {
+      setRealtimeSyncStatus(`Error de sincronización: ${String(error && error.message || error).slice(0, 150)}`);
+      const syncText = document.getElementById("sync-status-text");
+      if (syncText) syncText.textContent = "Error de sincronización";
+      if (manual) showToast("No se pudo completar la sincronización. Revisa el diagnóstico del canal en tiempo real.", true);
     } finally {
       cloudPullInFlight = false;
     }
@@ -4270,13 +4290,22 @@
   }
 
   function startCloudSyncStream() {
-    if (!isCloudNetworkAllowed() || typeof window.EventSource === "undefined") return;
+    if (!isCloudNetworkAllowed()) {
+      setRealtimeSyncStatus("Sin conexión de red");
+      return;
+    }
+    if (typeof window.EventSource === "undefined") {
+      setRealtimeSyncStatus("Este WebView no ofrece EventSource; se usará recuperación periódica");
+      return;
+    }
+    setRealtimeSyncStatus("Conectando…");
     try {
       if (appState.cloudEventSource) {
         appState.cloudEventSource.close();
       }
       const es = new window.EventSource(getCloudTopicUrl("/sse"));
       es.onopen = () => {
+        setRealtimeSyncStatus("Conectado y escuchando cambios");
         requestSyncCatchup();
       };
       es.onmessage = (ev) => {
@@ -4288,21 +4317,33 @@
               const unpacked = unpackCompactEnvelope(parsed);
               if (unpacked && cloudSyncReady && cloudSyncReadyConfig === getCloudSyncConfigKey()) {
                 // Apply the event immediately; verify durable Firebase state in the background.
-                applyIncomingSyncPayload(unpacked, false);
+                const applied = applyIncomingSyncPayload(unpacked, false);
                 const syncText = document.getElementById("sync-status-text");
-                if (syncText) syncText.textContent = "Recibiendo cambios…";
+                if (applied) {
+                  if (syncText) syncText.textContent = "Recibiendo cambios…";
+                  setRealtimeSyncStatus(`Cambio recibido a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`);
+                } else {
+                  setRealtimeSyncStatus("Evento recibido; no había cambios pendientes de aplicar");
+                }
                 scheduleIncomingSyncVerification();
+              } else {
+                setRealtimeSyncStatus("Evento recibido antes de verificar Firebase; esperando conciliación");
               }
             }
           }
-        } catch (err) {}
+        } catch (error) {
+          setRealtimeSyncStatus(`Error al procesar evento: ${String(error && error.message || error).slice(0, 130)}`);
+        }
       };
       es.onerror = () => {
-        // EventSource reconnects automatically; the 6-second fallback covers mobile WebViews.
+        // EventSource reconnects automatically; the fallback covers mobile WebViews.
+        setRealtimeSyncStatus("Conexión interrumpida; reconectando…");
         requestSyncCatchup();
       };
       appState.cloudEventSource = es;
-    } catch (e) {}
+    } catch (error) {
+      setRealtimeSyncStatus(`No se pudo abrir el canal: ${String(error && error.message || error).slice(0, 130)}`);
+    }
   }
 
   function loadRegisteredData() {
@@ -7218,6 +7259,9 @@
         <button type="button" class="task-act-btn del-btn" data-task-action="delete" data-tip-title="✕ Eliminar Tarea" data-tip-desc="Retira esta tarea permanentemente de la casilla actual.">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
+        <button type="button" class="task-act-btn task-mobile-more" aria-label="Más opciones de tarea" data-task-action="mobile-more">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+        </button>
       </div>
     `;
 
@@ -7294,6 +7338,13 @@
     item.querySelector('[data-task-action="delete"]').addEventListener("click", () => {
       playUiSound("tap");
       deleteTask(task.id);
+    });
+    const mobileMoreButton = item.querySelector('[data-task-action="mobile-more"]');
+    if (mobileMoreButton) mobileMoreButton.addEventListener("click", event => {
+      event.stopPropagation();
+      playUiSound("tap");
+      const rect = mobileMoreButton.getBoundingClientRect();
+      openTaskContextMenu(task.id, rect.left, rect.bottom + 8);
     });
 
     return item;
@@ -10150,7 +10201,54 @@
     });
   }
 
+  function initMobileAppNavigation() {
+    const setActive = activeId => {
+      document.querySelectorAll(".mobile-app-nav-item").forEach(button => {
+        const active = button.id === activeId;
+        button.classList.toggle("is-active", active);
+        if (active) button.setAttribute("aria-current", "page");
+        else button.removeAttribute("aria-current");
+      });
+    };
+    const todayButton = document.getElementById("mobile-nav-today");
+    if (todayButton) todayButton.addEventListener("click", () => {
+      setActive("mobile-nav-today");
+      const todayTab = document.querySelector('.tab-btn[data-tab="today"]');
+      if (todayTab) todayTab.click();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    const boxesButton = document.getElementById("mobile-nav-boxes");
+    if (boxesButton) boxesButton.addEventListener("click", () => {
+      setActive("mobile-nav-boxes");
+      const allTab = document.querySelector('.tab-btn[data-tab="all"]');
+      if (allTab) allTab.click();
+      const board = document.getElementById("boxes-container");
+      if (board) board.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    const searchButton = document.getElementById("mobile-nav-search");
+    if (searchButton) searchButton.addEventListener("click", () => {
+      setActive("mobile-nav-search");
+      const search = document.getElementById("search-input");
+      if (search) {
+        search.scrollIntoView({ behavior: "smooth", block: "center" });
+        window.setTimeout(() => search.focus(), 220);
+      }
+    });
+    const progressButton = document.getElementById("mobile-nav-progress");
+    if (progressButton) progressButton.addEventListener("click", () => {
+      setActive("mobile-nav-progress");
+      openProductivityModal();
+    });
+    const moreButton = document.getElementById("mobile-nav-more");
+    if (moreButton) moreButton.addEventListener("click", () => {
+      setActive("mobile-nav-more");
+      const options = document.getElementById("btn-more-options");
+      if (options) options.click();
+    });
+  }
+
   function boot() {
+    initMobileAppNavigation();
     loadRegisteredData();
     cleanupCompletedTasksFromPreviousDays();
     // The midnight timeout and focus/visibility handlers cover date rollover.
