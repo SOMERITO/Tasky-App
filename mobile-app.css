@@ -96,7 +96,7 @@
   }
 
   .sync-status-static {
-    max-width: 82px;
+    max-width: 104px;
     min-width: 0;
     gap: 5px;
     padding: 0 2px;
@@ -107,7 +107,7 @@
 
   #sync-status-text {
     display: inline-block;
-    max-width: 59px;
+    max-width: 78px;
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: middle;
@@ -761,7 +761,6 @@
 
   body {
     background: var(--bg) !important;
-    touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -793,17 +792,15 @@
   }
 }
 
-@media (hover: none) and (pointer: coarse) {
-  @media (max-width: 700px) {
-    .box-name:hover,
-    .box-name:active,
-    #quote-container:hover,
-    #quote-container:active,
-    .quote-inline-box:hover,
-    .quote-inline-box:active {
-      background: transparent !important;
-      box-shadow: none !important;
-      transform: none !important;
-    }
+@media (max-width: 700px) and (hover: none) and (pointer: coarse) {
+  .box-name:hover,
+  .box-name:active,
+  #quote-container:hover,
+  #quote-container:active,
+  .quote-inline-box:hover,
+  .quote-inline-box:active {
+    background: transparent !important;
+    box-shadow: none !important;
+    transform: none !important;
   }
 }
