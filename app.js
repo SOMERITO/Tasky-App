@@ -3916,7 +3916,7 @@
       const cfg = appState.firebaseConfig || {};
       const local = normalizeDataPayload(appState.data);
       const projectId = String(cfg.projectId || "sin proyecto").trim();
-      const docPath = String(cfg.docPath || "sin ruta").replace(/^\\/+|\\/+$/g, "");
+      const docPath = String(cfg.docPath || "sin ruta").split("/").filter(Boolean).join("/");
       localDetails.textContent = `Este dispositivo · versión ${TASKY_BUILD_ID} · destino ${projectId}/${docPath} · ${local ? local.boxes.length : 0} casillas y ${local ? local.tasks.length : 0} tareas · revisión local ${local ? local.updatedAt : 0} · dispositivo ${String(appState.deviceId || "").slice(0, 18)}`;
     }
     return fullText;
