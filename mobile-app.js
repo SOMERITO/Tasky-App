@@ -126,7 +126,7 @@
     if (!target) return;
 
     const navButton = target.closest(".mobile-app-nav-item");
-    if (navButton && navButton.id in Object.values(navIds).reduce((acc, id) => (acc[id] = true, acc), {})) {
+    if (navButton && Object.values(navIds).includes(navButton.id)) {
       handleMobileNavClick(event, navButton);
       return;
     }
@@ -144,6 +144,7 @@
   }, true);
 
   function initializeMobileExperience() {
+    if (document.readyState === "loading") return;
     if (!isMobile()) {
       delete document.body.dataset.mobileView;
       return;
