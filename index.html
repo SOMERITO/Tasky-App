@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261030-recurring-audit-search-sort-1" />
+  <link rel="stylesheet" href="styles.css?v=20261030-recurring-audit-day-filters-1" />
   <link rel="stylesheet" href="mobile-app.css?v=20261030-mobile-pull-refresh-1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -1040,6 +1040,8 @@
           </label>
           <button type="button" id="recurring-audit-search-clear" class="btn-secondary recurring-audit-search-clear" hidden>Limpiar</button>
         </div>
+        <div class="recurring-audit-day-filters-label">Filtrar por día</div>
+        <div id="recurring-audit-day-filters" class="recurring-audit-day-filters" role="group" aria-label="Filtrar tareas por días de la semana"></div>
         <div id="recurring-audit-search-result-count" class="recurring-audit-search-result-count">Ordenadas por frecuencia</div>
         <div id="recurring-audit-task-list" class="recurring-audit-task-list"></div>
       </section>
@@ -1107,7 +1109,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261030-recurring-audit-search-sort-1"></script>
+  <script src="app.js?v=20261030-recurring-audit-day-filters-1"></script>
   <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
 </body>
 </html>

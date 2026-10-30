@@ -3934,7 +3934,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-recurring-audit-search-sort-1";
+  const TASKY_BUILD_ID = "20261030-recurring-audit-day-filters-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -8110,6 +8110,12 @@
   const RECURRING_AUDIT_DAY_NAMES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
   const RECURRING_AUDIT_DAY_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
   const RECURRING_AUDIT_WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+  const RECURRING_AUDIT_FILTER_DAYS = [
+    { day: 1, label: "Lun" }, { day: 2, label: "Mar" }, { day: 3, label: "Mié" },
+    { day: 4, label: "Jue" }, { day: 5, label: "Vie" }, { day: 6, label: "Sáb" },
+    { day: 0, label: "Dom" }
+  ];
+  let recurringAuditSelectedDays = new Set();
 
   function describeRepeatDays(days) {
     const selected = Array.from(new Set((Array.isArray(days) ? days : []).map(Number)
@@ -8167,9 +8173,23 @@
       </div>`;
     }).join("");
 
-    if (!tasks.length) {
-      taskList.innerHTML = `<div class="recurring-audit-empty"><span aria-hidden="true">🗓️</span><strong>Esta casilla no tiene tareas repetidas</strong><p>Abre la configuración de repetición de una tarea para elegir los días de la semana.</p></div>`;
-      return;
+    const dayFilterContainer = document.getElementById("recurring-audit-day-filters");
+    if (dayFilterContainer) {
+      dayFilterContainer.innerHTML = `
+        <button type="button" class="recurring-audit-day-filter ${recurringAuditSelectedDays.size ? "" : "is-active"}"
+          data-recurring-audit-day="all" aria-pressed="${recurringAuditSelectedDays.size ? "false" : "true"}">
+          <span>Todos</span><strong>${tasks.length}</strong>
+        </button>
+        ${RECURRING_AUDIT_FILTER_DAYS.map(({ day, label }) => {
+          const count = weekdayCounts[day];
+          const active = recurringAuditSelectedDays.has(day);
+          return `<button type="button" class="recurring-audit-day-filter ${active ? "is-active" : ""}"
+            data-recurring-audit-day="${day}" aria-pressed="${active ? "true" : "false"}"
+            title="Filtrar tareas de los ${RECURRING_AUDIT_DAY_NAMES[day]}s" ${count ? "" : "disabled"}>
+            <span>${label}</span><strong>${count}</strong>
+          </button>`;
+        }).join("")}
+      `;
     }
 
     const searchInput = document.getElementById("recurring-audit-search");
@@ -8183,29 +8203,40 @@
       .replace(/\\s+/g, " ")
       .trim();
     const searchQuery = normalizeAuditSearch(searchInput ? searchInput.value : "");
-    const filteredTasks = searchQuery
-      ? tasks.filter(task => {
-          const days = getTaskRepeatDays(task);
-          const searchable = [
-            task.title,
-            describeRepeatDays(days),
-            ...days.map(day => RECURRING_AUDIT_DAY_NAMES[day])
-          ].join(" ");
-          return normalizeAuditSearch(searchable).includes(searchQuery);
-        })
-      : tasks;
+    const filteredTasks = tasks.filter(task => {
+      const days = getTaskRepeatDays(task);
+      const matchesSelectedDay = !recurringAuditSelectedDays.size ||
+        days.some(day => recurringAuditSelectedDays.has(day));
+      if (!matchesSelectedDay) return false;
+      if (!searchQuery) return true;
+      const searchable = [
+        task.title,
+        describeRepeatDays(days),
+        ...days.map(day => RECURRING_AUDIT_DAY_NAMES[day])
+      ].join(" ");
+      return normalizeAuditSearch(searchable).includes(searchQuery);
+    });
 
     if (searchClear) searchClear.hidden = !searchQuery;
+    const selectedDayLabels = RECURRING_AUDIT_WEEK_ORDER
+      .filter(day => recurringAuditSelectedDays.has(day))
+      .map(day => RECURRING_AUDIT_DAY_SHORT[day]);
     if (searchResultCount) {
-      searchResultCount.textContent = searchQuery
-        ? `${filteredTasks.length} de ${tasks.length} tareas`
+      const activeFilters = [];
+      if (searchQuery) activeFilters.push(`Búsqueda: "${searchInput.value.trim()}"`);
+      if (selectedDayLabels.length) activeFilters.push(`Días: ${selectedDayLabels.join(", ")}`);
+      searchResultCount.textContent = activeFilters.length
+        ? `${filteredTasks.length} de ${tasks.length} tareas · ${activeFilters.join(" · ")}`
         : `Ordenadas por frecuencia · ${tasks.length} tareas`;
     }
-    taskCount.textContent = searchQuery ? `${filteredTasks.length}/${tasks.length}` : String(tasks.length);
+    taskCount.textContent = filteredTasks.length === tasks.length
+      ? String(tasks.length)
+      : `${filteredTasks.length}/${tasks.length}`;
 
     if (!filteredTasks.length) {
-      taskList.innerHTML = searchQuery
-        ? `<div class="recurring-audit-empty"><span aria-hidden="true">🔎</span><strong>No encontré tareas que coincidan</strong><p>Prueba con otro nombre o con un día de la semana.</p></div>`
+      const hasAnyFilter = Boolean(searchQuery || recurringAuditSelectedDays.size);
+      taskList.innerHTML = tasks.length
+        ? `<div class="recurring-audit-empty"><span aria-hidden="true">🔎</span><strong>No encontré tareas que coincidan</strong><p>Prueba con otro nombre o selecciona otros días. Puedes pulsar “Todos” para quitar el filtro por día.</p></div>`
         : `<div class="recurring-audit-empty"><span aria-hidden="true">🗓️</span><strong>Esta casilla no tiene tareas repetidas</strong><p>Abre la configuración de repetición de una tarea para elegir los días de la semana.</p></div>`;
       return;
     }
@@ -8242,6 +8273,7 @@
 
   function openBoxRecurringAudit(boxId) {
     appState.recurringAuditBoxId = String(boxId);
+    recurringAuditSelectedDays.clear();
     const searchInput = document.getElementById("recurring-audit-search");
     if (searchInput) searchInput.value = "";
     renderBoxRecurringAudit(boxId);
@@ -9965,6 +9997,22 @@
     const recurringAuditTaskList = document.getElementById("recurring-audit-task-list");
     const recurringAuditSearch = document.getElementById("recurring-audit-search");
     const recurringAuditSearchClear = document.getElementById("recurring-audit-search-clear");
+    const recurringAuditDayFilters = document.getElementById("recurring-audit-day-filters");
+    if (recurringAuditDayFilters) recurringAuditDayFilters.addEventListener("click", event => {
+      const button = event.target.closest("[data-recurring-audit-day]");
+      if (!button || button.disabled || !appState.recurringAuditBoxId) return;
+      const value = button.dataset.recurringAuditDay;
+      if (value === "all") {
+        recurringAuditSelectedDays.clear();
+      } else {
+        const day = Number(value);
+        if (!Number.isInteger(day) || day < 0 || day > 6) return;
+        if (recurringAuditSelectedDays.has(day)) recurringAuditSelectedDays.delete(day);
+        else recurringAuditSelectedDays.add(day);
+      }
+      playUiSound("tap");
+      renderBoxRecurringAudit(appState.recurringAuditBoxId);
+    });
     if (recurringAuditSearch) recurringAuditSearch.addEventListener("input", () => {
       if (appState.recurringAuditBoxId) renderBoxRecurringAudit(appState.recurringAuditBoxId);
     });

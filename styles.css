@@ -6376,3 +6376,86 @@ body.focus-mode-open #boxes-container {
     margin-right: auto;
   }
 }
+
+
+/* Weekday chips filter recurring tasks below the registry search field. */
+.recurring-audit-day-filters-label {
+  margin: 8px 0 6px;
+  color: var(--text-secondary);
+  font-size: .67rem;
+  font-weight: 850;
+}
+.recurring-audit-day-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0 0 8px;
+}
+.recurring-audit-day-filter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-solid);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: .69rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.recurring-audit-day-filter strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: .61rem;
+  line-height: 1;
+}
+.recurring-audit-day-filter.is-active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.recurring-audit-day-filter.is-active strong {
+  background: var(--primary);
+  color: #fff;
+}
+.recurring-audit-day-filter:disabled {
+  opacity: .38;
+  cursor: not-allowed;
+}
+.recurring-audit-day-filter:focus-visible {
+  outline: 3px solid var(--primary-soft);
+  outline-offset: 2px;
+}
+@media (max-width: 700px) {
+  .recurring-audit-day-filters {
+    flex-wrap: nowrap;
+    width: calc(100% + 24px);
+    margin-left: -12px;
+    margin-right: -12px;
+    padding: 2px 12px 7px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .recurring-audit-day-filters::-webkit-scrollbar {
+    display: none;
+  }
+  .recurring-audit-day-filter {
+    flex: 0 0 auto;
+    min-height: 36px;
+  }
+}
