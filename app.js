@@ -4345,23 +4345,28 @@
     } else if (!alreadyRestoredV143) {
       const baseline = buildRestoredUserDataset();
       baseline.boxes.forEach((baseBox) => {
-        let targetBox = loaded.boxes.find(b => b.name.trim().toUpperCase() === baseBox.name.trim().toUpperCase());
+        // Match the original stable ID first so a renamed casilla is never recreated under its old label.
+        let targetBox = loaded.boxes.find(b => String(b.id) === String(baseBox.id)) ||
+          loaded.boxes.find(b => b.name.trim().toUpperCase() === baseBox.name.trim().toUpperCase());
         if (!targetBox) {
           targetBox = { ...baseBox, order: loaded.boxes.length };
           loaded.boxes.push(targetBox);
         }
-        const existingTitlesInBox = new Set(
-          loaded.tasks.filter(t => t.boxId === targetBox.id).map(t => t.title.trim().toLowerCase())
-        );
+        const existingTasksInBox = loaded.tasks.filter(t => String(t.boxId) === String(targetBox.id));
+        const existingTaskIdsInBox = new Set(existingTasksInBox.map(t => String(t.id)));
+        const existingTitlesInBox = new Set(existingTasksInBox.map(t => t.title.trim().toLowerCase()));
         const baseTasksForBox = baseline.tasks.filter(t => t.boxId === baseBox.id);
         baseTasksForBox.forEach((bt) => {
-          if (!existingTitlesInBox.has(bt.title.trim().toLowerCase()) &&
+          if (!existingTaskIdsInBox.has(String(bt.id)) &&
+              !existingTitlesInBox.has(bt.title.trim().toLowerCase()) &&
               !(Array.isArray(loaded.deletedTaskIds) && loaded.deletedTaskIds.includes(String(bt.id)))) {
             loaded.tasks.push({
               ...bt,
               boxId: targetBox.id,
-              order: loaded.tasks.filter(t => t.boxId === targetBox.id).length
+              order: loaded.tasks.filter(t => String(t.boxId) === String(targetBox.id)).length
             });
+            existingTaskIdsInBox.add(String(bt.id));
+            existingTitlesInBox.add(bt.title.trim().toLowerCase());
           }
         });
       });
