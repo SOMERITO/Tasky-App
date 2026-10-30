@@ -4001,7 +4001,7 @@
         sourceStatus.firestore = "Documento creado automáticamente · " + candidate.boxes.length + " casillas, " + candidate.tasks.length + " tareas";
         renderSyncDiagnostics(sourceStatus);
         const syncText = document.getElementById("sync-status-text");
-        if (syncText) syncText.textContent = "Sincronizado";
+        if (syncText) syncText.textContent = "Guardado en nube";
         const modalSyncTime = document.getElementById("modal-sync-last-time");
         if (modalSyncTime) modalSyncTime.textContent = `Copia inicial confirmada en Firestore a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.`;
         lastCloudBootstrapError = "";
