@@ -3934,7 +3934,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-recurring-delete-scope-2";
+  const TASKY_BUILD_ID = "20261030-recurring-delete-scope-3";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -9970,6 +9970,9 @@
       const weekdaysMode = document.querySelector('input[name="delete-task-mode"][value="weekdays"]');
       if (weekdaysMode) weekdaysMode.checked = true;
       if (deleteTaskWeekdaysPanel) deleteTaskWeekdaysPanel.hidden = false;
+      if (deleteTaskConfirm && pendingTaskDeletionSeriesRootId) {
+        deleteTaskConfirm.textContent = "Aplicar cambios de repetición";
+      }
     });
     if (deleteTaskCancel) deleteTaskCancel.addEventListener("click", closeDeleteTaskDialog);
     if (deleteTaskClose) deleteTaskClose.addEventListener("click", closeDeleteTaskDialog);
