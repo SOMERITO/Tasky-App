@@ -3746,6 +3746,18 @@
   }
 
   let cloudPushTimer = null;
+  let incomingSyncVerifyTimer = null;
+  function scheduleIncomingSyncVerification() {
+    if (incomingSyncVerifyTimer) clearTimeout(incomingSyncVerifyTimer);
+    incomingSyncVerifyTimer = window.setTimeout(() => {
+      incomingSyncVerifyTimer = null;
+      if (cloudPullInFlight) {
+        scheduleIncomingSyncVerification();
+        return;
+      }
+      pullCloudSync(false, true);
+    }, 450);
+  }
   function pushCloudSync(forceImmediateToast = false) {
     if (!cloudSyncReady || cloudSyncReadyConfig !== getCloudSyncConfigKey()) {
       if (forceImmediateToast) showToast("Sincronización bloqueada por seguridad: primero hay que verificar la nube o usar «Rescatar y Subir Todo a Firebase».");
@@ -3819,6 +3831,16 @@
         return { url: getFirebaseFirestoreUrl(), body: JSON.stringify(fsBody) };
       })();
       const writePayloadBytes = bytesOf(firestoreBytes.body);
+      let streamPromise;
+      try {
+        streamPromise = window.fetch(getCloudTopicUrl(""), {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=UTF-8", "Cache": "yes" },
+          body: compactStr
+        }).then(response => ({ response })).catch(error => ({ error }));
+      } catch (error) {
+        streamPromise = Promise.resolve({ error });
+      }
 
       // 1. Push to Firestore. Do not set keepalive: true for large sync payloads:
       // Fetch keepalive bodies are limited to 64 KiB and can throw before reaching Firebase.
@@ -3865,17 +3887,15 @@
       }
       updateWriteDiagnostic();
 
-      // 3. ntfy is only a real-time transport, not durable confirmation of a cloud save.
-      // This request also avoids keepalive so large compact envelopes are not rejected.
-      try {
-        const streamResponse = await window.fetch(getCloudTopicUrl(""), {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=UTF-8", "Cache": "yes" },
-          body: compactStr
-        });
+      // 3. Read the auxiliary transport result. Its POST was started in parallel with Firestore.
+      // ntfy accelerates device-to-device updates but never counts as durable Firebase confirmation.
+      const streamResult = await streamPromise;
+      if (streamResult && streamResult.response) {
+        const streamResponse = streamResult.response;
         streamWriteStatus = streamResponse.ok ? `OK (HTTP ${streamResponse.status}; transporte auxiliar)` : `HTTP ${streamResponse.status}`;
-      } catch (e) {
-        streamWriteStatus = `No disponible · ${String(e && e.message || e).slice(0, 120)}`;
+      } else {
+        const error = streamResult && streamResult.error;
+        streamWriteStatus = `No disponible · ${String(error && error.message || error || "sin respuesta").slice(0, 120)}`;
       }
       updateWriteDiagnostic();
 
@@ -3900,7 +3920,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-record-version-realtime-1";
+  const TASKY_BUILD_ID = "20261030-mobile-realtime-native-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -4220,7 +4240,7 @@
   function requestSyncCatchup() {
     if (!isCloudNetworkAllowed() || document.visibilityState === "hidden") return;
     const now = Date.now();
-    if (now - lastSyncCatchupAt < 2500) return;
+    if (now - lastSyncCatchupAt < 700) return;
     if (cloudPullInFlight) return;
     lastSyncCatchupAt = now;
     cleanupCompletedTasksFromPreviousDays();
@@ -4229,11 +4249,14 @@
 
   function startCloudSyncRecovery() {
     if (syncRecoveryIntervalId) clearInterval(syncRecoveryIntervalId);
-    // EventSource may pause or disconnect in mobile WebViews. Reconcile quietly while visible.
+    // Use Firestore polling only as a fallback while the realtime stream is unavailable.
+    // When SSE is connected, events are delivered directly and no extra reads are made.
     syncRecoveryIntervalId = window.setInterval(() => {
       if (document.visibilityState !== "visible" || !isCloudNetworkAllowed() || cloudPullInFlight) return;
+      const streamConnected = Boolean(appState.cloudEventSource && appState.cloudEventSource.readyState === 1);
+      if (streamConnected) return;
       pullCloudSync(false, true);
-    }, 20000);
+    }, 6000);
 
     window.addEventListener("focus", requestSyncCatchup);
     window.addEventListener("pageshow", requestSyncCatchup);
@@ -4253,6 +4276,9 @@
         appState.cloudEventSource.close();
       }
       const es = new window.EventSource(getCloudTopicUrl("/sse"));
+      es.onopen = () => {
+        requestSyncCatchup();
+      };
       es.onmessage = (ev) => {
         try {
           const msg = JSON.parse(ev.data);
@@ -4261,15 +4287,18 @@
             if (parsed && parsed.d !== appState.deviceId && parsed.deviceId !== appState.deviceId) {
               const unpacked = unpackCompactEnvelope(parsed);
               if (unpacked && cloudSyncReady && cloudSyncReadyConfig === getCloudSyncConfigKey()) {
-                // Background realtime updates must be silent; avoid toasts on every cross-device edit.
+                // Apply the event immediately; verify durable Firebase state in the background.
                 applyIncomingSyncPayload(unpacked, false);
+                const syncText = document.getElementById("sync-status-text");
+                if (syncText) syncText.textContent = "Recibiendo cambios…";
+                scheduleIncomingSyncVerification();
               }
             }
           }
         } catch (err) {}
       };
       es.onerror = () => {
-        // EventSource reconnects automatically; use a lightweight catch-up as a fallback.
+        // EventSource reconnects automatically; the 6-second fallback covers mobile WebViews.
         requestSyncCatchup();
       };
       appState.cloudEventSource = es;
@@ -6309,7 +6338,8 @@
 
       // Point 2: Zero-Flash In-Place Fold/Unfold on Casilla (No DOM rebuild or flicker)
       card.addEventListener("dblclick", (e) => {
-        if (e.target.closest("button") || e.target.closest("input") || e.target.closest(".task-item")) return;
+        const coarsePointer = Boolean((window.matchMedia && window.matchMedia("(pointer: coarse)").matches) || (navigator && Number(navigator.maxTouchPoints || 0) > 0));
+        if (coarsePointer || e.target.closest("button") || e.target.closest("input") || e.target.closest(".task-item")) return;
         cancelHoldCharge();
         box.collapsed = !box.collapsed;
         card.classList.toggle("collapsed", box.collapsed);
@@ -6356,9 +6386,33 @@
         persistLocalViewState();
       });
 
-      card.querySelector(".box-name").addEventListener("click", () => {
-        playUiSound("modalOpen");
-        openBoxModal(box.id);
+      const boxNameElement = card.querySelector(".box-name");
+      let pendingBoxNameTap = null;
+      boxNameElement.addEventListener("click", () => {
+        const coarsePointer = Boolean(
+          (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
+          (navigator && Number(navigator.maxTouchPoints || 0) > 0)
+        );
+        if (!coarsePointer) {
+          playUiSound("modalOpen");
+          openBoxModal(box.id);
+          return;
+        }
+        if (pendingBoxNameTap) {
+          clearTimeout(pendingBoxNameTap);
+          pendingBoxNameTap = null;
+          box.collapsed = !box.collapsed;
+          card.classList.toggle("collapsed", box.collapsed);
+          playUiSound(box.collapsed ? "fold" : "unfold");
+          persistLocalViewState();
+          showToast(box.collapsed ? "Casilla plegada" : "Casilla desplegada");
+          return;
+        }
+        pendingBoxNameTap = window.setTimeout(() => {
+          pendingBoxNameTap = null;
+          playUiSound("modalOpen");
+          openBoxModal(box.id);
+        }, 360);
       });
 
       function moveBoxWithinVisibleSection(direction) {
