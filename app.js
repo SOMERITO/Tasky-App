@@ -3914,8 +3914,8 @@
       updateWriteDiagnostic();
 
       const syncText = document.getElementById("sync-status-text");
-      // A successful write confirms the cloud save, not that another device has pulled it yet.
-      if (syncText) syncText.textContent = firebaseSaved ? "Guardado en nube" : "Sin confirmar";
+      // Show "Sincronizado" only after Firebase confirms the remote write.
+      if (syncText) syncText.textContent = firebaseSaved ? "Sincronizado" : "Sin confirmar";
       const modalSyncTime = document.getElementById("modal-sync-last-time");
       if (modalSyncTime) {
         const now = new Date();
@@ -3934,7 +3934,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-mobile-app-sync-fix-2";
+  const TASKY_BUILD_ID = "20261030-mobile-polish-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -4037,7 +4037,7 @@
         sourceStatus.firestore = "Documento creado automáticamente · " + candidate.boxes.length + " casillas, " + candidate.tasks.length + " tareas";
         renderSyncDiagnostics(sourceStatus);
         const syncText = document.getElementById("sync-status-text");
-        if (syncText) syncText.textContent = "Guardado en nube";
+        if (syncText) syncText.textContent = "Sincronizado";
         const modalSyncTime = document.getElementById("modal-sync-last-time");
         if (modalSyncTime) modalSyncTime.textContent = `Copia inicial confirmada en Firestore a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.`;
         lastCloudBootstrapError = "";
