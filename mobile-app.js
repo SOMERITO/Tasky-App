@@ -143,6 +143,144 @@
     }
   }, true);
 
+  let pullToRefreshInstalled = false;
+
+  function installPullToRefresh() {
+    if (pullToRefreshInstalled || !isMobile()) return;
+    pullToRefreshInstalled = true;
+
+    const indicator = document.createElement("div");
+    indicator.id = "tasky-pull-refresh";
+    indicator.className = "tasky-pull-refresh";
+    indicator.setAttribute("role", "status");
+    indicator.setAttribute("aria-live", "polite");
+    indicator.innerHTML = '<span class="tasky-pull-refresh-spinner" aria-hidden="true"></span><span id="tasky-pull-refresh-label">Desliza hacia abajo para actualizar</span>';
+    document.body.appendChild(indicator);
+
+    const label = indicator.querySelector("#tasky-pull-refresh-label");
+    const threshold = 76;
+    let tracking = false;
+    let pulling = false;
+    let refreshing = false;
+    let startX = 0;
+    let startY = 0;
+    let pullDistance = 0;
+
+    const pageScrollTop = () => Math.max(
+      window.scrollY || 0,
+      document.documentElement.scrollTop || 0,
+      document.body.scrollTop || 0
+    );
+
+    const canStart = event => {
+      if (!isMobile() || refreshing || event.touches.length !== 1 || pageScrollTop() > 1) return false;
+      if (document.querySelector(".modal-backdrop.open")) return false;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target && target.closest("input, textarea, select, button, a, [contenteditable='true'], .top-navbar, .mobile-app-nav, .controls-bar, .fab-wrapper, [data-no-pull-refresh]")) return false;
+      return true;
+    };
+
+    const resetIndicator = () => {
+      indicator.classList.remove("is-visible", "is-pulling", "is-refreshing");
+      indicator.style.removeProperty("--pull-distance");
+      pullDistance = 0;
+      pulling = false;
+    };
+
+    document.addEventListener("touchstart", event => {
+      if (!canStart(event)) {
+        tracking = false;
+        return;
+      }
+      tracking = true;
+      pulling = false;
+      startX = event.touches[0].clientX;
+      startY = event.touches[0].clientY;
+      pullDistance = 0;
+    }, { passive: true });
+
+    document.addEventListener("touchmove", event => {
+      if (!tracking || event.touches.length !== 1 || refreshing) return;
+      const touch = event.touches[0];
+      const deltaX = touch.clientX - startX;
+      const deltaY = touch.clientY - startY;
+
+      if (deltaY < -4 || (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 12)) {
+        tracking = false;
+        if (pulling) resetIndicator();
+        return;
+      }
+      if (deltaY <= 10 || pageScrollTop() > 1) return;
+
+      // Intercept only a downward gesture that begins at the top of the page.
+      // Normal vertical scrolling and horizontal swipes remain native.
+      event.preventDefault();
+      pulling = true;
+      pullDistance = Math.min(92, Math.max(0, (deltaY - 10) * 0.58));
+      indicator.style.setProperty("--pull-distance", (pullDistance * 0.72).toFixed(1) + "px");
+      indicator.classList.add("is-visible", "is-pulling");
+      if (label) label.textContent = pullDistance >= threshold ? "Suelta para actualizar" : "Desliza para actualizar";
+    }, { passive: false });
+
+    document.addEventListener("touchend", async () => {
+      if (!tracking) return;
+      tracking = false;
+      if (!pulling) return;
+
+      if (pullDistance < threshold || refreshing) {
+        resetIndicator();
+        return;
+      }
+
+      refreshing = true;
+      indicator.classList.remove("is-pulling");
+      indicator.classList.add("is-refreshing", "is-visible");
+      indicator.style.setProperty("--pull-distance", "0px");
+      if (label) label.textContent = "Actualizando Tasky…";
+
+      let status = "error";
+      try {
+        status = await new Promise(resolve => {
+          let completed = false;
+          const finish = result => {
+            if (completed) return;
+            completed = true;
+            resolve(result || "error");
+          };
+          window.dispatchEvent(new CustomEvent("tasky:manual-refresh", {
+            detail: { complete: finish }
+          }));
+          window.setTimeout(() => finish("error"), 20000);
+        });
+      } catch (error) {
+        status = "error";
+      }
+
+      if (label) {
+        const messages = {
+          synced: "Tasky está actualizado",
+          syncing: "Cambios aplicados · sincronizando",
+          offline: "Sin conexión a Internet",
+          unverified: "No se pudo verificar la nube",
+          busy: "Actualización en curso",
+          error: "No se pudo actualizar"
+        };
+        label.textContent = messages[status] || "Actualización finalizada";
+      }
+
+      indicator.classList.remove("is-refreshing", "is-pulling");
+      window.setTimeout(() => {
+        refreshing = false;
+        resetIndicator();
+      }, 1050);
+    }, { passive: true });
+
+    document.addEventListener("touchcancel", () => {
+      tracking = false;
+      if (!refreshing) resetIndicator();
+    }, { passive: true });
+  }
+
   function initializeMobileExperience() {
     if (document.readyState === "loading") return;
     if (!isMobile()) {
@@ -153,6 +291,7 @@
     document.body.dataset.mobileView = "today";
     updateNav();
     clickTab("today");
+    installPullToRefresh();
   }
 
   installOverlayObserver("modal-productivity", "progress");
