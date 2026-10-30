@@ -1,0 +1,656 @@
+/* Tasky — experiencia móvil independiente. La interfaz web conserva su distribución original. */
+@media (max-width: 700px) {
+  html, body {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100%;
+    overflow-x: clip;
+    background: var(--bg);
+  }
+
+  body {
+    padding-top: 0;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    overscroll-behavior-x: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Barra superior compacta: la búsqueda pasa a su propia pantalla. */
+  .top-navbar {
+    position: sticky;
+    top: 0;
+    z-index: 140;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 8px 10px;
+    width: 100%;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 14px 9px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    background: var(--surface-solid);
+    box-shadow: 0 3px 18px rgba(15, 23, 42, .045);
+    backdrop-filter: blur(22px);
+  }
+
+  .brand-cluster {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+  }
+
+  .brand-cluster::after {
+    content: "Tasky";
+    color: var(--text);
+    font-size: 1.05rem;
+    font-weight: 900;
+    letter-spacing: -.035em;
+  }
+
+  .brand-logo {
+    width: 35px;
+    min-width: 35px;
+    height: 35px;
+    border-radius: 11px;
+  }
+
+  .nav-right-cluster { display: contents !important; }
+
+  .search-wrapper {
+    display: none !important;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  body[data-mobile-view="search"] .search-wrapper {
+    display: flex !important;
+    min-height: 44px;
+    margin-top: 2px;
+    border-radius: 14px;
+    background: var(--surface-muted);
+  }
+
+  .search-input {
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    font-size: 16px !important;
+  }
+
+  .top-actions {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .sync-status-static {
+    max-width: 82px;
+    min-width: 0;
+    gap: 5px;
+    padding: 0 2px;
+    font-size: .62rem;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  #sync-status-text {
+    display: inline-block;
+    max-width: 59px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+  }
+
+  .top-actions .icon-btn {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 11px;
+  }
+
+  /* Cada pestaña es una vista, no un salto dentro de una misma página. */
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 13px 13px calc(94px + env(safe-area-inset-bottom, 0px));
+    gap: 0;
+  }
+
+  .app-shell::before {
+    display: block;
+    margin: 3px 2px 14px;
+    color: var(--text);
+    font-size: 1.42rem;
+    font-weight: 900;
+    letter-spacing: -.045em;
+    line-height: 1.15;
+  }
+
+  body[data-mobile-view="today"] .app-shell::before { display: none; }
+  body[data-mobile-view="boxes"] .app-shell::before { content: "Mis casillas"; }
+  body[data-mobile-view="search"] .app-shell::before { content: "Buscar en Tasky"; }
+
+  body[data-mobile-view="progress"] .app-shell,
+  body[data-mobile-view="more"] .app-shell { display: none !important; }
+
+  /* HOY: conserva la información web, ordenada en tarjetas legibles. */
+  body[data-mobile-view="today"] .hero-header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    min-height: 0;
+    margin: 0 0 12px;
+    padding: 13px;
+    border: 1px solid var(--line);
+    border-radius: 19px;
+    background: var(--surface-solid);
+    box-shadow: var(--shadow-xs);
+  }
+
+  body[data-mobile-view="today"] .hero-header::before { display: none !important; }
+
+  body[data-mobile-view="today"] .hero-left {
+    display: flex !important;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  body[data-mobile-view="today"] .hero-title {
+    max-width: 100%;
+    color: var(--text);
+    font-size: 1.28rem;
+    line-height: 1.12;
+    letter-spacing: -.04em;
+  }
+
+  body[data-mobile-view="today"] .quote-inline-box {
+    display: block !important;
+    width: 100%;
+    max-width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-muted);
+  }
+
+  body[data-mobile-view="today"] .quote-text {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    font-size: .72rem;
+    line-height: 1.38;
+  }
+
+  body[data-mobile-view="today"] .quote-author {
+    display: block;
+    margin-top: 3px;
+    font-size: .63rem;
+  }
+
+  body[data-mobile-view="today"] .hero-date-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 4px;
+    width: auto;
+    max-width: 126px;
+    min-width: 0;
+  }
+
+  body[data-mobile-view="today"] .hero-date-stack .date-card {
+    width: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-secondary);
+    font-size: .68rem;
+    font-weight: 800;
+    line-height: 1.3;
+    text-align: right;
+    white-space: normal;
+  }
+
+  body[data-mobile-view="today"] .hero-date-stack .date-birthday-shortcut {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    border-radius: 11px;
+  }
+
+  body[data-mobile-view="today"] .metrics-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    margin: 0 0 12px;
+  }
+
+  body[data-mobile-view="today"] .metric-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 7px;
+    min-width: 0;
+    min-height: 111px;
+    padding: 10px 9px 36px;
+    border: 1px solid var(--line);
+    border-radius: 15px;
+    background: var(--surface-solid);
+    box-shadow: none;
+  }
+
+  body[data-mobile-view="today"] .metric-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  body[data-mobile-view="today"] .metric-label {
+    font-size: .65rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  body[data-mobile-view="today"] .metric-value {
+    font-size: 1.42rem;
+    line-height: 1;
+  }
+
+  body[data-mobile-view="today"] .metric-sub {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    font-size: .57rem;
+    line-height: 1.25;
+  }
+
+  body[data-mobile-view="today"] .ring-container,
+  body[data-mobile-view="today"] .metric-icon-box {
+    position: absolute;
+    right: 8px;
+    bottom: 7px;
+    width: 25px;
+    height: 25px;
+  }
+
+  body[data-mobile-view="today"] .ring-svg { width: 25px; height: 25px; }
+  body[data-mobile-view="today"] .ring-center-icon { font-size: .55rem; }
+  body[data-mobile-view="today"] .metric-icon-box { border-radius: 8px; }
+  body[data-mobile-view="today"] .metric-icon-box svg { width: 14px; height: 14px; }
+
+  body[data-mobile-view="today"] .learning-section {
+    display: block !important;
+    margin: 0 0 12px;
+  }
+
+  body[data-mobile-view="today"] .learning-summary-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  body[data-mobile-view="today"] .learning-summary-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 10px;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 15px;
+    background: var(--surface-solid);
+    box-shadow: none;
+  }
+
+  body[data-mobile-view="today"] .learning-summary-topline {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  body[data-mobile-view="today"] .learning-summary-label { font-size: .76rem; }
+  body[data-mobile-view="today"] .learning-status-chip { font-size: .62rem; }
+  body[data-mobile-view="today"] .learning-summary-goal {
+    grid-column: 1 / -1;
+    display: block !important;
+    margin: 0;
+    font-size: .78rem;
+    line-height: 1.38;
+    overflow: visible;
+  }
+  body[data-mobile-view="today"] .learning-summary-date {
+    grid-column: 1 / -1;
+    font-size: .65rem;
+  }
+
+  /* Hoy conserva accesos rápidos; Casillas muestra también los filtros del tablero. */
+  .controls-bar {
+    min-width: 0;
+    margin: 0 0 13px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  body[data-mobile-view="today"] .controls-bar .tabs-group { display: none !important; }
+
+  body[data-mobile-view="today"] .controls-bar .quick-pills {
+    display: flex !important;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 7px;
+    width: calc(100% + 26px);
+    margin: 0 -13px;
+    padding: 2px 13px 7px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body[data-mobile-view="today"] .controls-bar .quick-pills::-webkit-scrollbar { display: none; }
+
+  body[data-mobile-view="boxes"] .controls-bar {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface-solid);
+  }
+
+  body[data-mobile-view="boxes"] .controls-bar .tabs-group {
+    display: flex !important;
+    flex-wrap: nowrap;
+    gap: 6px;
+    width: 100%;
+  }
+
+  body[data-mobile-view="boxes"] .controls-bar .quick-pills {
+    display: flex !important;
+    flex-wrap: nowrap;
+    gap: 6px;
+    width: 100%;
+    padding-top: 7px;
+    border-top: 1px solid var(--line);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tab-btn, .pill-btn {
+    flex: 0 0 auto;
+    min-height: 39px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: .72rem;
+    white-space: nowrap;
+  }
+
+  .tab-btn { flex: 1 1 0; min-width: 0; }
+  .all-boxes-toggle { width: 39px; min-width: 39px; height: 39px; }
+
+  body[data-mobile-view="today"] #boxes-container,
+  body[data-mobile-view="boxes"] #boxes-container,
+  body[data-mobile-view="search"] #boxes-container {
+    display: flex !important;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    gap: 11px;
+    scroll-margin-top: 12px;
+  }
+
+  body[data-mobile-view="boxes"] .hero-header,
+  body[data-mobile-view="boxes"] .metrics-grid,
+  body[data-mobile-view="boxes"] .learning-section,
+  body[data-mobile-view="search"] .hero-header,
+  body[data-mobile-view="search"] .metrics-grid,
+  body[data-mobile-view="search"] .learning-section,
+  body[data-mobile-view="search"] .controls-bar {
+    display: none !important;
+  }
+
+  .box-card {
+    width: 100%;
+    min-width: 0;
+    padding: 13px;
+    border: 1px solid var(--line);
+    border-radius: 17px;
+    background: var(--surface-solid);
+    box-shadow: 0 3px 13px rgba(15, 23, 42, .045);
+    overflow: hidden;
+  }
+
+  .box-top-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    margin-bottom: 9px;
+    cursor: default;
+  }
+
+  .box-title-left, .box-heading-line, .box-body, .tasks-list { width: 100%; min-width: 0; }
+  .box-left-move-btns { display: none !important; }
+  .box-name { max-width: 100%; font-size: .94rem; line-height: 1.3; overflow-wrap: anywhere; }
+  .box-badges-row { min-width: 0; padding-left: 0; gap: 5px; }
+  .box-pill { max-width: 100%; font-size: .64rem; white-space: normal; }
+
+  .box-header-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 5px;
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .box-header-actions::-webkit-scrollbar { display: none; }
+  .box-ctrl-btn { width: 38px; min-width: 38px; height: 38px; border-radius: 10px; }
+  .box-pending-count-box { width: 32px; min-width: 32px; height: 32px; }
+
+  .tasks-list { display: flex; flex-direction: column; gap: 7px; }
+  .task-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+    padding: 10px 9px;
+    border-radius: 13px;
+    background: var(--surface-muted);
+    box-shadow: none;
+    cursor: default;
+  }
+
+  .task-left { flex: 1; width: auto; min-width: 0; align-items: flex-start; gap: 8px; }
+  .drag-handle { display: none !important; }
+  .task-check-circle { width: 27px; min-width: 27px; height: 27px; margin-top: 1px; }
+  .task-text-wrap { flex: 1; min-width: 0; }
+  .task-title { font-size: .83rem; line-height: 1.38; white-space: normal; overflow-wrap: anywhere; }
+  .task-sub-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .task-sub-badges > * { max-width: 100%; font-size: .61rem; white-space: normal; }
+
+  .task-right-actions {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .task-right-actions > .task-act-btn:not(.task-mobile-more) { display: none !important; }
+  .task-mobile-more {
+    display: inline-flex !important;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: var(--surface-solid);
+  }
+
+  body[data-mobile-view="search"] .app-shell::before { margin-bottom: 10px; }
+  body[data-mobile-view="search"] #boxes-container { margin-top: 2px; }
+
+  /* Navegación inferior fija y respetuosa con el área segura del teléfono. */
+  .mobile-app-nav {
+    position: fixed;
+    z-index: 220;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    min-height: calc(69px + env(safe-area-inset-bottom, 0px));
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--line);
+    background: var(--surface-solid);
+    box-shadow: 0 -5px 22px rgba(15, 23, 42, .07);
+    backdrop-filter: blur(20px);
+  }
+
+  .mobile-app-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    min-height: 49px;
+    padding: 4px 2px;
+    border: 0;
+    border-radius: 13px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: .63rem;
+    font-weight: 750;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .mobile-app-nav-item svg {
+    width: 21px;
+    height: 21px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .mobile-app-nav-item.is-active {
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+
+  .fab-wrapper {
+    right: 13px;
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+    z-index: 180;
+  }
+
+  .fab-main-btn { width: 49px; height: 49px; }
+
+  /* En móvil, los paneles principales se sienten como pantallas de la app. */
+  .modal-backdrop.open {
+    position: fixed;
+    z-index: 300;
+    inset: 0;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+    overflow: hidden;
+  }
+
+  .modal-dialog {
+    width: calc(100vw - 18px);
+    max-width: none;
+    max-height: calc(100dvh - 24px);
+    margin: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 19px;
+  }
+
+  #modal-productivity.open .modal-dialog,
+  #modal-options.open .modal-dialog {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  #modal-productivity .prod-charts-grid { grid-template-columns: minmax(0, 1fr); }
+  #modal-productivity .prod-chart-card { min-width: 0; }
+  #modal-productivity .modal-header,
+  #modal-options .modal-header { position: sticky; top: 0; z-index: 2; background: var(--surface-solid); }
+
+  .multi-select-toolbar { flex-wrap: wrap; gap: 8px; }
+  .multi-select-actions { width: 100%; flex-wrap: wrap; }
+
+  button, input, select, textarea { touch-action: manipulation; }
+
+  @media (max-width: 390px) {
+    .app-shell { padding-left: 10px; padding-right: 10px; }
+    body[data-mobile-view="today"] .hero-header { padding: 11px; }
+    body[data-mobile-view="today"] .hero-title { font-size: 1.16rem; }
+    body[data-mobile-view="today"] .quote-text { font-size: .68rem; }
+    body[data-mobile-view="today"] .metric-card { min-height: 105px; padding-left: 7px; padding-right: 7px; }
+    body[data-mobile-view="today"] .metric-label { font-size: .61rem; }
+    body[data-mobile-view="today"] .metric-value { font-size: 1.28rem; }
+    .mobile-app-nav-item { font-size: .59rem; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @media (max-width: 700px) {
+    .app-shell, .box-card, .task-item, .mobile-app-nav-item { scroll-behavior: auto !important; transition: none !important; }
+  }
+}
