@@ -6231,31 +6231,12 @@ body.focus-mode-open #boxes-container {
   .box-name, .task-title { touch-action: manipulation; }
 }
 
-
-/* Search control for the overdue-tasks modal. */
+/* Always-visible search field in the overdue-tasks modal. */
 .overdue-modal-header-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
   flex: 0 0 auto;
-}
-
-.overdue-search-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  min-width: 40px;
-  height: 40px;
-  padding: 0;
-  border-radius: 12px;
-}
-
-.overdue-search-toggle[aria-expanded="true"] {
-  color: var(--primary);
-  background: var(--primary-soft);
-  border-color: var(--primary);
 }
 
 #modal-overdue-list .modal-header {
@@ -6268,10 +6249,6 @@ body.focus-mode-open #boxes-container {
   min-width: 0;
 }
 
-.overdue-search-panel[hidden] {
-  display: none !important;
-}
-
 @media (max-width: 520px) {
   #modal-overdue-list .modal-header {
     align-items: flex-start;
@@ -6280,12 +6257,6 @@ body.focus-mode-open #boxes-container {
 
   .overdue-modal-header-actions {
     gap: 6px;
-  }
-
-  .overdue-search-toggle {
-    width: 36px;
-    min-width: 36px;
-    height: 36px;
   }
 
   .overdue-search-panel {
