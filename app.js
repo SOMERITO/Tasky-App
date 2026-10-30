@@ -3934,7 +3934,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-overdue-move-today-1";
+  const TASKY_BUILD_ID = "20261030-overdue-move-today-2";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -5355,10 +5355,11 @@
 
   function isTaskOverdue(task) {
     const today = getTodayISO();
-    return !task.done && (
-      Boolean(task.dueDate && task.dueDate < today) ||
-      isTaskCarriedToTodayFromOverdue(task)
-    );
+    // A task explicitly moved to today is no longer overdue today.
+    // Keep overdueSince/overdueCarryDate separately so its original due date
+    // can be remembered and the task can become overdue again only after it
+    // remains unfinished past today's date.
+    return Boolean(task && !task.done && task.dueDate && task.dueDate < today);
   }
 
   function getTaskOverdueDisplayDate(task) {
