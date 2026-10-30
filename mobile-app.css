@@ -804,3 +804,67 @@
     transform: none !important;
   }
 }
+
+
+/* Pull-to-refresh indicator — only appears while a downward gesture is active. */
+@media (max-width: 700px) {
+  .tasky-pull-refresh {
+    position: fixed;
+    z-index: 260;
+    top: calc(env(safe-area-inset-top, 0px) + 56px);
+    left: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 39px;
+    max-width: calc(100vw - 32px);
+    padding: 8px 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface-solid);
+    color: var(--text-secondary);
+    box-shadow: 0 5px 18px rgba(15, 23, 42, .12);
+    font-size: .72rem;
+    font-weight: 750;
+    line-height: 1.2;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate3d(-50%, -145%, 0);
+    transition: opacity .16s ease, transform .16s ease;
+    will-change: transform, opacity;
+  }
+
+  .tasky-pull-refresh.is-visible {
+    opacity: 1;
+    transform: translate3d(-50%, var(--pull-distance, 0px), 0);
+  }
+
+  .tasky-pull-refresh.is-pulling {
+    transition: none;
+  }
+
+  .tasky-pull-refresh-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    border: 2px solid var(--line-strong);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+  }
+
+  .tasky-pull-refresh.is-refreshing .tasky-pull-refresh-spinner {
+    animation: taskyPullRefreshSpin .72s linear infinite;
+  }
+
+  @keyframes taskyPullRefreshSpin {
+    to { transform: rotate(360deg); }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tasky-pull-refresh { transition: none !important; }
+  .tasky-pull-refresh.is-refreshing .tasky-pull-refresh-spinner { animation-duration: 1.5s; }
+}
