@@ -3961,7 +3961,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261031-auto-fold-cleared-boxes-1";
+  const TASKY_BUILD_ID = "20261031-double-click-responsive-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -6480,23 +6480,58 @@
         </div>
       `;
 
-      // Hold-to-Drag on Box Header (Point 7) & Double-Click to Fold/Unfold (Point 1)
+      // Hold-to-Drag on Box Header (Point 7) & immediate fold/unfold gestures.
       const boxTopRow = card.querySelector(".box-top-row");
-      boxTopRow.addEventListener("pointerdown", (e) => {
-        if (e.target.closest("button") || e.target.closest(".box-name")) return;
-        beginHoldDrag("box", box.id, card, e.clientX, e.clientY);
-      });
+      let lastBoxPointerType = "";
+      let pendingCardTap = null;
+      let pendingBoxNameTap = null;
+      const boxNameDoubleTapWindow = 500;
 
-      // Point 2: Zero-Flash In-Place Fold/Unfold on Casilla (No DOM rebuild or flicker)
-      card.addEventListener("dblclick", (e) => {
-        const coarsePointer = Boolean((window.matchMedia && window.matchMedia("(pointer: coarse)").matches) || (navigator && Number(navigator.maxTouchPoints || 0) > 0));
-        if (coarsePointer || e.target.closest("button") || e.target.closest("input") || e.target.closest(".task-item")) return;
+      // Detect the pointer actually used, not whether this device merely has a touch screen.
+      // Hybrid laptops must keep mouse double-click enabled.
+      card.addEventListener("pointerdown", event => {
+        lastBoxPointerType = String(event.pointerType || "mouse").toLowerCase();
+      }, true);
+
+      const toggleBoxCollapsed = () => {
         cancelHoldCharge();
         box.collapsed = !box.collapsed;
         card.classList.toggle("collapsed", box.collapsed);
         playUiSound(box.collapsed ? "fold" : "unfold");
         persistLocalViewState();
         showToast(box.collapsed ? "Casilla plegada" : "Casilla desplegada");
+      };
+
+      boxTopRow.addEventListener("pointerdown", (e) => {
+        if (e.target.closest("button") || e.target.closest(".box-name")) return;
+        beginHoldDrag("box", box.id, card, e.clientX, e.clientY);
+      });
+
+      // Touch screens do not reliably emit a native dblclick. Recognize a quick
+      // second tap on the non-interactive card surface without affecting task controls.
+      card.addEventListener("click", event => {
+        if (lastBoxPointerType !== "touch") return;
+        const target = event.target instanceof Element ? event.target : null;
+        if (!target || target.closest(".box-name, button, input, textarea, select, a, .task-item, [contenteditable='true']")) return;
+        if (pendingCardTap !== null) {
+          clearTimeout(pendingCardTap);
+          pendingCardTap = null;
+          toggleBoxCollapsed();
+        } else {
+          pendingCardTap = window.setTimeout(() => {
+            pendingCardTap = null;
+          }, boxNameDoubleTapWindow);
+        }
+      });
+
+      // Desktop mouse double-click toggles immediately. Ignore touch here because
+      // its second tap is handled by the click recognizer above.
+      card.addEventListener("dblclick", event => {
+        const target = event.target instanceof Element ? event.target : null;
+        if (!target || lastBoxPointerType === "touch" ||
+            target.closest("button, input, textarea, select, a, .task-item, [contenteditable='true'], .box-name")) return;
+        event.preventDefault();
+        toggleBoxCollapsed();
       });
 
       const recurringAuditBtn = card.querySelector('[data-box-action="recurring-audit"]');
@@ -6531,39 +6566,24 @@
       }
 
       card.querySelector('[data-box-action="collapse"]').addEventListener("click", () => {
-        box.collapsed = !box.collapsed;
-        card.classList.toggle("collapsed", box.collapsed);
-        playUiSound(box.collapsed ? "fold" : "unfold");
-        persistLocalViewState();
+        toggleBoxCollapsed();
       });
 
       const boxNameElement = card.querySelector(".box-name");
-      let pendingBoxNameTap = null;
       boxNameElement.addEventListener("click", () => {
-        const coarsePointer = Boolean(
-          (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
-          (navigator && Number(navigator.maxTouchPoints || 0) > 0)
-        );
-        if (!coarsePointer) {
-          playUiSound("modalOpen");
-          openBoxModal(box.id);
-          return;
-        }
-        if (pendingBoxNameTap) {
+        // Defer opening the editor briefly so a second click/tap can fold the box.
+        // This works consistently with mouse, trackpad, touch and hybrid devices.
+        if (pendingBoxNameTap !== null) {
           clearTimeout(pendingBoxNameTap);
           pendingBoxNameTap = null;
-          box.collapsed = !box.collapsed;
-          card.classList.toggle("collapsed", box.collapsed);
-          playUiSound(box.collapsed ? "fold" : "unfold");
-          persistLocalViewState();
-          showToast(box.collapsed ? "Casilla plegada" : "Casilla desplegada");
+          toggleBoxCollapsed();
           return;
         }
         pendingBoxNameTap = window.setTimeout(() => {
           pendingBoxNameTap = null;
           playUiSound("modalOpen");
           openBoxModal(box.id);
-        }, 360);
+        }, boxNameDoubleTapWindow);
       });
 
       function moveBoxWithinVisibleSection(direction) {
