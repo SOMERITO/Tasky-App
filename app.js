@@ -6471,7 +6471,7 @@
           <button type="button" class="add-task-BarBtn" data-box-action="show-inline-add" data-tip-title="➕ Añadir nueva tarea" data-tip-desc="Abre el campo rápido para registrar una tarea directamente en esta casilla.">+ Añadir tarea</button>
           <div class="inline-add-wrapper">
             <form class="inline-add-form" data-box-form="${escapeHtml(box.id)}">
-              <input type="text" class="inline-add-input" placeholder="Escribe la tarea y presiona Enter (ESC para salir)..." maxlength="180" autocomplete="off" />
+              <textarea class="inline-add-input" rows="2" maxlength="10000" placeholder="Escribe una tarea o pega una lista (una tarea por línea). Enter añade una tarea; Guardar añade varias." autocomplete="off"></textarea>
               <button type="submit" class="btn-primary" style="padding:7px 14px;font-size:0.8rem;">Guardar</button>
               <button type="button" class="btn-secondary" data-box-action="cancel-inline-add" style="padding:7px 11px;font-size:0.8rem;">✕</button>
             </form>
@@ -6645,6 +6645,12 @@
       }
 
       function renderInlineSuggestions() {
+        if (/\r?\n/.test(inlineInput.value)) {
+          activeSuggestionIdx = -1;
+          suggestionsBox.classList.remove("open");
+          suggestionsBox.innerHTML = "";
+          return;
+        }
         const matches = getTaskSuggestions(inlineInput.value, box.id);
         activeSuggestionIdx = -1;
         if (!matches.length) {
@@ -6702,36 +6708,63 @@
       }
 
       function saveInlineTask(rawTitle) {
-        const title = capitalizeFirst(rawTitle);
-        if (!title) {
+        // A pasted list becomes one task per non-empty line. Strip common list
+        // markers without damaging measurements such as "1.80 m × 3.5–4 cm".
+        const taskTitles = String(rawTitle || "")
+          .split(/\r?\n/)
+          .map(line => line.trim()
+            .replace(/^(?:(?:[-*•▪◦‣]|\[\s*[xX]?\s*\]|\d{1,3}[.)])\s*)+/, "")
+            .trim())
+          .filter(Boolean)
+          .map(capitalizeFirst);
+
+        if (!taskTitles.length) {
           inlineInput.classList.add("input-invalid");
           setTimeout(() => inlineInput.classList.remove("input-invalid"), 400);
-          showToast("Escribe el nombre de la tarea", true);
+          showToast("Escribe una tarea o pega una lista", true);
           return false;
         }
 
-        pushUndoSnapshot(`Añadir tarea: ${title}`);
-        learnTaskTitle(title, box.id);
-        const newTask = {
-          id: `task_${Date.now()}`,
-          boxId: box.id,
-          title,
-          done: false,
-          completedDate: null,
-          createdAt: Date.now(),
-          dueDate: getTodayISO(),
-          frequency: "once",
-          repeatDays: [],
-          rescheduledCount: 0,
-          isRescheduled: false,
-          order: boxTasksAll.length
-        };
-        appState.data.tasks.push(newTask);
+        const timestamp = Date.now();
+        const nextOrder = appState.data.tasks
+          .filter(task => String(task.boxId) === String(box.id))
+          .reduce((max, task) => Math.max(max, Number(task.order) || 0), -1) + 1;
+
+        pushUndoSnapshot(taskTitles.length === 1
+          ? `Añadir tarea: ${taskTitles[0]}`
+          : `Añadir ${taskTitles.length} tareas en ${box.name}`);
+
+        taskTitles.forEach((title, index) => {
+          learnTaskTitle(title, box.id);
+          appState.data.tasks.push({
+            id: `task_${timestamp}_${index}_${Math.random().toString(36).slice(2, 8)}`,
+            boxId: box.id,
+            title,
+            done: false,
+            completedDate: null,
+            createdAt: timestamp + index,
+            dueDate: getTodayISO(),
+            frequency: "once",
+            repeatDays: [],
+            rescheduledCount: 0,
+            isRescheduled: false,
+            order: nextOrder + index
+          });
+        });
+
         appState.keepInlineAddOpenBoxId = box.id;
+        inlineInput.value = "";
+        suggestionsBox.classList.remove("open");
+        suggestionsBox.innerHTML = "";
+        activeSuggestionIdx = -1;
         playUiSound("addTask");
-        saveData(true, `Añadió tarea en ${box.name}`);
+        saveData(true, taskTitles.length === 1
+          ? `Añadió tarea en ${box.name}`
+          : `Añadió ${taskTitles.length} tareas en ${box.name}`);
         renderBoard();
-        showToast("Tarea agregada");
+        showToast(taskTitles.length === 1
+          ? "Tarea agregada"
+          : `Se agregaron ${taskTitles.length} tareas a ${box.name}`);
         return true;
       }
 
@@ -6745,6 +6778,21 @@
           playUiSound("fold");
           closeInlineAddBox();
           return;
+        }
+        if (ev.key === "Enter") {
+          const hasMultipleLines = /\r?\n/.test(inlineInput.value);
+          if (ev.ctrlKey || ev.metaKey) {
+            ev.preventDefault();
+            inlineForm.requestSubmit();
+            return;
+          }
+          // Keep Enter-to-save for a single task. In a pasted/typed list, Enter
+          // inserts another line; use the Save button or Ctrl/Cmd+Enter to add all.
+          if (!ev.shiftKey && !hasMultipleLines) {
+            ev.preventDefault();
+            inlineForm.requestSubmit();
+            return;
+          }
         }
         const items = Array.from(suggestionsBox.querySelectorAll(".memory-suggestion-item"));
         if (!items.length || !suggestionsBox.classList.contains("open")) return;
