@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261031-auto-grow-inline-textarea-1" />
+  <link rel="stylesheet" href="styles.css?v=20261031-no-deadline-tasks-1" />
   <link rel="stylesheet" href="mobile-app.css?v=20261030-mobile-pull-refresh-1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -466,6 +466,15 @@
             <div class="form-group">
               <label class="form-label" for="input-resched-date">O elegir fecha específica en calendario</label>
               <input type="date" id="input-resched-date" class="form-input" />
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label for="input-resched-no-deadline" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;color:var(--text);">
+                <input type="checkbox" id="input-resched-no-deadline" style="width:18px;height:18px;flex-shrink:0;margin-top:2px;accent-color:var(--primary);" />
+                <span>
+                  <strong style="display:block;font-size:0.86rem;">Sin fecha límite</strong>
+                  <small id="resched-no-deadline-help" style="display:block;color:var(--muted);font-size:0.76rem;line-height:1.4;">Se conserva el día programado, pero la tarea no aparecerá como vencida si no la completas ese día.</small>
+                </span>
+              </label>
             </div>
             <div class="modal-footer" style="margin-top:14px;">
               <button type="button" class="btn-secondary" data-close-modal="modal-date-picker">Cancelar</button>
@@ -1110,7 +1119,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261031-auto-grow-inline-textarea-1"></script>
+  <script src="app.js?v=20261031-no-deadline-tasks-1"></script>
   <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
 </body>
 </html>
