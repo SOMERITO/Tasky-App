@@ -4852,6 +4852,7 @@ body.focus-mode-open #boxes-container {
 
   .task-daily-pill,
   .task-upcoming-tag,
+  .task-no-deadline-tag,
   .task-overdue-tag,
   .task-resched-tag,
   .task-carried-today-tag {
