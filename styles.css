@@ -1586,6 +1586,27 @@ body {
   display: flex;
 }
 
+.inline-add-no-deadline-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.inline-add-no-deadline-option input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
 .task-memory-suggestions {
   display: none;
   flex-direction: column;
@@ -1942,6 +1963,23 @@ body {
 }
 
 /* Rescheduled Tasks Modal List */
+.task-no-deadline-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+[data-theme="dark"] .task-no-deadline-tag {
+  background: rgba(99, 102, 241, 0.18);
+  color: #a5b4fc;
+}
+
 .task-overdue-tag {
   display: inline-flex;
   align-items: center;
@@ -4864,6 +4902,11 @@ body.focus-mode-open #boxes-container {
     resize: none;
     overflow-y: hidden;
     box-sizing: border-box;
+  }
+
+  .inline-add-no-deadline-option {
+    min-height: 38px;
+    padding: 0 4px;
   }
 
   .inline-add-form .btn-primary,
