@@ -3035,6 +3035,7 @@
         done: Boolean(t.done || t.completed),
         createdAt: Number(t.createdAt || Date.now()),
         dueDate: due,
+        noDeadline: Boolean(t.noDeadline && freq === "once"),
         frequency: freq,
         repeatDays: repDays,
         skippedDates: Array.isArray(t.skippedDates)
@@ -3396,7 +3397,8 @@
         x.overdueSince || "",
         x.overdueCarryDate || "",
         Array.isArray(x.skippedDates) ? x.skippedDates : [],
-        Number(x.updatedAt || 0)
+        Number(x.updatedAt || 0),
+        x.noDeadline ? 1 : 0
       ])
     });
   }
@@ -3435,7 +3437,8 @@
         overdueSince: arr[12] || null,
         overdueCarryDate: arr[13] || null,
         skippedDates: Array.isArray(arr[14]) ? arr[14] : [],
-        updatedAt: Number(arr[15] || 0)
+        updatedAt: Number(arr[15] || 0),
+        noDeadline: Boolean(arr[16])
       }));
       return normalizeDataPayload({
         boxes,
@@ -5430,7 +5433,12 @@
     // Keep overdueSince/overdueCarryDate separately so its original due date
     // can be remembered and the task can become overdue again only after it
     // remains unfinished past today's date.
-    return Boolean(task && !task.done && task.dueDate && task.dueDate < today);
+    return Boolean(task && !task.done && !task.noDeadline && task.dueDate && task.dueDate < today);
+  }
+
+  function isTaskWithoutDeadlinePending(task) {
+    const today = getTodayISO();
+    return Boolean(task && !task.done && task.noDeadline && task.dueDate && task.dueDate < today);
   }
 
   function getTaskOverdueDisplayDate(task) {
@@ -5459,6 +5467,10 @@
     // Unfinished missed work remains visible on any day until it is resolved,
     // even when today is not one of the task's recurring weekdays.
     if (isTaskOverdue(task)) return true;
+
+    // Once its planned day passes, a task without a deadline remains pending
+    // but no longer counts as today's scheduled workload.
+    if (isTaskWithoutDeadlinePending(task)) return false;
 
     // Future-dated tasks never count toward today's planned workload.
     if (task.dueDate && task.dueDate > today) return false;
@@ -6343,6 +6355,7 @@
         visibleTasks = pendingBoxTasks.filter(t =>
           (
             isTaskForToday(t) ||
+            isTaskWithoutDeadlinePending(t) ||
             (!isRecurringTask(t) && getFocusPriorityLevel(t.id) > 0) ||
             String(t.id) === String(appState.focusRevealTaskId || "")
           ) &&
@@ -6472,6 +6485,10 @@
           <div class="inline-add-wrapper">
             <form class="inline-add-form" data-box-form="${escapeHtml(box.id)}">
               <textarea class="inline-add-input" rows="1" maxlength="10000" placeholder="Escribe una tarea o pega una lista (una tarea por línea; al pegar se registra automáticamente)." autocomplete="off"></textarea>
+              <label class="inline-add-no-deadline-option" title="La tarea conserva su día programado, pero no se marcará como vencida.">
+                <input type="checkbox" class="inline-add-no-deadline" />
+                <span>Sin fecha límite</span>
+              </label>
               <button type="submit" class="btn-primary" style="padding:7px 14px;font-size:0.8rem;">Guardar</button>
               <button type="button" class="btn-secondary" data-box-action="cancel-inline-add" style="padding:7px 11px;font-size:0.8rem;">✕</button>
             </form>
@@ -6629,6 +6646,7 @@
       const addBarBtn = card.querySelector('[data-box-action="show-inline-add"]');
       const inlineForm = card.querySelector(".inline-add-form");
       const inlineInput = card.querySelector(".inline-add-input");
+      const inlineNoDeadlineInput = card.querySelector(".inline-add-no-deadline");
       const suggestionsBox = card.querySelector(".task-memory-suggestions");
       let activeSuggestionIdx = -1;
 
@@ -6716,6 +6734,7 @@
       }
 
       function saveInlineTask(rawTitle, options = {}) {
+        const noDeadline = Boolean(inlineNoDeadlineInput && inlineNoDeadlineInput.checked);
         // A pasted list becomes one task per non-empty line. Strip common list
         // markers without damaging measurements such as "1.80 m × 3.5–4 cm".
         const taskTitles = String(rawTitle || "")
@@ -6752,6 +6771,7 @@
             completedDate: null,
             createdAt: timestamp + index,
             dueDate: getTodayISO(),
+            noDeadline,
             frequency: "once",
             repeatDays: [],
             rescheduledCount: 0,
@@ -7224,6 +7244,14 @@
     addTaskContextMenuButton(menu, task.done ? "↩ Reabrir tarea" : "✓ Marcar como completada", "toggle-done");
     addTaskContextMenuButton(menu, "✏️ Editar tarea", "edit");
     addTaskContextMenuButton(menu, "📋 Copiar texto", "copy");
+    if (!isRecurringTask(task)) {
+      addTaskContextMenuButton(
+        menu,
+        task.noDeadline ? "⏳ Volver a activar fecha límite" : "∞ Sin fecha límite",
+        "toggle-no-deadline",
+        { title: "Conserva el día programado, pero evita marcar la tarea como vencida si no la completas ese día." }
+      );
+    }
     if (!task.done && isTaskOverdue(task)) {
       addTaskContextMenuButton(menu, "☀️ Pasar para hoy", "move-today", {
         title: "Mueve esta tarea atrasada a la lista de hoy y conserva su fecha de vencimiento original."
@@ -7339,6 +7367,32 @@
       : `Tarea asignada como P${slot + 1} en su casilla`);
   }
 
+  function toggleTaskNoDeadline(taskId) {
+    const task = appState.data.tasks.find(entry => String(entry.id) === String(taskId));
+    if (!task) return;
+    if (isRecurringTask(task)) {
+      showToast("Esta opción está disponible para tareas sin repetición.", true);
+      return;
+    }
+
+    pushUndoSnapshot(task.noDeadline
+      ? `Activar fecha límite: ${task.title}`
+      : `Quitar fecha límite: ${task.title}`);
+    task.noDeadline = !Boolean(task.noDeadline);
+    if (task.noDeadline) {
+      delete task.overdueSince;
+      delete task.overdueCarryDate;
+    }
+    saveData(true, task.noDeadline
+      ? `Quitó la fecha límite: ${task.title}`
+      : `Reactivó la fecha límite: ${task.title}`);
+    playUiSound("tap");
+    renderBoardPreservingScroll();
+    showToast(task.noDeadline
+      ? "∞ Sin fecha límite: se conserva el día programado"
+      : "Fecha límite activada: la tarea podrá marcarse como atrasada");
+  }
+
   function handleTaskContextAction(action, taskId, slot = -1) {
     const task = appState.data.tasks.find(entry => String(entry.id) === String(taskId));
     if (!task) {
@@ -7359,6 +7413,9 @@
         break;
       case "copy":
         copyTextToClipboard(task.title, "📋 Tarea copiada al portapapeles");
+        break;
+      case "toggle-no-deadline":
+        toggleTaskNoDeadline(task.id);
         break;
       case "move-today": {
         scheduleOverdueTaskOrSelectedGroup(task);
@@ -7428,6 +7485,10 @@
     }
     if (hasRepeat) {
       subBadges += `<span class="task-daily-pill">${escapeHtml(repeatLabel)}</span>`;
+    }
+    if (task.noDeadline) {
+      const plannedDateLabel = task.dueDate ? ` · Programada ${formatSpanishDateLong(task.dueDate)}` : "";
+      subBadges += `<span class="task-no-deadline-tag" title="Conserva su día programado, pero nunca se marcará como vencida.">∞ Sin fecha límite${escapeHtml(plannedDateLabel)}</span>`;
     }
     if (isUpcomingRepeat) {
       subBadges += `<span class="task-upcoming-tag">🗓️ Próxima · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
@@ -8944,6 +9005,19 @@
     dateInput.min = tomorrowIso;
     dateInput.value = todayIso;
 
+    const noDeadlineInput = document.getElementById("input-resched-no-deadline");
+    const noDeadlineHelp = document.getElementById("resched-no-deadline-help");
+    if (noDeadlineInput) {
+      const isSingleEligibleTask = tasks.length === 1 && !isRecurringTask(tasks[0]);
+      noDeadlineInput.checked = isSingleEligibleTask && Boolean(tasks[0].noDeadline);
+      noDeadlineInput.disabled = !isSingleEligibleTask;
+      if (noDeadlineHelp) {
+        noDeadlineHelp.textContent = isSingleEligibleTask
+          ? "Se conserva el día programado, pero la tarea no aparecerá como vencida si no la completas ese día."
+          : "Disponible al planificar una sola tarea que no tenga repetición.";
+      }
+    }
+
     const parts = todayIso.split("-");
     calState.viewYear = Number(parts[0]) || new Date().getFullYear();
     calState.viewMonth = (Number(parts[1]) || (new Date().getMonth() + 1)) - 1;
@@ -8972,7 +9046,16 @@
       : `Reprogramó: ${tasks[0].title}`;
     pushUndoSnapshot(isBulk ? `Reprogramar ${tasks.length} tareas` : `Reprogramar: ${tasks[0].title}`);
 
+    const noDeadlineInput = document.getElementById("input-resched-no-deadline");
+    const applyNoDeadline = !isBulk && tasks.length === 1 &&
+      noDeadlineInput && !noDeadlineInput.disabled && Boolean(noDeadlineInput.checked);
+
     tasks.forEach(task => {
+      if (!isRecurringTask(task)) {
+        task.noDeadline = Boolean(applyNoDeadline);
+      } else {
+        delete task.noDeadline;
+      }
       if (moveToToday) {
         task.dueDate = today;
         task.isRescheduled = false;
