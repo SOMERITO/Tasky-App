@@ -3259,6 +3259,7 @@
   let cloudBootstrapInFlight = false;
   let syncRecoveryIntervalId = null;
   let lastSyncCatchupAt = 0;
+  let lastCloudPullCompletedAt = 0;
   let lastCloudBootstrapError = "";
   let syncBroadcastChannel = null;
   let realtimeSyncStatus = "Canal pendiente de conexión";
@@ -3934,7 +3935,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261030-multi-overdue-today-1";
+  const TASKY_BUILD_ID = "20261031-realtime-sync-reconcile-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -3953,7 +3954,11 @@
       const local = normalizeDataPayload(appState.data);
       const projectId = String(cfg.projectId || "sin proyecto").trim();
       const docPath = String(cfg.docPath || "sin ruta").split("/").filter(Boolean).join("/");
-      localDetails.textContent = `Este dispositivo · versión ${TASKY_BUILD_ID} · destino ${projectId}/${docPath} · ${local ? local.boxes.length : 0} casillas y ${local ? local.tasks.length : 0} tareas · revisión local ${local ? local.updatedAt : 0} · dispositivo ${String(appState.deviceId || "").slice(0, 18)}`;
+      const pendingCount = local ? local.tasks.filter(task => !task.done).length : 0;
+      const lastPull = lastCloudPullCompletedAt
+        ? new Date(lastCloudPullCompletedAt).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+        : "aún no realizada";
+      localDetails.textContent = `Este dispositivo · versión ${TASKY_BUILD_ID} · destino ${projectId}/${docPath} · ${local ? local.boxes.length : 0} casillas · ${local ? local.tasks.length : 0} tareas (${pendingCount} pendientes) · revisión local ${local ? local.updatedAt : 0} · última lectura remota ${lastPull} · dispositivo ${String(appState.deviceId || "").slice(0, 18)}`;
     }
     return fullText;
   }
@@ -4120,7 +4125,7 @@
       const isValidSnapshot = (norm) => Boolean(norm && Array.isArray(norm.boxes) &&
         norm.boxes.length && Array.isArray(norm.tasks) && Number(norm.updatedAt || 0) > 0);
       const describeSnapshot = (norm) => isValidSnapshot(norm)
-        ? `OK · ${norm.boxes.length} casillas, ${norm.tasks.length} tareas · revisión ${norm.updatedAt} · emisor ${String(norm.deviceId || "no indicado").slice(0, 22)}`
+        ? `OK · ${norm.boxes.length} casillas, ${norm.tasks.length} tareas (${norm.tasks.filter(task => !task.done).length} pendientes) · revisión ${norm.updatedAt} · emisor ${String(norm.deviceId || "no indicado").slice(0, 22)}`
         : "respuesta sin una copia válida (faltan casillas/tareas o updatedAt)";
 
       try {
@@ -4268,6 +4273,7 @@
       if (manual) showToast("No se pudo completar la sincronización. Revisa el diagnóstico del canal en tiempo real.", true);
       return "error";
     } finally {
+      lastCloudPullCompletedAt = Date.now();
       cloudPullInFlight = false;
       if (queuedManualPullPromise) {
         const resolveQueued = resolveQueuedManualPull;
@@ -4307,12 +4313,13 @@
 
   function startCloudSyncRecovery() {
     if (syncRecoveryIntervalId) clearInterval(syncRecoveryIntervalId);
-    // Use Firestore polling only as a fallback while the realtime stream is unavailable.
-    // When SSE is connected, events are delivered directly and no extra reads are made.
+    // SSE is the instant path, not the only source of truth. A silent mobile stream can miss events.
+    // Reconcile durable Firestore every 30s while connected; use a 6s fallback when SSE is down.
     syncRecoveryIntervalId = window.setInterval(() => {
       if (document.visibilityState !== "visible" || !isCloudNetworkAllowed() || cloudPullInFlight) return;
       const streamConnected = Boolean(appState.cloudEventSource && appState.cloudEventSource.readyState === 1);
-      if (streamConnected) return;
+      const minimumInterval = streamConnected ? 30000 : 6000;
+      if (Date.now() - lastCloudPullCompletedAt < minimumInterval) return;
       pullCloudSync(false, true);
     }, 6000);
 
@@ -4353,19 +4360,21 @@
             const parsed = JSON.parse(msg.message);
             if (parsed && parsed.d !== appState.deviceId && parsed.deviceId !== appState.deviceId) {
               const unpacked = unpackCompactEnvelope(parsed);
-              if (unpacked && cloudSyncReady && cloudSyncReadyConfig === getCloudSyncConfigKey()) {
-                // Apply the event immediately; verify durable Firebase state in the background.
-                const applied = applyIncomingSyncPayload(unpacked, false);
-                const syncText = document.getElementById("sync-status-text");
-                if (applied) {
-                  if (syncText) syncText.textContent = "Recibiendo cambios…";
-                  setRealtimeSyncStatus(`Cambio recibido a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`);
+              if (unpacked) {
+                if (cloudSyncReady && cloudSyncReadyConfig === getCloudSyncConfigKey()) {
+                  const applied = applyIncomingSyncPayload(unpacked, false);
+                  const syncText = document.getElementById("sync-status-text");
+                  if (applied) {
+                    if (syncText) syncText.textContent = "Recibiendo cambios…";
+                    setRealtimeSyncStatus(`Cambio recibido a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`);
+                  } else {
+                    setRealtimeSyncStatus("Evento recibido; verificando la copia durable");
+                  }
                 } else {
-                  setRealtimeSyncStatus("Evento recibido; no había cambios pendientes de aplicar");
+                  setRealtimeSyncStatus("Evento recibido antes de verificar Firebase; conciliación en cola");
                 }
+                // Always schedule a durable pull, including events received during startup.
                 scheduleIncomingSyncVerification();
-              } else {
-                setRealtimeSyncStatus("Evento recibido antes de verificar Firebase; esperando conciliación");
               }
             }
           }
