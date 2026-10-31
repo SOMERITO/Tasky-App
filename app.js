@@ -3961,7 +3961,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261031-realtime-sync-reconcile-1";
+  const TASKY_BUILD_ID = "20261031-sync-only-real-changes-3";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -4340,11 +4340,11 @@
   function startCloudSyncRecovery() {
     if (syncRecoveryIntervalId) clearInterval(syncRecoveryIntervalId);
     // SSE is the instant path, not the only source of truth. A silent mobile stream can miss events.
-    // Reconcile durable Firestore every 30s while connected; use a 6s fallback when SSE is down.
+    // Reconcile durable Firestore every 10s while connected; use a 6s fallback when SSE is down.
     syncRecoveryIntervalId = window.setInterval(() => {
       if (document.visibilityState !== "visible" || !isCloudNetworkAllowed() || cloudPullInFlight) return;
       const streamConnected = Boolean(appState.cloudEventSource && appState.cloudEventSource.readyState === 1);
-      const minimumInterval = streamConnected ? 30000 : 6000;
+      const minimumInterval = streamConnected ? 10000 : 6000;
       if (Date.now() - lastCloudPullCompletedAt < minimumInterval) return;
       pullCloudSync(false, true);
     }, 6000);
