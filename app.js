@@ -6471,7 +6471,7 @@
           <button type="button" class="add-task-BarBtn" data-box-action="show-inline-add" data-tip-title="➕ Añadir nueva tarea" data-tip-desc="Abre el campo rápido para registrar una tarea directamente en esta casilla.">+ Añadir tarea</button>
           <div class="inline-add-wrapper">
             <form class="inline-add-form" data-box-form="${escapeHtml(box.id)}">
-              <textarea class="inline-add-input" rows="2" maxlength="10000" placeholder="Escribe una tarea o pega una lista (una tarea por línea; al pegar se registra automáticamente)." autocomplete="off"></textarea>
+              <textarea class="inline-add-input" rows="1" maxlength="10000" placeholder="Escribe una tarea o pega una lista (una tarea por línea; al pegar se registra automáticamente)." autocomplete="off"></textarea>
               <button type="submit" class="btn-primary" style="padding:7px 14px;font-size:0.8rem;">Guardar</button>
               <button type="button" class="btn-secondary" data-box-action="cancel-inline-add" style="padding:7px 11px;font-size:0.8rem;">✕</button>
             </form>
@@ -6634,6 +6634,13 @@
 
       autoCapitalizeInputEl(inlineInput);
 
+      function resizeInlineInput() {
+        if (!inlineInput) return;
+        inlineInput.style.height = "auto";
+        const minHeight = Number.parseFloat(getComputedStyle(inlineInput).minHeight) || 44;
+        inlineInput.style.height = `${Math.max(minHeight, inlineInput.scrollHeight)}px`;
+      }
+
       function closeInlineAddBox() {
         appState.keepInlineAddOpenBoxId = null;
         inlineForm.classList.remove("open");
@@ -6641,6 +6648,7 @@
         suggestionsBox.innerHTML = "";
         addBarBtn.style.display = "flex";
         inlineInput.value = "";
+        resizeInlineInput();
         inlineInput.blur();
       }
 
@@ -6754,6 +6762,7 @@
 
         appState.keepInlineAddOpenBoxId = options.closeAfterSave ? null : box.id;
         inlineInput.value = "";
+        resizeInlineInput();
         suggestionsBox.classList.remove("open");
         suggestionsBox.innerHTML = "";
         activeSuggestionIdx = -1;
@@ -6779,7 +6788,10 @@
         saveInlineTask(pastedText, { closeAfterSave: true });
       });
 
-      inlineInput.addEventListener("input", renderInlineSuggestions);
+      inlineInput.addEventListener("input", () => {
+        resizeInlineInput();
+        renderInlineSuggestions();
+      });
 
       // Point 4 & Point 1: ESC closes the task input box; Tab / ArrowDown navigates memory suggestions
       inlineInput.addEventListener("keydown", (ev) => {
@@ -6871,6 +6883,7 @@
         inlineForm.classList.add("open");
         setTimeout(() => {
           inlineInput.focus();
+          resizeInlineInput();
           inlineForm.scrollIntoView({ block: "nearest", behavior: "smooth" });
         }, 30);
       }
