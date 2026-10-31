@@ -6471,7 +6471,7 @@
           <button type="button" class="add-task-BarBtn" data-box-action="show-inline-add" data-tip-title="➕ Añadir nueva tarea" data-tip-desc="Abre el campo rápido para registrar una tarea directamente en esta casilla.">+ Añadir tarea</button>
           <div class="inline-add-wrapper">
             <form class="inline-add-form" data-box-form="${escapeHtml(box.id)}">
-              <textarea class="inline-add-input" rows="2" maxlength="10000" placeholder="Escribe una tarea o pega una lista (una tarea por línea). Enter añade una tarea; Guardar añade varias." autocomplete="off"></textarea>
+              <textarea class="inline-add-input" rows="2" maxlength="10000" placeholder="Escribe una tarea o pega una lista (una tarea por línea; al pegar se registra automáticamente)." autocomplete="off"></textarea>
               <button type="submit" class="btn-primary" style="padding:7px 14px;font-size:0.8rem;">Guardar</button>
               <button type="button" class="btn-secondary" data-box-action="cancel-inline-add" style="padding:7px 11px;font-size:0.8rem;">✕</button>
             </form>
@@ -6707,7 +6707,7 @@
         suggestionsBox.classList.add("open");
       }
 
-      function saveInlineTask(rawTitle) {
+      function saveInlineTask(rawTitle, options = {}) {
         // A pasted list becomes one task per non-empty line. Strip common list
         // markers without damaging measurements such as "1.80 m × 3.5–4 cm".
         const taskTitles = String(rawTitle || "")
@@ -6752,7 +6752,7 @@
           });
         });
 
-        appState.keepInlineAddOpenBoxId = box.id;
+        appState.keepInlineAddOpenBoxId = options.closeAfterSave ? null : box.id;
         inlineInput.value = "";
         suggestionsBox.classList.remove("open");
         suggestionsBox.innerHTML = "";
@@ -6767,6 +6767,17 @@
           : `Se agregaron ${taskTitles.length} tareas a ${box.name}`);
         return true;
       }
+
+      // A multiline paste is treated as a complete task list and saved immediately.
+      // Single-line pastes remain editable in the input as before.
+      inlineInput.addEventListener("paste", event => {
+        const pastedText = event.clipboardData?.getData("text/plain") || "";
+        const pastedLines = pastedText.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+        if (pastedLines.length < 2) return;
+
+        event.preventDefault();
+        saveInlineTask(pastedText, { closeAfterSave: true });
+      });
 
       inlineInput.addEventListener("input", renderInlineSuggestions);
 
