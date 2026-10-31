@@ -3761,6 +3761,9 @@
   }
 
   let cloudPushTimer = null;
+  let cloudPushInFlight = false;
+  let cloudPushPending = false;
+  let cloudPushPendingToast = false;
   let incomingSyncVerifyTimer = null;
   function scheduleIncomingSyncVerification() {
     if (incomingSyncVerifyTimer) clearTimeout(incomingSyncVerifyTimer);
@@ -3797,7 +3800,15 @@
     const pendingSyncText = document.getElementById("sync-status-text");
     if (pendingSyncText) pendingSyncText.textContent = "Sincronizando…";
     if (cloudPushTimer) clearTimeout(cloudPushTimer);
-    cloudPushTimer = setTimeout(async () => {
+    cloudPushTimer = window.setTimeout(async () => {
+      cloudPushTimer = null;
+      if (cloudPushInFlight) {
+        cloudPushPending = true;
+        cloudPushPendingToast = cloudPushPendingToast || forceImmediateToast;
+        return;
+      }
+      cloudPushInFlight = true;
+      try {
       const fullPayload = {
         ...buildSyncPayload(appState.data),
         syncSchemaVersion: 1,
@@ -3931,6 +3942,21 @@
             : `⚠️ No se confirmó el guardado remoto. ${firestoreWriteStatus}. Revisa Diagnóstico de escritura.`,
           !firebaseSaved
         );
+      }
+      } catch (error) {
+        const message = String(error && error.message || error).slice(0, 160);
+        setRealtimeSyncStatus(`Error de escritura: ${message}`);
+        const syncText = document.getElementById("sync-status-text");
+        if (syncText) syncText.textContent = "Error de sincronización";
+        if (forceImmediateToast) showToast(`No se pudo completar la escritura en la nube: ${message}`, true);
+      } finally {
+        cloudPushInFlight = false;
+        if (cloudPushPending) {
+          const showPendingToast = cloudPushPendingToast;
+          cloudPushPending = false;
+          cloudPushPendingToast = false;
+          pushCloudSync(showPendingToast);
+        }
       }
     }, forceImmediateToast ? 10 : 80);
   }
@@ -4807,11 +4833,17 @@
       if (previousRaw) previousData = JSON.parse(previousRaw);
     } catch (e) {}
 
+    // Compare only synchronized content; local view preferences must never create cloud changes.
+    const previousSyncFingerprint = previousData ? syncFingerprint(previousData) : "";
     const previousTasksById = new Map((Array.isArray(previousData && previousData.tasks) ? previousData.tasks : [])
       .filter(task => task && task.id != null).map(task => [String(task.id), task]));
     const previousBoxesById = new Map((Array.isArray(previousData && previousData.boxes) ? previousData.boxes : [])
       .filter(box => box && box.id != null).map(box => [String(box.id), box]));
     const recordChangeTime = Date.now();
+    const boxSyncValue = value => {
+      const { collapsed, ...syncableBox } = value || {};
+      return JSON.stringify(syncableBox);
+    };
     (appState.data.tasks || []).forEach(task => {
       const previous = previousTasksById.get(String(task.id));
       if (task.bootstrapSeed && previous && JSON.stringify(task) !== JSON.stringify(previous)) delete task.bootstrapSeed;
@@ -4823,7 +4855,8 @@
     (appState.data.boxes || []).forEach(box => {
       const previous = previousBoxesById.get(String(box.id));
       if (box.bootstrapSeed && previous && JSON.stringify(box) !== JSON.stringify(previous)) delete box.bootstrapSeed;
-      const changed = !previous || JSON.stringify(box) !== JSON.stringify(previous);
+      // The collapsed flag is stored per device and is not a real box modification.
+      const changed = !previous || boxSyncValue(box) !== boxSyncValue(previous);
       if (changed) {
         box.updatedAt = Math.max(recordChangeTime, Number(box.updatedAt || 0) + 1, Number(previous && previous.updatedAt || 0) + 1);
       }
@@ -4850,10 +4883,14 @@
     appState.data.deletedTaskIds = Array.from(deletedTasks);
     appState.data.deletedBoxIds = Array.from(deletedBoxes);
     appState.data.syncSchemaVersion = 1;
-    appState.data.updatedAt = Math.max(Date.now(), Number(appState.data.updatedAt || 0) + 1);
+    const syncContentChanged = !previousData || previousSyncFingerprint !== syncFingerprint(appState.data);
+    if (syncContentChanged) {
+      appState.data.updatedAt = Math.max(Date.now(), Number(appState.data.updatedAt || 0) + 1);
+    }
     const payloadStr = JSON.stringify(appState.data);
     const ok = safeStorage.setItem(STORAGE_KEYS.DATA, payloadStr);
-    pushCloudSync();
+    // Persist every local save, but contact the cloud only when synchronized data changed.
+    if (syncContentChanged) pushCloudSync();
 
     if (recordBackup) {
       const snapshot = {
