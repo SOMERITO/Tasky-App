@@ -5468,9 +5468,9 @@
     // even when today is not one of the task's recurring weekdays.
     if (isTaskOverdue(task)) return true;
 
-    // Once its planned day passes, a task without a deadline remains pending
-    // but no longer counts as today's scheduled workload.
-    if (isTaskWithoutDeadlinePending(task)) return false;
+    // Once its planned day passes, a task without a deadline remains visible
+    // if pending, but neither pending nor completed instances count toward today's workload.
+    if (task.noDeadline && task.dueDate && task.dueDate < today) return false;
 
     // Future-dated tasks never count toward today's planned workload.
     if (task.dueDate && task.dueDate > today) return false;
