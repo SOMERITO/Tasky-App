@@ -3961,7 +3961,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261031-sync-only-real-changes-3";
+  const TASKY_BUILD_ID = "20261031-auto-fold-cleared-boxes-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -4835,6 +4835,31 @@
 
     // Compare only synchronized content; local view preferences must never create cloud changes.
     const previousSyncFingerprint = previousData ? syncFingerprint(previousData) : "";
+
+    // When a casilla loses its final pending task for today, fold it as it moves
+    // out of the active section. This is a device-local view preference, not task data.
+    const previousPendingTodayBoxIds = new Set(
+      (Array.isArray(previousData && previousData.tasks) ? previousData.tasks : [])
+        .filter(task => task && !task.done && isTaskForToday(task))
+        .map(task => String(task.boxId))
+    );
+    const currentPendingTodayBoxIds = new Set(
+      (Array.isArray(appState.data.tasks) ? appState.data.tasks : [])
+        .filter(task => task && !task.done && isTaskForToday(task))
+        .map(task => String(task.boxId))
+    );
+    let autoFoldedClearedBox = false;
+    (appState.data.boxes || []).forEach(box => {
+      const boxId = String(box.id);
+      if (previousPendingTodayBoxIds.has(boxId) &&
+          !currentPendingTodayBoxIds.has(boxId) &&
+          !box.collapsed) {
+        box.collapsed = true;
+        autoFoldedClearedBox = true;
+      }
+    });
+    if (autoFoldedClearedBox) persistLocalViewState();
+
     const previousTasksById = new Map((Array.isArray(previousData && previousData.tasks) ? previousData.tasks : [])
       .filter(task => task && task.id != null).map(task => [String(task.id), task]));
     const previousBoxesById = new Map((Array.isArray(previousData && previousData.boxes) ? previousData.boxes : [])
