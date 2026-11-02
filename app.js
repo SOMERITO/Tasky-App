@@ -2143,7 +2143,7 @@
       { id: "box_leah", name: "PENDIENTES LEAH 👧🏻", color: "#2563eb", collapsed: false, order: 3 },
       { id: "box_abuela", name: "CASA DE ABUELA ROSA", color: "#2563eb", collapsed: false, order: 4 },
       { id: "box_bombero", name: "COMO BOMBERO 🚒", color: "#2563eb", collapsed: false, order: 5 },
-      { id: "box_oficina", name: "OFICINA", color: "#f59e0b", collapsed: false, order: 6 }
+      { id: "box_oficina", name: "ASESOR DE CONTACT CENTER", color: "#f59e0b", collapsed: false, order: 6 }
     ];
 
     const casaTasks = [
@@ -2984,10 +2984,18 @@
     // the same ID after a rename, causing the same tasks to appear in two cards.
     const boxesById = new Map();
     boxesRaw.forEach((b, idx) => {
+      const boxId = String(b.id || `box_${Date.now()}_${idx}`);
+      const rawBoxName = String(b.name || b.title || "CASILLA").trim().toUpperCase();
+      const rawBoxNameKey = canonicalBoxKey(rawBoxName);
+      // The original OFICINA box is now permanently identified as ASESOR DE CONTACT CENTER.
+      // Normalize every legacy alias before local/cloud reconciliation so an old device
+      // cannot restore the previous label over the user's confirmed name.
+      const isContactCenterBox = boxId === "box_oficina" ||
+        ["oficina", "asesortelefonico", "asesordecontactcenter"].includes(rawBoxNameKey);
       const box = {
         ...b,
-        id: String(b.id || `box_${Date.now()}_${idx}`),
-        name: String(b.name || b.title || "CASILLA").trim().toUpperCase(),
+        id: boxId,
+        name: isContactCenterBox ? "ASESOR DE CONTACT CENTER" : rawBoxName,
         color: String(b.color || "#2563eb"),
         emoji: String(b.emoji || "").trim().slice(0, 16),
         collapsed: Boolean(b.collapsed),
@@ -3540,9 +3548,10 @@
     function chooseSameIdentityBox(existing, candidate, existingSourceUpdatedAt = 0, candidateSourceUpdatedAt = 0) {
       const existingKey = canonicalBoxKey(existing && existing.name);
       const candidateKey = canonicalBoxKey(candidate && candidate.name);
-      // The user confirmed that ASESOR TELEFÓNICO is the renamed OFICINA box.
-      if (existingKey === "oficina" && candidateKey === "asesortelefonico") return candidate;
-      if (candidateKey === "oficina" && existingKey === "asesortelefonico") return existing;
+      // Prefer the confirmed canonical label when reconciling snapshots from older app versions.
+      const legacyContactCenterKeys = new Set(["oficina", "asesortelefonico"]);
+      if (legacyContactCenterKeys.has(existingKey) && candidateKey === "asesordecontactcenter") return candidate;
+      if (legacyContactCenterKeys.has(candidateKey) && existingKey === "asesordecontactcenter") return existing;
       const existingUpdatedAt = Number(existing && existing.updatedAt || existingSourceUpdatedAt || 0);
       const candidateUpdatedAt = Number(candidate && candidate.updatedAt || candidateSourceUpdatedAt || 0);
       if (existingUpdatedAt !== candidateUpdatedAt) return candidateUpdatedAt > existingUpdatedAt ? candidate : existing;
@@ -3964,7 +3973,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261031-double-click-responsive-1";
+  const TASKY_BUILD_ID = "20261102-contact-center-box-name-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
