@@ -3711,6 +3711,12 @@
       // An explicit re-creation/edit newer than a tombstone wins. Otherwise the
       // newest versioned deletion remains authoritative across devices.
       byId.forEach((deletedAt, id) => {
+        const isLegacyRemoteTombstone = preferLeftAsRemote &&
+          (Array.isArray(primaryIds) ? primaryIds : []).some(value => String(value) === id) &&
+          Number(primaryTimes && primaryTimes[id] || 0) <= 0;
+        // A deletion already present in Firestore but lacking legacy metadata is
+        // still authoritative. A stale local task must never resurrect it.
+        if (isLegacyRemoteTombstone) return;
         let latestItemVersion = itemVersions.get(id) || 0;
         if (isBox) {
           const latestChildTaskVersion = Math.max(
