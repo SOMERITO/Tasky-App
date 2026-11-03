@@ -14,7 +14,7 @@ function extractFunction(name, nextMarker) {
   const end = app.indexOf(nextMarker, start);
   assert.notEqual(end, -1, "end marker for " + name + " must exist");
   const source = app.slice(start, end).trim();
-  assert.match(source, new RegExp("^function " + name + "\\\\("));
+  assert.match(source, new RegExp("^function " + name + "\\("));
   return source;
 }
 
