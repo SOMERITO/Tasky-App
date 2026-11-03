@@ -9389,13 +9389,32 @@
     const noDeadlineInput = document.getElementById("input-resched-no-deadline");
     const noDeadlineHelp = document.getElementById("resched-no-deadline-help");
     if (noDeadlineInput) {
-      const isSingleEligibleTask = tasks.length === 1 && !isRecurringTask(tasks[0]);
-      noDeadlineInput.checked = isSingleEligibleTask && Boolean(tasks[0].noDeadline);
-      noDeadlineInput.disabled = !isSingleEligibleTask;
+      const eligibleNoDeadlineTasks = tasks.filter(task => !task.done && !isRecurringTask(task));
+      const skippedRecurringCount = tasks.length - eligibleNoDeadlineTasks.length;
+      const isSingleEligibleTask = eligibleNoDeadlineTasks.length === 1 && tasks.length === 1;
+      const allEligibleWithoutDeadline = eligibleNoDeadlineTasks.length > 0 &&
+        eligibleNoDeadlineTasks.every(task => Boolean(task.noDeadline));
+      const someEligibleWithoutDeadline = eligibleNoDeadlineTasks.some(task => Boolean(task.noDeadline));
+
+      noDeadlineInput.checked = allEligibleWithoutDeadline;
+      noDeadlineInput.indeterminate = someEligibleWithoutDeadline && !allEligibleWithoutDeadline;
+      noDeadlineInput.disabled = eligibleNoDeadlineTasks.length === 0;
+      noDeadlineInput.dataset.userChanged = "false";
+      // Use the property rather than addEventListener so opening the modal repeatedly
+      // never stacks duplicate handlers.
+      noDeadlineInput.onchange = () => {
+        noDeadlineInput.dataset.userChanged = "true";
+        noDeadlineInput.indeterminate = false;
+      };
+
       if (noDeadlineHelp) {
-        noDeadlineHelp.textContent = isSingleEligibleTask
-          ? "Se conserva el día programado, pero la tarea no aparecerá como vencida si no la completas ese día."
-          : "Disponible al planificar una sola tarea que no tenga repetición.";
+        if (isSingleEligibleTask) {
+          noDeadlineHelp.textContent = "Se conserva el día programado, pero la tarea no aparecerá como vencida si no la completas ese día.";
+        } else if (eligibleNoDeadlineTasks.length > 0) {
+          noDeadlineHelp.textContent = `Se aplicará a las ${eligibleNoDeadlineTasks.length} tareas seleccionadas que no sean recurrentes.${skippedRecurringCount ? ` Se omitirán ${skippedRecurringCount} tareas recurrentes.` : ""}`;
+        } else {
+          noDeadlineHelp.textContent = "Esta opción solo está disponible para tareas sin repetición.";
+        }
       }
     }
 
@@ -9428,8 +9447,14 @@
     pushUndoSnapshot(isBulk ? `Reprogramar ${tasks.length} tareas` : `Reprogramar: ${tasks[0].title}`);
 
     const noDeadlineInput = document.getElementById("input-resched-no-deadline");
-    const applyNoDeadline = !isBulk && tasks.length === 1 &&
-      noDeadlineInput && !noDeadlineInput.disabled && Boolean(noDeadlineInput.checked);
+    const noDeadlineWasChanged = Boolean(noDeadlineInput && noDeadlineInput.dataset.userChanged === "true");
+    // In a bulk operation, preserve each task's current setting unless the user
+    // explicitly changes the checkbox. When changed, apply one state to all eligible tasks.
+    const applyNoDeadline = !noDeadlineInput || noDeadlineInput.disabled
+      ? null
+      : (isBulk
+        ? (noDeadlineWasChanged ? Boolean(noDeadlineInput.checked) : null)
+        : Boolean(noDeadlineInput.checked));
 
     // Capture each task's active or previously preserved priority before changing its date.
     const priorityByTaskId = new Map();
@@ -9474,7 +9499,13 @@
       }
 
       if (!isRecurringTask(task)) {
-        task.noDeadline = Boolean(applyNoDeadline);
+        if (applyNoDeadline !== null) {
+          task.noDeadline = applyNoDeadline;
+          if (applyNoDeadline) {
+            delete task.overdueSince;
+            delete task.overdueCarryDate;
+          }
+        }
       } else {
         delete task.noDeadline;
       }
