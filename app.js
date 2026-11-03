@@ -2685,20 +2685,35 @@
     const byBox = {};
 
     const normalizeSlots = (rawSlots, boxId, fallbackUpdatedAt) => {
-      const rawIds = Array.isArray(rawSlots) ? rawSlots
-        : (rawSlots && Array.isArray(rawSlots.taskIds) ? rawSlots.taskIds : []);
+      const rawGroups = rawSlots && !Array.isArray(rawSlots) && Array.isArray(rawSlots.priorities)
+        ? rawSlots.priorities
+        : (Array.isArray(rawSlots) ? rawSlots
+          : (rawSlots && Array.isArray(rawSlots.taskIds) ? rawSlots.taskIds : []));
+      const priorities = [[], [], []];
       const seen = new Set();
-      const taskIds = [0, 1, 2].map(index => {
-        const id = String(rawIds[index] || "").trim();
-        if (!id || seen.has(id)) return "";
+      const appendTask = (priorityIndex, rawId) => {
+        const id = String(rawId || "").trim();
+        if (!id || seen.has(id)) return;
         const task = taskById.get(id);
-        if (task && String(task.boxId) !== String(boxId)) return "";
+        if (task && String(task.boxId) !== String(boxId)) return;
         seen.add(id);
-        return id;
-      });
+        priorities[priorityIndex].push(id);
+      };
+
+      // New format supports unlimited tasks in each priority group.
+      // Old flat taskIds are migrated preserving their existing P1/P2/P3 positions.
+      if (rawGroups.some(Array.isArray)) {
+        [0, 1, 2].forEach(priorityIndex => {
+          const group = Array.isArray(rawGroups[priorityIndex]) ? rawGroups[priorityIndex] : [];
+          group.forEach(rawId => appendTask(priorityIndex, rawId));
+        });
+      } else {
+        rawGroups.slice(0, 3).forEach((rawId, priorityIndex) => appendTask(priorityIndex, rawId));
+      }
+
       const updatedAt = rawSlots && !Array.isArray(rawSlots) && Number.isFinite(Number(rawSlots.updatedAt))
         ? Number(rawSlots.updatedAt) : fallbackUpdatedAt;
-      return { taskIds, updatedAt };
+      return { priorities, updatedAt };
     };
 
     const sourceByBox = source.byBox && typeof source.byBox === "object" && !Array.isArray(source.byBox)
@@ -2707,18 +2722,18 @@
       const boxId = String(rawBoxId || "").trim();
       if (!boxId) return;
       const normalized = normalizeSlots(rawSlots, boxId, Number(source.updatedAt) || 0);
-      if (normalized.taskIds.some(Boolean) || normalized.updatedAt > 0) byBox[boxId] = normalized;
+      if (normalized.priorities.some(group => group.length > 0) || normalized.updatedAt > 0) byBox[boxId] = normalized;
     });
 
     // Migrate the previous app-wide taskIds into each task's own casilla.
     if (Object.keys(sourceByBox).length === 0 && Array.isArray(source.taskIds)) {
-      source.taskIds.slice(0, 3).forEach((rawId, slot) => {
+      source.taskIds.slice(0, 3).forEach((rawId, priorityIndex) => {
         const id = String(rawId || "").trim();
         const task = taskById.get(id);
         if (!id || !task || !task.boxId) return;
         const boxId = String(task.boxId);
-        const target = byBox[boxId] || { taskIds: ["", "", ""], updatedAt: 0 };
-        if (!target.taskIds.includes(id) && !target.taskIds[slot]) target.taskIds[slot] = id;
+        const target = byBox[boxId] || { priorities: [[], [], []], updatedAt: 0 };
+        if (!target.priorities.some(group => group.includes(id))) target.priorities[priorityIndex].push(id);
         target.updatedAt = Math.max(target.updatedAt, Number(source.updatedAt) || 0);
         byBox[boxId] = target;
       });
@@ -5897,17 +5912,23 @@
 
   function getFocusBoxPlanForToday(boxId) {
     const plan = getFocusPlanForToday();
-    const boxPlan = plan.byBox[String(boxId)] || { taskIds: ["", "", ""], updatedAt: 0 };
-    return { date: plan.date, taskIds: boxPlan.taskIds.slice(), updatedAt: Number(boxPlan.updatedAt) || 0 };
+    const boxPlan = plan.byBox[String(boxId)] || { priorities: [[], [], []], updatedAt: 0 };
+    return { date: plan.date, priorities: boxPlan.priorities.map(group => group.slice()), updatedAt: Number(boxPlan.updatedAt) || 0 };
   }
 
-  function saveFocusBoxPlan(boxId, taskIds, today = getTodayISO()) {
+  function saveFocusBoxPlan(boxId, priorities, today = getTodayISO()) {
     const current = getFocusPlanForToday();
     const byBox = { ...current.byBox };
-    byBox[String(boxId)] = {
-      taskIds: [0, 1, 2].map(index => String(taskIds[index] || "")),
-      updatedAt: Date.now()
-    };
+    const seen = new Set();
+    const normalizedPriorities = [0, 1, 2].map(priorityIndex => {
+      const group = Array.isArray(priorities[priorityIndex]) ? priorities[priorityIndex] : [];
+      return group.map(id => String(id || "").trim()).filter(id => {
+        if (!id || seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+    });
+    byBox[String(boxId)] = { priorities: normalizedPriorities, updatedAt: Date.now() };
     appState.data.focusPlan = { date: today, byBox, updatedAt: Date.now() };
   }
 
@@ -5917,7 +5938,7 @@
     const task = (appState.data.tasks || []).find(entry => String(entry.id) === id);
     if (!task || task.done) return 0;
     const plan = getFocusBoxPlanForToday(task.boxId);
-    const index = plan.taskIds.findIndex(selectedId => selectedId && String(selectedId) === id);
+    const index = plan.priorities.findIndex(group => group.includes(id));
     return index >= 0 ? index + 1 : 0;
   }
 
@@ -5925,14 +5946,13 @@
     const task = (appState.data.tasks || []).find(entry => String(entry.id) === String(taskId));
     if (!task) return false;
     const plan = getFocusBoxPlanForToday(task.boxId);
-    const completedIndex = plan.taskIds.findIndex(id => id && String(id) === String(taskId));
-    if (completedIndex < 0) return false;
-
-    const remainingIds = plan.taskIds.slice();
-    remainingIds.splice(completedIndex, 1);
-    const compactedIds = remainingIds.filter(Boolean).slice(0, 3);
-    while (compactedIds.length < 3) compactedIds.push("");
-    saveFocusBoxPlan(task.boxId, compactedIds, today);
+    let removed = false;
+    const nextPriorities = plan.priorities.map(group => group.filter(id => {
+      if (String(id) === String(taskId)) { removed = true; return false; }
+      return true;
+    }));
+    if (!removed) return false;
+    saveFocusBoxPlan(task.boxId, nextPriorities, today);
     return true;
   }
 
@@ -5951,11 +5971,11 @@
 
     const normalizedBoxId = String(boxId || "");
     const plan = getFocusBoxPlanForToday(normalizedBoxId);
-    const selectedElsewhere = new Set(plan.taskIds.filter((id, index) => id && index !== slot));
+    const alreadyInThisPriority = new Set(plan.priorities[slot] || []);
     const matchingTasks = (appState.data.tasks || [])
       .filter(task => {
         const id = String(task.id);
-        if (String(task.boxId) !== normalizedBoxId || task.done || !isTaskForToday(task) || selectedElsewhere.has(id)) return false;
+        if (String(task.boxId) !== normalizedBoxId || task.done || !isTaskForToday(task) || alreadyInThisPriority.has(id)) return false;
         const box = appState.data.boxes.find(entry => String(entry.id) === normalizedBoxId);
         const haystack = `${task.title || ""} ${box ? box.name : ""}`
           .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -6038,12 +6058,11 @@
 
     Object.entries(plan.byBox).forEach(([boxId, boxPlan]) => {
       if (!validBoxIds.has(String(boxId))) return;
-      const taskIds = boxPlan.taskIds.map(id => {
-        if (!id) return "";
+      const priorities = boxPlan.priorities.map(group => group.filter(id => {
         const task = taskById.get(String(id));
-        return task && !task.done && String(task.boxId) === String(boxId) ? String(id) : "";
-      });
-      if (taskIds.some(Boolean)) cleanedByBox[boxId] = { taskIds, updatedAt: boxPlan.updatedAt };
+        return task && !task.done && String(task.boxId) === String(boxId);
+      }));
+      if (priorities.some(group => group.length > 0)) cleanedByBox[boxId] = { priorities, updatedAt: boxPlan.updatedAt };
     });
     const dirty = JSON.stringify(cleanedByBox) !== JSON.stringify(plan.byBox);
     if (dirty) {
@@ -6055,15 +6074,16 @@
     const boxById = new Map((appState.data.boxes || []).map(box => [String(box.id), box]));
     const entriesByPriority = [[], [], []];
     Object.entries(plan.byBox).forEach(([boxId, boxPlan]) => {
-      boxPlan.taskIds.forEach((taskId, slot) => {
-        if (!taskId) return;
-        const task = taskById.get(String(taskId));
-        if (!task || task.done || String(task.boxId) !== String(boxId)) return;
-        entriesByPriority[slot].push({
-          task,
-          box: boxById.get(String(boxId)) || null,
-          boxId: String(boxId),
-          slot
+      boxPlan.priorities.forEach((taskIds, slot) => {
+        taskIds.forEach(taskId => {
+          const task = taskById.get(String(taskId));
+          if (!task || task.done || String(task.boxId) !== String(boxId)) return;
+          entriesByPriority[slot].push({
+            task,
+            box: boxById.get(String(boxId)) || null,
+            boxId: String(boxId),
+            slot
+          });
         });
       });
     });
@@ -6159,6 +6179,7 @@
         clearButton.dataset.focusAction = "clear-task";
         clearButton.dataset.focusBoxId = entry.boxId;
         clearButton.dataset.focusSlot = String(slot);
+        clearButton.dataset.taskId = String(task.id);
         clearButton.textContent = "Quitar";
         clearButton.setAttribute("aria-label", "Quitar " + task.title + " de P" + priority);
         actions.append(openButton, clearButton);
@@ -6172,34 +6193,52 @@
 
     if (emptyNote) {
       emptyNote.hidden = selectedCount > 0;
-      emptyNote.textContent = "Asigna P1, P2 o P3 desde el clic derecho de una tarea. Las prioridades de cada casilla aparecerán aquí agrupadas por nivel.";
+      emptyNote.textContent = "Asigna tantas tareas como necesites a P1, P2 o P3 desde el clic derecho. Las prioridades aparecerán agrupadas por nivel y casilla.";
     }
   }
 
-  function setFocusPriority(boxId, slot, taskId) {
+  function setFocusPriority(boxId, slot, taskId, removeTaskId = "") {
     if (!Number.isInteger(slot) || slot < 0 || slot > 2) return;
     const normalizedBoxId = String(boxId || "");
     const today = getTodayISO();
     const current = getFocusBoxPlanForToday(normalizedBoxId);
     const normalizedId = String(taskId || "");
-    if (normalizedId) {
+    const targetId = normalizedId || String(removeTaskId || "");
+    if (!targetId) return;
+
+    const nextPriorities = current.priorities.map(group => group.slice());
+    if (!normalizedId) {
+      let removed = false;
+      nextPriorities.forEach(group => {
+        const filtered = group.filter(id => {
+          if (String(id) === targetId) { removed = true; return false; }
+          return true;
+        });
+        group.splice(0, group.length, ...filtered);
+      });
+      if (!removed) return;
+    } else {
       const task = appState.data.tasks.find(entry => String(entry.id) === normalizedId);
       if (!task || String(task.boxId) !== normalizedBoxId || task.done || !isTaskForToday(task)) {
         showToast("Elige una tarea pendiente de esta casilla, programada para hoy o atrasada", true);
         renderFocusModePanel();
         return;
       }
-      if (current.taskIds.some((id, index) => index !== slot && String(id) === normalizedId)) {
-        showToast("Esta tarea ya ocupa otra prioridad de la misma casilla", true);
-        renderFocusModePanel();
+      const currentLevel = nextPriorities.findIndex(group => group.includes(normalizedId));
+      if (currentLevel === slot) {
+        showToast(`Esta tarea ya está en P${slot + 1}`);
         return;
       }
+      nextPriorities.forEach(group => {
+        const filtered = group.filter(id => String(id) !== normalizedId);
+        group.splice(0, group.length, ...filtered);
+      });
+      nextPriorities[slot].push(normalizedId);
     }
-    const nextIds = current.taskIds.slice();
-    nextIds[slot] = normalizedId;
-    saveFocusBoxPlan(normalizedBoxId, nextIds, today);
+
+    saveFocusBoxPlan(normalizedBoxId, nextPriorities, today);
     saveData(false, "Actualizó prioridades de casilla en Modo Enfoque");
-    renderBoard();
+    renderBoardPreservingScroll();
     playUiSound("tap");
   }
 
@@ -7315,7 +7354,7 @@
     menu.appendChild(priorityHeading);
 
     const plan = getFocusBoxPlanForToday(task.boxId);
-    const currentPriorityIndex = plan.taskIds.findIndex(id => id && String(id) === String(task.id));
+    const currentPriorityIndex = plan.priorities.findIndex(group => group.includes(String(task.id)));
     const eligibleForPriority = contextTasks.some(item => !item.done && isTaskForToday(item));
     const priorityNames = [
       { number: 1, color: "Rojo", css: "p1" },
@@ -7325,36 +7364,24 @@
 
     priorityNames.forEach(priority => {
       const slotIndex = priority.number - 1;
-      const occupiedId = plan.taskIds[slotIndex] || "";
-      const owner = occupiedId
-        ? appState.data.tasks.find(entry => String(entry.id) === String(occupiedId))
-        : null;
-      const occupiedBySelection = Boolean(occupiedId && contextSelectedIds.has(String(occupiedId)));
-      const occupiedByOther = Boolean(occupiedId && !contextSelectedIds.has(String(occupiedId)));
+      const assignedIds = plan.priorities[slotIndex] || [];
+      const alreadyAssignedCount = contextTasks.filter(item => assignedIds.includes(String(item.id))).length;
       let label;
       let disabled = false;
       let title = "";
 
-      if (occupiedByOther) {
-        label = `P${priority.number} · Ocupada: ${owner ? owner.title : "otra tarea"}`;
-        disabled = true;
-        title = owner ? `Esta prioridad ya corresponde a: ${owner.title}` : "Esta prioridad ya está ocupada.";
-      } else if (!eligibleForPriority) {
+      if (!eligibleForPriority) {
         label = `P${priority.number} · Solo hoy o atrasadas`;
         disabled = true;
         title = "Solo se pueden priorizar tareas pendientes para hoy o atrasadas.";
-      } else if (isBulkContext) {
-        label = occupiedBySelection
-          ? `Usar P${priority.number} para la selección · ${priority.color}`
-          : `Asignar selección desde P${priority.number} · ${priority.color}`;
-      } else if (occupiedId && String(occupiedId) === String(task.id)) {
+      } else if (!isBulkContext && assignedIds.includes(String(task.id))) {
         label = `✓ P${priority.number} · Ya asignada`;
         disabled = true;
-        title = "Esta tarea ya ocupa esta prioridad.";
+        title = "Esta tarea ya está asignada a esta prioridad.";
       } else {
-        label = currentPriorityIndex >= 0
-          ? `Mover a P${priority.number} · ${priority.color}`
-          : `Asignar P${priority.number} · ${priority.color}`;
+        label = isBulkContext
+          ? `Asignar selección a P${priority.number} · ${alreadyAssignedCount} ya asignadas`
+          : `Asignar a P${priority.number} · ${priority.color} · ${assignedIds.length} tarea(s)`;
       }
 
       addTaskContextMenuButton(menu, label, "assign-priority", {
@@ -7408,27 +7435,18 @@
 
     const today = getTodayISO();
     const plan = getFocusBoxPlanForToday(task.boxId);
-    const currentTargetId = plan.taskIds[slot] || "";
-    if (currentTargetId && String(currentTargetId) !== String(task.id)) {
-      const occupiedTask = appState.data.tasks.find(entry => String(entry.id) === String(currentTargetId));
-      showToast(`P${slot + 1} de esta casilla ya está ocupada${occupiedTask ? `: ${occupiedTask.title}` : ""}`, true);
-      return;
-    }
-
-    const previousSlot = plan.taskIds.findIndex(id => id && String(id) === String(task.id));
-    if (previousSlot === slot) {
+    const currentPriority = plan.priorities.findIndex(group => group.includes(String(task.id)));
+    if (currentPriority === slot) {
       showToast(`Esta tarea ya es P${slot + 1} de su casilla`);
       return;
     }
-
-    const nextIds = plan.taskIds.slice();
-    if (previousSlot >= 0) nextIds[previousSlot] = "";
-    nextIds[slot] = String(task.id);
-    saveFocusBoxPlan(task.boxId, nextIds, today);
+    const nextPriorities = plan.priorities.map(group => group.filter(id => String(id) !== String(task.id)));
+    nextPriorities[slot].push(String(task.id));
+    saveFocusBoxPlan(task.boxId, nextPriorities, today);
     saveData(false, `Asignó P${slot + 1} en su casilla: ${task.title}`);
     playUiSound("tap");
-    renderBoard();
-    showToast(previousSlot >= 0
+    renderBoardPreservingScroll();
+    showToast(currentPriority >= 0
       ? `Tarea movida a P${slot + 1} de su casilla`
       : `Tarea asignada como P${slot + 1} en su casilla`);
   }
@@ -7450,39 +7468,32 @@
 
     const today = getTodayISO();
     let assignedCount = 0;
-    let capacitySkipped = 0;
     tasksByBox.forEach((boxTasks, boxId) => {
-      const selectedIds = new Set(boxTasks.map(task => String(task.id)));
       const plan = getFocusBoxPlanForToday(boxId);
-      const nextIds = plan.taskIds.map(id => selectedIds.has(String(id || "")) ? "" : String(id || ""));
-      const slotOrder = [requestedSlot, ...[0, 1, 2].filter(slot => slot !== requestedSlot)];
-
+      const nextPriorities = plan.priorities.map(group => group.slice());
       boxTasks.forEach(task => {
-        const freeSlot = slotOrder.find(slot => !nextIds[slot]);
-        if (freeSlot === undefined) {
-          capacitySkipped++;
-          return;
-        }
-        nextIds[freeSlot] = String(task.id);
+        const id = String(task.id);
+        nextPriorities.forEach(group => {
+          const filtered = group.filter(existingId => String(existingId) !== id);
+          group.splice(0, group.length, ...filtered);
+        });
+        nextPriorities[requestedSlot].push(id);
         assignedCount++;
       });
-      if (nextIds.some((id, index) => id !== String(plan.taskIds[index] || ""))) {
-        saveFocusBoxPlan(boxId, nextIds, today);
-      }
+      saveFocusBoxPlan(boxId, nextPriorities, today);
     });
 
     if (!assignedCount) {
-      showToast("No hay espacios de prioridad disponibles en las casillas de las tareas seleccionadas.", true);
+      showToast("No encontré tareas disponibles para asignar a esta prioridad.", true);
       return;
     }
 
     clearTaskSelection();
     saveData(false, `Asignó prioridad a ${assignedCount} tareas seleccionadas`);
     playUiSound("tap");
-    renderBoard();
-    const skippedCount = ineligibleCount + capacitySkipped;
-    showToast(skippedCount
-      ? `Prioridad asignada a ${assignedCount} tareas; ${skippedCount} se omitieron (máximo 3 por casilla y solo tareas de hoy)`
+    renderBoardPreservingScroll();
+    showToast(ineligibleCount
+      ? `Prioridad asignada a ${assignedCount} tareas; ${ineligibleCount} no estaban disponibles y se omitieron`
       : `Prioridad asignada a ${assignedCount} tareas seleccionadas`);
   }
 
@@ -7491,9 +7502,8 @@
     if (tasks.length <= 1) {
       const task = tasks[0];
       if (!task) return;
-      const plan = getFocusBoxPlanForToday(task.boxId);
-      const index = plan.taskIds.findIndex(id => id && String(id) === String(task.id));
-      if (index >= 0) setFocusPriority(task.boxId, index, "");
+      const level = getFocusPriorityLevel(task.id);
+      if (level > 0) setFocusPriority(task.boxId, level - 1, "", String(task.id));
       return;
     }
 
@@ -7502,15 +7512,15 @@
     let removedCount = 0;
     boxIds.forEach(boxId => {
       const plan = getFocusBoxPlanForToday(boxId);
-      const nextIds = plan.taskIds.map(id => {
-        if (id && selectedIds.has(String(id))) {
-          removedCount++;
-          return "";
-        }
-        return id || "";
-      });
-      if (nextIds.some((id, index) => id !== (plan.taskIds[index] || ""))) {
-        saveFocusBoxPlan(boxId, nextIds, getTodayISO());
+      const nextPriorities = plan.priorities.map(group => group.filter(id => {
+        if (selectedIds.has(String(id))) { removedCount++; return false; }
+        return true;
+      }));
+      if (nextPriorities.some((group, index) =>
+        group.length !== plan.priorities[index].length ||
+        group.some((id, itemIndex) => id !== plan.priorities[index][itemIndex])
+      )) {
+        saveFocusBoxPlan(boxId, nextPriorities, getTodayISO());
       }
     });
 
@@ -8490,7 +8500,7 @@
     playUiSound("complete");
     spawnCompletionParticles(checkBtnEl);
     saveData(true, `Completó ${eligibleTasks.length} tareas seleccionadas`);
-    renderBoard();
+    renderBoardPreservingScroll();
     const skippedMessage = skippedCount
       ? `; ${skippedCount} no estaban disponibles y se omitieron`
       : "";
@@ -8540,7 +8550,7 @@
       showToast("Tarea reabierta");
     }
     saveData(true, `${task.done ? "Completó" : "Reabrió"}: ${task.title}`);
-    renderBoard();
+    renderBoardPreservingScroll();
   }
 
   const RECURRING_AUDIT_DAY_NAMES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
@@ -10153,7 +10163,7 @@
     focusPanel.addEventListener("click", event => {
       const clear = event.target.closest('[data-focus-action="clear-task"]');
       if (clear) {
-        setFocusPriority(clear.dataset.focusBoxId, Number(clear.dataset.focusSlot), "");
+        setFocusPriority(clear.dataset.focusBoxId, Number(clear.dataset.focusSlot), "", clear.dataset.taskId);
         return;
       }
       const choose = event.target.closest('[data-focus-action="choose-task"]');
