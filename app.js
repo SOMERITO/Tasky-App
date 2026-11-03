@@ -3068,7 +3068,11 @@
           : [],
         rescheduledCount: Number(t.rescheduledCount || (isResched ? 1 : 0)),
         isRescheduled: isResched,
-        order: typeof t.order === "number" ? t.order : idx
+        order: typeof t.order === "number" ? t.order : idx,
+        focusPriorityDate: /^\\d{4}-\\d{2}-\\d{2}$/.test(String(t.focusPriorityDate || ""))
+          ? String(t.focusPriorityDate) : "",
+        focusPriorityLevel: [1, 2, 3].includes(Number(t.focusPriorityLevel))
+          ? Number(t.focusPriorityLevel) : 0
       };
     });
 
@@ -5903,10 +5907,55 @@
     dragEngine.activeGroupIds = [];
   }
 
+  function compactFocusPriorityGroups(priorities) {
+    const occupiedGroups = [0, 1, 2]
+      .map(index => Array.isArray(priorities && priorities[index]) ? priorities[index].slice() : [])
+      .filter(group => group.length > 0);
+    return [
+      occupiedGroups[0] || [],
+      occupiedGroups[1] || [],
+      occupiedGroups[2] || []
+    ];
+  }
+
   function getFocusPlanForToday() {
-    const plan = normalizeFocusPlanData(appState.data.focusPlan, appState.data.tasks);
+    const normalized = normalizeFocusPlanData(appState.data.focusPlan, appState.data.tasks);
     const today = getTodayISO();
-    if (plan.date !== today) return { date: today, byBox: {}, updatedAt: 0 };
+    let plan = normalized.date === today
+      ? normalized
+      : { date: today, byBox: {}, updatedAt: 0 };
+
+    // A task moved to a future date keeps its assigned P1/P2/P3 level.
+    // When that date arrives, restore it into that day's plan and close any priority gaps.
+    const byBox = { ...plan.byBox };
+    const hydratedBoxIds = new Set();
+    (appState.data.tasks || []).forEach(task => {
+      if (!task || task.done || !isTaskForToday(task)) return;
+      const scheduledDate = String(task.focusPriorityDate || "");
+      const scheduledLevel = Number(task.focusPriorityLevel);
+      const dueDate = String(task.dueDate || today);
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(scheduledDate) ||
+          scheduledDate > today || dueDate > today ||
+          ![1, 2, 3].includes(scheduledLevel)) return;
+
+      const boxId = String(task.boxId || "");
+      if (!boxId) return;
+      const boxPlan = byBox[boxId] || { priorities: [[], [], []], updatedAt: 0 };
+      if (boxPlan.priorities.some(group => group.includes(String(task.id)))) return;
+
+      boxPlan.priorities[scheduledLevel - 1].push(String(task.id));
+      boxPlan.updatedAt = Date.now();
+      byBox[boxId] = boxPlan;
+      hydratedBoxIds.add(boxId);
+    });
+
+    if (hydratedBoxIds.size > 0) {
+      hydratedBoxIds.forEach(boxId => {
+        byBox[boxId].priorities = compactFocusPriorityGroups(byBox[boxId].priorities);
+      });
+      plan = { date: today, byBox, updatedAt: Date.now() };
+      appState.data.focusPlan = plan;
+    }
     return plan;
   }
 
@@ -5947,12 +5996,12 @@
     if (!task) return false;
     const plan = getFocusBoxPlanForToday(task.boxId);
     let removed = false;
-    const nextPriorities = plan.priorities.map(group => group.filter(id => {
+    const remainingPriorities = plan.priorities.map(group => group.filter(id => {
       if (String(id) === String(taskId)) { removed = true; return false; }
       return true;
     }));
     if (!removed) return false;
-    saveFocusBoxPlan(task.boxId, nextPriorities, today);
+    saveFocusBoxPlan(task.boxId, compactFocusPriorityGroups(remainingPriorities), today);
     return true;
   }
 
@@ -6217,6 +6266,13 @@
         group.splice(0, group.length, ...filtered);
       });
       if (!removed) return;
+      const removedTask = appState.data.tasks.find(entry => String(entry.id) === targetId);
+      if (removedTask) {
+        delete removedTask.focusPriorityDate;
+        delete removedTask.focusPriorityLevel;
+      }
+      const compacted = compactFocusPriorityGroups(nextPriorities);
+      nextPriorities.forEach((group, index) => group.splice(0, group.length, ...compacted[index]));
     } else {
       const task = appState.data.tasks.find(entry => String(entry.id) === normalizedId);
       if (!task || String(task.boxId) !== normalizedBoxId || task.done || !isTaskForToday(task)) {
@@ -6234,6 +6290,8 @@
         group.splice(0, group.length, ...filtered);
       });
       nextPriorities[slot].push(normalizedId);
+      delete task.focusPriorityDate;
+      delete task.focusPriorityLevel;
     }
 
     saveFocusBoxPlan(normalizedBoxId, nextPriorities, today);
@@ -7454,6 +7512,8 @@
     }
     const nextPriorities = plan.priorities.map(group => group.filter(id => String(id) !== String(task.id)));
     nextPriorities[slot].push(String(task.id));
+    delete task.focusPriorityDate;
+    delete task.focusPriorityLevel;
     saveFocusBoxPlan(task.boxId, nextPriorities, today);
     saveData(false, `Asignó P${slot + 1} en su casilla: ${task.title}`);
     playUiSound("tap");
@@ -7490,6 +7550,8 @@
           group.splice(0, group.length, ...filtered);
         });
         nextPriorities[requestedSlot].push(id);
+        delete task.focusPriorityDate;
+        delete task.focusPriorityLevel;
         assignedCount++;
       });
       saveFocusBoxPlan(boxId, nextPriorities, today);
@@ -7524,18 +7586,26 @@
     let removedCount = 0;
     boxIds.forEach(boxId => {
       const plan = getFocusBoxPlanForToday(boxId);
-      const nextPriorities = plan.priorities.map(group => group.filter(id => {
+      const remainingPriorities = plan.priorities.map(group => group.filter(id => {
         if (selectedIds.has(String(id))) { removedCount++; return false; }
         return true;
       }));
-      if (nextPriorities.some((group, index) =>
+      const changed = remainingPriorities.some((group, index) =>
         group.length !== plan.priorities[index].length ||
         group.some((id, itemIndex) => id !== plan.priorities[index][itemIndex])
-      )) {
-        saveFocusBoxPlan(boxId, nextPriorities, getTodayISO());
+      );
+      if (changed) {
+        const compacted = compactFocusPriorityGroups(remainingPriorities);
+        saveFocusBoxPlan(boxId, compacted, getTodayISO());
       }
     });
 
+    tasks.forEach(task => {
+      if (selectedIds.has(String(task.id))) {
+        delete task.focusPriorityDate;
+        delete task.focusPriorityLevel;
+      }
+    });
     clearTaskSelection();
     if (!removedCount) {
       showToast("Ninguna de las tareas seleccionadas tenía una prioridad asignada.");
@@ -8547,7 +8617,7 @@
       spawnCompletionParticles(checkBtnEl);
       appState.history[today] = (appState.history[today] || 0) + 1;
       showToast(releasedFocusPriority
-        ? "Prioridad completada; las demás conservan su nivel"
+        ? "Prioridad completada; las siguientes avanzaron automáticamente"
         : "Tarea completada");
     } else {
       // Undo the completion on the date it was originally recorded, not on the date of reopening.
@@ -9294,7 +9364,48 @@
     const applyNoDeadline = !isBulk && tasks.length === 1 &&
       noDeadlineInput && !noDeadlineInput.disabled && Boolean(noDeadlineInput.checked);
 
+    // Capture each task's active or previously preserved priority before changing its date.
+    const priorityByTaskId = new Map();
     tasks.forEach(task => {
+      const activeLevel = getFocusPriorityLevel(task.id);
+      const savedDate = String(task.focusPriorityDate || "");
+      const savedLevel = Number(task.focusPriorityLevel);
+      const carriedLevel = savedDate && savedDate >= today && [1, 2, 3].includes(savedLevel)
+        ? savedLevel : 0;
+      priorityByTaskId.set(String(task.id), activeLevel || carriedLevel);
+    });
+
+    // A future-rescheduled task leaves today's priority queue, but carries its current
+    // priority level to the destination date. Removing several tasks compacts the queue once.
+    if (!moveToToday) {
+      const idsByBox = new Map();
+      tasks.forEach(task => {
+        if (!(priorityByTaskId.get(String(task.id)) > 0)) return;
+        const boxId = String(task.boxId || "");
+        if (!idsByBox.has(boxId)) idsByBox.set(boxId, new Set());
+        idsByBox.get(boxId).add(String(task.id));
+      });
+      idsByBox.forEach((ids, boxId) => {
+        const plan = getFocusBoxPlanForToday(boxId);
+        const remaining = plan.priorities.map(group => group.filter(id => !ids.has(String(id))));
+        const changed = remaining.some((group, index) =>
+          group.length !== plan.priorities[index].length ||
+          group.some((id, itemIndex) => id !== plan.priorities[index][itemIndex])
+        );
+        if (changed) saveFocusBoxPlan(boxId, compactFocusPriorityGroups(remaining), today);
+      });
+    }
+
+    tasks.forEach(task => {
+      const preservedLevel = priorityByTaskId.get(String(task.id)) || 0;
+      if (preservedLevel > 0) {
+        task.focusPriorityLevel = preservedLevel;
+        task.focusPriorityDate = moveToToday ? today : newDateIso;
+      } else {
+        delete task.focusPriorityLevel;
+        delete task.focusPriorityDate;
+      }
+
       if (!isRecurringTask(task)) {
         task.noDeadline = Boolean(applyNoDeadline);
       } else {
@@ -9309,6 +9420,7 @@
         task.isRescheduled = true;
         task.rescheduledCount = (task.rescheduledCount || 0) + 1;
       }
+      task.updatedAt = Date.now();
     });
 
     playUiSound("reschedule");
