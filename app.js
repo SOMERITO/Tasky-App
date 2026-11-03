@@ -3994,7 +3994,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261103-no-deadline-immediate-2";
+  const TASKY_BUILD_ID = "20261103-no-deadline-boxes-3";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -5518,7 +5518,7 @@
   // One-time view migration: older builds auto-folded boxes when their remaining
   // visible tasks were all marked "no deadline". Restore those boxes once.
   function expandLegacyNoDeadlineBoxesOnce() {
-    const migrationKey = "tasky_no_deadline_box_visibility_migrated_v1";
+    const migrationKey = "tasky_no_deadline_box_visibility_migrated_v2";
     if (safeStorage.getItem(migrationKey) === "1") return;
 
     let changed = false;
