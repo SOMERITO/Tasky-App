@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Emulator-only rules for isolated CI tests. Never deploy this ruleset.
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
