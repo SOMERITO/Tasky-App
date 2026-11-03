@@ -4375,9 +4375,7 @@
       if (!reconciliation || !reconciliation.ok) {
         cloudSyncReady = false;
         cloudSyncReadyConfig = "";
-        const syncText = document.getElementById("sync-status-text");
         if (syncText) syncText.textContent = "Conciliación bloqueada";
-        const modalSyncTime = document.getElementById("modal-sync-last-time");
         if (modalSyncTime) {
           modalSyncTime.textContent = "No se pudo confirmar la conciliación o guardar el respaldo local. No se subieron datos.";
         }
@@ -4392,9 +4390,7 @@
         return "syncing";
       }
 
-      const syncText = document.getElementById("sync-status-text");
       if (syncText) syncText.textContent = "Sincronizado";
-      const modalSyncTime = document.getElementById("modal-sync-last-time");
       if (modalSyncTime) {
         modalSyncTime.textContent = `Sincronización verificada a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.`;
       }
