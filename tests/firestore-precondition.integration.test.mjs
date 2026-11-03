@@ -20,6 +20,19 @@ async function parseResponse(response) {
 }
 
 
+async function patchLegacyDocument(payload) {
+  const response = await fetch(documentUrl, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      fields: {
+        payloadJson: { stringValue: JSON.stringify(payload) }
+      }
+    })
+  });
+  return parseResponse(response);
+}
+
 async function readDocument() {
   const response = await fetch(documentUrl, { cache: "no-store" });
   return parseResponse(response);
@@ -43,7 +56,8 @@ async function commitDocument(precondition, payload) {
             name: "projects/" + projectId +
               "/databases/(default)/documents/sync_safety_test/conditional_write_guard",
             fields: {
-              payloadJson: { stringValue: JSON.stringify(payload) }
+              payloadJson: { stringValue: JSON.stringify(payload) },
+              protocolVersion: { integerValue: "2" }
             }
           },
           currentDocument: precondition
@@ -64,6 +78,20 @@ test("Firestore Commit REST enforces exists=false and updateTime before acceptin
     { version: 1, source: "device-A" }
   );
   assert.equal(missingCreate.response.ok, true, JSON.stringify(missingCreate.json));
+
+  // Simulate an older APK: blind PATCH with no updateTime and no protocol marker.
+  // Firestore Security Rules must reject it before it can overwrite the new document.
+  const legacyWrite = await patchLegacyDocument({
+    version: 999,
+    source: "legacy-apk-with-stale-cache"
+  });
+  assert.equal(legacyWrite.response.ok, false, JSON.stringify(legacyWrite.json));
+  assert.equal(legacyWrite.json.error && legacyWrite.json.error.status, "PERMISSION_DENIED");
+
+  const afterLegacyRead = await readDocument();
+  assert.equal(afterLegacyRead.response.ok, true);
+  assert.equal(afterLegacyRead.json.fields.payloadJson.stringValue,
+    JSON.stringify({ version: 1, source: "device-A" }));
 
   const firstRead = await readDocument();
   assert.equal(firstRead.response.ok, true);
