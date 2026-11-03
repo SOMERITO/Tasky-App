@@ -3314,15 +3314,6 @@
     }
   } catch (e) {}
 
-  window.addEventListener("storage", (ev) => {
-    if (!cloudSyncReady) return;
-    if (ev.key === STORAGE_KEYS.DATA && ev.newValue) {
-      // A localStorage event is not a cloud acknowledgement. Read the source of
-      // truth again instead of accepting another tab's cache directly.
-      pullCloudSync(false, true);
-    }
-  });
-
   function isCloudNetworkAllowed() {
     return (
       typeof window.fetch === "function" &&
