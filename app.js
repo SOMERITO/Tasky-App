@@ -5928,7 +5928,28 @@
     // A task moved to a future date keeps its assigned P1/P2/P3 level.
     // When that date arrives, restore it into that day's plan and close any priority gaps.
     const byBox = { ...plan.byBox };
+    const changedBoxIds = new Set();
     const hydratedBoxIds = new Set();
+    const taskById = new Map((appState.data.tasks || []).map(task => [String(task.id), task]));
+
+    // A task that is no longer part of today's work must not remain in today's priority queue.
+    Object.entries(byBox).forEach(([boxId, boxPlan]) => {
+      const remaining = boxPlan.priorities.map(group => group.filter(id => {
+        const task = taskById.get(String(id));
+        return task && !task.done &&
+          String(task.boxId) === String(boxId) &&
+          isTaskForToday(task);
+      }));
+      const changed = remaining.some((group, index) =>
+        group.length !== boxPlan.priorities[index].length ||
+        group.some((id, itemIndex) => id !== boxPlan.priorities[index][itemIndex])
+      );
+      if (changed) {
+        byBox[boxId] = { ...boxPlan, priorities: remaining, updatedAt: Date.now() };
+        changedBoxIds.add(boxId);
+      }
+    });
+
     (appState.data.tasks || []).forEach(task => {
       if (!task || task.done || !isTaskForToday(task)) return;
       const scheduledDate = String(task.focusPriorityDate || "");
@@ -5949,8 +5970,9 @@
       hydratedBoxIds.add(boxId);
     });
 
-    if (hydratedBoxIds.size > 0) {
-      hydratedBoxIds.forEach(boxId => {
+    const boxesNeedingCompaction = new Set([...changedBoxIds, ...hydratedBoxIds]);
+    if (boxesNeedingCompaction.size > 0) {
+      boxesNeedingCompaction.forEach(boxId => {
         byBox[boxId].priorities = compactFocusPriorityGroups(byBox[boxId].priorities);
       });
       plan = { date: today, byBox, updatedAt: Date.now() };
@@ -6270,6 +6292,7 @@
       if (removedTask) {
         delete removedTask.focusPriorityDate;
         delete removedTask.focusPriorityLevel;
+        removedTask.updatedAt = Date.now();
       }
       const compacted = compactFocusPriorityGroups(nextPriorities);
       nextPriorities.forEach((group, index) => group.splice(0, group.length, ...compacted[index]));
@@ -6292,6 +6315,7 @@
       nextPriorities[slot].push(normalizedId);
       delete task.focusPriorityDate;
       delete task.focusPriorityLevel;
+      task.updatedAt = Date.now();
     }
 
     saveFocusBoxPlan(normalizedBoxId, nextPriorities, today);
@@ -7514,6 +7538,7 @@
     nextPriorities[slot].push(String(task.id));
     delete task.focusPriorityDate;
     delete task.focusPriorityLevel;
+    task.updatedAt = Date.now();
     saveFocusBoxPlan(task.boxId, nextPriorities, today);
     saveData(false, `Asignó P${slot + 1} en su casilla: ${task.title}`);
     playUiSound("tap");
@@ -7552,6 +7577,7 @@
         nextPriorities[requestedSlot].push(id);
         delete task.focusPriorityDate;
         delete task.focusPriorityLevel;
+        task.updatedAt = Date.now();
         assignedCount++;
       });
       saveFocusBoxPlan(boxId, nextPriorities, today);
@@ -7604,6 +7630,7 @@
       if (selectedIds.has(String(task.id))) {
         delete task.focusPriorityDate;
         delete task.focusPriorityLevel;
+        task.updatedAt = Date.now();
       }
     });
     clearTaskSelection();
