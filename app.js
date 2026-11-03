@@ -3577,7 +3577,7 @@
 
   function preserveLocalSnapshotBeforeCloudAdoption(localRaw, label = "Protección automática antes de adoptar Firebase") {
     const local = normalizeDataPayload(localRaw);
-    if (!local || !local.boxes.length) return;
+    if (!local || !local.boxes.length) return true;
     const backup = {
       id: `bkp_sync_guard_${Date.now()}`,
       timestamp: Date.now(),
@@ -3588,12 +3588,14 @@
     };
     appState.backups.unshift(backup);
     if (appState.backups.length > 20) appState.backups = appState.backups.slice(0, 20);
-    safeStorage.setItem(STORAGE_KEYS.BACKUPS, JSON.stringify(appState.backups));
+    // If the safety copy cannot be persisted, the caller must not replace the
+    // local dataset or upload the reconciled result.
+    return safeStorage.setItem(STORAGE_KEYS.BACKUPS, JSON.stringify(appState.backups)) !== false;
   }
 
   function adoptVerifiedCloudSnapshot(incomingRaw, localRaw = appState.data) {
     const incoming = normalizeDataPayload(incomingRaw);
-    if (!incoming || !incoming.boxes.length || !Array.isArray(incoming.tasks)) return false;
+    if (!incoming || !incoming.boxes.length || !Array.isArray(incoming.tasks)) return { ok: false, changed: false };
     const local = normalizeDataPayload(localRaw);
     const incomingFingerprint = syncFingerprint({
       ...incoming,
@@ -3604,7 +3606,10 @@
     const localFingerprint = local ? getCurrentCloudFingerprint(local) : "";
     const changed = localFingerprint !== incomingFingerprint;
 
-    if (changed && local) preserveLocalSnapshotBeforeCloudAdoption(local);
+    if (changed && local && !preserveLocalSnapshotBeforeCloudAdoption(local)) {
+      setRealtimeSyncStatus("No se pudo guardar el respaldo local; se bloqueó la adopción de Firebase para proteger tus datos");
+      return { ok: false, changed: false };
+    }
 
     appState.data = applyLocalViewStateToData(incoming, local);
     appState.history = incoming.history && typeof incoming.history === "object" ? incoming.history : {};
@@ -3632,7 +3637,7 @@
     if (birthdayModal && birthdayModal.classList.contains("open")) renderBirthdayCalendar();
     const syncText = document.getElementById("sync-status-text");
     if (syncText) syncText.textContent = "Sincronizado";
-    return changed;
+    return { ok: true, changed };
   }
 
   function canonicalBoxKey(name) {
@@ -3948,23 +3953,30 @@
 
   function applyIncomingSyncPayload(incomingRaw, showNotification = false) {
     const norm = normalizeDataPayload(incomingRaw);
-    if (!norm || !Array.isArray(norm.boxes) || !norm.boxes.length) return false;
+    if (!norm || !Array.isArray(norm.boxes) || !norm.boxes.length) {
+      return { ok: false, changed: false, needsPush: false };
+    }
     const local = normalizeDataPayload(appState.data);
     const localHasPendingChanges = hasPendingLocalCloudChanges(local);
 
     // Without a confirmed local baseline, a legacy device cache is not evidence
     // of newer work. Adopt Firestore first, and keep a safety copy of the old cache.
     if (!localHasPendingChanges) {
-      const changed = adoptVerifiedCloudSnapshot(norm, local);
-      if (showNotification && changed) showToast("🔄 Datos remotos verificados; se protegió la copia local anterior");
-      return changed;
+      const adoption = adoptVerifiedCloudSnapshot(norm, local);
+      if (!adoption || !adoption.ok) return { ok: false, changed: false, needsPush: false };
+      if (showNotification && adoption.changed) {
+        showToast("🔄 Datos remotos verificados; se protegió la copia local anterior");
+      }
+      return { ok: true, changed: adoption.changed, needsPush: false };
     }
 
-    if (syncFingerprint(local) !== syncFingerprint(norm)) {
-      preserveLocalSnapshotBeforeCloudAdoption(
-        local,
-        "Respaldo antes de conciliar cambios locales pendientes"
-      );
+    if (syncFingerprint(local) !== syncFingerprint(norm) &&
+        !preserveLocalSnapshotBeforeCloudAdoption(
+          local,
+          "Respaldo antes de conciliar cambios locales pendientes"
+        )) {
+      setRealtimeSyncStatus("No se pudo guardar el respaldo local; no se modificó ni se subió ningún dato");
+      return { ok: false, changed: false, needsPush: false };
     }
 
     let merged;
@@ -3975,9 +3987,9 @@
       merged = mergeSyncDatasets(norm, local, true);
     } catch (error) {
       setRealtimeSyncStatus(`Error al conciliar: ${String(error && error.message || error).slice(0, 150)}`);
-      return false;
+      return { ok: false, changed: false, needsPush: false };
     }
-    if (!merged) return false;
+    if (!merged) return { ok: false, changed: false, needsPush: false };
     applyLocalViewStateToData(merged, local);
 
     const currentSig = syncFingerprint(local);
@@ -3988,9 +4000,9 @@
         appState.data.syncSchemaVersion = 1;
         safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
       }
-      if (syncFingerprint(merged) !== syncFingerprint(norm)) pushCloudSync(false);
-      else confirmCurrentCloudSnapshot();
-      return false;
+      const needsPush = syncFingerprint(merged) !== syncFingerprint(norm);
+      if (!needsPush) confirmCurrentCloudSnapshot();
+      return { ok: true, changed: false, needsPush };
     }
 
     appState.data = merged;
@@ -4005,10 +4017,9 @@
     const mergedMatchesIncoming = syncFingerprint(merged) === syncFingerprint(norm);
     const syncText = document.getElementById("sync-status-text");
     if (syncText) syncText.textContent = mergedMatchesIncoming ? "Sincronizado" : "Conciliando…";
-    if (!mergedMatchesIncoming) pushCloudSync(false);
-    else confirmCurrentCloudSnapshot();
+    if (mergedMatchesIncoming) confirmCurrentCloudSnapshot();
     if (showNotification) showToast("🔄 Datos fusionados sin perder tareas");
-    return true;
+    return { ok: true, changed: true, needsPush: !mergedMatchesIncoming };
   }
 
   let cloudPushTimer = null;
@@ -4352,8 +4363,6 @@
       for (let i = 1; i < candidates.length; i++) {
         cloudCandidate = mergeSyncDatasets(cloudCandidate, candidates[i]);
       }
-      const localHadPendingChanges = hasPendingLocalCloudChanges(appState.data);
-
       cloudSyncReady = true;
       cloudSyncReadyConfig = getCloudSyncConfigKey();
       const syncText = document.getElementById("sync-status-text");
@@ -4362,30 +4371,37 @@
       if (!quiet && modalSyncTime) {
         modalSyncTime.textContent = `Copia remota verificada a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}; conciliando los dispositivos.`;
       }
-      applyIncomingSyncPayload(cloudCandidate, manual);
-
-      const localNow = normalizeDataPayload(appState.data);
-      if (
-        localHadPendingChanges &&
-        (
-          syncFingerprint(localNow) !== syncFingerprint(cloudCandidate) ||
-          Number(localNow.updatedAt || 0) > Number(cloudCandidate.updatedAt || 0)
-        )
-      ) {
-        pushCloudSync(false);
-      } else {
+      const reconciliation = applyIncomingSyncPayload(cloudCandidate, manual);
+      if (!reconciliation || !reconciliation.ok) {
+        cloudSyncReady = false;
+        cloudSyncReadyConfig = "";
         const syncText = document.getElementById("sync-status-text");
-        if (syncText) syncText.textContent = "Sincronizado";
+        if (syncText) syncText.textContent = "Conciliación bloqueada";
         const modalSyncTime = document.getElementById("modal-sync-last-time");
         if (modalSyncTime) {
-          modalSyncTime.textContent = `Sincronización verificada a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.`;
+          modalSyncTime.textContent = "No se pudo confirmar la conciliación o guardar el respaldo local. No se subieron datos.";
         }
         if (manual) {
-          showToast("Sincronización verificada; los cambios de tus dispositivos ya fueron conciliados.");
+          showToast("No se modificó Firebase: la conciliación o el respaldo local no se pudieron completar.", true);
         }
-        return "synced";
+        return "reconcile-error";
       }
-      return "syncing";
+
+      if (reconciliation.needsPush) {
+        pushCloudSync(false);
+        return "syncing";
+      }
+
+      const syncText = document.getElementById("sync-status-text");
+      if (syncText) syncText.textContent = "Sincronizado";
+      const modalSyncTime = document.getElementById("modal-sync-last-time");
+      if (modalSyncTime) {
+        modalSyncTime.textContent = `Sincronización verificada a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.`;
+      }
+      if (manual) {
+        showToast("Sincronización verificada; los cambios de tus dispositivos ya fueron conciliados.");
+      }
+      return "synced";
     } catch (error) {
       setRealtimeSyncStatus(`Error de sincronización: ${String(error && error.message || error).slice(0, 150)}`);
       const syncText = document.getElementById("sync-status-text");
