@@ -19,18 +19,6 @@ async function parseResponse(response) {
   return { response, json };
 }
 
-async function patchDocument(url, payload) {
-  const response = await fetch(url, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      fields: {
-        payloadJson: { stringValue: JSON.stringify(payload) }
-      }
-    })
-  });
-  return parseResponse(response);
-}
 
 async function readDocument() {
   const response = await fetch(documentUrl, { cache: "no-store" });
@@ -41,7 +29,7 @@ async function deleteDocument() {
   await fetch(documentUrl, { method: "DELETE" }).catch(() => {});
 }
 
-async function commitDocument(updateTime, payload) {
+async function commitDocument(precondition, payload) {
   const response = await fetch(
     "http://" + emulatorHost +
       "/v1/projects/" + projectId +
@@ -58,7 +46,7 @@ async function commitDocument(updateTime, payload) {
               payloadJson: { stringValue: JSON.stringify(payload) }
             }
           },
-          currentDocument: { updateTime }
+          currentDocument: precondition
         }]
       })
     }
@@ -66,13 +54,13 @@ async function commitDocument(updateTime, payload) {
   return parseResponse(response);
 }
 
-test("Firestore REST enforces exists=false and updateTime before accepting writes", async t => {
+test("Firestore Commit REST enforces exists=false and updateTime before accepting writes", async t => {
   await deleteDocument();
   t.after(deleteDocument);
 
   // A missing document can only be created using the explicit create-if-absent guard.
-  const missingCreate = await patchDocument(
-    documentUrl + "?currentDocument.exists=false",
+  const missingCreate = await commitDocument(
+    { exists: false },
     { version: 1, source: "device-A" }
   );
   assert.equal(missingCreate.response.ok, true, JSON.stringify(missingCreate.json));
@@ -85,7 +73,7 @@ test("Firestore REST enforces exists=false and updateTime before accepting write
 
   // Two devices read the same revision. The first write wins.
   const deviceAWrite = await commitDocument(
-    firstUpdateTime,
+    { updateTime: firstUpdateTime },
     { version: 2, source: "device-A" }
   );
   assert.equal(deviceAWrite.response.ok, true, JSON.stringify(deviceAWrite.json));
@@ -96,7 +84,7 @@ test("Firestore REST enforces exists=false and updateTime before accepting write
 
   // Device B tries the same stale revision. Firestore must reject it.
   const deviceBStaleWrite = await commitDocument(
-    firstUpdateTime,
+    { updateTime: firstUpdateTime },
     { version: 999, source: "stale-device-B" }
   );
   assert.equal(deviceBStaleWrite.response.ok, false);
@@ -118,7 +106,7 @@ test("Firestore REST enforces exists=false and updateTime before accepting write
 
   // Device B must re-read and use the new revision before retrying.
   const deviceBReconciledWrite = await commitDocument(
-    afterConflictRead.json.updateTime,
+    { updateTime: afterConflictRead.json.updateTime },
     { version: 3, source: "device-B-after-reconciliation" }
   );
   assert.equal(deviceBReconciledWrite.response.ok, true,
@@ -128,8 +116,8 @@ test("Firestore REST enforces exists=false and updateTime before accepting write
     deviceBReconciledWrite.json.writeResults[0].updateTime), "string");
 
   // exists=false must not replace an already existing document.
-  const forbiddenRescueOverwrite = await patchDocument(
-    documentUrl + "?currentDocument.exists=false",
+  const forbiddenRescueOverwrite = await commitDocument(
+    { exists: false },
     { version: 1000, source: "rescue-must-not-overwrite" }
   );
   assert.equal(forbiddenRescueOverwrite.response.ok, false);
