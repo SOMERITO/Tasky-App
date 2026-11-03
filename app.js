@@ -5515,6 +5515,32 @@
     return changed;
   }
 
+  // One-time view migration: older builds auto-folded boxes when their remaining
+  // visible tasks were all marked "no deadline". Restore those boxes once.
+  function expandLegacyNoDeadlineBoxesOnce() {
+    const migrationKey = "tasky_no_deadline_box_visibility_migrated_v1";
+    if (safeStorage.getItem(migrationKey) === "1") return;
+
+    let changed = false;
+    (appState.data.boxes || []).forEach(box => {
+      if (!box.collapsed) return;
+      const boxTasks = (appState.data.tasks || []).filter(task =>
+        String(task.boxId) === String(box.id) && !task.done
+      );
+      const hasVisibleNoDeadline = boxTasks.some(task => isTaskWithoutDeadlinePending(task));
+      const hasCountedPendingToday = boxTasks.some(task =>
+        isCountedAsPending(task) && isTaskForToday(task)
+      );
+      if (hasVisibleNoDeadline && !hasCountedPendingToday) {
+        box.collapsed = false;
+        changed = true;
+      }
+    });
+
+    if (changed) persistLocalViewState();
+    safeStorage.setItem(migrationKey, "1");
+  }
+
   function getTaskOverdueDisplayDate(task) {
     return isTaskCarriedToTodayFromOverdue(task) && task.overdueSince
       ? task.overdueSince
@@ -6472,6 +6498,7 @@
   }
 
   function renderBoard() {
+    expandLegacyNoDeadlineBoxesOnce();
     // Save the viewport before rebuilding cards; detached controls can otherwise make mobile browsers jump.
     const viewportScrollX = Number.isFinite(window.scrollX) ? window.scrollX : (window.pageXOffset || 0);
     const viewportScrollY = Number.isFinite(window.scrollY) ? window.scrollY : (window.pageYOffset || 0);
