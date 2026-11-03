@@ -4803,7 +4803,9 @@
               dueDate: nextOccurrenceDate,
               isRescheduled: false,
               overdueSince: null,
-              overdueCarryDate: null
+              overdueCarryDate: null,
+              focusPriorityDate: "",
+              focusPriorityLevel: 0
             });
           } else {
             // The repeat schedule ended. Keep the latest unresolved missed occurrence, if any.
@@ -4825,7 +4827,9 @@
                   repeatUntil: null,
                   isRescheduled: false,
                   overdueSince: null,
-                  overdueCarryDate: null
+                  overdueCarryDate: null,
+                  focusPriorityDate: "",
+                  focusPriorityLevel: 0
                 });
               }
             }
