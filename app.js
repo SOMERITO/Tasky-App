@@ -9512,6 +9512,10 @@
         task.dueDate = today;
         task.isRescheduled = false;
         task.rescheduledCount = 0;
+        if ([1, 2, 3].includes(Number(task.focusPriorityLevel))) {
+          task.focusPriorityDate = today;
+        }
+        task.updatedAt = Date.now();
         if (wasOverdue && originalOverdueDate && originalOverdueDate < today) {
           task.overdueSince = originalOverdueDate;
           task.overdueCarryDate = today;
