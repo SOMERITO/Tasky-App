@@ -3389,16 +3389,36 @@
     return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(proj)}/databases/(default)/documents/${docPath}${keyParam}`;
   }
 
-  function getFirebaseFirestoreConditionalWriteUrl(explicitRescue = false) {
+  function getFirebaseFirestoreDocumentName() {
+    const cfg = appState.firebaseConfig || {};
+    const projectId = String(cfg.projectId || "tasky-7a30c").trim();
+    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\\/+|\\/+$/g, "");
+    return `projects/${projectId}/databases/(default)/documents/${docPath}`;
+  }
+
+  function getFirebaseFirestoreCommitUrl() {
     const base = getFirebaseFirestoreUrl();
-    const separator = base.includes("?") ? "&" : "?";
+    const queryIndex = base.indexOf("?");
+    const resourceUrl = queryIndex >= 0 ? base.slice(0, queryIndex) : base;
+    const query = queryIndex >= 0 ? base.slice(queryIndex) : "";
+    const documentsIndex = resourceUrl.indexOf("/documents/");
+    if (documentsIndex < 0) return "";
+    return `${resourceUrl.slice(0, documentsIndex + "/documents".length)}:commit${query}`;
+  }
+
+  function getFirebaseFirestoreWritePrecondition(explicitRescue = false) {
     if (cloudFirestoreUpdateTime) {
-      return `${base}${separator}currentDocument.updateTime=${encodeURIComponent(cloudFirestoreUpdateTime)}`;
+      return { updateTime: cloudFirestoreUpdateTime };
     }
     if (explicitRescue && cloudFirestoreExists === false) {
-      return `${base}${separator}currentDocument.exists=false`;
+      return { exists: false };
     }
-    return "";
+    return null;
+  }
+
+  function getFirebaseFirestoreConditionalWriteUrl(explicitRescue = false) {
+    if (!getFirebaseFirestoreWritePrecondition(explicitRescue)) return "";
+    return getFirebaseFirestoreCommitUrl();
   }
 
   function packCompactEnvelope() {
@@ -4114,7 +4134,8 @@
         details.textContent = `Última escritura — Firestore: ${firestoreWriteStatus} · Realtime Database: ${rtdbWriteStatus} · Canal auxiliar: ${streamWriteStatus}`;
       };
       const firestoreBytes = (() => {
-        const fsBody = {
+        const fsDocument = {
+          name: getFirebaseFirestoreDocumentName(),
           fields: {
             payloadJson: { stringValue: JSON.stringify(fullPayload) },
             compactEnvelope: { stringValue: compactStr },
@@ -4122,21 +4143,35 @@
             deviceId: { stringValue: String(appState.deviceId) }
           }
         };
-        return { url: getFirebaseFirestoreUrl(), body: JSON.stringify(fsBody) };
+        const currentDocument = getFirebaseFirestoreWritePrecondition(explicitRescue);
+        if (!currentDocument) throw new Error("No existe una revisión confirmada de Firestore para esta escritura.");
+        return {
+          url: conditionalWriteUrl,
+          body: JSON.stringify({
+            writes: [{
+              update: fsDocument,
+              currentDocument
+            }]
+          })
+        };
       })();
       const writePayloadBytes = bytesOf(firestoreBytes.body);
       // 1. Push to Firestore. Do not set keepalive: true for large sync payloads:
       // Fetch keepalive bodies are limited to 64 KiB and can throw before reaching Firebase.
       try {
-        const res = await window.fetch(conditionalWriteUrl, {
-          method: "PATCH",
+        const res = await window.fetch(firestoreBytes.url, {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
           body: firestoreBytes.body
         });
         if (res && res.ok) {
           const savedDocument = await res.json().catch(() => null);
-          if (savedDocument && typeof savedDocument.updateTime === "string" && savedDocument.updateTime) {
-            cloudFirestoreUpdateTime = savedDocument.updateTime;
+          const savedUpdateTime = savedDocument &&
+            Array.isArray(savedDocument.writeResults) &&
+            savedDocument.writeResults[0] &&
+            savedDocument.writeResults[0].updateTime;
+          if (typeof savedUpdateTime === "string" && savedUpdateTime) {
+            cloudFirestoreUpdateTime = savedUpdateTime;
             cloudFirestoreExists = true;
             firebaseSaved = true;
             firestoreWriteStatus = `OK (HTTP ${res.status}; versión Firestore confirmada; ${(writePayloadBytes / 1024).toFixed(1)} KiB)`;
