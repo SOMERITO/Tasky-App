@@ -2335,10 +2335,12 @@
     reschedulingTaskId: null,
     reschedulingTaskIds: [],
     repeatingTaskId: null,
+    repeatingTaskIds: [],
     selectedRepeatDays: [],
     selectedRepeatDuration: "forever",
     editingBoxId: null,
     editingTaskId: null,
+    editingTaskIds: [],
     keepInlineAddOpenBoxId: null,
     confirmCallback: null,
     charts: {
@@ -7084,6 +7086,30 @@
     updateMultiSelectUI();
   }
 
+  function getTasksForSelectedAction(taskId) {
+    const id = String(taskId);
+    const selectedIds = appState.selectedTaskIds;
+    const useSelection = selectedIds && selectedIds.size > 1 && selectedIds.has(id);
+    const ids = useSelection
+      ? [id, ...Array.from(selectedIds).map(String).filter(selectedId => selectedId !== id)]
+      : [id];
+    const tasksById = new Map((appState.data.tasks || []).map(task => [String(task.id), task]));
+    return ids.map(selectedId => tasksById.get(selectedId)).filter(Boolean);
+  }
+
+  function copyTaskOrSelectedGroup(taskId, buttonElement = null) {
+    const tasks = getTasksForSelectedAction(taskId);
+    if (!tasks.length) return;
+    const text = tasks.map(task => task.title || "").join("\n");
+    copyTextToClipboard(
+      text,
+      tasks.length > 1
+        ? `📋 Se copiaron ${tasks.length} tareas`
+        : "📋 Tarea copiada al portapapeles",
+      buttonElement
+    );
+  }
+
   function clearTaskSelection() {
     appState.selectedTaskIds.clear();
     updateMultiSelectUI();
@@ -7343,6 +7369,11 @@
 
   function assignTaskToFocusPriority(taskId, slot) {
     if (!Number.isInteger(slot) || slot < 0 || slot > 2) return;
+    const selectedTasks = getTasksForSelectedAction(taskId);
+    if (selectedTasks.length > 1) {
+      assignSelectedTasksToFocusPriority(selectedTasks, slot);
+      return;
+    }
     const task = appState.data.tasks.find(entry => String(entry.id) === String(taskId));
     if (!task || task.done || !isTaskForToday(task)) {
       showToast("Solo puedes priorizar tareas pendientes para hoy o atrasadas", true);
@@ -7376,30 +7407,125 @@
       : `Tarea asignada como P${slot + 1} en su casilla`);
   }
 
-  function toggleTaskNoDeadline(taskId) {
-    const task = appState.data.tasks.find(entry => String(entry.id) === String(taskId));
-    if (!task) return;
-    if (isRecurringTask(task)) {
-      showToast("Esta opción está disponible para tareas sin repetición.", true);
+  function assignSelectedTasksToFocusPriority(tasks, requestedSlot) {
+    const eligibleTasks = tasks.filter(task => !task.done && isTaskForToday(task));
+    const ineligibleCount = tasks.length - eligibleTasks.length;
+    if (!eligibleTasks.length) {
+      showToast("Solo puedes priorizar tareas pendientes para hoy o atrasadas.", true);
       return;
     }
 
-    pushUndoSnapshot(task.noDeadline
-      ? `Activar fecha límite: ${task.title}`
-      : `Quitar fecha límite: ${task.title}`);
-    task.noDeadline = !Boolean(task.noDeadline);
-    if (task.noDeadline) {
-      delete task.overdueSince;
-      delete task.overdueCarryDate;
+    const tasksByBox = new Map();
+    eligibleTasks.forEach(task => {
+      const boxId = String(task.boxId || "");
+      if (!tasksByBox.has(boxId)) tasksByBox.set(boxId, []);
+      tasksByBox.get(boxId).push(task);
+    });
+
+    const today = getTodayISO();
+    let assignedCount = 0;
+    let capacitySkipped = 0;
+    tasksByBox.forEach((boxTasks, boxId) => {
+      const selectedIds = new Set(boxTasks.map(task => String(task.id)));
+      const plan = getFocusBoxPlanForToday(boxId);
+      const nextIds = plan.taskIds.map(id => selectedIds.has(String(id || "")) ? "" : String(id || ""));
+      const slotOrder = [requestedSlot, ...[0, 1, 2].filter(slot => slot !== requestedSlot)];
+
+      boxTasks.forEach(task => {
+        const freeSlot = slotOrder.find(slot => !nextIds[slot]);
+        if (freeSlot === undefined) {
+          capacitySkipped++;
+          return;
+        }
+        nextIds[freeSlot] = String(task.id);
+        assignedCount++;
+      });
+      saveFocusBoxPlan(boxId, nextIds, today);
+    });
+
+    clearTaskSelection();
+    saveData(false, `Asignó prioridad a ${assignedCount} tareas seleccionadas`);
+    playUiSound("tap");
+    renderBoard();
+    const skippedCount = ineligibleCount + capacitySkipped;
+    showToast(skippedCount
+      ? `Prioridad asignada a ${assignedCount} tareas; ${skippedCount} se omitieron (máximo 3 por casilla y solo tareas de hoy)`
+      : `Prioridad asignada a ${assignedCount} tareas seleccionadas`);
+  }
+
+  function clearTaskFocusPriorityForAction(taskId) {
+    const tasks = getTasksForSelectedAction(taskId);
+    if (tasks.length <= 1) {
+      const task = tasks[0];
+      if (!task) return;
+      const plan = getFocusBoxPlanForToday(task.boxId);
+      const index = plan.taskIds.findIndex(id => id && String(id) === String(task.id));
+      if (index >= 0) setFocusPriority(task.boxId, index, "");
+      return;
     }
-    saveData(true, task.noDeadline
-      ? `Quitó la fecha límite: ${task.title}`
-      : `Reactivó la fecha límite: ${task.title}`);
+
+    const selectedIds = new Set(tasks.map(task => String(task.id)));
+    const boxIds = new Set(tasks.map(task => String(task.boxId || "")));
+    let removedCount = 0;
+    boxIds.forEach(boxId => {
+      const plan = getFocusBoxPlanForToday(boxId);
+      const nextIds = plan.taskIds.map(id => {
+        if (id && selectedIds.has(String(id))) {
+          removedCount++;
+          return "";
+        }
+        return id || "";
+      });
+      if (nextIds.some((id, index) => id !== (plan.taskIds[index] || ""))) {
+        saveFocusBoxPlan(boxId, nextIds, getTodayISO());
+      }
+    });
+
+    clearTaskSelection();
+    if (!removedCount) {
+      showToast("Ninguna de las tareas seleccionadas tenía una prioridad asignada.");
+      return;
+    }
+    saveData(false, `Quitó la prioridad de ${removedCount} tareas seleccionadas`);
+    playUiSound("tap");
+    renderBoard();
+    showToast(`Se quitó la prioridad de ${removedCount} tareas seleccionadas`);
+  }
+
+  function toggleTaskNoDeadline(taskId) {
+    const tasks = getTasksForSelectedAction(taskId);
+    if (!tasks.length) return;
+    const eligibleTasks = tasks.filter(task => !isRecurringTask(task));
+    const skippedCount = tasks.length - eligibleTasks.length;
+    if (!eligibleTasks.length) {
+      showToast("La opción de fecha límite está disponible solo para tareas sin repetición.", true);
+      return;
+    }
+
+    pushUndoSnapshot(tasks.length > 1
+      ? `Cambiar fecha límite de ${eligibleTasks.length} tareas seleccionadas`
+      : (eligibleTasks[0].noDeadline
+        ? `Activar fecha límite: ${eligibleTasks[0].title}`
+        : `Quitar fecha límite: ${eligibleTasks[0].title}`));
+    eligibleTasks.forEach(task => {
+      task.noDeadline = !Boolean(task.noDeadline);
+      if (task.noDeadline) {
+        delete task.overdueSince;
+        delete task.overdueCarryDate;
+      }
+    });
+
+    if (tasks.length > 1) clearTaskSelection();
+    saveData(true, `Actualizó la fecha límite de ${eligibleTasks.length} tareas`);
     playUiSound("tap");
     renderBoardPreservingScroll();
-    showToast(task.noDeadline
-      ? "∞ Sin fecha límite: se conserva el día programado"
-      : "Fecha límite activada: la tarea podrá marcarse como atrasada");
+    showToast(skippedCount
+      ? `Se actualizó la fecha límite de ${eligibleTasks.length} tareas; ${skippedCount} repetitivas se omitieron`
+      : (eligibleTasks.length > 1
+        ? `Se actualizó la fecha límite de ${eligibleTasks.length} tareas`
+        : (eligibleTasks[0].noDeadline
+          ? "∞ Sin fecha límite: se conserva el día programado"
+          : "Fecha límite activada: la tarea podrá marcarse como atrasada")));
   }
 
   function handleTaskContextAction(action, taskId, slot = -1) {
@@ -7421,7 +7547,7 @@
         openEditTaskTitleModal(task.id);
         break;
       case "copy":
-        copyTextToClipboard(task.title, "📋 Tarea copiada al portapapeles");
+        copyTaskOrSelectedGroup(task.id);
         break;
       case "toggle-no-deadline":
         toggleTaskNoDeadline(task.id);
@@ -7459,12 +7585,9 @@
       case "assign-priority":
         assignTaskToFocusPriority(task.id, slot);
         break;
-      case "clear-priority": {
-        const plan = getFocusBoxPlanForToday(task.boxId);
-        const index = plan.taskIds.findIndex(id => id && String(id) === String(task.id));
-        if (index >= 0) setFocusPriority(task.boxId, index, "");
+      case "clear-priority":
+        clearTaskFocusPriorityForAction(task.id);
         break;
-      }
       case "delete":
         playUiSound("tap");
         deleteTask(task.id);
@@ -7592,7 +7715,7 @@
     const copyTaskBtn = item.querySelector('[data-task-action="copy"]');
     if (copyTaskBtn) {
       copyTaskBtn.addEventListener("click", () => {
-        copyTextToClipboard(task.title, "📋 Tarea copiada al portapapeles", copyTaskBtn);
+        copyTaskOrSelectedGroup(task.id, copyTaskBtn);
       });
     }
 
@@ -8308,7 +8431,50 @@
     if (modal) modal.classList.add("open");
   }
 
+  function completeSelectedTasks(taskId, checkBtnEl) {
+    const tasks = getTasksForSelectedAction(taskId);
+    if (tasks.length <= 1) return false;
+
+    const eligibleTasks = tasks.filter(task => !task.done && !isTaskUpcomingRepeat(task));
+    const skippedCount = tasks.length - eligibleTasks.length;
+    if (!eligibleTasks.length) {
+      showToast("Las tareas seleccionadas todavía no están disponibles para completarse.", true);
+      return true;
+    }
+
+    const today = getTodayISO();
+    pushUndoSnapshot(`Completar ${eligibleTasks.length} tareas seleccionadas`);
+    let shiftedPriorities = 0;
+    eligibleTasks.forEach(task => {
+      task.done = true;
+      task.completedDate = today;
+      recordTaskCompletionEvent(task, true, today);
+      if (removeCompletedFocusPriority(task.id, today)) shiftedPriorities++;
+      appState.history[today] = (appState.history[today] || 0) + 1;
+    });
+
+    clearTaskSelection();
+    playUiSound("complete");
+    spawnCompletionParticles(checkBtnEl);
+    saveData(true, `Completó ${eligibleTasks.length} tareas seleccionadas`);
+    renderBoard();
+    const skippedMessage = skippedCount
+      ? `; ${skippedCount} no estaban disponibles y se omitieron`
+      : "";
+    showToast(
+      shiftedPriorities
+        ? `✓ ${eligibleTasks.length} tareas completadas; las prioridades avanzaron${skippedMessage}`
+        : `✓ ${eligibleTasks.length} tareas completadas${skippedMessage}`
+    );
+    return true;
+  }
+
   function toggleTaskDone(taskId, checkBtnEl) {
+    const selectedTasks = getTasksForSelectedAction(taskId);
+    if (selectedTasks.length > 1) {
+      completeSelectedTasks(taskId, checkBtnEl);
+      return;
+    }
     const task = appState.data.tasks.find(t => t.id === taskId);
     if (!task) return;
     if (!task.done && isTaskUpcomingRepeat(task)) {
@@ -8776,10 +8942,14 @@
 
   // Point 8: Repeat Schedule Picker Modal Logic
   function openRepeatPickerModal(taskId) {
-    const task = appState.data.tasks.find(t => t.id === taskId);
+    const task = appState.data.tasks.find(t => String(t.id) === String(taskId));
     if (!task) return;
-    appState.repeatingTaskId = taskId;
-    document.getElementById("repeat-task-name").textContent = task.title;
+    const targetTasks = getTasksForSelectedAction(taskId);
+    appState.repeatingTaskIds = targetTasks.map(item => String(item.id));
+    appState.repeatingTaskId = targetTasks.length === 1 ? task.id : null;
+    document.getElementById("repeat-task-name").textContent = targetTasks.length > 1
+      ? `La configuración se aplicará a ${targetTasks.length} tareas seleccionadas (incluida «${task.title}»).`
+      : task.title;
 
     if (Array.isArray(task.repeatDays) && task.repeatDays.length > 0) {
       appState.selectedRepeatDays = task.repeatDays.slice();
@@ -8824,8 +8994,11 @@
   }
 
   function saveRepeatSchedule(freqType, daysArray) {
-    const task = appState.data.tasks.find(t => t.id === appState.repeatingTaskId);
-    if (!task) return;
+    const requestedIds = Array.isArray(appState.repeatingTaskIds) && appState.repeatingTaskIds.length
+      ? Array.from(new Set(appState.repeatingTaskIds.map(id => String(id))))
+      : (appState.repeatingTaskId != null ? [String(appState.repeatingTaskId)] : []);
+    const tasks = appState.data.tasks.filter(task => requestedIds.includes(String(task.id)));
+    if (!tasks.length) return;
 
     const today = getTodayISO();
     const days = Array.from(new Set((Array.isArray(daysArray) ? daysArray : [])
@@ -8847,21 +9020,30 @@
       }
     }
 
-    task.frequency = isRepeating ? freqType : "once";
-    task.repeatDays = isRepeating ? days : [];
-    if (repeatUntil) task.repeatUntil = repeatUntil;
-    else delete task.repeatUntil;
-    if (nextDate) {
-      task.dueDate = nextDate;
-      task.isRescheduled = false;
-    }
+    tasks.forEach(task => {
+      task.frequency = isRepeating ? freqType : "once";
+      task.repeatDays = isRepeating ? days : [];
+      if (repeatUntil) task.repeatUntil = repeatUntil;
+      else delete task.repeatUntil;
+      if (nextDate) {
+        task.dueDate = nextDate;
+        task.isRescheduled = false;
+      }
+    });
 
     document.getElementById("modal-repeat-picker").classList.remove("open");
     playUiSound("repeat");
-    saveData(true, `Repetición actualizada: ${task.title}`);
+    appState.repeatingTaskIds = [];
+    appState.repeatingTaskId = null;
+    if (tasks.length > 1) clearTaskSelection();
+    saveData(true, `Actualizó la repetición de ${tasks.length} tareas`);
     renderBoard();
-    const label = formatRepeatBadgeLabel(task);
-    showToast(label ? label.replace("🔁 ", "Repetición: ") : "Sin repetición");
+    const label = formatRepeatDaysLabelForToast
+      ? formatRepeatDaysLabelForToast(isRepeating, days)
+      : (isRepeating ? "Repetición configurada" : "Sin repetición");
+    showToast(tasks.length > 1
+      ? `${label}: ${tasks.length} tareas actualizadas`
+      : (label ? label.replace("🔁 ", "Repetición: ") : "Sin repetición"));
   }
 
   // Point 4: Interactive Professional Visual Calendar State & Renderer
@@ -9494,11 +9676,26 @@
   }
 
   function openEditTaskTitleModal(taskId) {
-    const task = appState.data.tasks.find(t => t.id === taskId);
+    const task = appState.data.tasks.find(item => String(item.id) === String(taskId));
     if (!task) return;
-    appState.editingTaskId = taskId;
+    const targetTasks = getTasksForSelectedAction(taskId);
+    appState.editingTaskIds = targetTasks.map(item => String(item.id));
+    appState.editingTaskId = targetTasks.length === 1 ? task.id : null;
+
     const input = document.getElementById("input-edit-task-title");
-    input.value = task.title;
+    const modalTitle = document.getElementById("modal-edit-task-title");
+    const label = document.querySelector('label[for="input-edit-task-title"]');
+    if (targetTasks.length > 1) {
+      if (modalTitle) modalTitle.textContent = `Editar ${targetTasks.length} tareas`;
+      if (label) label.textContent = `Nuevo nombre para las ${targetTasks.length} tareas seleccionadas`;
+      input.value = "";
+      input.placeholder = "Escribe el mismo nombre para todas";
+    } else {
+      if (modalTitle) modalTitle.textContent = "Editar tarea";
+      if (label) label.textContent = "Descripción de la tarea";
+      input.value = task.title;
+      input.placeholder = "";
+    }
     document.getElementById("modal-edit-task").classList.add("open");
     setTimeout(() => input.focus(), 60);
   }
@@ -10642,17 +10839,31 @@
         showToast("El título no puede estar vacío", true);
         return;
       }
-      const task = appState.data.tasks.find(t => t.id === appState.editingTaskId);
-      if (task) {
-        pushUndoSnapshot(`Editar: ${task.title}`);
+      const requestedIds = Array.isArray(appState.editingTaskIds) && appState.editingTaskIds.length
+        ? Array.from(new Set(appState.editingTaskIds.map(id => String(id))))
+        : (appState.editingTaskId != null ? [String(appState.editingTaskId)] : []);
+      const tasks = appState.data.tasks.filter(task => requestedIds.includes(String(task.id)));
+      if (!tasks.length) {
+        showToast("Las tareas que intentabas editar ya no están disponibles.", true);
+        return;
+      }
+      pushUndoSnapshot(tasks.length > 1
+        ? `Editar título de ${tasks.length} tareas seleccionadas`
+        : `Editar: ${tasks[0].title}`);
+      tasks.forEach(task => {
         task.title = val;
         learnTaskTitle(val, task.boxId);
-      }
+      });
+      appState.editingTaskIds = [];
+      appState.editingTaskId = null;
+      if (tasks.length > 1) clearTaskSelection();
       playUiSound("tap");
-      saveData(true, `Editó: ${val}`);
+      saveData(true, `Actualizó el título de ${tasks.length} tareas`);
       document.getElementById("modal-edit-task").classList.remove("open");
       renderBoard();
-      showToast("Tarea actualizada");
+      showToast(tasks.length > 1
+        ? `Título actualizado en ${tasks.length} tareas`
+        : "Tarea actualizada");
     });
 
     document.getElementById("btn-confirm-proceed").addEventListener("click", () => {
