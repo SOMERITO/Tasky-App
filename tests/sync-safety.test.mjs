@@ -85,7 +85,7 @@ test("legacy device with an unchanged cache adopts the verified remote snapshot"
     incoming => {
       adopted++;
       appState.data = incoming;
-      return true;
+      return { ok: true, changed: true };
     },
     () => {},
     () => {
@@ -94,7 +94,10 @@ test("legacy device with an unchanged cache adopts the verified remote snapshot"
     }
   );
 
-  assert.equal(fn(remote, false), true);
+  const result = fn(remote, false);
+  assert.equal(result.ok, true);
+  assert.equal(result.changed, true);
+  assert.equal(result.needsPush, false);
   assert.equal(adopted, 1);
   assert.equal(merges, 0);
   assert.equal(appState.data.tasks.length, 78);
@@ -268,7 +271,10 @@ test("offline edits are backed up and merged instead of discarded on first cloud
       throw new Error("an explicit offline edit must not be discarded as an unchanged cache");
     },
     () => {},
-    (_snapshot, label) => calls.push("backup:" + label),
+    (_snapshot, label) => {
+      calls.push("backup:" + label);
+      return true;
+    },
     value => JSON.stringify(value.tasks.map(task => task.id).sort()),
     () => {
       calls.push("merge");
@@ -287,11 +293,13 @@ test("offline edits are backed up and merged instead of discarded on first cloud
     () => {}
   );
 
-  assert.equal(fn(remote, false), true);
+  const result = fn(remote, false);
+  assert.equal(result.ok, true);
+  assert.equal(result.changed, true);
+  assert.equal(result.needsPush, true);
   assert.deepEqual(calls.map(value => value === "merge" ? value : value.split(":")[0]), [
     "backup",
-    "merge",
-    "push"
+    "merge"
   ]);
   assert.deepEqual(
     appState.data.tasks.map(task => task.id).sort(),
@@ -582,4 +590,82 @@ test("deletion timestamps are normalized and local deletions receive their own r
 
   assert.ok(app.includes("deletedTaskUpdatedAt[id] = Math.max(recordChangeTime"));
   assert.ok(app.includes("deletedBoxUpdatedAt[id] = Math.max(recordChangeTime"));
+});
+
+
+test("failed reconciliation never requests a cloud write", () => {
+  const source = extractFunction(
+    "applyIncomingSyncPayload",
+    "\n  let cloudPushTimer"
+  );
+  const calls = [];
+  const local = {
+    boxes: [{ id: "home", name: "CASA" }],
+    tasks: [{ id: "local-task", title: "Pending local edit", updatedAt: 200 }]
+  };
+  const fn = new Function(
+    "normalizeDataPayload",
+    "appState",
+    "hasPendingLocalCloudChanges",
+    "adoptVerifiedCloudSnapshot",
+    "showToast",
+    "preserveLocalSnapshotBeforeCloudAdoption",
+    "syncFingerprint",
+    "mergeSyncDatasets",
+    "applyLocalViewStateToData",
+    "setRealtimeSyncStatus",
+    "safeStorage",
+    "rebuildTaskMemoryFromTasks",
+    "renderBoard",
+    "renderLearningGoalsPanel",
+    "renderBirthdayUpcomingList",
+    "document",
+    "pushCloudSync",
+    "confirmCurrentCloudSnapshot",
+    "return (" + source + ");"
+  )(
+    value => value,
+    { data: local },
+    () => true,
+    () => ({ ok: true, changed: false }),
+    () => {},
+    () => true,
+    value => JSON.stringify(value),
+    () => { throw new Error("simulated reconciliation failure"); },
+    value => value,
+    () => calls.push("error"),
+    { setItem: () => true },
+    () => {},
+    () => {},
+    () => {},
+    () => {},
+    { getElementById: () => null },
+    () => calls.push("cloud-write"),
+    () => {}
+  );
+
+  const result = fn({
+    boxes: [{ id: "home", name: "CASA" }],
+    tasks: [{ id: "remote-task", title: "Remote task", updatedAt: 100 }]
+  }, false);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.needsPush, false);
+  assert.ok(calls.includes("error"));
+  assert.equal(calls.includes("cloud-write"), false);
+});
+
+test("pullCloudSync refuses to call pushCloudSync after failed reconciliation", () => {
+  const start = app.indexOf("async function pullCloudSync(");
+  assert.notEqual(start, -1);
+  const end = app.indexOf("\\n  window.addEventListener(\\"tasky:manual-refresh\\"", start);
+  assert.notEqual(end, -1);
+  const pull = app.slice(start, end);
+  const failedGuard = pull.indexOf("if (!reconciliation || !reconciliation.ok)");
+  const pushAfterSuccess = pull.indexOf("if (reconciliation.needsPush)");
+  assert.notEqual(failedGuard, -1);
+  assert.notEqual(pushAfterSuccess, -1);
+  assert.ok(failedGuard < pushAfterSuccess);
+  assert.match(pull, /return "reconcile-error"/);
+  assert.doesNotMatch(pull, /localHadPendingChanges[\\s\\S]{0,500}pushCloudSync\\(false\\)/);
 });
