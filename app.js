@@ -4604,6 +4604,11 @@
         rescheduledCount: 0,
         overdueCarryDate: null
       };
+      // Keep a scheduled priority only on the exact recurring occurrence it was assigned to.
+      if (String(task.focusPriorityDate || "") !== String(missedDate)) {
+        delete archivedOccurrence.focusPriorityDate;
+        delete archivedOccurrence.focusPriorityLevel;
+      }
       delete archivedOccurrence.overdueSince;
       remaining.push(archivedOccurrence);
     }
@@ -4715,6 +4720,12 @@
             : missedOccurrenceDates.slice(0, -1);
 
           datesToArchive.forEach(missedDate => archiveMissedOccurrence(task, missedDate));
+          // Once that prioritized occurrence is archived, do not let its priority leak
+          // into the next occurrence of the recurring series.
+          if (task.focusPriorityDate && datesToArchive.includes(String(task.focusPriorityDate))) {
+            delete task.focusPriorityDate;
+            delete task.focusPriorityLevel;
+          }
 
           if (nextOccurrenceDate) {
             // Keep the active recurring task reserved for today or the next scheduled day.
