@@ -398,3 +398,46 @@ test("remote-first merge rejects stale unversioned tasks but keeps explicit offl
   assert.equal(byId.has("stale-only-task"), false);
   assert.ok(result.boxes.some(box => box.id === "old-box"));
 });
+
+
+test("two writers with the same Firestore revision cannot overwrite each other silently", () => {
+  let document = {
+    updateTime: "revision-1",
+    payload: { title: "Original en Firestore" }
+  };
+
+  const patchWithPrecondition = (expectedUpdateTime, payload) => {
+    if (expectedUpdateTime !== document.updateTime) {
+      return { ok: false, status: 409, currentUpdateTime: document.updateTime };
+    }
+    const nextRevision = document.updateTime === "revision-1" ? "revision-2" : "revision-3";
+    document = { updateTime: nextRevision, payload };
+    return { ok: true, status: 200, updateTime: document.updateTime };
+  };
+
+  // Both devices read exactly the same cloud revision.
+  const deviceARead = document.updateTime;
+  const deviceBRead = document.updateTime;
+
+  const deviceASave = patchWithPrecondition(deviceARead, {
+    title: "Cambio del dispositivo A"
+  });
+  assert.equal(deviceASave.ok, true);
+  assert.equal(document.payload.title, "Cambio del dispositivo A");
+
+  // Device B's stale write must not replace A's newer cloud state.
+  const deviceBStaleSave = patchWithPrecondition(deviceBRead, {
+    title: "Caché antigua del dispositivo B"
+  });
+  assert.equal(deviceBStaleSave.ok, false);
+  assert.equal(deviceBStaleSave.status, 409);
+  assert.equal(document.payload.title, "Cambio del dispositivo A");
+
+  // After re-reading the latest revision, B may submit a reconciled payload.
+  const deviceBLatestRead = document.updateTime;
+  const deviceBReconciledSave = patchWithPrecondition(deviceBLatestRead, {
+    title: "Cambio A conciliado con cambio B"
+  });
+  assert.equal(deviceBReconciledSave.ok, true);
+  assert.equal(document.payload.title, "Cambio A conciliado con cambio B");
+});
