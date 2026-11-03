@@ -686,8 +686,8 @@
             <input type="text" id="input-firebase-project-id" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" placeholder="ID del proyecto de Firebase" value="tasky-7a30c" />
           </div>
           <div>
-            <label class="form-label" for="input-firebase-db-url" style="font-size:0.75rem;margin-bottom:4px;">🔗 URL Realtime Database o Colección</label>
-            <input type="text" id="input-firebase-db-url" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" placeholder="Opcional: https://tu-app.firebaseio.com" />
+            <label class="form-label" for="input-firebase-db-url" style="font-size:0.75rem;margin-bottom:4px;">🔗 URL Realtime Database heredada (desactivada)</label>
+            <input type="text" id="input-firebase-db-url" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" placeholder="No se utiliza; Firestore es el único destino" />
           </div>
           <div>
             <label class="form-label" for="input-cloud-sync-channel" style="font-size:0.75rem;margin-bottom:4px;">🔑 Ruta de Documento / Canal en Firebase</label>
@@ -706,7 +706,7 @@
 
       <div id="sync-diagnostic-panel" style="padding:12px 14px;border-radius:12px;background:var(--surface-solid);border:1px solid var(--line);margin-top:12px;">
         <div style="font-size:0.78rem;font-weight:800;color:var(--text);margin-bottom:5px;">Diagnóstico de conexión</div>
-        <div id="sync-diagnostic-details" style="font-size:0.75rem;line-height:1.55;color:var(--text-secondary);overflow-wrap:anywhere;">Consultando Firestore y Realtime Database…</div>
+        <div id="sync-diagnostic-details" style="font-size:0.75rem;line-height:1.55;color:var(--text-secondary);overflow-wrap:anywhere;">Consultando Firestore…</div>
         <div id="sync-device-diagnostic-details" style="font-size:0.75rem;line-height:1.55;color:var(--text-secondary);overflow-wrap:anywhere;margin-top:6px;">Versión, destino y datos locales: pendiente de comprobar.</div>
         <div id="sync-realtime-status-details" style="font-size:0.75rem;line-height:1.55;color:var(--text-secondary);overflow-wrap:anywhere;margin-top:6px;">Canal en tiempo real: pendiente de conexión.</div>
         <div id="sync-write-diagnostic-details" style="font-size:0.75rem;line-height:1.55;color:var(--text-secondary);overflow-wrap:anywhere;margin-top:6px;">Última escritura: pendiente de comprobar.</div>
@@ -1119,7 +1119,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261103-box-registered-count-1"></script>
+  <script src="app.js?v=20261103-sync-safety-6"></script>
   <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
 </body>
 </html>

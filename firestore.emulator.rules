@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Emulator-only acceptance test. No catch-all rule: all other paths deny by default.
+    match /sync_safety_test/{documentId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.get('protocolVersion', 0) == 2;
+      // Only the isolated emulator test uses document deletion for cleanup.
+      allow delete: if true;
+    }
+  }
+}

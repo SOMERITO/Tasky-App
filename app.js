@@ -13,7 +13,9 @@
     MEMORY: "tasky_task_memory",
     CLOUD_CHANNEL: "tasky_cloud_channel",
     FIREBASE_CONFIG: "tasky_firebase_config_v1",
-    VIEW_STATE: "tasky_view_state_v1"
+    VIEW_STATE: "tasky_view_state_v1",
+    CLOUD_BASELINE: "tasky_cloud_baseline_fingerprint_v1",
+    CLOUD_DIRTY: "tasky_cloud_local_changes_pending_v1"
   };
 
   const memoryStorage = new Map();
@@ -2281,6 +2283,8 @@
       birthdays: [],
       deletedTaskIds: [],
       deletedBoxIds: [],
+      deletedTaskUpdatedAt: {},
+      deletedBoxUpdatedAt: {},
       syncSchemaVersion: 1,
       bootstrapSeedData: true,
       updatedAt: 0
@@ -2298,6 +2302,10 @@
       completionLog: [],
       dismissedTaskSuggestionsByBox: {},
       birthdays: [],
+      deletedTaskIds: [],
+      deletedBoxIds: [],
+      deletedTaskUpdatedAt: {},
+      deletedBoxUpdatedAt: {},
       updatedAt: 0
     },
     settings: {
@@ -2991,6 +2999,15 @@
     return Array.from(merged.values()).sort((a, b) => a.id.localeCompare(b.id));
   }
 
+  function normalizeDeletionTimestamps(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+    return Object.fromEntries(
+      Object.entries(raw)
+        .map(([id, value]) => [String(id), Number(value || 0)])
+        .filter(([id, value]) => id && Number.isFinite(value) && value > 0)
+    );
+  }
+
   function normalizeDataPayload(raw) {
     if (!raw || typeof raw !== "object") return null;
     const today = getTodayISO();
@@ -3090,6 +3107,8 @@
       birthdays: normalizeBirthdays(raw.birthdays),
       deletedTaskIds: Array.isArray(raw.deletedTaskIds) ? Array.from(new Set(raw.deletedTaskIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
       deletedBoxIds: Array.isArray(raw.deletedBoxIds) ? Array.from(new Set(raw.deletedBoxIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
+      deletedTaskUpdatedAt: normalizeDeletionTimestamps(raw.deletedTaskUpdatedAt),
+      deletedBoxUpdatedAt: normalizeDeletionTimestamps(raw.deletedBoxUpdatedAt),
       syncSchemaVersion: Number(raw.syncSchemaVersion || 0),
       bootstrapSeedData: Boolean(raw.bootstrapSeedData),
       updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : 0
@@ -3285,12 +3304,12 @@
   // ==========================================================================
   let cloudSyncReady = false;
   let cloudSyncReadyConfig = "";
+  let cloudFirestoreUpdateTime = "";
+  let cloudFirestoreExists = null;
   let cloudPullInFlight = false;
-  let cloudBootstrapInFlight = false;
   let syncRecoveryIntervalId = null;
   let lastSyncCatchupAt = 0;
   let lastCloudPullCompletedAt = 0;
-  let lastCloudBootstrapError = "";
   let syncBroadcastChannel = null;
   let realtimeSyncStatus = "Canal pendiente de conexión";
   function setRealtimeSyncStatus(status) {
@@ -3302,21 +3321,16 @@
     if (typeof window.BroadcastChannel !== "undefined") {
       syncBroadcastChannel = new window.BroadcastChannel("tasky_firebase_realtime_bus");
       syncBroadcastChannel.onmessage = (ev) => {
-        if (ev.data && ev.data.payload && ev.data.deviceId !== appState.deviceId) {
-          applyIncomingSyncPayload(ev.data.payload, false);
+        if (!cloudSyncReady) return;
+        if (ev.data && ev.data.type === "firestore-write-confirmed") {
+          // Treat local-channel messages only as a refresh signal. Never adopt a
+          // peer's local snapshot as if it were a verified Firestore document.
+          // BroadcastChannel does not echo a message to its sending instance.
+          pullCloudSync(false, true);
         }
       };
     }
   } catch (e) {}
-
-  window.addEventListener("storage", (ev) => {
-    if (ev.key === STORAGE_KEYS.DATA && ev.newValue) {
-      try {
-        const parsed = JSON.parse(ev.newValue);
-        applyIncomingSyncPayload(parsed, false);
-      } catch (e) {}
-    }
-  });
 
   function isCloudNetworkAllowed() {
     return (
@@ -3330,7 +3344,6 @@
     const cfg = appState.firebaseConfig || {};
     return JSON.stringify({
       projectId: String(cfg.projectId || "").trim(),
-      databaseURL: String(cfg.databaseURL || "").trim().replace(/\/+$/, ""),
       docPath: String(cfg.docPath || "").trim().replace(/^\/+|\/+$/g, "")
     });
   }
@@ -3371,26 +3384,43 @@
   function getFirebaseFirestoreUrl() {
     const cfg = appState.firebaseConfig || {};
     const proj = String(cfg.projectId || "tasky-7a30c").trim();
-    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, "");
+    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").split("/").filter(Boolean).join("/");
     const keyParam = cfg.apiKey ? `?key=${encodeURIComponent(cfg.apiKey)}` : "";
     return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(proj)}/databases/(default)/documents/${docPath}${keyParam}`;
   }
 
-  function getFirebaseRtdbUrl() {
-    const cfg = appState.firebaseConfig || {};
-    // Only query Realtime Database when its exact URL is configured.
-    // Tasky's registered Firebase Web SDK config does not contain databaseURL, so do not guess a host.
-    const base = String(cfg.databaseURL || "").trim().replace(/\/+$/, "");
-    if (!base) return "";
-    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, "");
-    return `${base}/${docPath}.json`;
+  function getFirebaseFirestoreDocumentName() {
+    const base = getFirebaseFirestoreUrl();
+    const queryIndex = base.indexOf("?");
+    const resourceUrl = queryIndex >= 0 ? base.slice(0, queryIndex) : base;
+    const versionMarker = "/v1/";
+    const versionIndex = resourceUrl.indexOf(versionMarker);
+    if (versionIndex < 0) return "";
+    return resourceUrl.slice(versionIndex + versionMarker.length);
+  }
+  function getFirebaseFirestoreCommitUrl() {
+    const base = getFirebaseFirestoreUrl();
+    const queryIndex = base.indexOf("?");
+    const resourceUrl = queryIndex >= 0 ? base.slice(0, queryIndex) : base;
+    const query = queryIndex >= 0 ? base.slice(queryIndex) : "";
+    const documentsIndex = resourceUrl.indexOf("/documents/");
+    if (documentsIndex < 0) return "";
+    return `${resourceUrl.slice(0, documentsIndex + "/documents".length)}:commit${query}`;
   }
 
-  function getCloudTopicUrl(suffix = "") {
-    const proj = String((appState.firebaseConfig && appState.firebaseConfig.projectId) || appState.cloudChannel || "tasky_somerito_firebase_v1")
-      .trim()
-      .replace(/[^a-zA-Z0-9_-]/g, "_");
-    return `https://ntfy.sh/tasky_fb_${proj}${suffix}`;
+  function getFirebaseFirestoreWritePrecondition(explicitRescue = false) {
+    if (cloudFirestoreUpdateTime) {
+      return { updateTime: cloudFirestoreUpdateTime };
+    }
+    if (explicitRescue && cloudFirestoreExists === false) {
+      return { exists: false };
+    }
+    return null;
+  }
+
+  function getFirebaseFirestoreConditionalWriteUrl(explicitRescue = false) {
+    if (!getFirebaseFirestoreWritePrecondition(explicitRescue)) return "";
+    return getFirebaseFirestoreCommitUrl();
   }
 
   function packCompactEnvelope() {
@@ -3404,6 +3434,8 @@
       sv: 1,
       dt: Array.isArray(d.deletedTaskIds) ? d.deletedTaskIds : [],
       db: Array.isArray(d.deletedBoxIds) ? d.deletedBoxIds : [],
+      dta: normalizeDeletionTimestamps(d.deletedTaskUpdatedAt),
+      dba: normalizeDeletionTimestamps(d.deletedBoxUpdatedAt),
       lg: normalizeLearningGoalsData(d.learningGoals),
       fp: normalizeFocusPlanData(d.focusPlan, d.tasks),
       cl: normalizeCompletionLog(d.completionLog),
@@ -3476,6 +3508,8 @@
         completedBoxCollapsed: false,
         deletedTaskIds: Array.isArray(parsed.dt) ? parsed.dt : [],
         deletedBoxIds: Array.isArray(parsed.db) ? parsed.db : [],
+        deletedTaskUpdatedAt: normalizeDeletionTimestamps(parsed.dta),
+        deletedBoxUpdatedAt: normalizeDeletionTimestamps(parsed.dba),
         learningGoals: normalizeLearningGoalsData(parsed.lg),
         focusPlan: normalizeFocusPlanData(parsed.fp, tasks),
         completionLog: normalizeCompletionLog(parsed.cl),
@@ -3499,6 +3533,8 @@
       tasks: d.tasks,
       deletedTaskIds: d.deletedTaskIds.slice().sort(),
       deletedBoxIds: d.deletedBoxIds.slice().sort(),
+      deletedTaskUpdatedAt: normalizeDeletionTimestamps(d.deletedTaskUpdatedAt),
+      deletedBoxUpdatedAt: normalizeDeletionTimestamps(d.deletedBoxUpdatedAt),
       monthlyCompletedBase: d.monthlyCompletedBase,
       taskMemoryByBox: d.taskMemoryByBox || {},
       learningGoals: normalizeLearningGoalsData(d.learningGoals),
@@ -3509,6 +3545,121 @@
       birthdays: normalizeBirthdays(d.birthdays),
       settings: d.settings || {}
     });
+  }
+
+  // A device may only contribute local data when it has changes made after its
+  // last confirmed cloud snapshot. Legacy installations without a baseline are
+  // treated as potentially stale and adopt the verified remote copy on first sync.
+  function buildCurrentCloudSnapshot(data = appState.data) {
+    return {
+      ...(data || {}),
+      taskMemoryByBox: appState.taskMemory || (data && data.taskMemoryByBox) || {},
+      history: appState.history || {},
+      settings: appState.settings || {}
+    };
+  }
+
+  function getCurrentCloudFingerprint(data = appState.data) {
+    return syncFingerprint(buildCurrentCloudSnapshot(data));
+  }
+
+  function hasPendingLocalCloudChanges(data = appState.data) {
+    // An explicit dirty marker means this app instance recorded a user edit that
+    // has not yet been confirmed in Firestore, even if this device has no baseline.
+    if (safeStorage.getItem(STORAGE_KEYS.CLOUD_DIRTY) === "1") return true;
+    const baseline = String(safeStorage.getItem(STORAGE_KEYS.CLOUD_BASELINE) || "");
+    // A legacy device without a confirmed baseline cannot prove its unchanged cache is newer.
+    // Keep it as a recovery backup, but never let it outrank the first verified cloud read.
+    if (!baseline) return false;
+    return getCurrentCloudFingerprint(data) !== baseline;
+  }
+
+  function markLocalCloudChangesPending() {
+    safeStorage.setItem(STORAGE_KEYS.CLOUD_DIRTY, "1");
+  }
+
+  function confirmCurrentCloudSnapshot(data = appState.data) {
+    const fingerprint = getCurrentCloudFingerprint(data);
+    if (!fingerprint) return;
+    safeStorage.setItem(STORAGE_KEYS.CLOUD_BASELINE, fingerprint);
+    safeStorage.setItem(STORAGE_KEYS.CLOUD_DIRTY, "0");
+  }
+
+  function confirmCloudPayloadWritten(payload) {
+    const writtenFingerprint = syncFingerprint(payload);
+    if (!writtenFingerprint) return;
+    safeStorage.setItem(STORAGE_KEYS.CLOUD_BASELINE, writtenFingerprint);
+    // A newer edit may have happened while the network request was in flight.
+    // Keep it pending rather than falsely marking it as uploaded.
+    safeStorage.setItem(
+      STORAGE_KEYS.CLOUD_DIRTY,
+      getCurrentCloudFingerprint() === writtenFingerprint ? "0" : "1"
+    );
+  }
+
+  function preserveLocalSnapshotBeforeCloudAdoption(localRaw, label = "Protección automática antes de adoptar Firebase") {
+    const local = normalizeDataPayload(localRaw);
+    if (!local || !local.boxes.length) return true;
+    const backup = {
+      id: `bkp_sync_guard_${Date.now()}`,
+      timestamp: Date.now(),
+      label,
+      boxesCount: local.boxes.length,
+      tasksCount: local.tasks.length,
+      data: local
+    };
+    appState.backups.unshift(backup);
+    if (appState.backups.length > 20) appState.backups = appState.backups.slice(0, 20);
+    // If the safety copy cannot be persisted, the caller must not replace the
+    // local dataset or upload the reconciled result.
+    return safeStorage.setItem(STORAGE_KEYS.BACKUPS, JSON.stringify(appState.backups)) !== false;
+  }
+
+  function adoptVerifiedCloudSnapshot(incomingRaw, localRaw = appState.data) {
+    const incoming = normalizeDataPayload(incomingRaw);
+    if (!incoming || !incoming.boxes.length || !Array.isArray(incoming.tasks)) return { ok: false, changed: false };
+    const local = normalizeDataPayload(localRaw);
+    const incomingFingerprint = syncFingerprint({
+      ...incoming,
+      taskMemoryByBox: incoming.taskMemoryByBox || {},
+      history: incoming.history || {},
+      settings: incoming.settings || {}
+    });
+    const localFingerprint = local ? getCurrentCloudFingerprint(local) : "";
+    const changed = localFingerprint !== incomingFingerprint;
+
+    if (changed && local && !preserveLocalSnapshotBeforeCloudAdoption(local)) {
+      setRealtimeSyncStatus("No se pudo guardar el respaldo local; se bloqueó la adopción de Firebase para proteger tus datos");
+      return { ok: false, changed: false };
+    }
+
+    appState.data = applyLocalViewStateToData(incoming, local);
+    appState.history = incoming.history && typeof incoming.history === "object" ? incoming.history : {};
+    appState.settings = {
+      ...appState.settings,
+      ...(incoming.settings && typeof incoming.settings === "object" ? incoming.settings : {})
+    };
+    appState.taskMemory = incoming.taskMemoryByBox && typeof incoming.taskMemoryByBox === "object"
+      ? { ...incoming.taskMemoryByBox }
+      : {};
+    appState.data.taskMemoryByBox = appState.taskMemory;
+    safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
+    safeStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(appState.history));
+    safeStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(appState.history));
+    safeStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(appState.settings));
+    safeStorage.setItem(STORAGE_KEYS.MEMORY, JSON.stringify(appState.taskMemory));
+    persistLocalViewState();
+    rebuildTaskMemoryFromTasks();
+    confirmCurrentCloudSnapshot();
+
+    renderBoard();
+    renderLearningGoalsPanel();
+    renderBirthdayUpcomingList();
+    const birthdayModal = document.getElementById("modal-birthdays");
+    if (birthdayModal && birthdayModal.classList.contains("open")) renderBirthdayCalendar();
+    const syncText = document.getElementById("sync-status-text");
+    if (syncText) syncText.textContent = "Sincronizado";
+    return { ok: true, changed };
   }
 
   function canonicalBoxKey(name) {
@@ -3536,7 +3687,7 @@
     };
   }
 
-  function mergeSyncDatasets(leftRaw, rightRaw) {
+  function mergeSyncDatasets(leftRaw, rightRaw, preferLeftAsRemote = false) {
     const left = normalizeDataPayload(leftRaw);
     const right = normalizeDataPayload(rightRaw);
     if (!left) return right;
@@ -3544,7 +3695,8 @@
 
     const leftTime = Number(left.updatedAt || 0);
     const rightTime = Number(right.updatedAt || 0);
-    let primary = (leftTime <= 0 && rightTime > 0) ? right
+    let primary = preferLeftAsRemote ? left
+      : (leftTime <= 0 && rightTime > 0) ? right
       : (rightTime <= 0 && leftTime > 0) ? left
       : (rightTime >= leftTime ? right : left);
     let secondary = primary === left ? right : left;
@@ -3554,12 +3706,74 @@
     const ignoreUnversionedSecondary = primaryTime > 0 && secondaryTime <= 0;
     const primaryIsSeed = Boolean(primary.bootstrapSeedData);
     const secondaryIsSeed = Boolean(secondary.bootstrapSeedData);
-    const deletedTaskIds = Array.from(new Set([
-      ...(left.deletedTaskIds || []), ...(right.deletedTaskIds || [])
-    ])).filter(Boolean);
-    const deletedBoxIds = Array.from(new Set([
-      ...(left.deletedBoxIds || []), ...(right.deletedBoxIds || [])
-    ])).filter(Boolean);
+    function mergeDeletionState(primaryIds, primaryTimes, secondaryIds, secondaryTimes, primaryItems, secondaryItems, isBox = false) {
+      const byId = new Map();
+      (Array.isArray(primaryIds) ? primaryIds : []).forEach(id => {
+        const key = String(id || "").trim();
+        if (key) byId.set(key, Number(primaryTimes && primaryTimes[key] || 0));
+      });
+      (Array.isArray(secondaryIds) ? secondaryIds : []).forEach(id => {
+        const key = String(id || "").trim();
+        if (!key) return;
+        const version = Number(secondaryTimes && secondaryTimes[key] || 0);
+        // An old device's unversioned tombstone is no more trustworthy than its
+        // unversioned task cache. Do not let it delete a current Firestore record.
+        if (preferLeftAsRemote && version <= 0) return;
+        if (!byId.has(key) || version > byId.get(key)) byId.set(key, version);
+      });
+
+      const itemVersions = new Map();
+      const addItemVersions = (items, includeOnlyVersioned = false) => {
+        (Array.isArray(items) ? items : []).forEach(item => {
+          if (!item || item.id == null) return;
+          const id = String(item.id);
+          const version = Number(item.updatedAt || 0);
+          if (includeOnlyVersioned && version <= 0) return;
+          itemVersions.set(id, Math.max(itemVersions.get(id) || 0, version));
+        });
+      };
+      addItemVersions(primaryItems);
+      addItemVersions(secondaryItems, preferLeftAsRemote);
+
+      // An explicit re-creation/edit newer than a tombstone wins. Otherwise the
+      // newest versioned deletion remains authoritative across devices.
+      byId.forEach((deletedAt, id) => {
+        const isLegacyRemoteTombstone = preferLeftAsRemote &&
+          (Array.isArray(primaryIds) ? primaryIds : []).some(value => String(value) === id) &&
+          Number(primaryTimes && primaryTimes[id] || 0) <= 0;
+        // A deletion already present in Firestore but lacking legacy metadata is
+        // still authoritative. A stale local task must never resurrect it.
+        if (isLegacyRemoteTombstone) return;
+        let latestItemVersion = itemVersions.get(id) || 0;
+        if (isBox) {
+          const latestChildTaskVersion = Math.max(
+            0,
+            ...(Array.isArray(primary.tasks) ? primary.tasks : [])
+              .filter(task => String(task && task.boxId) === id)
+              .map(task => Number(task.updatedAt || 0)),
+            ...(preferLeftAsRemote ? (Array.isArray(secondary.tasks) ? secondary.tasks : [])
+              .filter(task => String(task && task.boxId) === id && Number(task.updatedAt || 0) > 0)
+              .map(task => Number(task.updatedAt || 0)) : [])
+          );
+          latestItemVersion = Math.max(latestItemVersion, latestChildTaskVersion);
+        }
+        if (latestItemVersion > 0 && latestItemVersion > deletedAt) byId.delete(id);
+      });
+      return Object.fromEntries(byId);
+    }
+
+    const deletedTaskUpdatedAt = mergeDeletionState(
+      primary.deletedTaskIds, primary.deletedTaskUpdatedAt,
+      secondary.deletedTaskIds, secondary.deletedTaskUpdatedAt,
+      primary.tasks, secondary.tasks
+    );
+    const deletedBoxUpdatedAt = mergeDeletionState(
+      primary.deletedBoxIds, primary.deletedBoxUpdatedAt,
+      secondary.deletedBoxIds, secondary.deletedBoxUpdatedAt,
+      primary.boxes, secondary.boxes, true
+    );
+    const deletedTaskIds = Object.keys(deletedTaskUpdatedAt);
+    const deletedBoxIds = Object.keys(deletedBoxUpdatedAt);
     const deletedTasks = new Set(deletedTaskIds);
     const deletedBoxes = new Set(deletedBoxIds);
 
@@ -3573,8 +3787,8 @@
       const legacyContactCenterKeys = new Set(["oficina", "asesortelefonico"]);
       if (legacyContactCenterKeys.has(existingKey) && candidateKey === "asesordecontactcenter") return candidate;
       if (legacyContactCenterKeys.has(candidateKey) && existingKey === "asesordecontactcenter") return existing;
-      const existingUpdatedAt = Number(existing && existing.updatedAt || existingSourceUpdatedAt || 0);
-      const candidateUpdatedAt = Number(candidate && candidate.updatedAt || candidateSourceUpdatedAt || 0);
+      const existingUpdatedAt = Number(existing && existing.updatedAt || (preferLeftAsRemote ? 0 : existingSourceUpdatedAt) || 0);
+      const candidateUpdatedAt = Number(candidate && candidate.updatedAt || (preferLeftAsRemote ? 0 : candidateSourceUpdatedAt) || 0);
       if (existingUpdatedAt !== candidateUpdatedAt) return candidateUpdatedAt > existingUpdatedAt ? candidate : existing;
       if (existing && existing.bootstrapSeed === true && candidate && candidate.bootstrapSeed !== true) return candidate;
       if (candidate && candidate.bootstrapSeed === true && existing && existing.bootstrapSeed !== true) return existing;
@@ -3645,6 +3859,12 @@
       if (primaryBoxesById.has(id)) return;
       if (unmatchedPrimaryByName.has(canonicalBoxKey(box.name))) return;
       if (ignoreUnversionedSecondary) return;
+      if (preferLeftAsRemote && Number(box.updatedAt || 0) <= 0) {
+        const containsExplicitlyChangedTask = (secondary.tasks || []).some(task =>
+          String(task && task.boxId) === id && Number(task && task.updatedAt || 0) > 0
+        );
+        if (!containsExplicitlyChangedTask) return;
+      }
       if (box.bootstrapSeed === true && !primaryIsSeed) return;
       if (!canonicalBoxesById.has(id)) canonicalBoxesById.set(id, box);
       secondaryIdToCanonical.set(id, id);
@@ -3682,8 +3902,8 @@
         const useOtherAuthoritativeItem = item.bootstrapSeed === true && otherItem && otherItem.bootstrapSeed !== true && !secondaryIsSeed;
         let chosenItem = useOtherAuthoritativeItem ? otherItem : item;
         if (otherItem && !useOtherAuthoritativeItem) {
-          const primaryItemVersion = Number(item.updatedAt || primaryTime || 0);
-          const secondaryItemVersion = Number(otherItem.updatedAt || secondaryTime || 0);
+          const primaryItemVersion = Number(item.updatedAt || (preferLeftAsRemote ? 0 : primaryTime) || 0);
+          const secondaryItemVersion = Number(otherItem.updatedAt || (preferLeftAsRemote ? 0 : secondaryTime) || 0);
           if (secondaryItemVersion > primaryItemVersion) chosenItem = otherItem;
         }
         if (!suppressSeed && (!extraFilter || extraFilter(chosenItem))) byId.set(id, chosenItem);
@@ -3695,7 +3915,8 @@
           if (tombstones.has(id) || byId.has(id)) return;
           const matchedOther = (Array.isArray(primaryItems) ? primaryItems : []).some(entry => entry && String(entry[idKey]) === id);
           const suppressSeed = item.bootstrapSeed === true && !primaryIsSeed && !matchedOther;
-          if (!suppressSeed && (!extraFilter || extraFilter(item))) byId.set(id, item);
+          const suppressUnversionedLegacyItem = preferLeftAsRemote && Number(item.updatedAt || 0) <= 0;
+          if (!suppressSeed && !suppressUnversionedLegacyItem && (!extraFilter || extraFilter(item))) byId.set(id, item);
         });
       }
       return Array.from(byId.values());
@@ -3725,6 +3946,8 @@
       tasks: normalizedTasks,
       deletedTaskIds,
       deletedBoxIds,
+      deletedTaskUpdatedAt,
+      deletedBoxUpdatedAt,
       taskMemoryByBox: { ...(secondary.taskMemoryByBox || {}), ...(primary.taskMemoryByBox || {}) },
       history: { ...(secondary.history || {}), ...(primary.history || {}) },
       completionLog: mergeCompletionLogs(primary.completionLog, secondary.completionLog),
@@ -3752,16 +3975,43 @@
 
   function applyIncomingSyncPayload(incomingRaw, showNotification = false) {
     const norm = normalizeDataPayload(incomingRaw);
-    if (!norm || !Array.isArray(norm.boxes) || !norm.boxes.length) return false;
+    if (!norm || !Array.isArray(norm.boxes) || !norm.boxes.length) {
+      return { ok: false, changed: false, needsPush: false };
+    }
     const local = normalizeDataPayload(appState.data);
+    const localHasPendingChanges = hasPendingLocalCloudChanges(local);
+
+    // Without a confirmed local baseline, a legacy device cache is not evidence
+    // of newer work. Adopt Firestore first, and keep a safety copy of the old cache.
+    if (!localHasPendingChanges) {
+      const adoption = adoptVerifiedCloudSnapshot(norm, local);
+      if (!adoption || !adoption.ok) return { ok: false, changed: false, needsPush: false };
+      if (showNotification && adoption.changed) {
+        showToast("🔄 Datos remotos verificados; se protegió la copia local anterior");
+      }
+      return { ok: true, changed: adoption.changed, needsPush: false };
+    }
+
+    if (syncFingerprint(local) !== syncFingerprint(norm) &&
+        !preserveLocalSnapshotBeforeCloudAdoption(
+          local,
+          "Respaldo antes de conciliar cambios locales pendientes"
+        )) {
+      setRealtimeSyncStatus("No se pudo guardar el respaldo local; no se modificó ni se subió ningún dato");
+      return { ok: false, changed: false, needsPush: false };
+    }
+
     let merged;
     try {
-      merged = mergeSyncDatasets(local, norm);
+      // Firestore is the canonical base. Only explicit item-level local edits
+      // may override it; a newer device-level timestamp cannot make every old
+      // task in a stale cache appear newly edited.
+      merged = mergeSyncDatasets(norm, local, true);
     } catch (error) {
       setRealtimeSyncStatus(`Error al conciliar: ${String(error && error.message || error).slice(0, 150)}`);
-      return false;
+      return { ok: false, changed: false, needsPush: false };
     }
-    if (!merged) return false;
+    if (!merged) return { ok: false, changed: false, needsPush: false };
     applyLocalViewStateToData(merged, local);
 
     const currentSig = syncFingerprint(local);
@@ -3772,8 +4022,9 @@
         appState.data.syncSchemaVersion = 1;
         safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
       }
-      if (syncFingerprint(merged) !== syncFingerprint(norm)) pushCloudSync(false);
-      return false;
+      const needsPush = syncFingerprint(merged) !== syncFingerprint(norm);
+      if (!needsPush) confirmCurrentCloudSnapshot();
+      return { ok: true, changed: false, needsPush };
     }
 
     appState.data = merged;
@@ -3788,9 +4039,9 @@
     const mergedMatchesIncoming = syncFingerprint(merged) === syncFingerprint(norm);
     const syncText = document.getElementById("sync-status-text");
     if (syncText) syncText.textContent = mergedMatchesIncoming ? "Sincronizado" : "Conciliando…";
-    if (!mergedMatchesIncoming) pushCloudSync(false);
+    if (mergedMatchesIncoming) confirmCurrentCloudSnapshot();
     if (showNotification) showToast("🔄 Datos fusionados sin perder tareas");
-    return true;
+    return { ok: true, changed: true, needsPush: !mergedMatchesIncoming };
   }
 
   let cloudPushTimer = null;
@@ -3809,20 +4060,24 @@
       pullCloudSync(false, true);
     }, 450);
   }
-  function pushCloudSync(forceImmediateToast = false) {
+  function pushCloudSync(forceImmediateToast = false, explicitRescue = false) {
     if (!cloudSyncReady || cloudSyncReadyConfig !== getCloudSyncConfigKey()) {
       if (forceImmediateToast) showToast("Sincronización bloqueada por seguridad: primero hay que verificar la nube o usar «Rescatar y Subir Todo a Firebase».");
       const blockedSyncText = document.getElementById("sync-status-text");
       if (blockedSyncText) blockedSyncText.textContent = "Sin verificar";
       return;
     }
-    if (syncBroadcastChannel) {
-      try {
-        syncBroadcastChannel.postMessage({
-          deviceId: appState.deviceId,
-          payload: buildSyncPayload(appState.data)
-        });
-      } catch (e) {}
+    const conditionalWriteUrl = getFirebaseFirestoreConditionalWriteUrl(explicitRescue);
+    if (!conditionalWriteUrl) {
+      const syncText = document.getElementById("sync-status-text");
+      if (syncText) syncText.textContent = "Sin verificar";
+      if (forceImmediateToast) {
+        showToast("Escritura bloqueada: primero debe leerse y verificarse la versión actual de Firebase.", true);
+      }
+      if (!cloudPullInFlight && isCloudNetworkAllowed()) {
+        window.setTimeout(() => pullCloudSync(false, true), 120);
+      }
+      return;
     }
     if (!isCloudNetworkAllowed()) {
       const offlineSyncText = document.getElementById("sync-status-text");
@@ -3855,8 +4110,10 @@
       };
       const compactStr = packCompactEnvelope();
       let firebaseSaved = false;
+      let firestorePreconditionConflict = false;
+      let firestoreWriteNeedsReconcile = false;
       let firestoreWriteStatus = "No se intentó la escritura";
-      let rtdbWriteStatus = "URL no configurada";
+      let rtdbWriteStatus = "Desactivado: Firestore es la única fuente de verdad";
       let streamWriteStatus = "No comprobado";
       const describeResponseError = raw => {
         const source = String(raw || "").trim();
@@ -3879,84 +4136,104 @@
         details.textContent = `Última escritura — Firestore: ${firestoreWriteStatus} · Realtime Database: ${rtdbWriteStatus} · Canal auxiliar: ${streamWriteStatus}`;
       };
       const firestoreBytes = (() => {
-        const fsBody = {
+        const fsDocument = {
+          name: getFirebaseFirestoreDocumentName(),
           fields: {
             payloadJson: { stringValue: JSON.stringify(fullPayload) },
             compactEnvelope: { stringValue: compactStr },
             updatedAt: { integerValue: String(fullPayload.updatedAt) },
-            deviceId: { stringValue: String(appState.deviceId) }
+            deviceId: { stringValue: String(appState.deviceId) },
+            protocolVersion: { integerValue: String(FIRESTORE_SYNC_PROTOCOL_VERSION) }
           }
         };
-        return { url: getFirebaseFirestoreUrl(), body: JSON.stringify(fsBody) };
+        const currentDocument = getFirebaseFirestoreWritePrecondition(explicitRescue);
+        if (!currentDocument) throw new Error("No existe una revisión confirmada de Firestore para esta escritura.");
+        return {
+          url: conditionalWriteUrl,
+          body: JSON.stringify({
+            writes: [{
+              update: fsDocument,
+              currentDocument
+            }]
+          })
+        };
       })();
       const writePayloadBytes = bytesOf(firestoreBytes.body);
-      let streamPromise;
-      try {
-        streamPromise = window.fetch(getCloudTopicUrl(""), {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=UTF-8", "Cache": "yes" },
-          body: compactStr
-        }).then(response => ({ response })).catch(error => ({ error }));
-      } catch (error) {
-        streamPromise = Promise.resolve({ error });
-      }
-
       // 1. Push to Firestore. Do not set keepalive: true for large sync payloads:
       // Fetch keepalive bodies are limited to 64 KiB and can throw before reaching Firebase.
       try {
         const res = await window.fetch(firestoreBytes.url, {
-          method: "PATCH",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
           body: firestoreBytes.body
         });
         if (res && res.ok) {
-          firebaseSaved = true;
-          firestoreWriteStatus = `OK (HTTP ${res.status}; ${(writePayloadBytes / 1024).toFixed(1)} KiB)`;
+          const savedDocument = await res.json().catch(() => null);
+          const savedUpdateTime = savedDocument &&
+            Array.isArray(savedDocument.writeResults) &&
+            savedDocument.writeResults[0] &&
+            savedDocument.writeResults[0].updateTime;
+          if (typeof savedUpdateTime === "string" && savedUpdateTime) {
+            cloudFirestoreUpdateTime = savedUpdateTime;
+            cloudFirestoreExists = true;
+            firebaseSaved = true;
+            firestoreWriteStatus = `OK (HTTP ${res.status}; versión Firestore confirmada; ${(writePayloadBytes / 1024).toFixed(1)} KiB)`;
+          } else {
+            cloudFirestoreUpdateTime = "";
+            firestoreWriteNeedsReconcile = true;
+            firestoreWriteStatus = `HTTP ${res.status}; Firestore no devolvió updateTime; escritura pendiente de verificación`;
+          }
         } else {
           const responseText = res ? await res.text().catch(() => "") : "";
           const detail = describeResponseError(responseText);
-          firestoreWriteStatus = `HTTP ${res ? res.status : "sin respuesta"}${detail ? ` · ${detail}` : ""}`;
+          const errorStatus = (() => {
+            try { return JSON.parse(responseText || "{}")?.error?.status || ""; } catch (e) { return ""; }
+          })();
+          if (/FAILED_PRECONDITION|ABORTED/i.test(errorStatus) || /precondition|update.?time/i.test(detail)) {
+            firestorePreconditionConflict = true;
+            firestoreWriteNeedsReconcile = true;
+            cloudFirestoreUpdateTime = "";
+            cloudSyncReady = false;
+            cloudSyncReadyConfig = "";
+            setRealtimeSyncStatus("Conflicto de versión; Firebase se volverá a leer antes de reintentar");
+            firestoreWriteStatus = "Conflicto de versión: Firebase cambió desde la última lectura; escritura rechazada y se volverá a conciliar";
+          } else {
+            cloudFirestoreUpdateTime = "";
+            cloudSyncReady = false;
+            cloudSyncReadyConfig = "";
+            firestoreWriteNeedsReconcile = true;
+            setRealtimeSyncStatus("Escritura no confirmada; se volverá a leer Firestore antes de continuar");
+            firestoreWriteStatus = `HTTP ${res ? res.status : "sin respuesta"}${detail ? ` · ${detail}` : ""}`;
+          }
         }
       } catch (e) {
+        cloudFirestoreUpdateTime = "";
+        cloudSyncReady = false;
+        cloudSyncReadyConfig = "";
+        firestoreWriteNeedsReconcile = true;
         firestoreWriteStatus = `Error de red · ${String(e && e.message || e).slice(0, 180)} (${(writePayloadBytes / 1024).toFixed(1)} KiB)`;
       }
       updateWriteDiagnostic();
 
-      // 2. Realtime Database is optional; try it only if its exact URL was configured.
-      try {
-        const rtdbUrl = getFirebaseRtdbUrl();
-        if (rtdbUrl) {
-          const rtdbBody = JSON.stringify(fullPayload);
-          const resRt = await window.fetch(rtdbUrl, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: rtdbBody
-          });
-          if (resRt && resRt.ok) {
-            firebaseSaved = true;
-            rtdbWriteStatus = `OK (HTTP ${resRt.status})`;
-          } else {
-            const responseText = resRt ? await resRt.text().catch(() => "") : "";
-            const detail = describeResponseError(responseText);
-            rtdbWriteStatus = `HTTP ${resRt ? resRt.status : "sin respuesta"}${detail ? ` · ${detail}` : ""}`;
-          }
-        }
-      } catch (e) {
-        rtdbWriteStatus = `Error de red · ${String(e && e.message || e).slice(0, 180)}`;
-      }
+      // Realtime Database is intentionally not written. Firestore is the only remote source of truth.
+      rtdbWriteStatus = "Desactivado: Firestore es la única fuente de verdad";
       updateWriteDiagnostic();
 
-      // 3. Read the auxiliary transport result. Its POST was started in parallel with Firestore.
-      // ntfy accelerates device-to-device updates but never counts as durable Firebase confirmation.
-      const streamResult = await streamPromise;
-      if (streamResult && streamResult.response) {
-        const streamResponse = streamResult.response;
-        streamWriteStatus = streamResponse.ok ? `OK (HTTP ${streamResponse.status}; transporte auxiliar)` : `HTTP ${streamResponse.status}`;
-      } else {
-        const error = streamResult && streamResult.error;
-        streamWriteStatus = `No disponible · ${String(error && error.message || error || "sin respuesta").slice(0, 120)}`;
-      }
+      // The public ntfy channel is intentionally disabled because it carried full task payloads.
+      streamWriteStatus = "Desactivado por privacidad; se utiliza Firestore";
       updateWriteDiagnostic();
+
+      if (firebaseSaved) {
+        confirmCloudPayloadWritten(fullPayload);
+        if (syncBroadcastChannel) {
+          try {
+            syncBroadcastChannel.postMessage({
+              deviceId: appState.deviceId,
+              type: "firestore-write-confirmed"
+            });
+          } catch (e) {}
+        }
+      }
 
       const syncText = document.getElementById("sync-status-text");
       // Show "Sincronizado" only after Firebase confirms the remote write.
@@ -3984,7 +4261,11 @@
         if (forceImmediateToast) showToast(`No se pudo completar la escritura en la nube: ${message}`, true);
       } finally {
         cloudPushInFlight = false;
-        if (cloudPushPending) {
+        if (firestoreWriteNeedsReconcile) {
+          cloudPushPending = false;
+          cloudPushPendingToast = false;
+          window.setTimeout(() => pullCloudSync(false, true), 160);
+        } else if (cloudPushPending) {
           const showPendingToast = cloudPushPendingToast;
           cloudPushPending = false;
           cloudPushPendingToast = false;
@@ -3994,13 +4275,13 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261103-no-deadline-boxes-3";
+  const FIRESTORE_SYNC_PROTOCOL_VERSION = 2;
+  const TASKY_BUILD_ID = "20261103-sync-safety-6";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
       ["Firestore", statuses.firestore || "sin respuesta"],
-      ["Realtime Database", statuses.rtdb || "sin respuesta"],
-      ["ntfy (canal auxiliar)", statuses.ntfy || "no comprobado"]
+      ["Canal auxiliar", statuses.ntfy || "desactivado"]
     ];
     const fullText = entries.map(([name, value]) => `${name}: ${value}`).join(" · ");
     const details = document.getElementById("sync-diagnostic-details");
@@ -4026,133 +4307,11 @@
     const match = String(value || "").match(/HTTP\s+\d+/i);
     if (match) return match[0].replace(/\s+/g, "");
     if (String(value || "").startsWith("OK")) return "OK";
+    if (String(value || "").includes("Desactivado")) return "desactivado";
     if (String(value || "").includes("vacía") || String(value || "").includes("sin una copia válida") || String(value || "").includes("sin campo payloadJson")) return "200 sin datos válidos";
     return "error";
   }
 
-  async function autoBootstrapFirestoreDocument(localRaw, sourceStatus) {
-    if (cloudBootstrapInFlight) return "busy";
-    cloudBootstrapInFlight = true;
-    try {
-      const cfg = appState.firebaseConfig || {};
-      const projectId = String(cfg.projectId || "").trim();
-      const parts = String(cfg.docPath || "tasky_sync/somerito_main")
-        .replace(/^\/+|\/+$/g, "")
-        .split("/")
-        .filter(Boolean);
-      if (!projectId || parts.length < 2 || parts.length % 2 !== 0) {
-        sourceStatus.firestore = "No se pudo inicializar: la ruta de documento no es válida.";
-        renderSyncDiagnostics(sourceStatus);
-        return "failed";
-      }
-
-      const candidate = normalizeDataPayload(localRaw);
-      if (!candidate || !candidate.boxes.length || !Array.isArray(candidate.tasks)) {
-        sourceStatus.firestore = "No se pudo inicializar: los datos locales no son válidos.";
-        renderSyncDiagnostics(sourceStatus);
-        return "failed";
-      }
-
-      candidate.updatedAt = Math.max(Date.now(), Number(candidate.updatedAt || 0) + 1);
-      candidate.syncSchemaVersion = 1;
-      candidate.deletedTaskIds = Array.isArray(candidate.deletedTaskIds) ? candidate.deletedTaskIds : [];
-      candidate.deletedBoxIds = Array.isArray(candidate.deletedBoxIds) ? candidate.deletedBoxIds : [];
-      candidate.bootstrapSeedData = false;
-      candidate.boxes.forEach(box => { delete box.bootstrapSeed; });
-      candidate.tasks.forEach(task => { delete task.bootstrapSeed; });
-
-      appState.data = candidate;
-      safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
-      rebuildTaskMemoryFromTasks();
-
-      const fullPayload = {
-        ...buildSyncPayload(appState.data),
-        taskMemoryByBox: appState.taskMemory,
-        history: appState.history,
-        settings: appState.settings,
-        deviceId: appState.deviceId,
-        updatedAt: Number(appState.data.updatedAt)
-      };
-      const compactStr = packCompactEnvelope();
-      const documentId = parts[parts.length - 1];
-      const collectionPath = parts.slice(0, -1).map(encodeURIComponent).join("/");
-      const keyParam = cfg.apiKey ? "&key=" + encodeURIComponent(cfg.apiKey) : "";
-      const createUrl = "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(projectId) +
-        "/databases/(default)/documents/" + collectionPath + "?documentId=" + encodeURIComponent(documentId) + keyParam;
-      const body = {
-        fields: {
-          payloadJson: { stringValue: JSON.stringify(fullPayload) },
-          compactEnvelope: { stringValue: compactStr },
-          updatedAt: { integerValue: String(fullPayload.updatedAt) },
-          deviceId: { stringValue: String(appState.deviceId) }
-        }
-      };
-
-      const response = await window.fetch(createUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
-      const responseText = await response.text();
-
-      if (response.ok) {
-        cloudSyncReady = true;
-        cloudSyncReadyConfig = getCloudSyncConfigKey();
-        sourceStatus.firestore = "Documento creado automáticamente · " + candidate.boxes.length + " casillas, " + candidate.tasks.length + " tareas";
-        renderSyncDiagnostics(sourceStatus);
-        const syncText = document.getElementById("sync-status-text");
-        if (syncText) syncText.textContent = "Sincronizado";
-        const modalSyncTime = document.getElementById("modal-sync-last-time");
-        if (modalSyncTime) modalSyncTime.textContent = `Copia inicial confirmada en Firestore a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.`;
-        lastCloudBootstrapError = "";
-        showToast("✅ Nube inicializada. La sincronización automática ya está activa.");
-        try {
-          await window.fetch(getCloudTopicUrl(""), {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=UTF-8" },
-            body: compactStr
-          });
-        } catch (e) {}
-        return "created";
-      }
-
-      let parsedError = "";
-      try {
-        const err = JSON.parse(responseText);
-        parsedError = err && err.error && err.error.message ? String(err.error.message) : responseText;
-      } catch (e) {
-        parsedError = responseText;
-      }
-      const shortError = String(parsedError || response.statusText || "Error desconocido").replace(/\s+/g, " ").slice(0, 220);
-      sourceStatus.firestore = "HTTP " + response.status + " al crear documento: " + shortError;
-      renderSyncDiagnostics(sourceStatus);
-
-      if (response.status === 409 || /ALREADY_EXISTS|already exists/i.test(shortError)) {
-        sourceStatus.firestore = "El documento fue creado por otro dispositivo; se volverá a leer automáticamente.";
-        renderSyncDiagnostics(sourceStatus);
-        return "exists";
-      }
-
-      const signature = String(response.status) + ":" + shortError;
-      if (signature !== lastCloudBootstrapError) {
-        showToast("No se pudo iniciar Firestore (HTTP " + response.status + "). Revisa Diagnóstico de conexión.", true);
-        lastCloudBootstrapError = signature;
-      }
-      return "failed";
-    } catch (error) {
-      const message = String(error && error.message || error).slice(0, 220);
-      sourceStatus.firestore = "Error al crear documento: " + message;
-      renderSyncDiagnostics(sourceStatus);
-      const signature = "exception:" + message;
-      if (signature !== lastCloudBootstrapError) {
-        showToast("La inicialización automática de Firestore falló. Revisa el diagnóstico de conexión.", true);
-        lastCloudBootstrapError = signature;
-      }
-      return "failed";
-    } finally {
-      cloudBootstrapInFlight = false;
-    }
-  }
 
   let queuedManualPullPromise = null;
   let resolveQueuedManualPull = null;
@@ -4178,8 +4337,8 @@
       let durableCandidateCount = 0;
       const sourceStatus = {
         firestore: "no consultado",
-        rtdb: "no consultada",
-        ntfy: "no consultado"
+        rtdb: "Desactivado: Firestore es la única fuente de verdad",
+        ntfy: "Desactivado por privacidad"
       };
       const isValidSnapshot = (norm) => Boolean(norm && Array.isArray(norm.boxes) &&
         norm.boxes.length && Array.isArray(norm.tasks) && Number(norm.updatedAt || 0) > 0);
@@ -4191,11 +4350,17 @@
         const fsUrl = getFirebaseFirestoreUrl();
         const res = await window.fetch(fsUrl, { cache: "no-store" });
         if (!res.ok) {
+          cloudFirestoreUpdateTime = "";
+          cloudFirestoreExists = res.status === 404 ? false : null;
           sourceStatus.firestore = `HTTP ${res.status} ${res.statusText || ""}`.trim();
         } else {
           const docJson = await res.json();
+          cloudFirestoreExists = true;
+          cloudFirestoreUpdateTime = typeof docJson.updateTime === "string" ? docJson.updateTime : "";
           const rawStr = docJson && docJson.fields && docJson.fields.payloadJson && docJson.fields.payloadJson.stringValue;
-          if (!rawStr) {
+          if (!cloudFirestoreUpdateTime) {
+            sourceStatus.firestore = "HTTP 200 · documento sin updateTime; escritura bloqueada hasta verificar la versión";
+          } else if (!rawStr) {
             sourceStatus.firestore = "HTTP 200 · documento vacío o sin campo payloadJson";
           } else {
             const norm = normalizeDataPayload(JSON.parse(rawStr));
@@ -4207,85 +4372,29 @@
           }
         }
       } catch (e) {
+        cloudFirestoreUpdateTime = "";
+        cloudFirestoreExists = null;
         sourceStatus.firestore = `error de lectura: ${String(e && e.message || e).slice(0, 140)}`;
       }
 
-      try {
-        const rtdbUrl = getFirebaseRtdbUrl();
-        if (!rtdbUrl) {
-          sourceStatus.rtdb = "URL no configurada";
-        } else {
-          const resRt = await window.fetch(rtdbUrl, { cache: "no-store" });
-          if (!resRt.ok) {
-            sourceStatus.rtdb = `HTTP ${resRt.status} ${resRt.statusText || ""}`.trim();
-          } else {
-            const parsedRt = await resRt.json();
-            if (parsedRt == null) {
-              sourceStatus.rtdb = "HTTP 200 · ruta vacía (null)";
-            } else {
-              const normRt = unpackCompactEnvelope(parsedRt);
-              sourceStatus.rtdb = describeSnapshot(normRt);
-              if (isValidSnapshot(normRt)) {
-                candidates.push(normRt);
-                durableCandidateCount++;
-              }
-            }
-          }
-        }
-      } catch (e) {
-        sourceStatus.rtdb = `error de lectura: ${String(e && e.message || e).slice(0, 140)}`;
-      }
+      sourceStatus.rtdb = "Desactivado: Firestore es la única fuente de verdad";
 
-      // ntfy is a transport/history source only. It cannot authorize cloud writes by itself.
-      try {
-        const resStream = await window.fetch(getCloudTopicUrl(`/json?poll=1&since=all&_t=${Date.now()}`), { cache: "no-store" });
-        if (!resStream.ok) {
-          sourceStatus.ntfy = `HTTP ${resStream.status} ${resStream.statusText || ""}`.trim();
-        } else {
-          const responseText = await resStream.text();
-          const rows = responseText ? responseText.trim().split(/\r?\n/) : [];
-          let found = false;
-          for (let i = rows.length - 1; i >= 0; i--) {
-            try {
-              const msg = JSON.parse(rows[i]);
-              if (!msg || msg.event !== "message" || !msg.message) continue;
-              const parsed = JSON.parse(msg.message);
-              const unpacked = unpackCompactEnvelope(parsed);
-              if (isValidSnapshot(unpacked)) {
-                candidates.push(unpacked);
-                sourceStatus.ntfy = `mensaje válido · ${unpacked.boxes.length} casillas, ${unpacked.tasks.length} tareas`;
-                found = true;
-                break;
-              }
-            } catch (err) {}
-          }
-          if (!found) sourceStatus.ntfy = "HTTP 200 · no se encontró mensaje válido";
-        }
-      } catch (e) {
-        sourceStatus.ntfy = `error de lectura: ${String(e && e.message || e).slice(0, 140)}`;
-      }
+      sourceStatus.ntfy = "Desactivado por privacidad; no se consultan datos personales en canales públicos";
 
       renderSyncDiagnostics(sourceStatus);
 
-      if (durableCandidateCount === 0 && /^HTTP 404\b/.test(sourceStatus.firestore)) {
-        let bootstrapDataset = normalizeDataPayload(appState.data);
-        for (const candidate of candidates) {
-          bootstrapDataset = mergeSyncDatasets(bootstrapDataset, candidate);
-        }
-        const bootstrapResult = await autoBootstrapFirestoreDocument(bootstrapDataset, sourceStatus);
-        if (bootstrapResult === "created") return "syncing";
-        if (bootstrapResult === "exists" || bootstrapResult === "busy") return "syncing";
-      }
+      // A missing remote document never authorizes an automatic upload of local cache.
+      // Explicit recovery remains available from the user's "Rescatar y Subir Todo" action.
 
       if (durableCandidateCount === 0 || !candidates.length) {
         cloudSyncReady = false;
         cloudSyncReadyConfig = "";
-        const summary = `Nube no verificada · FS ${compactProviderStatus(sourceStatus.firestore)} / RTDB ${compactProviderStatus(sourceStatus.rtdb)}`;
+        const summary = `Nube no verificada · Firestore ${compactProviderStatus(sourceStatus.firestore)}`;
         const syncText = document.getElementById("sync-status-text");
         if (syncText) syncText.textContent = "Sin verificar";
         const modalSyncTime = document.getElementById("modal-sync-last-time");
         if (modalSyncTime) modalSyncTime.textContent = "No se encontró una copia remota persistente válida. No se subieron datos automáticamente.";
-        if (manual) showToast("La nube no se pudo verificar. Abre el menú «…» y revisa el diagnóstico de Firestore y Realtime Database. Tus datos locales siguen protegidos.", true);
+        if (manual) showToast("La nube no se pudo verificar. Abre el menú «…» y revisa el diagnóstico de Firestore. Tus datos locales siguen protegidos.", true);
         return "unverified";
       }
 
@@ -4293,8 +4402,6 @@
       for (let i = 1; i < candidates.length; i++) {
         cloudCandidate = mergeSyncDatasets(cloudCandidate, candidates[i]);
       }
-      const cloudNeedsRepair = candidates.some(candidate => syncFingerprint(candidate) !== syncFingerprint(cloudCandidate));
-
       cloudSyncReady = true;
       cloudSyncReadyConfig = getCloudSyncConfigKey();
       const syncText = document.getElementById("sync-status-text");
@@ -4303,28 +4410,33 @@
       if (!quiet && modalSyncTime) {
         modalSyncTime.textContent = `Copia remota verificada a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}; conciliando los dispositivos.`;
       }
-      applyIncomingSyncPayload(cloudCandidate, manual);
-
-      const localNow = normalizeDataPayload(appState.data);
-      if (
-        cloudNeedsRepair ||
-        syncFingerprint(localNow) !== syncFingerprint(cloudCandidate) ||
-        Number(localNow.updatedAt || 0) > Number(cloudCandidate.updatedAt || 0)
-      ) {
-        pushCloudSync(false);
-      } else {
-        const syncText = document.getElementById("sync-status-text");
-        if (syncText) syncText.textContent = "Sincronizado";
-        const modalSyncTime = document.getElementById("modal-sync-last-time");
+      const reconciliation = applyIncomingSyncPayload(cloudCandidate, manual);
+      if (!reconciliation || !reconciliation.ok) {
+        cloudSyncReady = false;
+        cloudSyncReadyConfig = "";
+        if (syncText) syncText.textContent = "Conciliación bloqueada";
         if (modalSyncTime) {
-          modalSyncTime.textContent = `Sincronización verificada a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.`;
+          modalSyncTime.textContent = "No se pudo confirmar la conciliación o guardar el respaldo local. No se subieron datos.";
         }
         if (manual) {
-          showToast("Sincronización verificada; los cambios de tus dispositivos ya fueron conciliados.");
+          showToast("No se modificó Firebase: la conciliación o el respaldo local no se pudieron completar.", true);
         }
-        return "synced";
+        return "reconcile-error";
       }
-      return "syncing";
+
+      if (reconciliation.needsPush) {
+        pushCloudSync(false);
+        return "syncing";
+      }
+
+      if (syncText) syncText.textContent = "Sincronizado";
+      if (modalSyncTime) {
+        modalSyncTime.textContent = `Sincronización verificada a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.`;
+      }
+      if (manual) {
+        showToast("Sincronización verificada; los cambios de tus dispositivos ya fueron conciliados.");
+      }
+      return "synced";
     } catch (error) {
       setRealtimeSyncStatus(`Error de sincronización: ${String(error && error.message || error).slice(0, 150)}`);
       const syncText = document.getElementById("sync-status-text");
@@ -4366,18 +4478,18 @@
     if (now - lastSyncCatchupAt < 700) return;
     if (cloudPullInFlight) return;
     lastSyncCatchupAt = now;
-    cleanupCompletedTasksFromPreviousDays();
-    pullCloudSync(false, true);
+    pullCloudSync(false, true).then(() => {
+      if (cloudSyncReady) cleanupCompletedTasksFromPreviousDays();
+    });
   }
 
   function startCloudSyncRecovery() {
     if (syncRecoveryIntervalId) clearInterval(syncRecoveryIntervalId);
-    // SSE is the instant path, not the only source of truth. A silent mobile stream can miss events.
-    // Reconcile durable Firestore every 10s while connected; use a 6s fallback when SSE is down.
+    // Firestore is the only remote source of truth; poll it at a steady 10s interval.
+    // Same-origin tabs share changes locally through BroadcastChannel and storage events.
     syncRecoveryIntervalId = window.setInterval(() => {
       if (document.visibilityState !== "visible" || !isCloudNetworkAllowed() || cloudPullInFlight) return;
-      const streamConnected = Boolean(appState.cloudEventSource && appState.cloudEventSource.readyState === 1);
-      const minimumInterval = streamConnected ? 10000 : 6000;
+      const minimumInterval = 10000;
       if (Date.now() - lastCloudPullCompletedAt < minimumInterval) return;
       pullCloudSync(false, true);
     }, 6000);
@@ -4394,62 +4506,13 @@
   }
 
   function startCloudSyncStream() {
-    if (!isCloudNetworkAllowed()) {
-      setRealtimeSyncStatus("Sin conexión de red");
-      return;
+    // Task data contains personal information. Do not publish it to the public ntfy
+    // topic; use verified Firestore polling and same-origin BroadcastChannel instead.
+    if (appState.cloudEventSource) {
+      try { appState.cloudEventSource.close(); } catch (e) {}
+      appState.cloudEventSource = null;
     }
-    if (typeof window.EventSource === "undefined") {
-      setRealtimeSyncStatus("Este WebView no ofrece EventSource; se usará recuperación periódica");
-      return;
-    }
-    setRealtimeSyncStatus("Conectando…");
-    try {
-      if (appState.cloudEventSource) {
-        appState.cloudEventSource.close();
-      }
-      const es = new window.EventSource(getCloudTopicUrl("/sse"));
-      es.onopen = () => {
-        setRealtimeSyncStatus("Conectado y escuchando cambios");
-        requestSyncCatchup();
-      };
-      es.onmessage = (ev) => {
-        try {
-          const msg = JSON.parse(ev.data);
-          if (msg && msg.message) {
-            const parsed = JSON.parse(msg.message);
-            if (parsed && parsed.d !== appState.deviceId && parsed.deviceId !== appState.deviceId) {
-              const unpacked = unpackCompactEnvelope(parsed);
-              if (unpacked) {
-                if (cloudSyncReady && cloudSyncReadyConfig === getCloudSyncConfigKey()) {
-                  const applied = applyIncomingSyncPayload(unpacked, false);
-                  const syncText = document.getElementById("sync-status-text");
-                  if (applied) {
-                    if (syncText) syncText.textContent = "Recibiendo cambios…";
-                    setRealtimeSyncStatus(`Cambio recibido a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`);
-                  } else {
-                    setRealtimeSyncStatus("Evento recibido; verificando la copia durable");
-                  }
-                } else {
-                  setRealtimeSyncStatus("Evento recibido antes de verificar Firebase; conciliación en cola");
-                }
-                // Always schedule a durable pull, including events received during startup.
-                scheduleIncomingSyncVerification();
-              }
-            }
-          }
-        } catch (error) {
-          setRealtimeSyncStatus(`Error al procesar evento: ${String(error && error.message || error).slice(0, 130)}`);
-        }
-      };
-      es.onerror = () => {
-        // EventSource reconnects automatically; the fallback covers mobile WebViews.
-        setRealtimeSyncStatus("Conexión interrumpida; reconectando…");
-        requestSyncCatchup();
-      };
-      appState.cloudEventSource = es;
-    } catch (error) {
-      setRealtimeSyncStatus(`No se pudo abrir el canal: ${String(error && error.message || error).slice(0, 130)}`);
-    }
+    setRealtimeSyncStatus("Canal público auxiliar desactivado por privacidad; Firestore es la fuente de verdad");
   }
 
   function loadRegisteredData() {
@@ -4869,7 +4932,7 @@
     const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 60);
     const msUntilMidnight = Math.max(500, nextMidnight.getTime() - now.getTime());
     midnightTimeoutId = setTimeout(() => {
-      cleanupCompletedTasksFromPreviousDays();
+      if (cloudSyncReady) cleanupCompletedTasksFromPreviousDays();
       scheduleExactMidnightRollover();
     }, msUntilMidnight);
   }
@@ -4937,28 +5000,59 @@
 
     const currentTaskIds = new Set((appState.data.tasks || []).map(task => String(task.id)));
     const currentBoxIds = new Set((appState.data.boxes || []).map(box => String(box.id)));
-    const deletedTasks = new Set([
+    const deletedTaskUpdatedAt = {
+      ...normalizeDeletionTimestamps(previousData && previousData.deletedTaskUpdatedAt),
+      ...normalizeDeletionTimestamps(appState.data.deletedTaskUpdatedAt)
+    };
+    const deletedBoxUpdatedAt = {
+      ...normalizeDeletionTimestamps(previousData && previousData.deletedBoxUpdatedAt),
+      ...normalizeDeletionTimestamps(appState.data.deletedBoxUpdatedAt)
+    };
+    const previousDeletedTaskIds = new Set(Array.isArray(previousData && previousData.deletedTaskIds) ? previousData.deletedTaskIds.map(String) : []);
+    const previousDeletedBoxIds = new Set(Array.isArray(previousData && previousData.deletedBoxIds) ? previousData.deletedBoxIds.map(String) : []);
+    (Array.isArray(appState.data.deletedTaskIds) ? appState.data.deletedTaskIds : []).forEach(id => {
+      const key = String(id || "").trim();
+      if (key && !previousDeletedTaskIds.has(key) && !deletedTaskUpdatedAt[key]) deletedTaskUpdatedAt[key] = recordChangeTime;
+    });
+    (Array.isArray(appState.data.deletedBoxIds) ? appState.data.deletedBoxIds : []).forEach(id => {
+      const key = String(id || "").trim();
+      if (key && !previousDeletedBoxIds.has(key) && !deletedBoxUpdatedAt[key]) deletedBoxUpdatedAt[key] = recordChangeTime;
+    });
+    (Array.isArray(previousData && previousData.tasks) ? previousData.tasks : [])
+      .filter(task => task && task.id != null && !currentTaskIds.has(String(task.id)))
+      .forEach(task => {
+        const id = String(task.id);
+        deletedTaskUpdatedAt[id] = Math.max(recordChangeTime, Number(deletedTaskUpdatedAt[id] || 0));
+      });
+    (Array.isArray(previousData && previousData.boxes) ? previousData.boxes : [])
+      .filter(box => box && box.id != null && !currentBoxIds.has(String(box.id)))
+      .forEach(box => {
+        const id = String(box.id);
+        deletedBoxUpdatedAt[id] = Math.max(recordChangeTime, Number(deletedBoxUpdatedAt[id] || 0));
+      });
+    currentTaskIds.forEach(id => {
+      delete deletedTaskUpdatedAt[id];
+    });
+    currentBoxIds.forEach(id => {
+      delete deletedBoxUpdatedAt[id];
+    });
+    appState.data.deletedTaskUpdatedAt = deletedTaskUpdatedAt;
+    appState.data.deletedBoxUpdatedAt = deletedBoxUpdatedAt;
+    appState.data.deletedTaskIds = Array.from(new Set([
       ...(Array.isArray(previousData && previousData.deletedTaskIds) ? previousData.deletedTaskIds : []),
       ...(Array.isArray(appState.data.deletedTaskIds) ? appState.data.deletedTaskIds : []),
-      ...((Array.isArray(previousData && previousData.tasks) ? previousData.tasks : [])
-        .filter(task => task && task.id != null && !currentTaskIds.has(String(task.id)))
-        .map(task => String(task.id)))
-    ]);
-    const deletedBoxes = new Set([
+      ...Object.keys(deletedTaskUpdatedAt)
+    ])).filter(id => deletedTaskUpdatedAt[String(id)] != null || !currentTaskIds.has(String(id)));
+    appState.data.deletedBoxIds = Array.from(new Set([
       ...(Array.isArray(previousData && previousData.deletedBoxIds) ? previousData.deletedBoxIds : []),
       ...(Array.isArray(appState.data.deletedBoxIds) ? appState.data.deletedBoxIds : []),
-      ...((Array.isArray(previousData && previousData.boxes) ? previousData.boxes : [])
-        .filter(box => box && box.id != null && !currentBoxIds.has(String(box.id)))
-        .map(box => String(box.id)))
-    ]);
-    currentTaskIds.forEach(id => deletedTasks.delete(id));
-    currentBoxIds.forEach(id => deletedBoxes.delete(id));
-    appState.data.deletedTaskIds = Array.from(deletedTasks);
-    appState.data.deletedBoxIds = Array.from(deletedBoxes);
+      ...Object.keys(deletedBoxUpdatedAt)
+    ])).filter(id => deletedBoxUpdatedAt[String(id)] != null || !currentBoxIds.has(String(id)));
     appState.data.syncSchemaVersion = 1;
     const syncContentChanged = !previousData || previousSyncFingerprint !== syncFingerprint(appState.data);
     if (syncContentChanged) {
       appState.data.updatedAt = Math.max(Date.now(), Number(appState.data.updatedAt || 0) + 1);
+      markLocalCloudChangesPending();
     }
     const payloadStr = JSON.stringify(appState.data);
     const ok = safeStorage.setItem(STORAGE_KEYS.DATA, payloadStr);
@@ -11255,6 +11349,7 @@
 
     // Point 2: Native Firebase Configuration & Rescue Controls inside 3-Dots Modal
     function saveFirebaseSettingsFromInputs() {
+      const previousCloudConfigKey = getCloudSyncConfigKey();
       const projInput = document.getElementById("input-firebase-project-id");
       const dbUrlInput = document.getElementById("input-firebase-db-url");
       const docPathInput = document.getElementById("input-cloud-sync-channel");
@@ -11287,6 +11382,10 @@
       safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(appState.firebaseConfig));
       cloudSyncReady = false;
       cloudSyncReadyConfig = "";
+      if (previousCloudConfigKey !== getCloudSyncConfigKey()) {
+        cloudFirestoreUpdateTime = "";
+        cloudFirestoreExists = null;
+      }
       startCloudSyncStream();
     }
 
@@ -11311,7 +11410,7 @@
         (appState.data.tasks || []).forEach(task => { delete task.bootstrapSeed; });
         (appState.data.boxes || []).forEach(box => { delete box.bootstrapSeed; });
         saveData(true, "Rescate y migración completa a Firebase");
-        pushCloudSync(true);
+        pushCloudSync(true, true);
       });
     }
 
@@ -11455,7 +11554,8 @@
   function boot() {
     initMobileAppNavigation();
     loadRegisteredData();
-    cleanupCompletedTasksFromPreviousDays();
+    // Do not mutate a potentially stale device cache before Firestore has been verified.
+    // The cloud pull below decides which dataset is safe to use before rollover cleanup.
     // The midnight timeout and focus/visibility handlers cover date rollover.
     // Do not poll cleanup every 5 seconds: it can trigger repeated board renders.
     scheduleExactMidnightRollover();
@@ -11472,11 +11572,13 @@
     renderBirthdayUpcomingList();
     document.documentElement.classList.remove("tasky-booting");
 
-    // Initial sync, real-time updates, and a quiet recovery poll for mobile WebViews.
-    // Incoming payloads are fingerprinted before rendering, so unchanged data won't redraw the board.
-    pullCloudSync(false);
-    startCloudSyncStream();
-    startCloudSyncRecovery();
+    // Verify Firestore before cleanup. Legacy local caches without a confirmed baseline
+    // are replaced by the remote snapshot and preserved as a local safety backup.
+    pullCloudSync(false).finally(() => {
+      if (cloudSyncReady) cleanupCompletedTasksFromPreviousDays();
+      startCloudSyncStream();
+      startCloudSyncRecovery();
+    });
   }
 
   if (document.readyState === "loading") {

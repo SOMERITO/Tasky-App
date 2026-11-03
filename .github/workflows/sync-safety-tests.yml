@@ -1,0 +1,68 @@
+name: Tasky Sync Safety Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "app.js"
+      - "index.html"
+      - "tests/**"
+      - "docs/**"
+      - "firebase.json"
+      - "firebase.emulator.json"
+      - "firestore.emulator.rules"
+      - ".github/workflows/sync-safety-tests.yml"
+  push:
+    branches:
+      - "fix/remote-first-sync-safety"
+    paths:
+      - "app.js"
+      - "index.html"
+      - "tests/**"
+      - "docs/**"
+      - "firebase.json"
+      - "firebase.emulator.json"
+      - "firestore.emulator.rules"
+      - ".github/workflows/sync-safety-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  sync-safety:
+    name: Sync safety regression tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify checked-out Tasky source
+        run: |
+          echo "Checked out commit: $(git rev-parse HEAD)"
+          echo "--- Git object ---"
+          git show HEAD:app.js | sed -n '3392,3398p'
+          echo "--- Worktree ---"
+          sed -n '3392,3398p' app.js
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check JavaScript syntax
+        run: node --check app.js
+
+      - name: Run sync safety regression tests
+        run: node --test tests/sync-safety.test.mjs
+
+      - name: Set up Java for Firestore emulator
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Run Firestore conditional-write integration test
+        run: npx --yes firebase-tools@15.34.2 emulators:exec --config firebase.emulator.json --project demo-tasky-safety --only firestore "node --test tests/firestore-precondition.integration.test.mjs"
