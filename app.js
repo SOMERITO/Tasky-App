@@ -4142,7 +4142,8 @@
             payloadJson: { stringValue: JSON.stringify(fullPayload) },
             compactEnvelope: { stringValue: compactStr },
             updatedAt: { integerValue: String(fullPayload.updatedAt) },
-            deviceId: { stringValue: String(appState.deviceId) }
+            deviceId: { stringValue: String(appState.deviceId) },
+            protocolVersion: { integerValue: String(FIRESTORE_SYNC_PROTOCOL_VERSION) }
           }
         };
         const currentDocument = getFirebaseFirestoreWritePrecondition(explicitRescue);
@@ -4274,7 +4275,8 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261103-sync-safety-5";
+  const FIRESTORE_SYNC_PROTOCOL_VERSION = 2;
+  const TASKY_BUILD_ID = "20261103-sync-safety-6";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
