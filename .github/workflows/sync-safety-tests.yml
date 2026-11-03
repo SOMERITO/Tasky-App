@@ -1,0 +1,41 @@
+name: Tasky Sync Safety Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "app.js"
+      - "index.html"
+      - "tests/**"
+      - ".github/workflows/sync-safety-tests.yml"
+  push:
+    branches:
+      - "fix/remote-first-sync-safety"
+    paths:
+      - "app.js"
+      - "index.html"
+      - "tests/**"
+      - ".github/workflows/sync-safety-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  sync-safety:
+    name: Sync safety regression tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check JavaScript syntax
+        run: node --check app.js
+
+      - name: Run sync safety regression tests
+        run: node --test tests/sync-safety.test.mjs
