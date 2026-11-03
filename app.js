@@ -3305,9 +3305,10 @@
       syncBroadcastChannel = new window.BroadcastChannel("tasky_firebase_realtime_bus");
       syncBroadcastChannel.onmessage = (ev) => {
         if (!cloudSyncReady) return;
-        if (ev.data && ev.data.deviceId !== appState.deviceId) {
+        if (ev.data && ev.data.type === "firestore-write-confirmed") {
           // Treat local-channel messages only as a refresh signal. Never adopt a
           // peer's local snapshot as if it were a verified Firestore document.
+          // BroadcastChannel does not echo a message to its sending instance.
           pullCloudSync(false, true);
         }
       };
