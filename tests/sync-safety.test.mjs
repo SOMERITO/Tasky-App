@@ -658,7 +658,7 @@ test("failed reconciliation never requests a cloud write", () => {
 test("pullCloudSync refuses to call pushCloudSync after failed reconciliation", () => {
   const start = app.indexOf("async function pullCloudSync(");
   assert.notEqual(start, -1);
-  const end = app.indexOf("\\n  window.addEventListener(\\"tasky:manual-refresh\\"", start);
+  const end = app.indexOf(`\n  window.addEventListener("tasky:manual-refresh"`, start);
   assert.notEqual(end, -1);
   const pull = app.slice(start, end);
   const failedGuard = pull.indexOf("if (!reconciliation || !reconciliation.ok)");
@@ -666,6 +666,6 @@ test("pullCloudSync refuses to call pushCloudSync after failed reconciliation", 
   assert.notEqual(failedGuard, -1);
   assert.notEqual(pushAfterSuccess, -1);
   assert.ok(failedGuard < pushAfterSuccess);
-  assert.match(pull, /return "reconcile-error"/);
-  assert.doesNotMatch(pull, /localHadPendingChanges[\\s\\S]{0,500}pushCloudSync\\(false\\)/);
+  assert.ok(pull.includes('return "reconcile-error"'));
+  assert.equal(pull.includes("localHadPendingChanges"), false);
 });
