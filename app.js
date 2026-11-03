@@ -9038,11 +9038,9 @@
     if (tasks.length > 1) clearTaskSelection();
     saveData(true, `Actualizó la repetición de ${tasks.length} tareas`);
     renderBoard();
-    const label = formatRepeatDaysLabelForToast
-      ? formatRepeatDaysLabelForToast(isRepeating, days)
-      : (isRepeating ? "Repetición configurada" : "Sin repetición");
+    const label = formatRepeatBadgeLabel(tasks[0]);
     showToast(tasks.length > 1
-      ? `${label}: ${tasks.length} tareas actualizadas`
+      ? `${label ? label.replace("🔁 ", "Repetición: ") : "Sin repetición"}: ${tasks.length} tareas actualizadas`
       : (label ? label.replace("🔁 ", "Repetición: ") : "Sin repetición"));
   }
 
