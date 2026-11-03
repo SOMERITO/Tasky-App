@@ -3390,12 +3390,14 @@
   }
 
   function getFirebaseFirestoreDocumentName() {
-    const cfg = appState.firebaseConfig || {};
-    const projectId = String(cfg.projectId || "tasky-7a30c").trim();
-    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\\/+|\\/+$/g, "");
-    return `projects/${projectId}/databases/(default)/documents/${docPath}`;
+    const base = getFirebaseFirestoreUrl();
+    const queryIndex = base.indexOf("?");
+    const resourceUrl = queryIndex >= 0 ? base.slice(0, queryIndex) : base;
+    const versionMarker = "/v1/";
+    const versionIndex = resourceUrl.indexOf(versionMarker);
+    if (versionIndex < 0) return "";
+    return resourceUrl.slice(versionIndex + versionMarker.length);
   }
-
   function getFirebaseFirestoreCommitUrl() {
     const base = getFirebaseFirestoreUrl();
     const queryIndex = base.indexOf("?");
