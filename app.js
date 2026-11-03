@@ -3287,12 +3287,12 @@
   // ==========================================================================
   let cloudSyncReady = false;
   let cloudSyncReadyConfig = "";
+  let cloudFirestoreUpdateTime = "";
+  let cloudFirestoreExists = null;
   let cloudPullInFlight = false;
-  let cloudBootstrapInFlight = false;
   let syncRecoveryIntervalId = null;
   let lastSyncCatchupAt = 0;
   let lastCloudPullCompletedAt = 0;
-  let lastCloudBootstrapError = "";
   let syncBroadcastChannel = null;
   let realtimeSyncStatus = "Canal pendiente de conexión";
   function setRealtimeSyncStatus(status) {
@@ -3378,6 +3378,18 @@
     const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, "");
     const keyParam = cfg.apiKey ? `?key=${encodeURIComponent(cfg.apiKey)}` : "";
     return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(proj)}/databases/(default)/documents/${docPath}${keyParam}`;
+  }
+
+  function getFirebaseFirestoreConditionalWriteUrl(explicitRescue = false) {
+    const base = getFirebaseFirestoreUrl();
+    const separator = base.includes("?") ? "&" : "?";
+    if (cloudFirestoreUpdateTime) {
+      return `${base}${separator}currentDocument.updateTime=${encodeURIComponent(cloudFirestoreUpdateTime)}`;
+    }
+    if (explicitRescue && cloudFirestoreExists === false) {
+      return `${base}${separator}currentDocument.exists=false`;
+    }
+    return "";
   }
 
   function getFirebaseRtdbUrl() {
@@ -3925,11 +3937,23 @@
       pullCloudSync(false, true);
     }, 450);
   }
-  function pushCloudSync(forceImmediateToast = false) {
+  function pushCloudSync(forceImmediateToast = false, explicitRescue = false) {
     if (!cloudSyncReady || cloudSyncReadyConfig !== getCloudSyncConfigKey()) {
       if (forceImmediateToast) showToast("Sincronización bloqueada por seguridad: primero hay que verificar la nube o usar «Rescatar y Subir Todo a Firebase».");
       const blockedSyncText = document.getElementById("sync-status-text");
       if (blockedSyncText) blockedSyncText.textContent = "Sin verificar";
+      return;
+    }
+    const conditionalWriteUrl = getFirebaseFirestoreConditionalWriteUrl(explicitRescue);
+    if (!conditionalWriteUrl) {
+      const syncText = document.getElementById("sync-status-text");
+      if (syncText) syncText.textContent = "Sin verificar";
+      if (forceImmediateToast) {
+        showToast("Escritura bloqueada: primero debe leerse y verificarse la versión actual de Firebase.", true);
+      }
+      if (!cloudPullInFlight && isCloudNetworkAllowed()) {
+        window.setTimeout(() => pullCloudSync(false, true), 120);
+      }
       return;
     }
     if (syncBroadcastChannel) {
@@ -3971,8 +3995,10 @@
       };
       const compactStr = packCompactEnvelope();
       let firebaseSaved = false;
+      let firestorePreconditionConflict = false;
+      let firestoreWriteNeedsReconcile = false;
       let firestoreWriteStatus = "No se intentó la escritura";
-      let rtdbWriteStatus = "URL no configurada";
+      let rtdbWriteStatus = "Desactivado: Firestore es la única fuente de verdad";
       let streamWriteStatus = "No comprobado";
       const describeResponseError = raw => {
         const source = String(raw || "").trim();
@@ -4009,46 +4035,55 @@
       // 1. Push to Firestore. Do not set keepalive: true for large sync payloads:
       // Fetch keepalive bodies are limited to 64 KiB and can throw before reaching Firebase.
       try {
-        const res = await window.fetch(firestoreBytes.url, {
+        const res = await window.fetch(conditionalWriteUrl, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: firestoreBytes.body
         });
         if (res && res.ok) {
-          firebaseSaved = true;
-          firestoreWriteStatus = `OK (HTTP ${res.status}; ${(writePayloadBytes / 1024).toFixed(1)} KiB)`;
+          const savedDocument = await res.json().catch(() => null);
+          if (savedDocument && typeof savedDocument.updateTime === "string" && savedDocument.updateTime) {
+            cloudFirestoreUpdateTime = savedDocument.updateTime;
+            cloudFirestoreExists = true;
+            firebaseSaved = true;
+            firestoreWriteStatus = `OK (HTTP ${res.status}; versión Firestore confirmada; ${(writePayloadBytes / 1024).toFixed(1)} KiB)`;
+          } else {
+            cloudFirestoreUpdateTime = "";
+            firestoreWriteNeedsReconcile = true;
+            firestoreWriteStatus = `HTTP ${res.status}; Firestore no devolvió updateTime; escritura pendiente de verificación`;
+          }
         } else {
           const responseText = res ? await res.text().catch(() => "") : "";
           const detail = describeResponseError(responseText);
-          firestoreWriteStatus = `HTTP ${res ? res.status : "sin respuesta"}${detail ? ` · ${detail}` : ""}`;
+          const errorStatus = (() => {
+            try { return JSON.parse(responseText || "{}")?.error?.status || ""; } catch (e) { return ""; }
+          })();
+          if (/FAILED_PRECONDITION|ABORTED/i.test(errorStatus) || /precondition|update.?time/i.test(detail)) {
+            firestorePreconditionConflict = true;
+            firestoreWriteNeedsReconcile = true;
+            cloudFirestoreUpdateTime = "";
+            cloudSyncReady = false;
+            cloudSyncReadyConfig = "";
+            firestoreWriteStatus = "Conflicto de versión: Firebase cambió desde la última lectura; escritura rechazada y se volverá a conciliar";
+          } else {
+            cloudFirestoreUpdateTime = "";
+            cloudSyncReady = false;
+            cloudSyncReadyConfig = "";
+            firestoreWriteNeedsReconcile = true;
+            firestoreWriteStatus = `HTTP ${res ? res.status : "sin respuesta"}${detail ? ` · ${detail}` : ""}`;
+          }
         }
       } catch (e) {
+        cloudFirestoreUpdateTime = "";
+        cloudSyncReady = false;
+        cloudSyncReadyConfig = "";
+        firestoreWriteNeedsReconcile = true;
         firestoreWriteStatus = `Error de red · ${String(e && e.message || e).slice(0, 180)} (${(writePayloadBytes / 1024).toFixed(1)} KiB)`;
       }
       updateWriteDiagnostic();
 
-      // 2. Realtime Database is optional; try it only if its exact URL was configured.
-      try {
-        const rtdbUrl = getFirebaseRtdbUrl();
-        if (rtdbUrl) {
-          const rtdbBody = JSON.stringify(fullPayload);
-          const resRt = await window.fetch(rtdbUrl, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: rtdbBody
-          });
-          if (resRt && resRt.ok) {
-            firebaseSaved = true;
-            rtdbWriteStatus = `OK (HTTP ${resRt.status})`;
-          } else {
-            const responseText = resRt ? await resRt.text().catch(() => "") : "";
-            const detail = describeResponseError(responseText);
-            rtdbWriteStatus = `HTTP ${resRt ? resRt.status : "sin respuesta"}${detail ? ` · ${detail}` : ""}`;
-          }
-        }
-      } catch (e) {
-        rtdbWriteStatus = `Error de red · ${String(e && e.message || e).slice(0, 180)}`;
-      }
+      // Realtime Database is intentionally not written. Firestore is the only remote source of truth.
+      rtdbWriteStatus = "Desactivado: Firestore es la única fuente de verdad";
       updateWriteDiagnostic();
 
       // The public ntfy channel is intentionally disabled because it carried full task payloads.
@@ -4083,7 +4118,11 @@
         if (forceImmediateToast) showToast(`No se pudo completar la escritura en la nube: ${message}`, true);
       } finally {
         cloudPushInFlight = false;
-        if (cloudPushPending) {
+        if (firestoreWriteNeedsReconcile) {
+          cloudPushPending = false;
+          cloudPushPendingToast = false;
+          window.setTimeout(() => pullCloudSync(false, true), 160);
+        } else if (cloudPushPending) {
           const showPendingToast = cloudPushPendingToast;
           cloudPushPending = false;
           cloudPushPendingToast = false;
@@ -4154,8 +4193,8 @@
       let durableCandidateCount = 0;
       const sourceStatus = {
         firestore: "no consultado",
-        rtdb: "no consultada",
-        ntfy: "no consultado"
+        rtdb: "Desactivado: Firestore es la única fuente de verdad",
+        ntfy: "Desactivado por privacidad"
       };
       const isValidSnapshot = (norm) => Boolean(norm && Array.isArray(norm.boxes) &&
         norm.boxes.length && Array.isArray(norm.tasks) && Number(norm.updatedAt || 0) > 0);
@@ -4167,11 +4206,17 @@
         const fsUrl = getFirebaseFirestoreUrl();
         const res = await window.fetch(fsUrl, { cache: "no-store" });
         if (!res.ok) {
+          cloudFirestoreUpdateTime = "";
+          cloudFirestoreExists = res.status === 404 ? false : null;
           sourceStatus.firestore = `HTTP ${res.status} ${res.statusText || ""}`.trim();
         } else {
           const docJson = await res.json();
+          cloudFirestoreExists = true;
+          cloudFirestoreUpdateTime = typeof docJson.updateTime === "string" ? docJson.updateTime : "";
           const rawStr = docJson && docJson.fields && docJson.fields.payloadJson && docJson.fields.payloadJson.stringValue;
-          if (!rawStr) {
+          if (!cloudFirestoreUpdateTime) {
+            sourceStatus.firestore = "HTTP 200 · documento sin updateTime; escritura bloqueada hasta verificar la versión";
+          } else if (!rawStr) {
             sourceStatus.firestore = "HTTP 200 · documento vacío o sin campo payloadJson";
           } else {
             const norm = normalizeDataPayload(JSON.parse(rawStr));
@@ -4183,34 +4228,12 @@
           }
         }
       } catch (e) {
+        cloudFirestoreUpdateTime = "";
+        cloudFirestoreExists = null;
         sourceStatus.firestore = `error de lectura: ${String(e && e.message || e).slice(0, 140)}`;
       }
 
-      try {
-        const rtdbUrl = getFirebaseRtdbUrl();
-        if (!rtdbUrl) {
-          sourceStatus.rtdb = "URL no configurada";
-        } else {
-          const resRt = await window.fetch(rtdbUrl, { cache: "no-store" });
-          if (!resRt.ok) {
-            sourceStatus.rtdb = `HTTP ${resRt.status} ${resRt.statusText || ""}`.trim();
-          } else {
-            const parsedRt = await resRt.json();
-            if (parsedRt == null) {
-              sourceStatus.rtdb = "HTTP 200 · ruta vacía (null)";
-            } else {
-              const normRt = unpackCompactEnvelope(parsedRt);
-              sourceStatus.rtdb = describeSnapshot(normRt);
-              if (isValidSnapshot(normRt)) {
-                candidates.push(normRt);
-                durableCandidateCount++;
-              }
-            }
-          }
-        }
-      } catch (e) {
-        sourceStatus.rtdb = `error de lectura: ${String(e && e.message || e).slice(0, 140)}`;
-      }
+      sourceStatus.rtdb = "Desactivado: Firestore es la única fuente de verdad";
 
       sourceStatus.ntfy = "Desactivado por privacidad; no se consultan datos personales en canales públicos";
 
@@ -4235,7 +4258,7 @@
       for (let i = 1; i < candidates.length; i++) {
         cloudCandidate = mergeSyncDatasets(cloudCandidate, candidates[i]);
       }
-      const cloudNeedsRepair = candidates.some(candidate => syncFingerprint(candidate) !== syncFingerprint(cloudCandidate));
+      const localHadPendingChanges = hasPendingLocalCloudChanges(appState.data);
 
       cloudSyncReady = true;
       cloudSyncReadyConfig = getCloudSyncConfigKey();
@@ -4249,9 +4272,11 @@
 
       const localNow = normalizeDataPayload(appState.data);
       if (
-        cloudNeedsRepair ||
-        syncFingerprint(localNow) !== syncFingerprint(cloudCandidate) ||
-        Number(localNow.updatedAt || 0) > Number(cloudCandidate.updatedAt || 0)
+        localHadPendingChanges &&
+        (
+          syncFingerprint(localNow) !== syncFingerprint(cloudCandidate) ||
+          Number(localNow.updatedAt || 0) > Number(cloudCandidate.updatedAt || 0)
+        )
       ) {
         pushCloudSync(false);
       } else {
@@ -11181,6 +11206,8 @@
       safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(appState.firebaseConfig));
       cloudSyncReady = false;
       cloudSyncReadyConfig = "";
+      cloudFirestoreUpdateTime = "";
+      cloudFirestoreExists = null;
       startCloudSyncStream();
     }
 
@@ -11205,7 +11232,7 @@
         (appState.data.tasks || []).forEach(task => { delete task.bootstrapSeed; });
         (appState.data.boxes || []).forEach(box => { delete box.bootstrapSeed; });
         saveData(true, "Rescate y migración completa a Firebase");
-        pushCloudSync(true);
+        pushCloudSync(true, true);
       });
     }
 
