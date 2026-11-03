@@ -3069,7 +3069,7 @@
         rescheduledCount: Number(t.rescheduledCount || (isResched ? 1 : 0)),
         isRescheduled: isResched,
         order: typeof t.order === "number" ? t.order : idx,
-        focusPriorityDate: /^\\d{4}-\\d{2}-\\d{2}$/.test(String(t.focusPriorityDate || ""))
+        focusPriorityDate: /^\d{4}-\d{2}-\d{2}$/.test(String(t.focusPriorityDate || ""))
           ? String(t.focusPriorityDate) : "",
         focusPriorityLevel: [1, 2, 3].includes(Number(t.focusPriorityLevel))
           ? Number(t.focusPriorityLevel) : 0
@@ -5934,7 +5934,7 @@
       const scheduledDate = String(task.focusPriorityDate || "");
       const scheduledLevel = Number(task.focusPriorityLevel);
       const dueDate = String(task.dueDate || today);
-      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(scheduledDate) ||
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate) ||
           scheduledDate > today || dueDate > today ||
           ![1, 2, 3].includes(scheduledLevel)) return;
 
