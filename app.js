@@ -3540,6 +3540,18 @@
     safeStorage.setItem(STORAGE_KEYS.CLOUD_DIRTY, "0");
   }
 
+  function confirmCloudPayloadWritten(payload) {
+    const writtenFingerprint = syncFingerprint(payload);
+    if (!writtenFingerprint) return;
+    safeStorage.setItem(STORAGE_KEYS.CLOUD_BASELINE, writtenFingerprint);
+    // A newer edit may have happened while the network request was in flight.
+    // Keep it pending rather than falsely marking it as uploaded.
+    safeStorage.setItem(
+      STORAGE_KEYS.CLOUD_DIRTY,
+      getCurrentCloudFingerprint() === writtenFingerprint ? "0" : "1"
+    );
+  }
+
   function preserveLocalSnapshotBeforeCloudAdoption(localRaw) {
     const local = normalizeDataPayload(localRaw);
     if (!local || !local.boxes.length) return;
@@ -4039,7 +4051,7 @@
       streamWriteStatus = "Desactivado por privacidad; se utiliza Firestore";
       updateWriteDiagnostic();
 
-      if (firebaseSaved) confirmCurrentCloudSnapshot();
+      if (firebaseSaved) confirmCloudPayloadWritten(fullPayload);
 
       const syncText = document.getElementById("sync-status-text");
       // Show "Sincronizado" only after Firebase confirms the remote write.
