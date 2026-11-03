@@ -7687,8 +7687,9 @@
       : !Boolean(eligibleTasks[0].noDeadline);
     const isBulk = tasks.length > 1;
 
+    const eligibleTaskLabel = `${eligibleTasks.length} tarea${eligibleTasks.length === 1 ? "" : "s"}`;
     pushUndoSnapshot(isBulk
-      ? `${shouldEnableNoDeadline ? "Puso sin fecha límite" : "Reactivó fecha límite de"} ${eligibleTasks.length} tareas seleccionadas`
+      ? `${shouldEnableNoDeadline ? "Puso sin fecha límite" : "Reactivó fecha límite de"} ${eligibleTaskLabel} seleccionada${eligibleTasks.length === 1 ? "" : "s"}`
       : (shouldEnableNoDeadline
         ? `Sin fecha límite: ${eligibleTasks[0].title}`
         : `Activar fecha límite: ${eligibleTasks[0].title}`));
@@ -7703,7 +7704,7 @@
     });
 
     if (isBulk) clearTaskSelection();
-    saveData(true, `Actualizó la fecha límite de ${eligibleTasks.length} tareas`);
+    saveData(true, `Actualizó la fecha límite de ${eligibleTaskLabel}`);
     playUiSound("tap");
     renderBoardPreservingScroll();
 
@@ -7715,7 +7716,7 @@
         ? "Fecha límite activada: la tarea podrá marcarse como atrasada"
         : `⏳ Se reactivó la fecha límite de ${eligibleTasks.length} tareas`);
     showToast(skippedCount
-      ? `${actionMessage}; ${skippedCount} tareas recurrentes se omitieron`
+      ? `${actionMessage}; se omitió ${skippedCount} tarea${skippedCount === 1 ? "" : "s"} recurrente${skippedCount === 1 ? "" : "s"}`
       : actionMessage);
   }
 
