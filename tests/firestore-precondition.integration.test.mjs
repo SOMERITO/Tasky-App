@@ -41,6 +41,31 @@ async function deleteDocument() {
   await fetch(documentUrl, { method: "DELETE" }).catch(() => {});
 }
 
+async function commitDocument(updateTime, payload) {
+  const response = await fetch(
+    "http://" + emulatorHost +
+      "/v1/projects/" + projectId +
+      "/databases/(default)/documents:commit",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        writes: [{
+          update: {
+            name: "projects/" + projectId +
+              "/databases/(default)/documents/sync_safety_test/conditional_write_guard",
+            fields: {
+              payloadJson: { stringValue: JSON.stringify(payload) }
+            }
+          },
+          currentDocument: { updateTime }
+        }]
+      })
+    }
+  );
+  return parseResponse(response);
+}
+
 test("Firestore REST enforces exists=false and updateTime before accepting writes", async t => {
   await deleteDocument();
   t.after(deleteDocument);
@@ -59,16 +84,16 @@ test("Firestore REST enforces exists=false and updateTime before accepting write
   assert.ok(firstUpdateTime.length > 0);
 
   // Two devices read the same revision. The first write wins.
-  const deviceAWrite = await patchDocument(
-    documentUrl + "?currentDocument.updateTime=" + encodeURIComponent(firstUpdateTime),
+  const deviceAWrite = await commitDocument(
+    firstUpdateTime,
     { version: 2, source: "device-A" }
   );
   assert.equal(deviceAWrite.response.ok, true, JSON.stringify(deviceAWrite.json));
   assert.ok(deviceAWrite.json.updateTime);
 
   // Device B tries the same stale revision. Firestore must reject it.
-  const deviceBStaleWrite = await patchDocument(
-    documentUrl + "?currentDocument.updateTime=" + encodeURIComponent(firstUpdateTime),
+  const deviceBStaleWrite = await commitDocument(
+    firstUpdateTime,
     { version: 999, source: "stale-device-B" }
   );
   assert.equal(deviceBStaleWrite.response.ok, false);
@@ -89,9 +114,8 @@ test("Firestore REST enforces exists=false and updateTime before accepting write
     JSON.stringify({ version: 2, source: "device-A" }));
 
   // Device B must re-read and use the new revision before retrying.
-  const deviceBReconciledWrite = await patchDocument(
-    documentUrl + "?currentDocument.updateTime=" +
-      encodeURIComponent(afterConflictRead.json.updateTime),
+  const deviceBReconciledWrite = await commitDocument(
+    afterConflictRead.json.updateTime,
     { version: 3, source: "device-B-after-reconciliation" }
   );
   assert.equal(deviceBReconciledWrite.response.ok, true,
