@@ -182,7 +182,7 @@ test("cross-tab messages are refresh signals, never task snapshots", () => {
 });
 
 test("index.html loads the cache-busted app.js build", () => {
-  assert.match(html, /app\.js\?v=20261103-sync-safety-1/);
+  assert.match(html, /app\.js\?v=20261103-sync-safety-2/);
 });
 
 
@@ -295,4 +295,26 @@ test("offline edits are backed up and merged instead of discarded on first cloud
     appState.data.tasks.map(task => task.id).sort(),
     ["offline-added-task", "remote-task"]
   );
+});
+
+
+test("Firestore config identity ignores the retired Realtime Database URL", () => {
+  const source = extractFunction(
+    "getCloudSyncConfigKey",
+    "\n  function loadSavedFirebaseConfig"
+  );
+  const fn = new Function(
+    "appState",
+    "return (" + source + ");"
+  )({
+    firebaseConfig: {
+      projectId: "tasky-7a30c",
+      docPath: "/tasky_sync/somerito_main/",
+      databaseURL: "https://old-rtdb.example"
+    }
+  });
+  assert.deepEqual(JSON.parse(fn()), {
+    projectId: "tasky-7a30c",
+    docPath: "tasky_sync/somerito_main"
+  });
 });
