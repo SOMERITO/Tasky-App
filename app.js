@@ -3305,8 +3305,10 @@
       syncBroadcastChannel = new window.BroadcastChannel("tasky_firebase_realtime_bus");
       syncBroadcastChannel.onmessage = (ev) => {
         if (!cloudSyncReady) return;
-        if (ev.data && ev.data.payload && ev.data.deviceId !== appState.deviceId) {
-          applyIncomingSyncPayload(ev.data.payload, false);
+        if (ev.data && ev.data.deviceId !== appState.deviceId) {
+          // Treat local-channel messages only as a refresh signal. Never adopt a
+          // peer's local snapshot as if it were a verified Firestore document.
+          pullCloudSync(false, true);
         }
       };
     }
@@ -3315,10 +3317,9 @@
   window.addEventListener("storage", (ev) => {
     if (!cloudSyncReady) return;
     if (ev.key === STORAGE_KEYS.DATA && ev.newValue) {
-      try {
-        const parsed = JSON.parse(ev.newValue);
-        applyIncomingSyncPayload(parsed, false);
-      } catch (e) {}
+      // A localStorage event is not a cloud acknowledgement. Read the source of
+      // truth again instead of accepting another tab's cache directly.
+      pullCloudSync(false, true);
     }
   });
 
@@ -3390,16 +3391,6 @@
       return `${base}${separator}currentDocument.exists=false`;
     }
     return "";
-  }
-
-  function getFirebaseRtdbUrl() {
-    const cfg = appState.firebaseConfig || {};
-    // Only query Realtime Database when its exact URL is configured.
-    // Tasky's registered Firebase Web SDK config does not contain databaseURL, so do not guess a host.
-    const base = String(cfg.databaseURL || "").trim().replace(/\/+$/, "");
-    if (!base) return "";
-    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, "");
-    return `${base}/${docPath}.json`;
   }
 
   function packCompactEnvelope() {
@@ -3956,14 +3947,6 @@
       }
       return;
     }
-    if (syncBroadcastChannel) {
-      try {
-        syncBroadcastChannel.postMessage({
-          deviceId: appState.deviceId,
-          payload: buildSyncPayload(appState.data)
-        });
-      } catch (e) {}
-    }
     if (!isCloudNetworkAllowed()) {
       const offlineSyncText = document.getElementById("sync-status-text");
       if (offlineSyncText) offlineSyncText.textContent = "Sin conexión";
@@ -4090,7 +4073,17 @@
       streamWriteStatus = "Desactivado por privacidad; se utiliza Firestore";
       updateWriteDiagnostic();
 
-      if (firebaseSaved) confirmCloudPayloadWritten(fullPayload);
+      if (firebaseSaved) {
+        confirmCloudPayloadWritten(fullPayload);
+        if (syncBroadcastChannel) {
+          try {
+            syncBroadcastChannel.postMessage({
+              deviceId: appState.deviceId,
+              type: "firestore-write-confirmed"
+            });
+          } catch (e) {}
+        }
+      }
 
       const syncText = document.getElementById("sync-status-text");
       // Show "Sincronizado" only after Firebase confirms the remote write.
