@@ -6516,7 +6516,7 @@
           <div class="box-header-actions">
             <span class="${countSquareClass}" data-tip-title="${escapeHtml(countSquareTipTitle)}" data-tip-desc="${escapeHtml(countSquareTipDesc)}">${countSquareNumber}</span>
             ${recurringAuditButtonHtml}
-            <button type="button" class="box-ctrl-btn copy-box-btn" data-box-action="copy-box" aria-label="Copiar casilla y tareas" data-tip-title="📋 Copiar casilla y tareas" data-tip-desc="Copia el título de esta casilla y todas las tareas registradas en ella al portapapeles.">
+            <button type="button" class="box-ctrl-btn copy-box-btn" data-box-action="copy-box" aria-label="Copiar casilla y tareas visibles" data-tip-title="📋 Copiar casilla y tareas visibles" data-tip-desc="Copia el título de esta casilla y únicamente las tareas que se muestran actualmente en ella.">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             </button>
             <button type="button" class="box-ctrl-btn collapse-right-btn" data-box-action="collapse" data-tip-title="⌄ Plegar o desplegar casilla" data-tip-desc="Oculta o muestra el listado de tareas de este bloque para despejar tu vista.">
@@ -6616,23 +6616,22 @@
       const copyBoxBtn = card.querySelector('[data-box-action="copy-box"]');
       if (copyBoxBtn) {
         copyBoxBtn.addEventListener("click", () => {
-          const pendingTasksInBox = appState.data.tasks
-            .filter(t => t.boxId === box.id && !t.done)
-            .sort((a, b) => (a.order || 0) - (b.order || 0));
+          // Copy the exact rows currently rendered in this box, respecting the active view and filters.
+          const tasksToCopy = visibleTasks;
           const lines = [
             `${box.emoji ? box.emoji + " " : ""}${box.name.toUpperCase()}`,
             ""
           ];
-          if (pendingTasksInBox.length === 0) {
-            lines.push("(Sin tareas pendientes)");
+          if (tasksToCopy.length === 0) {
+            lines.push("(Sin tareas visibles)");
           } else {
-            pendingTasksInBox.forEach((t) => {
-              lines.push(`• ${t.title}`);
+            tasksToCopy.forEach((task) => {
+              lines.push(`• ${task.title}`);
             });
           }
           copyTextToClipboard(
             lines.join("\n"),
-            `📋 Copiado: ${box.name.toUpperCase()} (${pendingTasksInBox.length} tarea${pendingTasksInBox.length === 1 ? "" : "s"} pendientes)`,
+            `📋 Copiado: ${box.name.toUpperCase()} (${tasksToCopy.length} tarea${tasksToCopy.length === 1 ? "" : "s"} visibles)`,
             copyBoxBtn
           );
         });
