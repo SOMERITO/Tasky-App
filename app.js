@@ -3520,11 +3520,13 @@
   }
 
   function hasPendingLocalCloudChanges(data = appState.data) {
+    // An explicit dirty marker means this app instance recorded a user edit that
+    // has not yet been confirmed in Firestore, even if this device has no baseline.
+    if (safeStorage.getItem(STORAGE_KEYS.CLOUD_DIRTY) === "1") return true;
     const baseline = String(safeStorage.getItem(STORAGE_KEYS.CLOUD_BASELINE) || "");
-    // A legacy device without a confirmed baseline cannot prove its local cache is newer.
+    // A legacy device without a confirmed baseline cannot prove its unchanged cache is newer.
     // Keep it as a recovery backup, but never let it outrank the first verified cloud read.
     if (!baseline) return false;
-    if (safeStorage.getItem(STORAGE_KEYS.CLOUD_DIRTY) === "1") return true;
     return getCurrentCloudFingerprint(data) !== baseline;
   }
 
