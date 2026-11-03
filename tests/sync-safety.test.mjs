@@ -441,3 +441,145 @@ test("two writers with the same Firestore revision cannot overwrite each other s
   assert.equal(deviceBReconciledSave.ok, true);
   assert.equal(document.payload.title, "Cambio A conciliado con cambio B");
 });
+
+
+test("legacy unversioned tombstones from a stale device cannot delete Firestore tasks", () => {
+  const source = extractFunction(
+    "mergeSyncDatasets",
+    "\n  function applyIncomingSyncPayload"
+  );
+  const merge = new Function(
+    "normalizeDataPayload",
+    "canonicalBoxKey",
+    "mergeCompletionLogs",
+    "mergeDismissedTaskSuggestions",
+    "mergeBirthdays",
+    "normalizeLearningGoalsData",
+    "mergeLearningGoalsData",
+    "normalizeFocusPlanData",
+    "mergeFocusPlanData",
+    "normalizeCompletionLog",
+    "normalizeDismissedTaskSuggestions",
+    "normalizeBirthdays",
+    "syncFingerprint",
+    "return (" + source + ");"
+  )(
+    value => value,
+    value => String(value || "").toLowerCase().replace(/[^a-z0-9]/g, ""),
+    (primary, secondary) => [...(primary || []), ...(secondary || [])],
+    (primary, secondary) => ({ ...(secondary || {}), ...(primary || {}) }),
+    (primary, secondary) => [...(secondary || []), ...(primary || [])],
+    value => value || { daily: {}, weekly: {} },
+    (primary, secondary) => ({ ...(secondary || {}), ...(primary || {}) }),
+    value => value || { date: "", byBox: {}, updatedAt: 0 },
+    (primary, secondary) => primary || secondary || { date: "", byBox: {}, updatedAt: 0 },
+    value => value || [],
+    value => value || {},
+    value => value || [],
+    value => JSON.stringify({
+      boxes: value.boxes,
+      tasks: value.tasks,
+      deletedTaskIds: value.deletedTaskIds || [],
+      deletedTaskUpdatedAt: value.deletedTaskUpdatedAt || {}
+    })
+  );
+
+  const remoteBase = {
+    boxes: [{ id: "home", name: "CASA", updatedAt: 10 }],
+    tasks: [{ id: "task-1", boxId: "home", title: "Vigente en Firebase", updatedAt: 100 }],
+    deletedTaskIds: [],
+    deletedBoxIds: [],
+    deletedTaskUpdatedAt: {},
+    deletedBoxUpdatedAt: {},
+    updatedAt: 100
+  };
+
+  const staleDeviceTombstone = merge(
+    remoteBase,
+    {
+      boxes: remoteBase.boxes,
+      tasks: [],
+      deletedTaskIds: ["task-1"],
+      deletedBoxIds: [],
+      deletedTaskUpdatedAt: {},
+      deletedBoxUpdatedAt: {},
+      updatedAt: 900
+    },
+    true
+  );
+  assert.equal(staleDeviceTombstone.tasks.some(task => task.id === "task-1"), true);
+  assert.deepEqual(staleDeviceTombstone.deletedTaskIds, []);
+
+  const explicitOfflineDeletion = merge(
+    remoteBase,
+    {
+      boxes: remoteBase.boxes,
+      tasks: [],
+      deletedTaskIds: ["task-1"],
+      deletedBoxIds: [],
+      deletedTaskUpdatedAt: { "task-1": 200 },
+      deletedBoxUpdatedAt: {},
+      updatedAt: 900
+    },
+    true
+  );
+  assert.equal(explicitOfflineDeletion.tasks.some(task => task.id === "task-1"), false);
+  assert.ok(explicitOfflineDeletion.deletedTaskIds.includes("task-1"));
+
+  const legacyRemoteDeletion = merge(
+    {
+      ...remoteBase,
+      tasks: [],
+      deletedTaskIds: ["task-1"],
+      deletedTaskUpdatedAt: {}
+    },
+    {
+      ...remoteBase,
+      tasks: [{ id: "task-1", boxId: "home", title: "Caché antigua", updatedAt: 500 }],
+      deletedTaskIds: [],
+      deletedTaskUpdatedAt: {}
+    },
+    true
+  );
+  assert.equal(legacyRemoteDeletion.tasks.some(task => task.id === "task-1"), false);
+  assert.ok(legacyRemoteDeletion.deletedTaskIds.includes("task-1"));
+
+  const newerLocalRecreation = merge(
+    {
+      ...remoteBase,
+      tasks: [],
+      deletedTaskIds: ["task-1"],
+      deletedTaskUpdatedAt: { "task-1": 200 }
+    },
+    {
+      ...remoteBase,
+      tasks: [{ id: "task-1", boxId: "home", title: "Recreada después", updatedAt: 300 }],
+      deletedTaskIds: [],
+      deletedTaskUpdatedAt: {}
+    },
+    true
+  );
+  assert.equal(newerLocalRecreation.tasks.some(task => task.id === "task-1"), true);
+  assert.deepEqual(newerLocalRecreation.deletedTaskIds, []);
+});
+
+test("deletion timestamps are normalized and local deletions receive their own revision", () => {
+  const source = extractFunction(
+    "normalizeDeletionTimestamps",
+    "\n  function normalizeDataPayload"
+  );
+  const normalize = new Function("return (" + source + ");")();
+  assert.deepEqual(normalize({
+    taskA: 123,
+    taskB: "456",
+    taskC: 0,
+    taskD: "not-a-number",
+    "": 789
+  }), {
+    taskA: 123,
+    taskB: 456
+  });
+
+  assert.match(app, /deletedTaskUpdatedAt\\[id\\] = Math\\.max\\(recordChangeTime/);
+  assert.match(app, /deletedBoxUpdatedAt\\[id\\] = Math\\.max\\(recordChangeTime/);
+});
