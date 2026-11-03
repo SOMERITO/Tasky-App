@@ -89,7 +89,10 @@ test("Firestore REST enforces exists=false and updateTime before accepting write
     { version: 2, source: "device-A" }
   );
   assert.equal(deviceAWrite.response.ok, true, JSON.stringify(deviceAWrite.json));
-  assert.ok(deviceAWrite.json.updateTime);
+  const deviceAUpdateTime = deviceAWrite.json.writeResults &&
+    deviceAWrite.json.writeResults[0] && deviceAWrite.json.writeResults[0].updateTime;
+  assert.equal(typeof deviceAUpdateTime, "string");
+  assert.ok(deviceAUpdateTime);
 
   // Device B tries the same stale revision. Firestore must reject it.
   const deviceBStaleWrite = await commitDocument(
@@ -120,6 +123,9 @@ test("Firestore REST enforces exists=false and updateTime before accepting write
   );
   assert.equal(deviceBReconciledWrite.response.ok, true,
     JSON.stringify(deviceBReconciledWrite.json));
+  assert.equal(typeof (deviceBReconciledWrite.json.writeResults &&
+    deviceBReconciledWrite.json.writeResults[0] &&
+    deviceBReconciledWrite.json.writeResults[0].updateTime), "string");
 
   // exists=false must not replace an already existing document.
   const forbiddenRescueOverwrite = await patchDocument(
