@@ -6642,15 +6642,19 @@
 
       const barFillWidth = pctTodayBox;
 
-      // Point 2: Colored 34x34px square badge showing ONLY the pending count number, same size as collapse/delete buttons
-      const countSquareClass = todayInBox.length === 0
+      // The blue square shows unfinished tasks registered in this Casilla, including no-deadline references.
+      // Daily progress and the top indicators continue to use todayInBox only.
+      const registeredPendingInBox = todayInBox.length + noDeadlineVisibleInBox.length;
+      const countSquareClass = registeredPendingInBox === 0
         ? "box-pending-count-box zero-count"
         : "box-pending-count-box";
-      const countSquareNumber = todayInBox.length;
-      const countSquareTipTitle = `📌 ${countSquareNumber} tarea${countSquareNumber === 1 ? "" : "s"} pendiente${countSquareNumber === 1 ? "" : "s"}`;
-      const countSquareTipDesc = isAllTasksRescheduled
-        ? `Todas las tareas de esta casilla (${reschedInBox.length}) están reprogramadas para otros días.`
-        : `Número de tareas pendientes para hoy en ${box.name.toUpperCase()}.`;
+      const countSquareNumber = registeredPendingInBox;
+      const countSquareTipTitle = `📌 ${countSquareNumber} tarea${countSquareNumber === 1 ? "" : "s"} registrada${countSquareNumber === 1 ? "" : "s"} en esta casilla`;
+      const countSquareTipDesc = noDeadlineVisibleInBox.length > 0
+        ? `${todayInBox.length} para hoy · ${noDeadlineVisibleInBox.length} sin fecha límite. Estas últimas no afectan los indicadores superiores.`
+        : isAllTasksRescheduled
+          ? `Todas las tareas de esta casilla (${reschedInBox.length}) están reprogramadas para otros días.`
+          : `${todayInBox.length} tareas pendientes para hoy en ${box.name.toUpperCase()}.`;
       const recurringAuditButtonHtml = recurringTasksInBox.length
         ? '<button type="button" class="box-ctrl-btn recurring-audit-btn" data-box-action="recurring-audit" aria-label="Ver registro de tareas repetidas en ' + escapeHtml(box.name) + '" data-tip-title="Registro de tareas repetidas" data-tip-desc="Consulta las tareas recurrentes de esta casilla, los días configurados y las ocurrencias atrasadas."><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg><span class="recurring-audit-count">' + recurringTasksInBox.length + '</span></button>'
         : "";
