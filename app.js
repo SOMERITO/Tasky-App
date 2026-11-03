@@ -3304,6 +3304,7 @@
     if (typeof window.BroadcastChannel !== "undefined") {
       syncBroadcastChannel = new window.BroadcastChannel("tasky_firebase_realtime_bus");
       syncBroadcastChannel.onmessage = (ev) => {
+        if (!cloudSyncReady) return;
         if (ev.data && ev.data.payload && ev.data.deviceId !== appState.deviceId) {
           applyIncomingSyncPayload(ev.data.payload, false);
         }
@@ -3312,6 +3313,7 @@
   } catch (e) {}
 
   window.addEventListener("storage", (ev) => {
+    if (!cloudSyncReady) return;
     if (ev.key === STORAGE_KEYS.DATA && ev.newValue) {
       try {
         const parsed = JSON.parse(ev.newValue);
@@ -3523,9 +3525,11 @@
   }
 
   function hasPendingLocalCloudChanges(data = appState.data) {
-    if (safeStorage.getItem(STORAGE_KEYS.CLOUD_DIRTY) === "1") return true;
     const baseline = String(safeStorage.getItem(STORAGE_KEYS.CLOUD_BASELINE) || "");
+    // A legacy device without a confirmed baseline cannot prove its local cache is newer.
+    // Keep it as a recovery backup, but never let it outrank the first verified cloud read.
     if (!baseline) return false;
+    if (safeStorage.getItem(STORAGE_KEYS.CLOUD_DIRTY) === "1") return true;
     return getCurrentCloudFingerprint(data) !== baseline;
   }
 
@@ -4311,11 +4315,10 @@
 
   function startCloudSyncRecovery() {
     if (syncRecoveryIntervalId) clearInterval(syncRecoveryIntervalId);
-    // SSE is the instant path, not the only source of truth. A silent mobile stream can miss events.
-    // Reconcile durable Firestore every 10s while connected; use a 6s fallback when SSE is down.
+    // Firestore is the only remote source of truth; poll it at a steady 10s interval.
+    // Same-origin tabs share changes locally through BroadcastChannel and storage events.
     syncRecoveryIntervalId = window.setInterval(() => {
       if (document.visibilityState !== "visible" || !isCloudNetworkAllowed() || cloudPullInFlight) return;
-      const streamConnected = Boolean(appState.cloudEventSource && appState.cloudEventSource.readyState === 1);
       const minimumInterval = 10000;
       if (Date.now() - lastCloudPullCompletedAt < minimumInterval) return;
       pullCloudSync(false, true);
