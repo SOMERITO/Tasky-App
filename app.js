@@ -3060,7 +3060,7 @@
         done: Boolean(t.done || t.completed),
         createdAt: Number(t.createdAt || Date.now()),
         dueDate: due,
-        noDeadline: Boolean(t.noDeadline && freq === "once"),
+        noDeadline: Boolean(t.noDeadline),
         frequency: freq,
         repeatDays: repDays,
         skippedDates: Array.isArray(t.skippedDates)
@@ -3994,7 +3994,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261102-contact-center-box-name-1";
+  const TASKY_BUILD_ID = "20261103-no-deadline-immediate-2";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -4013,7 +4013,7 @@
       const local = normalizeDataPayload(appState.data);
       const projectId = String(cfg.projectId || "sin proyecto").trim();
       const docPath = String(cfg.docPath || "sin ruta").split("/").filter(Boolean).join("/");
-      const pendingCount = local ? local.tasks.filter(task => !task.done).length : 0;
+      const pendingCount = local ? local.tasks.filter(isCountedAsPending).length : 0;
       const lastPull = lastCloudPullCompletedAt
         ? new Date(lastCloudPullCompletedAt).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
         : "aún no realizada";
@@ -4184,7 +4184,7 @@
       const isValidSnapshot = (norm) => Boolean(norm && Array.isArray(norm.boxes) &&
         norm.boxes.length && Array.isArray(norm.tasks) && Number(norm.updatedAt || 0) > 0);
       const describeSnapshot = (norm) => isValidSnapshot(norm)
-        ? `OK · ${norm.boxes.length} casillas, ${norm.tasks.length} tareas (${norm.tasks.filter(task => !task.done).length} pendientes) · revisión ${norm.updatedAt} · emisor ${String(norm.deviceId || "no indicado").slice(0, 22)}`
+        ? `OK · ${norm.boxes.length} casillas, ${norm.tasks.length} tareas (${norm.tasks.filter(isCountedAsPending).length} pendientes) · revisión ${norm.updatedAt} · emisor ${String(norm.deviceId || "no indicado").slice(0, 22)}`
         : "respuesta sin una copia válida (faltan casillas/tareas o updatedAt)";
 
       try {
@@ -4888,12 +4888,12 @@
     // out of the active section. This is a device-local view preference, not task data.
     const previousPendingTodayBoxIds = new Set(
       (Array.isArray(previousData && previousData.tasks) ? previousData.tasks : [])
-        .filter(task => task && !task.done && isTaskForToday(task))
+        .filter(task => task && isCountedAsPending(task) && isTaskForToday(task))
         .map(task => String(task.boxId))
     );
     const currentPendingTodayBoxIds = new Set(
       (Array.isArray(appState.data.tasks) ? appState.data.tasks : [])
-        .filter(task => task && !task.done && isTaskForToday(task))
+        .filter(task => task && isCountedAsPending(task) && isTaskForToday(task))
         .map(task => String(task.boxId))
     );
     let autoFoldedClearedBox = false;
@@ -5486,6 +5486,11 @@
     return Boolean(task && !task.done && task.noDeadline && task.dueDate && task.dueDate < today);
   }
 
+  // No-deadline tasks stay visible for reference, but are not pending work.
+  function isCountedAsPending(task) {
+    return Boolean(task && !task.done && !task.noDeadline);
+  }
+
   function getTaskOverdueDisplayDate(task) {
     return isTaskCarriedToTodayFromOverdue(task) && task.overdueSince
       ? task.overdueSince
@@ -5554,10 +5559,10 @@
     const tasks = appState.data.tasks;
     const boxes = appState.data.boxes;
 
-    const todayTasks = tasks.filter(t => isTaskForToday(t));
+    const todayTasks = tasks.filter(t => isTaskForToday(t) && !t.noDeadline);
     const totalToday = todayTasks.length;
     const doneToday = todayTasks.filter(t => t.done).length;
-    const pendingToday = todayTasks.filter(t => !t.done).length;
+    const pendingToday = todayTasks.filter(isCountedAsPending).length;
     const dailyPct = totalToday > 0 ? Math.round((doneToday / totalToday) * 100) : 0;
 
     const ring = document.getElementById("daily-progress-ring");
@@ -6471,7 +6476,7 @@
       }
 
       const pendingTasks = boxTasks.filter(task => !task.done);
-      const hasPendingToday = pendingTasks.some(task => isTaskForToday(task));
+      const hasPendingToday = pendingTasks.some(task => isCountedAsPending(task) && isTaskForToday(task));
 
       // Section membership depends on unfinished work due today (including genuine overdue work).
       // A task completed today or a future focus/repeat task alone must not keep a blue box above the summary.
@@ -7436,7 +7441,7 @@
     addTaskContextMenuButton(menu, task.done ? "↩ Reabrir tarea" : "✓ Marcar como completadas", "toggle-done");
     addTaskContextMenuButton(menu, isBulkContext ? "✏️ Editar títulos de la selección" : "✏️ Editar tarea", "edit");
     addTaskContextMenuButton(menu, isBulkContext ? "📋 Copiar textos seleccionados" : "📋 Copiar texto", "copy");
-    const contextNoDeadlineTasks = contextTasks.filter(item => !isRecurringTask(item));
+    const contextNoDeadlineTasks = contextTasks.filter(item => !item.done);
     if (contextNoDeadlineTasks.length > 0) {
       const bulkWillEnableNoDeadline = contextNoDeadlineTasks.some(item => !item.noDeadline);
       const noDeadlineActionLabel = isBulkContext
@@ -7444,10 +7449,9 @@
           ? "∞ Poner selección sin fecha límite"
           : "⏳ Reactivar fecha límite de selección")
         : (task.noDeadline ? "⏳ Volver a activar fecha límite" : "∞ Sin fecha límite");
-      const skippedRecurringCount = contextTasks.length - contextNoDeadlineTasks.length;
       const noDeadlineActionHelp = isBulkContext
-        ? `La acción dejará ${bulkWillEnableNoDeadline ? "todas" : "ninguna"} las tareas seleccionadas compatibles con ${bulkWillEnableNoDeadline ? "sin fecha límite" : "fecha límite activa"}.${skippedRecurringCount ? ` Se omitirán ${skippedRecurringCount} tareas recurrentes.` : ""}`
-        : "Conserva el día programado, pero evita que esta tarea se marque como atrasada.";
+        ? `La acción dejará ${bulkWillEnableNoDeadline ? "todas" : "ninguna"} las tareas seleccionadas sin fecha límite o con fecha límite activa.`
+        : "Conserva el día programado, pero evita que esta tarea se cuente como pendiente o se marque como atrasada.";
       addTaskContextMenuButton(
         menu,
         noDeadlineActionLabel,
@@ -7673,21 +7677,19 @@
   function toggleTaskNoDeadline(taskId) {
     const tasks = getTasksForSelectedAction(taskId);
     if (!tasks.length) return;
-    const eligibleTasks = tasks.filter(task => !isRecurringTask(task));
+    const eligibleTasks = tasks.filter(task => !task.done);
     const skippedCount = tasks.length - eligibleTasks.length;
     if (!eligibleTasks.length) {
-      showToast("La opción de fecha límite está disponible solo para tareas sin repetición.", true);
+      showToast("Selecciona al menos una tarea pendiente para cambiar su fecha límite.", true);
       return;
     }
 
-    // For a bulk action, apply one consistent target state to every eligible task.
-    // Mixed selections resolve to "no deadline" so the action does what its label promises.
     const shouldEnableNoDeadline = eligibleTasks.length > 1
       ? !eligibleTasks.every(task => Boolean(task.noDeadline))
       : !Boolean(eligibleTasks[0].noDeadline);
-    const isBulk = tasks.length > 1;
-
+    const isBulk = eligibleTasks.length > 1;
     const eligibleTaskLabel = `${eligibleTasks.length} tarea${eligibleTasks.length === 1 ? "" : "s"}`;
+
     pushUndoSnapshot(isBulk
       ? `${shouldEnableNoDeadline ? "Puso sin fecha límite" : "Reactivó fecha límite de"} ${eligibleTaskLabel} seleccionada${eligibleTasks.length === 1 ? "" : "s"}`
       : (shouldEnableNoDeadline
@@ -7716,7 +7718,7 @@
         ? "Fecha límite activada: la tarea podrá marcarse como atrasada"
         : `⏳ Se reactivó la fecha límite de ${eligibleTasks.length} tareas`);
     showToast(skippedCount
-      ? `${actionMessage}; se omitió ${skippedCount} tarea${skippedCount === 1 ? "" : "s"} recurrente${skippedCount === 1 ? "" : "s"}`
+      ? `${actionMessage}; se omitió ${skippedCount} tarea${skippedCount === 1 ? "" : "s"} ya completada${skippedCount === 1 ? "" : "s"}`
       : actionMessage);
   }
 
@@ -9350,6 +9352,50 @@
   }
 
   // Date Picker / Reschedule Modal
+  function applyNoDeadlineToReschedulingSelection(shouldEnable) {
+    const requestedIds = Array.isArray(appState.reschedulingTaskIds) && appState.reschedulingTaskIds.length
+      ? Array.from(new Set(appState.reschedulingTaskIds.map(id => String(id))))
+      : (appState.reschedulingTaskId != null ? [String(appState.reschedulingTaskId)] : []);
+    const tasks = (appState.data.tasks || []).filter(task =>
+      requestedIds.includes(String(task.id)) && !task.done
+    );
+    if (!tasks.length) {
+      showToast("No hay tareas pendientes disponibles para cambiar.", true);
+      return false;
+    }
+
+    const targetState = Boolean(shouldEnable);
+    const changedTasks = tasks.filter(task => Boolean(task.noDeadline) !== targetState);
+    if (!changedTasks.length) {
+      showToast(targetState
+        ? "Las tareas seleccionadas ya están sin fecha límite."
+        : "Las tareas seleccionadas ya tienen fecha límite activa.");
+      return true;
+    }
+
+    pushUndoSnapshot(targetState
+      ? `Puso ${changedTasks.length} tareas sin fecha límite`
+      : `Reactivó la fecha límite de ${changedTasks.length} tareas`);
+    changedTasks.forEach(task => {
+      task.noDeadline = targetState;
+      task.updatedAt = Date.now();
+      if (targetState) {
+        delete task.overdueSince;
+        delete task.overdueCarryDate;
+      }
+    });
+
+    saveData(true, targetState
+      ? `Puso ${changedTasks.length} tareas sin fecha límite`
+      : `Reactivó la fecha límite de ${changedTasks.length} tareas`);
+    playUiSound("tap");
+    renderBoardPreservingScroll();
+    showToast(targetState
+      ? `∞ ${changedTasks.length} tareas quedaron sin fecha límite. El día programado se conserva.`
+      : `⏳ Se reactivó la fecha límite de ${changedTasks.length} tareas.`);
+    return true;
+  }
+
   function openDatePickerModal(taskIdOrIds) {
     // Clicking the calendar on a selected task should apply the same date to the full selection.
     const useSelectedGroup = !Array.isArray(taskIdOrIds) &&
@@ -9389,8 +9435,8 @@
     const noDeadlineInput = document.getElementById("input-resched-no-deadline");
     const noDeadlineHelp = document.getElementById("resched-no-deadline-help");
     if (noDeadlineInput) {
-      const eligibleNoDeadlineTasks = tasks.filter(task => !task.done && !isRecurringTask(task));
-      const skippedRecurringCount = tasks.length - eligibleNoDeadlineTasks.length;
+      const eligibleNoDeadlineTasks = tasks.filter(task => !task.done);
+      const skippedTaskCount = tasks.length - eligibleNoDeadlineTasks.length;
       const isSingleEligibleTask = eligibleNoDeadlineTasks.length === 1 && tasks.length === 1;
       const allEligibleWithoutDeadline = eligibleNoDeadlineTasks.length > 0 &&
         eligibleNoDeadlineTasks.every(task => Boolean(task.noDeadline));
@@ -9403,17 +9449,18 @@
       // Use the property rather than addEventListener so opening the modal repeatedly
       // never stacks duplicate handlers.
       noDeadlineInput.onchange = () => {
-        noDeadlineInput.dataset.userChanged = "true";
         noDeadlineInput.indeterminate = false;
+        noDeadlineInput.dataset.userChanged = "false";
+        applyNoDeadlineToReschedulingSelection(Boolean(noDeadlineInput.checked));
       };
 
       if (noDeadlineHelp) {
         if (isSingleEligibleTask) {
-          noDeadlineHelp.textContent = "Se conserva el día programado, pero la tarea no aparecerá como vencida si no la completas ese día.";
+          noDeadlineHelp.textContent = "Conserva el día programado y se aplica al instante; no se contará como pendiente ni como atrasada.";
         } else if (eligibleNoDeadlineTasks.length > 0) {
-          noDeadlineHelp.textContent = `Se aplicará a las ${eligibleNoDeadlineTasks.length} tareas seleccionadas que no sean recurrentes.${skippedRecurringCount ? ` Se omitirán ${skippedRecurringCount} tareas recurrentes.` : ""}`;
+          noDeadlineHelp.textContent = `Se aplica al instante a las ${eligibleNoDeadlineTasks.length} tareas seleccionadas.${skippedTaskCount ? ` Se omitirán ${skippedTaskCount} tareas completadas.` : ""}`;
         } else {
-          noDeadlineHelp.textContent = "Esta opción solo está disponible para tareas sin repetición.";
+          noDeadlineHelp.textContent = "No hay tareas pendientes en esta selección.";
         }
       }
     }
@@ -9498,16 +9545,12 @@
         delete task.focusPriorityDate;
       }
 
-      if (!isRecurringTask(task)) {
-        if (applyNoDeadline !== null) {
-          task.noDeadline = applyNoDeadline;
-          if (applyNoDeadline) {
-            delete task.overdueSince;
-            delete task.overdueCarryDate;
-          }
+      if (applyNoDeadline !== null) {
+        task.noDeadline = applyNoDeadline;
+        if (applyNoDeadline) {
+          delete task.overdueSince;
+          delete task.overdueCarryDate;
         }
-      } else {
-        delete task.noDeadline;
       }
       if (moveToToday) {
         task.dueDate = today;
@@ -10133,9 +10176,9 @@
     const tasks = appState.data.tasks;
     const boxes = appState.data.boxes;
     const todayIso = getTodayISO();
-    const todayTasks = tasks.filter(t => isTaskForToday(t));
+    const todayTasks = tasks.filter(t => isTaskForToday(t) && !t.noDeadline);
     const doneForTodayPlan = todayTasks.filter(t => t.done).length;
-    const pendingToday = todayTasks.filter(t => !t.done).length;
+    const pendingToday = todayTasks.filter(isCountedAsPending).length;
     const completedTodayActual = tasks.filter(t => t.done && t.completedDate === todayIso).length;
     const rate = todayTasks.length > 0 ? Math.round((doneForTodayPlan / todayTasks.length) * 100) : 0;
     const reschedCount = tasks.filter(t => isTaskRescheduledFuture(t)).length;
@@ -10169,7 +10212,7 @@
         const bAll = tasks.filter(t => t.boxId === b.id);
         const bDone = bAll.filter(t => t.done).length;
         const bResched = bAll.filter(t => isTaskRescheduledFuture(t)).length;
-        const bPend = bAll.length - bDone - bResched;
+        const bPend = bAll.filter(t => isCountedAsPending(t) && !isTaskRescheduledFuture(t)).length;
         const bPct = bAll.length > 0 ? Math.round((bDone / bAll.length) * 100) : 0;
 
         const row = document.createElement("div");
