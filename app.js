@@ -4272,7 +4272,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261103-sync-safety-4";
+  const TASKY_BUILD_ID = "20261103-sync-safety-5";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
