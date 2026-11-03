@@ -16,6 +16,8 @@ A previously installed APK or cached JavaScript bundle can still send the old un
 
 The repository's `main` branch contains no production Firestore Security Rules file. This PR deliberately does not invent or deploy a replacement ruleset.
 
+Tasky currently calls the Firestore REST API without a Firebase ID token or Google OAuth bearer token; the Firebase API key only identifies the project. Firestore evaluates Security Rules for unauthenticated REST requests. If the application is later changed to use a Google OAuth/service-account token, requests are authorized through IAM instead and this client-side protocol rule would not be the same protection. Do not put a service-account credential in the web page or APK. See [REST API authentication and authorization](https://firebase.google.com/docs/firestore/use-rest-api).
+
 ## Required production rule change
 
 In the existing rules for `/tasky_sync/{documentId}`, require this condition on both `create` and `update`:
