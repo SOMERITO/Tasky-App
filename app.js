@@ -7265,47 +7265,52 @@
     const menu = ensureTaskContextMenu();
     menu.innerHTML = "";
     menu.dataset.taskId = String(task.id);
+    const contextTasks = getTasksForSelectedAction(task.id);
+    const isBulkContext = contextTasks.length > 1;
+    const contextSelectedIds = new Set(contextTasks.map(item => String(item.id)));
 
     const heading = document.createElement("div");
     heading.className = "task-context-menu-heading";
     const headingLabel = document.createElement("span");
-    headingLabel.textContent = "OPCIONES DE TAREA";
+    headingLabel.textContent = isBulkContext ? `ACCIONES PARA ${contextTasks.length} TAREAS` : "OPCIONES DE TAREA";
     const headingTitle = document.createElement("strong");
-    headingTitle.textContent = task.title || "Tarea sin título";
-    headingTitle.title = task.title || "Tarea sin título";
+    headingTitle.textContent = isBulkContext ? "Se aplicarán a toda la selección" : (task.title || "Tarea sin título");
+    headingTitle.title = isBulkContext ? `Acciones para ${contextTasks.length} tareas seleccionadas` : (task.title || "Tarea sin título");
     heading.append(headingLabel, headingTitle);
     menu.appendChild(heading);
 
-    addTaskContextMenuButton(menu, task.done ? "↩ Reabrir tarea" : "✓ Marcar como completada", "toggle-done");
-    addTaskContextMenuButton(menu, "✏️ Editar tarea", "edit");
-    addTaskContextMenuButton(menu, "📋 Copiar texto", "copy");
-    if (!isRecurringTask(task)) {
+    addTaskContextMenuButton(menu, task.done ? "↩ Reabrir tarea" : "✓ Marcar como completadas", "toggle-done");
+    addTaskContextMenuButton(menu, isBulkContext ? "✏️ Editar títulos seleccionadas" : "✏️ Editar tarea", "edit");
+    addTaskContextMenuButton(menu, isBulkContext ? "📋 Copiar textos seleccionados" : "📋 Copiar texto", "copy");
+    if (contextTasks.some(item => !isRecurringTask(item))) {
       addTaskContextMenuButton(
         menu,
-        task.noDeadline ? "⏳ Volver a activar fecha límite" : "∞ Sin fecha límite",
+        isBulkContext ? "∞ Cambiar fecha límite" : (task.noDeadline ? "⏳ Volver a activar fecha límite" : "∞ Sin fecha límite"),
         "toggle-no-deadline",
-        { title: "Conserva el día programado, pero evita marcar la tarea como vencida si no la completas ese día." }
+        { title: "La acción se aplicará a las tareas seleccionadas que no tengan repetición." }
       );
     }
-    if (!task.done && isTaskOverdue(task)) {
+    if (contextTasks.some(item => !item.done && isTaskOverdue(item))) {
       addTaskContextMenuButton(menu, "☀️ Pasar para hoy", "move-today", {
-        title: "Mueve esta tarea atrasada a la lista de hoy y conserva su fecha de vencimiento original."
+        title: "Mueve las tareas seleccionadas a la lista de hoy y conserva las fechas de vencimiento originales."
       });
     }
-    if (!task.done) addTaskContextMenuButton(menu, "☀️ Pasar para mañana", "tomorrow");
+    if (contextTasks.some(item => !item.done)) addTaskContextMenuButton(menu, "☀️ Pasar para mañana", "tomorrow");
     addTaskContextMenuButton(menu, "📅 Reprogramar fecha", "reschedule");
-    addTaskContextMenuButton(menu, "🔁 Configurar repetición", "repeat");
+    addTaskContextMenuButton(menu, isBulkContext ? `🔁 Configurar repetición (${contextTasks.length})` : "🔁 Configurar repetición", "repeat");
 
     addTaskContextMenuDivider(menu);
     const box = appState.data.boxes.find(entry => String(entry.id) === String(task.boxId));
     const priorityHeading = document.createElement("div");
     priorityHeading.className = "task-context-menu-section-label";
-    priorityHeading.textContent = `PRIORIDADES DE ${box ? box.name : "ESTA CASILLA"}`;
+    priorityHeading.textContent = isBulkContext
+      ? "PRIORIDADES DE LA SELECCIÓN · POR CASILLA"
+      : `PRIORIDADES DE ${box ? box.name : "ESTA CASILLA"}`;
     menu.appendChild(priorityHeading);
 
     const plan = getFocusBoxPlanForToday(task.boxId);
     const currentPriorityIndex = plan.taskIds.findIndex(id => id && String(id) === String(task.id));
-    const eligibleForPriority = !task.done && isTaskForToday(task);
+    const eligibleForPriority = contextTasks.some(item => !item.done && isTaskForToday(item));
     const priorityNames = [
       { number: 1, color: "Rojo", css: "p1" },
       { number: 2, color: "Amarillo", css: "p2" },
@@ -7318,7 +7323,8 @@
       const owner = occupiedId
         ? appState.data.tasks.find(entry => String(entry.id) === String(occupiedId))
         : null;
-      const occupiedByOther = Boolean(occupiedId && String(occupiedId) !== String(task.id));
+      const occupiedBySelection = Boolean(occupiedId && contextSelectedIds.has(String(occupiedId)));
+      const occupiedByOther = Boolean(occupiedId && !contextSelectedIds.has(String(occupiedId)));
       let label;
       let disabled = false;
       let title = "";
@@ -7327,14 +7333,18 @@
         label = `P${priority.number} · Ocupada: ${owner ? owner.title : "otra tarea"}`;
         disabled = true;
         title = owner ? `Esta prioridad ya corresponde a: ${owner.title}` : "Esta prioridad ya está ocupada.";
-      } else if (occupiedId && String(occupiedId) === String(task.id)) {
-        label = `✓ P${priority.number} · Ya asignada`;
-        disabled = true;
-        title = "Esta tarea ya ocupa esta prioridad.";
       } else if (!eligibleForPriority) {
         label = `P${priority.number} · Solo hoy o atrasadas`;
         disabled = true;
         title = "Solo se pueden priorizar tareas pendientes para hoy o atrasadas.";
+      } else if (isBulkContext) {
+        label = occupiedBySelection
+          ? `Usar P${priority.number} para la selección · ${priority.color}`
+          : `Asignar selección desde P${priority.number} · ${priority.color}`;
+      } else if (occupiedId && String(occupiedId) === String(task.id)) {
+        label = `✓ P${priority.number} · Ya asignada`;
+        disabled = true;
+        title = "Esta tarea ya ocupa esta prioridad.";
       } else {
         label = currentPriorityIndex >= 0
           ? `Mover a P${priority.number} · ${priority.color}`
@@ -7349,12 +7359,22 @@
       });
     });
 
-    if (currentPriorityIndex >= 0) {
-      addTaskContextMenuButton(menu, `Quitar prioridad actual (P${currentPriorityIndex + 1})`, "clear-priority");
+    const selectedHasPriority = contextTasks.some(item => getFocusPriorityLevel(item.id) > 0);
+    if (isBulkContext ? selectedHasPriority : currentPriorityIndex >= 0) {
+      addTaskContextMenuButton(
+        menu,
+        isBulkContext ? "Quitar prioridades de seleccionadas" : `Quitar prioridad actual (P${currentPriorityIndex + 1})`,
+        "clear-priority"
+      );
     }
 
     addTaskContextMenuDivider(menu);
-    addTaskContextMenuButton(menu, "🗑️ Eliminar tarea", "delete", { danger: true });
+    addTaskContextMenuButton(
+      menu,
+      isBulkContext ? `🗑️ Eliminar ${contextTasks.length} tareas` : "🗑️ Eliminar tarea",
+      "delete",
+      { danger: true }
+    );
 
     menu.hidden = false;
     menu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - 280))}px`;
@@ -9292,12 +9312,15 @@
   }
 
   function scheduleOverdueTaskOrSelectedGroup(task) {
-    if (!task || task.done || !isTaskOverdue(task)) return;
+    if (!task || task.done) return;
     const selectedIds = appState.selectedTaskIds;
     if (selectedIds && selectedIds.size > 1 && selectedIds.has(String(task.id))) {
+      const selectedTasks = getTasksForSelectedAction(task.id);
+      if (!selectedTasks.some(item => !item.done && isTaskOverdue(item))) return;
       scheduleSelectedTasksForToday();
       return;
     }
+    if (!isTaskOverdue(task)) return;
     scheduleTaskIdsForToday([String(task.id)], `Pasar atrasada para hoy: ${task.title}`);
   }
 
