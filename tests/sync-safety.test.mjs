@@ -173,6 +173,8 @@ test("the production Firestore Commit uses a conditional write and handles versi
   assert.match(app, /firestorePreconditionConflict\s*=\s*true/);
   assert.match(app, /if \(firestoreWriteNeedsReconcile\)[\s\S]{0,300}pullCloudSync\(false,\s*true\)/);
   assert.match(app, /writeResults\[0\]\.updateTime/);
+  assert.match(app, /protocolVersion: \{ integerValue: String\(FIRESTORE_SYNC_PROTOCOL_VERSION\) \}/);
+  assert.match(app, /const FIRESTORE_SYNC_PROTOCOL_VERSION = 2/);
 });
 
 test("a pending local merge is backed up before the merge is attempted", () => {
