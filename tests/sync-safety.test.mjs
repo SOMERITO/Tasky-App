@@ -580,6 +580,6 @@ test("deletion timestamps are normalized and local deletions receive their own r
     taskB: 456
   });
 
-  assert.match(app, /deletedTaskUpdatedAt\\[id\\] = Math\\.max\\(recordChangeTime/);
-  assert.match(app, /deletedBoxUpdatedAt\\[id\\] = Math\\.max\\(recordChangeTime/);
+  assert.ok(app.includes("deletedTaskUpdatedAt[id] = Math.max(recordChangeTime"));
+  assert.ok(app.includes("deletedBoxUpdatedAt[id] = Math.max(recordChangeTime"));
 });
