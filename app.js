@@ -3637,7 +3637,7 @@
     };
   }
 
-  function mergeSyncDatasets(leftRaw, rightRaw) {
+  function mergeSyncDatasets(leftRaw, rightRaw, preferLeftAsRemote = false) {
     const left = normalizeDataPayload(leftRaw);
     const right = normalizeDataPayload(rightRaw);
     if (!left) return right;
@@ -3645,7 +3645,8 @@
 
     const leftTime = Number(left.updatedAt || 0);
     const rightTime = Number(right.updatedAt || 0);
-    let primary = (leftTime <= 0 && rightTime > 0) ? right
+    let primary = preferLeftAsRemote ? left
+      : (leftTime <= 0 && rightTime > 0) ? right
       : (rightTime <= 0 && leftTime > 0) ? left
       : (rightTime >= leftTime ? right : left);
     let secondary = primary === left ? right : left;
@@ -3674,8 +3675,8 @@
       const legacyContactCenterKeys = new Set(["oficina", "asesortelefonico"]);
       if (legacyContactCenterKeys.has(existingKey) && candidateKey === "asesordecontactcenter") return candidate;
       if (legacyContactCenterKeys.has(candidateKey) && existingKey === "asesordecontactcenter") return existing;
-      const existingUpdatedAt = Number(existing && existing.updatedAt || existingSourceUpdatedAt || 0);
-      const candidateUpdatedAt = Number(candidate && candidate.updatedAt || candidateSourceUpdatedAt || 0);
+      const existingUpdatedAt = Number(existing && existing.updatedAt || (preferLeftAsRemote ? 0 : existingSourceUpdatedAt) || 0);
+      const candidateUpdatedAt = Number(candidate && candidate.updatedAt || (preferLeftAsRemote ? 0 : candidateSourceUpdatedAt) || 0);
       if (existingUpdatedAt !== candidateUpdatedAt) return candidateUpdatedAt > existingUpdatedAt ? candidate : existing;
       if (existing && existing.bootstrapSeed === true && candidate && candidate.bootstrapSeed !== true) return candidate;
       if (candidate && candidate.bootstrapSeed === true && existing && existing.bootstrapSeed !== true) return existing;
@@ -3746,6 +3747,12 @@
       if (primaryBoxesById.has(id)) return;
       if (unmatchedPrimaryByName.has(canonicalBoxKey(box.name))) return;
       if (ignoreUnversionedSecondary) return;
+      if (preferLeftAsRemote && Number(box.updatedAt || 0) <= 0) {
+        const containsExplicitlyChangedTask = (secondary.tasks || []).some(task =>
+          String(task && task.boxId) === id && Number(task && task.updatedAt || 0) > 0
+        );
+        if (!containsExplicitlyChangedTask) return;
+      }
       if (box.bootstrapSeed === true && !primaryIsSeed) return;
       if (!canonicalBoxesById.has(id)) canonicalBoxesById.set(id, box);
       secondaryIdToCanonical.set(id, id);
@@ -3783,8 +3790,8 @@
         const useOtherAuthoritativeItem = item.bootstrapSeed === true && otherItem && otherItem.bootstrapSeed !== true && !secondaryIsSeed;
         let chosenItem = useOtherAuthoritativeItem ? otherItem : item;
         if (otherItem && !useOtherAuthoritativeItem) {
-          const primaryItemVersion = Number(item.updatedAt || primaryTime || 0);
-          const secondaryItemVersion = Number(otherItem.updatedAt || secondaryTime || 0);
+          const primaryItemVersion = Number(item.updatedAt || (preferLeftAsRemote ? 0 : primaryTime) || 0);
+          const secondaryItemVersion = Number(otherItem.updatedAt || (preferLeftAsRemote ? 0 : secondaryTime) || 0);
           if (secondaryItemVersion > primaryItemVersion) chosenItem = otherItem;
         }
         if (!suppressSeed && (!extraFilter || extraFilter(chosenItem))) byId.set(id, chosenItem);
@@ -3796,7 +3803,8 @@
           if (tombstones.has(id) || byId.has(id)) return;
           const matchedOther = (Array.isArray(primaryItems) ? primaryItems : []).some(entry => entry && String(entry[idKey]) === id);
           const suppressSeed = item.bootstrapSeed === true && !primaryIsSeed && !matchedOther;
-          if (!suppressSeed && (!extraFilter || extraFilter(item))) byId.set(id, item);
+          const suppressUnversionedLegacyItem = preferLeftAsRemote && Number(item.updatedAt || 0) <= 0;
+          if (!suppressSeed && !suppressUnversionedLegacyItem && (!extraFilter || extraFilter(item))) byId.set(id, item);
         });
       }
       return Array.from(byId.values());
@@ -3874,7 +3882,10 @@
 
     let merged;
     try {
-      merged = mergeSyncDatasets(local, norm);
+      // Firestore is the canonical base. Only explicit item-level local edits
+      // may override it; a newer device-level timestamp cannot make every old
+      // task in a stale cache appear newly edited.
+      merged = mergeSyncDatasets(norm, local, true);
     } catch (error) {
       setRealtimeSyncStatus(`Error al conciliar: ${String(error && error.message || error).slice(0, 150)}`);
       return false;
