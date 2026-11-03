@@ -693,3 +693,16 @@ test("pullCloudSync refuses to call pushCloudSync after failed reconciliation", 
   assert.ok(pull.includes('return "reconcile-error"'));
   assert.equal(pull.includes("localHadPendingChanges"), false);
 });
+
+
+test("permissive emulator rules are isolated from the normal Firebase deploy config", () => {
+  const firebaseConfig = JSON.parse(readFileSync(path.join(root, "firebase.json"), "utf8"));
+  const emulatorConfig = JSON.parse(readFileSync(path.join(root, "firebase.emulator.json"), "utf8"));
+  const emulatorRules = readFileSync(path.join(root, "firestore.emulator.rules"), "utf8");
+
+  assert.equal(Object.prototype.hasOwnProperty.call(firebaseConfig, "firestore"), false);
+  assert.equal(emulatorConfig.firestore.rules, "firestore.emulator.rules");
+  assert.match(emulatorRules, /request\\.resource\\.data\\.get\\('protocolVersion',\\s*0\\)\\s*==\\s*2/);
+  assert.match(emulatorRules, /match \\/sync_safety_test\\/{documentId}/);
+  assert.doesNotMatch(emulatorRules, /match \\/\\{document=\\*\\*\\}/);
+});
