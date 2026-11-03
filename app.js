@@ -7084,14 +7084,27 @@
     }
   }
 
-  // Blur detached action buttons before rendering; the central renderer restores the viewport for all callers.
+  // Capture the viewport before blur: removing a focused task button can otherwise
+  // make the browser jump to another scroll position while the board is rebuilt.
   function renderBoardPreservingScroll() {
+    const viewportX = Number.isFinite(window.scrollX) ? window.scrollX : (window.pageXOffset || 0);
+    const viewportY = Number.isFinite(window.scrollY) ? window.scrollY : (window.pageYOffset || 0);
     const board = document.getElementById("boxes-container");
     const focusedElement = document.activeElement;
     if (board && focusedElement && board.contains(focusedElement) && typeof focusedElement.blur === "function") {
       focusedElement.blur();
     }
     renderBoard();
+
+    const restoreOriginalViewport = () => {
+      const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      window.scrollTo(viewportX, Math.min(viewportY, maxScrollY));
+    };
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(restoreOriginalViewport));
+    } else {
+      restoreOriginalViewport();
+    }
   }
 
   function updateMultiSelectUI() {
@@ -8487,12 +8500,12 @@
 
     const today = getTodayISO();
     pushUndoSnapshot(`Completar ${eligibleTasks.length} tareas seleccionadas`);
-    let shiftedPriorities = 0;
+    let releasedPriorityCount = 0;
     eligibleTasks.forEach(task => {
       task.done = true;
       task.completedDate = today;
       recordTaskCompletionEvent(task, true, today);
-      if (removeCompletedFocusPriority(task.id, today)) shiftedPriorities++;
+      if (removeCompletedFocusPriority(task.id, today)) releasedPriorityCount++;
       appState.history[today] = (appState.history[today] || 0) + 1;
     });
 
@@ -8505,8 +8518,8 @@
       ? `; ${skippedCount} no estaban disponibles y se omitieron`
       : "";
     showToast(
-      shiftedPriorities
-        ? `✓ ${eligibleTasks.length} tareas completadas; las prioridades avanzaron${skippedMessage}`
+      releasedPriorityCount
+        ? `✓ ${eligibleTasks.length} tareas completadas; se liberaron ${releasedPriorityCount} prioridades${skippedMessage}`
         : `✓ ${eligibleTasks.length} tareas completadas${skippedMessage}`
     );
     return true;
@@ -8530,12 +8543,12 @@
     if (task.done) {
       task.completedDate = today;
       recordTaskCompletionEvent(task, true, today);
-      const shiftedFocusPriority = removeCompletedFocusPriority(task.id, today);
+      const releasedFocusPriority = removeCompletedFocusPriority(task.id, today);
       playUiSound("complete");
       spawnCompletionParticles(checkBtnEl);
       appState.history[today] = (appState.history[today] || 0) + 1;
-      showToast(shiftedFocusPriority
-        ? "Prioridad completada; las siguientes avanzaron"
+      showToast(releasedFocusPriority
+        ? "Prioridad completada; las demás conservan su nivel"
         : "Tarea completada");
     } else {
       // Undo the completion on the date it was originally recorded, not on the date of reopening.
