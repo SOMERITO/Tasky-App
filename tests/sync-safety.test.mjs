@@ -156,7 +156,7 @@ test("a pending local merge is backed up before the merge is attempted", () => {
     "\n  let cloudPushTimer"
   );
   const backupCall = applySource.indexOf("preserveLocalSnapshotBeforeCloudAdoption(");
-  const mergeCall = applySource.indexOf("mergeSyncDatasets(local, norm)");
+  const mergeCall = applySource.indexOf("mergeSyncDatasets(norm, local, true)");
   assert.notEqual(backupCall, -1);
   assert.notEqual(mergeCall, -1);
   assert.ok(backupCall < mergeCall, "local recovery snapshot must be saved before reconciliation");
@@ -182,7 +182,7 @@ test("cross-tab messages are refresh signals, never task snapshots", () => {
 });
 
 test("index.html loads the cache-busted app.js build", () => {
-  assert.match(html, /app\.js\?v=20261103-sync-safety-2/);
+  assert.match(html, /app\.js\?v=20261103-sync-safety-3/);
 });
 
 
