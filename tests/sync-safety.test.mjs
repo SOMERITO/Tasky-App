@@ -320,3 +320,81 @@ test("Firestore config identity ignores the retired Realtime Database URL", () =
     docPath: "tasky_sync/somerito_main"
   });
 });
+
+
+test("remote-first merge rejects stale unversioned tasks but keeps explicit offline edits", () => {
+  const source = extractFunction(
+    "mergeSyncDatasets",
+    "\n  function applyIncomingSyncPayload"
+  );
+  const merge = new Function(
+    "normalizeDataPayload",
+    "canonicalBoxKey",
+    "mergeCompletionLogs",
+    "mergeDismissedTaskSuggestions",
+    "mergeBirthdays",
+    "normalizeLearningGoalsData",
+    "mergeLearningGoalsData",
+    "normalizeFocusPlanData",
+    "mergeFocusPlanData",
+    "normalizeCompletionLog",
+    "normalizeDismissedTaskSuggestions",
+    "normalizeBirthdays",
+    "syncFingerprint",
+    "return (" + source + ");"
+  )(
+    value => value,
+    value => String(value || "").toLowerCase().replace(/[^a-z0-9]/g, ""),
+    (primary, secondary) => [...(primary || []), ...(secondary || [])],
+    (primary, secondary) => ({ ...(secondary || {}), ...(primary || {}) }),
+    (primary, secondary) => [...(secondary || []), ...(primary || [])],
+    value => value || { daily: {}, weekly: {} },
+    (primary, secondary) => ({ ...(secondary || {}), ...(primary || {}) }),
+    value => value || { date: "", byBox: {}, updatedAt: 0 },
+    (primary, secondary) => primary || secondary || { date: "", byBox: {}, updatedAt: 0 },
+    value => value || [],
+    value => value || {},
+    value => value || [],
+    value => JSON.stringify({
+      boxes: value.boxes,
+      tasks: value.tasks,
+      deletedTaskIds: value.deletedTaskIds || [],
+      deletedBoxIds: value.deletedBoxIds || []
+    })
+  );
+
+  const remote = {
+    boxes: [{ id: "home", name: "CASA", updatedAt: 20 }],
+    tasks: [
+      { id: "existing-task", boxId: "home", title: "Versión actual de Firebase", updatedAt: 200 },
+      { id: "edited-task", boxId: "home", title: "Título de Firebase", updatedAt: 100 }
+    ],
+    updatedAt: 200,
+    deletedTaskIds: [],
+    deletedBoxIds: []
+  };
+  const local = {
+    boxes: [
+      { id: "home", name: "CASA" },
+      { id: "old-box", name: "CASILLA ANTIGUA" }
+    ],
+    tasks: [
+      { id: "existing-task", boxId: "home", title: "Caché antigua sin versión" },
+      { id: "edited-task", boxId: "home", title: "Edición offline legítima", updatedAt: 300 },
+      { id: "new-offline-task", boxId: "old-box", title: "Nueva tarea sin conexión", updatedAt: 300 },
+      { id: "stale-only-task", boxId: "old-box", title: "Tarea antigua sin versión" }
+    ],
+    updatedAt: 900,
+    deletedTaskIds: [],
+    deletedBoxIds: []
+  };
+
+  const result = merge(remote, local, true);
+  const byId = new Map(result.tasks.map(task => [task.id, task]));
+
+  assert.equal(byId.get("existing-task").title, "Versión actual de Firebase");
+  assert.equal(byId.get("edited-task").title, "Edición offline legítima");
+  assert.equal(byId.get("new-offline-task").title, "Nueva tarea sin conexión");
+  assert.equal(byId.has("stale-only-task"), false);
+  assert.ok(result.boxes.some(box => box.id === "old-box"));
+});
