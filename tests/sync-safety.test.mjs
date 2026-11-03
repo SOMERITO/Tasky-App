@@ -185,7 +185,7 @@ test("cross-tab messages are refresh signals, never task snapshots", () => {
 });
 
 test("index.html loads the cache-busted app.js build", () => {
-  assert.match(html, /app\.js\?v=20261103-sync-safety-3/);
+  assert.match(html, /app\.js\?v=20261103-sync-safety-4/);
 });
 
 
