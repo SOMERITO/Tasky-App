@@ -41,17 +41,35 @@ function makeHasPendingLocalChanges() {
   return { fn, values };
 }
 
-function makeConditionalWriteUrl(updateTime, exists, base = "https://firestore.googleapis.com/v1/documents/tasky/main?key=test") {
+function makeFirestorePrecondition(updateTime, exists, explicitRescue = false) {
+  const source = extractFunction(
+    "getFirebaseFirestoreWritePrecondition",
+    "\n  function getFirebaseFirestoreConditionalWriteUrl"
+  );
+  return new Function(
+    "cloudFirestoreUpdateTime",
+    "cloudFirestoreExists",
+    "return (" + source + ");"
+  )(updateTime, exists)(explicitRescue);
+}
+
+function makeConditionalWriteUrl(
+  updateTime,
+  exists,
+  commitUrl = "https://firestore.googleapis.com/v1/projects/tasky-7a30c/databases/(default)/documents:commit?key=test"
+) {
   const source = extractFunction(
     "getFirebaseFirestoreConditionalWriteUrl",
     "\n  function packCompactEnvelope"
   );
   return new Function(
-    "cloudFirestoreUpdateTime",
-    "cloudFirestoreExists",
-    "getFirebaseFirestoreUrl",
+    "getFirebaseFirestoreWritePrecondition",
+    "getFirebaseFirestoreCommitUrl",
     "return (" + source + ");"
-  )(updateTime, exists, () => base);
+  )(
+    explicitRescue => makeFirestorePrecondition(updateTime, exists, explicitRescue),
+    () => commitUrl
+  );
 }
 
 test("legacy device with an unchanged cache adopts the verified remote snapshot", () => {
@@ -127,16 +145,20 @@ test("a cache differing from its confirmed baseline is treated as pending", () =
   assert.equal(fn({ tasks: [] }), true);
 });
 
-test("normal writes require the exact Firestore updateTime revision", () => {
-  const url = makeConditionalWriteUrl("2026-11-03T20:00:00.123456Z", true)();
-  const parsed = new URL(url);
-  assert.equal(parsed.searchParams.get("currentDocument.updateTime"), "2026-11-03T20:00:00.123456Z");
+test("normal writes require the exact Firestore updateTime precondition in the commit body", () => {
+  const timestamp = "2026-11-03T20:00:00.123456Z";
+  const precondition = makeFirestorePrecondition(timestamp, true);
+  const url = makeConditionalWriteUrl(timestamp, true)();
+  assert.deepEqual(precondition, { updateTime: timestamp });
+  assert.equal(url, "https://firestore.googleapis.com/v1/projects/tasky-7a30c/databases/(default)/documents:commit?key=test");
 });
 
 test("creating a missing Firestore document is allowed only for an explicit rescue", () => {
   const allowed = makeConditionalWriteUrl("", false)(true);
   const denied = makeConditionalWriteUrl("", false)(false);
-  assert.equal(new URL(allowed).searchParams.get("currentDocument.exists"), "false");
+  assert.deepEqual(makeFirestorePrecondition("", false), null);
+  assert.deepEqual(makeFirestorePrecondition("", false, true), { exists: false });
+  assert.equal(allowed, "https://firestore.googleapis.com/v1/projects/tasky-7a30c/databases/(default)/documents:commit?key=test");
   assert.equal(denied, "");
 });
 
@@ -145,12 +167,12 @@ test("a write without a verified Firestore revision is blocked", () => {
   assert.equal(makeConditionalWriteUrl("", null)(), "");
 });
 
-test("the production Firestore PATCH uses the conditional URL and handles version conflicts", () => {
-  assert.match(app, /window\.fetch\(conditionalWriteUrl,\s*\{\s*method:\s*"PATCH"/);
-  assert.match(app, /currentDocument\.updateTime=/);
+test("the production Firestore Commit uses a conditional write and handles version conflicts", () => {
+  assert.match(app, /window\.fetch\(firestoreBytes\.url,\s*\{\s*method:\s*"POST"/);
+  assert.match(app, /writes:\s*\[\s*\{\s*update:\s*fsDocument,\s*currentDocument/);
   assert.match(app, /firestorePreconditionConflict\s*=\s*true/);
   assert.match(app, /if \(firestoreWriteNeedsReconcile\)[\s\S]{0,300}pullCloudSync\(false,\s*true\)/);
-  assert.match(app, /cloudFirestoreUpdateTime\s*=\s*savedDocument\.updateTime/);
+  assert.match(app, /writeResults\[0\]\.updateTime/);
 });
 
 test("a pending local merge is backed up before the merge is attempted", () => {
