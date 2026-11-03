@@ -3327,7 +3327,6 @@
     const cfg = appState.firebaseConfig || {};
     return JSON.stringify({
       projectId: String(cfg.projectId || "").trim(),
-      databaseURL: String(cfg.databaseURL || "").trim().replace(/\/+$/, ""),
       docPath: String(cfg.docPath || "").trim().replace(/^\/+|\/+$/g, "")
     });
   }
@@ -4129,13 +4128,12 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261103-sync-safety-1";
+  const TASKY_BUILD_ID = "20261103-sync-safety-2";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
       ["Firestore", statuses.firestore || "sin respuesta"],
-      ["Realtime Database", statuses.rtdb || "sin respuesta"],
-      ["ntfy (canal auxiliar)", statuses.ntfy || "no comprobado"]
+      ["Canal auxiliar", statuses.ntfy || "desactivado"]
     ];
     const fullText = entries.map(([name, value]) => `${name}: ${value}`).join(" · ");
     const details = document.getElementById("sync-diagnostic-details");
@@ -4243,12 +4241,12 @@
       if (durableCandidateCount === 0 || !candidates.length) {
         cloudSyncReady = false;
         cloudSyncReadyConfig = "";
-        const summary = `Nube no verificada · FS ${compactProviderStatus(sourceStatus.firestore)} / RTDB ${compactProviderStatus(sourceStatus.rtdb)}`;
+        const summary = `Nube no verificada · Firestore ${compactProviderStatus(sourceStatus.firestore)}`;
         const syncText = document.getElementById("sync-status-text");
         if (syncText) syncText.textContent = "Sin verificar";
         const modalSyncTime = document.getElementById("modal-sync-last-time");
         if (modalSyncTime) modalSyncTime.textContent = "No se encontró una copia remota persistente válida. No se subieron datos automáticamente.";
-        if (manual) showToast("La nube no se pudo verificar. Abre el menú «…» y revisa el diagnóstico de Firestore y Realtime Database. Tus datos locales siguen protegidos.", true);
+        if (manual) showToast("La nube no se pudo verificar. Abre el menú «…» y revisa el diagnóstico de Firestore. Tus datos locales siguen protegidos.", true);
         return "unverified";
       }
 
