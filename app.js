@@ -4237,7 +4237,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261103-sync-safety-3";
+  const TASKY_BUILD_ID = "20261103-sync-safety-4";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
