@@ -35,6 +35,14 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
+      - name: Verify checked-out Tasky source
+        run: |
+          echo "Checked out commit: $(git rev-parse HEAD)"
+          echo "--- Git object ---"
+          git show HEAD:app.js | sed -n '3392,3398p'
+          echo "--- Worktree ---"
+          sed -n '3392,3398p' app.js
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
