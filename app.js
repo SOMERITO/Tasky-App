@@ -11174,6 +11174,7 @@
 
     // Point 2: Native Firebase Configuration & Rescue Controls inside 3-Dots Modal
     function saveFirebaseSettingsFromInputs() {
+      const previousCloudConfigKey = getCloudSyncConfigKey();
       const projInput = document.getElementById("input-firebase-project-id");
       const dbUrlInput = document.getElementById("input-firebase-db-url");
       const docPathInput = document.getElementById("input-cloud-sync-channel");
@@ -11206,8 +11207,10 @@
       safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(appState.firebaseConfig));
       cloudSyncReady = false;
       cloudSyncReadyConfig = "";
-      cloudFirestoreUpdateTime = "";
-      cloudFirestoreExists = null;
+      if (previousCloudConfigKey !== getCloudSyncConfigKey()) {
+        cloudFirestoreUpdateTime = "";
+        cloudFirestoreExists = null;
+      }
       startCloudSyncStream();
     }
 
