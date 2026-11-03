@@ -184,3 +184,115 @@ test("cross-tab messages are refresh signals, never task snapshots", () => {
 test("index.html loads the cache-busted app.js build", () => {
   assert.match(html, /app\.js\?v=20261103-sync-safety-1/);
 });
+
+
+test("a local edit made while a cloud write is in flight remains pending", () => {
+  const source = extractFunction(
+    "confirmCloudPayloadWritten",
+    "\n  function preserveLocalSnapshotBeforeCloudAdoption"
+  );
+  const values = new Map();
+  const safeStorage = {
+    getItem: key => values.has(key) ? values.get(key) : null,
+    setItem: (key, value) => values.set(key, String(value))
+  };
+  let currentFingerprint = "newer-local-edit";
+  const fn = new Function(
+    "syncFingerprint",
+    "safeStorage",
+    "STORAGE_KEYS",
+    "getCurrentCloudFingerprint",
+    "return (" + source + ");"
+  )(
+    payload => payload.fingerprint,
+    safeStorage,
+    { CLOUD_BASELINE: "baseline", CLOUD_DIRTY: "dirty" },
+    () => currentFingerprint
+  );
+
+  fn({ fingerprint: "snapshot-that-was-uploaded" });
+  assert.equal(values.get("baseline"), "snapshot-that-was-uploaded");
+  assert.equal(values.get("dirty"), "1");
+
+  currentFingerprint = "snapshot-that-was-uploaded";
+  fn({ fingerprint: "snapshot-that-was-uploaded" });
+  assert.equal(values.get("dirty"), "0");
+});
+
+test("offline edits are backed up and merged instead of discarded on first cloud read", () => {
+  const source = extractFunction(
+    "applyIncomingSyncPayload",
+    "\n  let cloudPushTimer"
+  );
+  const local = {
+    boxes: [{ id: "home", name: "CASA" }],
+    tasks: [{ id: "offline-added-task", title: "Creada sin conexión" }]
+  };
+  const remote = {
+    boxes: [{ id: "home", name: "CASA" }],
+    tasks: [{ id: "remote-task", title: "Ya estaba en Firebase" }]
+  };
+  const merged = {
+    boxes: remote.boxes,
+    tasks: [...remote.tasks, ...local.tasks]
+  };
+  const appState = { data: local, backups: [] };
+  const calls = [];
+  const storage = { setItem: () => true };
+  const fn = new Function(
+    "normalizeDataPayload",
+    "appState",
+    "hasPendingLocalCloudChanges",
+    "adoptVerifiedCloudSnapshot",
+    "showToast",
+    "preserveLocalSnapshotBeforeCloudAdoption",
+    "syncFingerprint",
+    "mergeSyncDatasets",
+    "applyLocalViewStateToData",
+    "setRealtimeSyncStatus",
+    "safeStorage",
+    "rebuildTaskMemoryFromTasks",
+    "renderBoard",
+    "renderLearningGoalsPanel",
+    "renderBirthdayUpcomingList",
+    "document",
+    "pushCloudSync",
+    "confirmCurrentCloudSnapshot",
+    "return (" + source + ");"
+  )(
+    value => value,
+    appState,
+    () => true,
+    () => {
+      throw new Error("an explicit offline edit must not be discarded as an unchanged cache");
+    },
+    () => {},
+    (_snapshot, label) => calls.push("backup:" + label),
+    value => JSON.stringify(value.tasks.map(task => task.id).sort()),
+    () => {
+      calls.push("merge");
+      return merged;
+    },
+    value => value,
+    () => {},
+    storage,
+    () => {},
+    () => {},
+    () => {},
+    () => {},
+    { getElementById: () => null },
+    () => calls.push("push"),
+    () => {}
+  );
+
+  assert.equal(fn(remote, false), true);
+  assert.deepEqual(calls.map(value => value === "merge" ? value : value.split(":")[0]), [
+    "backup",
+    "merge",
+    "push"
+  ]);
+  assert.deepEqual(
+    appState.data.tasks.map(task => task.id).sort(),
+    ["offline-added-task", "remote-task"]
+  );
+});
