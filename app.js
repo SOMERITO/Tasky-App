@@ -6374,9 +6374,15 @@
         );
       }
 
-      // Manual order is authoritative. Recurrence and focus priority stay visible as badges,
-      // but must never override the sequence the user chose by dragging tasks.
-      visibleTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+      // Focus priority defines the first ordering tier in each casilla:
+      // P1, then P2, then P3. Manual drag order remains authoritative within
+      // each tier, including the group of tasks without an assigned priority.
+      visibleTasks.sort((a, b) => {
+        const priorityA = getFocusPriorityLevel(a.id) || 4;
+        const priorityB = getFocusPriorityLevel(b.id) || 4;
+        if (priorityA !== priorityB) return priorityA - priorityB;
+        return (Number(a.order) || 0) - (Number(b.order) || 0);
+      });
 
       if (appState.searchQuery && visibleTasks.length === 0 && !box.name.toLowerCase().includes(appState.searchQuery.toLowerCase())) {
         return;
