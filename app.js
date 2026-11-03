@@ -9373,9 +9373,10 @@
       return true;
     }
 
+    const changedTaskLabel = `${changedTasks.length} tarea${changedTasks.length === 1 ? "" : "s"}`;
     pushUndoSnapshot(targetState
-      ? `Puso ${changedTasks.length} tareas sin fecha límite`
-      : `Reactivó la fecha límite de ${changedTasks.length} tareas`);
+      ? `Puso ${changedTaskLabel} sin fecha límite`
+      : `Reactivó la fecha límite de ${changedTaskLabel}`);
     changedTasks.forEach(task => {
       task.noDeadline = targetState;
       task.updatedAt = Date.now();
@@ -9386,13 +9387,13 @@
     });
 
     saveData(true, targetState
-      ? `Puso ${changedTasks.length} tareas sin fecha límite`
-      : `Reactivó la fecha límite de ${changedTasks.length} tareas`);
+      ? `Puso ${changedTaskLabel} sin fecha límite`
+      : `Reactivó la fecha límite de ${changedTaskLabel}`);
     playUiSound("tap");
     renderBoardPreservingScroll();
     showToast(targetState
-      ? `∞ ${changedTasks.length} tareas quedaron sin fecha límite. El día programado se conserva.`
-      : `⏳ Se reactivó la fecha límite de ${changedTasks.length} tareas.`);
+      ? `∞ ${changedTaskLabel} ${changedTasks.length === 1 ? "quedó" : "quedaron"} sin fecha límite. El día programado se conserva.`
+      : `⏳ Se reactivó la fecha límite de ${changedTaskLabel}.`);
     return true;
   }
 
