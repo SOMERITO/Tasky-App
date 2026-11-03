@@ -8,6 +8,7 @@ on:
       - "index.html"
       - "tests/**"
       - "firebase.json"
+      - "firebase.emulator.json"
       - "firestore.emulator.rules"
       - ".github/workflows/sync-safety-tests.yml"
   push:
@@ -18,6 +19,7 @@ on:
       - "index.html"
       - "tests/**"
       - "firebase.json"
+      - "firebase.emulator.json"
       - "firestore.emulator.rules"
       - ".github/workflows/sync-safety-tests.yml"
 
@@ -61,4 +63,4 @@ jobs:
           java-version: "21"
 
       - name: Run Firestore conditional-write integration test
-        run: npx --yes firebase-tools@15.34.2 emulators:exec --project demo-tasky-safety --only firestore "node --test tests/firestore-precondition.integration.test.mjs"
+        run: npx --yes firebase-tools@15.34.2 emulators:exec --config firebase.emulator.json --project demo-tasky-safety --only firestore "node --test tests/firestore-precondition.integration.test.mjs"
