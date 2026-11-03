@@ -703,6 +703,6 @@ test("permissive emulator rules are isolated from the normal Firebase deploy con
   assert.equal(Object.prototype.hasOwnProperty.call(firebaseConfig, "firestore"), false);
   assert.equal(emulatorConfig.firestore.rules, "firestore.emulator.rules");
   assert.match(emulatorRules, /request\\.resource\\.data\\.get\\('protocolVersion',\\s*0\\)\\s*==\\s*2/);
-  assert.match(emulatorRules, /match \\/sync_safety_test\\/{documentId}/);
-  assert.doesNotMatch(emulatorRules, /match \\/\\{document=\\*\\*\\}/);
+  assert.ok(emulatorRules.includes("match /sync_safety_test/{documentId}"));
+  assert.equal(emulatorRules.includes("match /{document=**}"), false);
 });
