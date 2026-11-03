@@ -2283,6 +2283,8 @@
       birthdays: [],
       deletedTaskIds: [],
       deletedBoxIds: [],
+      deletedTaskUpdatedAt: {},
+      deletedBoxUpdatedAt: {},
       syncSchemaVersion: 1,
       bootstrapSeedData: true,
       updatedAt: 0
@@ -2300,6 +2302,10 @@
       completionLog: [],
       dismissedTaskSuggestionsByBox: {},
       birthdays: [],
+      deletedTaskIds: [],
+      deletedBoxIds: [],
+      deletedTaskUpdatedAt: {},
+      deletedBoxUpdatedAt: {},
       updatedAt: 0
     },
     settings: {
@@ -2993,6 +2999,15 @@
     return Array.from(merged.values()).sort((a, b) => a.id.localeCompare(b.id));
   }
 
+  function normalizeDeletionTimestamps(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+    return Object.fromEntries(
+      Object.entries(raw)
+        .map(([id, value]) => [String(id), Number(value || 0)])
+        .filter(([id, value]) => id && Number.isFinite(value) && value > 0)
+    );
+  }
+
   function normalizeDataPayload(raw) {
     if (!raw || typeof raw !== "object") return null;
     const today = getTodayISO();
@@ -3092,6 +3107,8 @@
       birthdays: normalizeBirthdays(raw.birthdays),
       deletedTaskIds: Array.isArray(raw.deletedTaskIds) ? Array.from(new Set(raw.deletedTaskIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
       deletedBoxIds: Array.isArray(raw.deletedBoxIds) ? Array.from(new Set(raw.deletedBoxIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
+      deletedTaskUpdatedAt: normalizeDeletionTimestamps(raw.deletedTaskUpdatedAt),
+      deletedBoxUpdatedAt: normalizeDeletionTimestamps(raw.deletedBoxUpdatedAt),
       syncSchemaVersion: Number(raw.syncSchemaVersion || 0),
       bootstrapSeedData: Boolean(raw.bootstrapSeedData),
       updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : 0
@@ -3395,6 +3412,8 @@
       sv: 1,
       dt: Array.isArray(d.deletedTaskIds) ? d.deletedTaskIds : [],
       db: Array.isArray(d.deletedBoxIds) ? d.deletedBoxIds : [],
+      dta: normalizeDeletionTimestamps(d.deletedTaskUpdatedAt),
+      dba: normalizeDeletionTimestamps(d.deletedBoxUpdatedAt),
       lg: normalizeLearningGoalsData(d.learningGoals),
       fp: normalizeFocusPlanData(d.focusPlan, d.tasks),
       cl: normalizeCompletionLog(d.completionLog),
@@ -3467,6 +3486,8 @@
         completedBoxCollapsed: false,
         deletedTaskIds: Array.isArray(parsed.dt) ? parsed.dt : [],
         deletedBoxIds: Array.isArray(parsed.db) ? parsed.db : [],
+        deletedTaskUpdatedAt: normalizeDeletionTimestamps(parsed.dta),
+        deletedBoxUpdatedAt: normalizeDeletionTimestamps(parsed.dba),
         learningGoals: normalizeLearningGoalsData(parsed.lg),
         focusPlan: normalizeFocusPlanData(parsed.fp, tasks),
         completionLog: normalizeCompletionLog(parsed.cl),
@@ -3490,6 +3511,8 @@
       tasks: d.tasks,
       deletedTaskIds: d.deletedTaskIds.slice().sort(),
       deletedBoxIds: d.deletedBoxIds.slice().sort(),
+      deletedTaskUpdatedAt: normalizeDeletionTimestamps(d.deletedTaskUpdatedAt),
+      deletedBoxUpdatedAt: normalizeDeletionTimestamps(d.deletedBoxUpdatedAt),
       monthlyCompletedBase: d.monthlyCompletedBase,
       taskMemoryByBox: d.taskMemoryByBox || {},
       learningGoals: normalizeLearningGoalsData(d.learningGoals),
@@ -3656,12 +3679,68 @@
     const ignoreUnversionedSecondary = primaryTime > 0 && secondaryTime <= 0;
     const primaryIsSeed = Boolean(primary.bootstrapSeedData);
     const secondaryIsSeed = Boolean(secondary.bootstrapSeedData);
-    const deletedTaskIds = Array.from(new Set([
-      ...(left.deletedTaskIds || []), ...(right.deletedTaskIds || [])
-    ])).filter(Boolean);
-    const deletedBoxIds = Array.from(new Set([
-      ...(left.deletedBoxIds || []), ...(right.deletedBoxIds || [])
-    ])).filter(Boolean);
+    function mergeDeletionState(primaryIds, primaryTimes, secondaryIds, secondaryTimes, primaryItems, secondaryItems, isBox = false) {
+      const byId = new Map();
+      (Array.isArray(primaryIds) ? primaryIds : []).forEach(id => {
+        const key = String(id || "").trim();
+        if (key) byId.set(key, Number(primaryTimes && primaryTimes[key] || 0));
+      });
+      (Array.isArray(secondaryIds) ? secondaryIds : []).forEach(id => {
+        const key = String(id || "").trim();
+        if (!key) return;
+        const version = Number(secondaryTimes && secondaryTimes[key] || 0);
+        // An old device's unversioned tombstone is no more trustworthy than its
+        // unversioned task cache. Do not let it delete a current Firestore record.
+        if (preferLeftAsRemote && version <= 0) return;
+        if (!byId.has(key) || version > byId.get(key)) byId.set(key, version);
+      });
+
+      const itemVersions = new Map();
+      const addItemVersions = (items, includeOnlyVersioned = false) => {
+        (Array.isArray(items) ? items : []).forEach(item => {
+          if (!item || item.id == null) return;
+          const id = String(item.id);
+          const version = Number(item.updatedAt || 0);
+          if (includeOnlyVersioned && version <= 0) return;
+          itemVersions.set(id, Math.max(itemVersions.get(id) || 0, version));
+        });
+      };
+      addItemVersions(primaryItems);
+      addItemVersions(secondaryItems, preferLeftAsRemote);
+
+      // An explicit re-creation/edit newer than a tombstone wins. Otherwise the
+      // newest versioned deletion remains authoritative across devices.
+      byId.forEach((deletedAt, id) => {
+        let latestItemVersion = itemVersions.get(id) || 0;
+        if (isBox) {
+          const latestChildTaskVersion = Math.max(
+            0,
+            ...(Array.isArray(primary.tasks) ? primary.tasks : [])
+              .filter(task => String(task && task.boxId) === id)
+              .map(task => Number(task.updatedAt || 0)),
+            ...(preferLeftAsRemote ? (Array.isArray(secondary.tasks) ? secondary.tasks : [])
+              .filter(task => String(task && task.boxId) === id && Number(task.updatedAt || 0) > 0)
+              .map(task => Number(task.updatedAt || 0)) : [])
+          );
+          latestItemVersion = Math.max(latestItemVersion, latestChildTaskVersion);
+        }
+        if (latestItemVersion > 0 && latestItemVersion > deletedAt) byId.delete(id);
+      });
+      return Object.fromEntries(byId);
+    }
+
+    const deletedTaskUpdatedAt = mergeDeletionState(
+      primary.deletedTaskIds, primary.deletedTaskUpdatedAt,
+      secondary.deletedTaskIds, secondary.deletedTaskUpdatedAt,
+      primary.tasks, secondary.tasks
+    );
+    const deletedBoxUpdatedAt = mergeDeletionState(
+      primary.deletedBoxIds, primary.deletedBoxUpdatedAt,
+      secondary.deletedBoxIds, secondary.deletedBoxUpdatedAt,
+      primary.boxes, secondary.boxes, true
+    );
+    const deletedTaskIds = Object.keys(deletedTaskUpdatedAt);
+    const deletedBoxIds = Object.keys(deletedBoxUpdatedAt);
     const deletedTasks = new Set(deletedTaskIds);
     const deletedBoxes = new Set(deletedBoxIds);
 
@@ -3834,6 +3913,8 @@
       tasks: normalizedTasks,
       deletedTaskIds,
       deletedBoxIds,
+      deletedTaskUpdatedAt,
+      deletedBoxUpdatedAt,
       taskMemoryByBox: { ...(secondary.taskMemoryByBox || {}), ...(primary.taskMemoryByBox || {}) },
       history: { ...(secondary.history || {}), ...(primary.history || {}) },
       completionLog: mergeCompletionLogs(primary.completionLog, secondary.completionLog),
@@ -4862,24 +4943,54 @@
 
     const currentTaskIds = new Set((appState.data.tasks || []).map(task => String(task.id)));
     const currentBoxIds = new Set((appState.data.boxes || []).map(box => String(box.id)));
-    const deletedTasks = new Set([
+    const deletedTaskUpdatedAt = {
+      ...normalizeDeletionTimestamps(previousData && previousData.deletedTaskUpdatedAt),
+      ...normalizeDeletionTimestamps(appState.data.deletedTaskUpdatedAt)
+    };
+    const deletedBoxUpdatedAt = {
+      ...normalizeDeletionTimestamps(previousData && previousData.deletedBoxUpdatedAt),
+      ...normalizeDeletionTimestamps(appState.data.deletedBoxUpdatedAt)
+    };
+    const previousDeletedTaskIds = new Set(Array.isArray(previousData && previousData.deletedTaskIds) ? previousData.deletedTaskIds.map(String) : []);
+    const previousDeletedBoxIds = new Set(Array.isArray(previousData && previousData.deletedBoxIds) ? previousData.deletedBoxIds.map(String) : []);
+    (Array.isArray(appState.data.deletedTaskIds) ? appState.data.deletedTaskIds : []).forEach(id => {
+      const key = String(id || "").trim();
+      if (key && !previousDeletedTaskIds.has(key) && !deletedTaskUpdatedAt[key]) deletedTaskUpdatedAt[key] = recordChangeTime;
+    });
+    (Array.isArray(appState.data.deletedBoxIds) ? appState.data.deletedBoxIds : []).forEach(id => {
+      const key = String(id || "").trim();
+      if (key && !previousDeletedBoxIds.has(key) && !deletedBoxUpdatedAt[key]) deletedBoxUpdatedAt[key] = recordChangeTime;
+    });
+    (Array.isArray(previousData && previousData.tasks) ? previousData.tasks : [])
+      .filter(task => task && task.id != null && !currentTaskIds.has(String(task.id)))
+      .forEach(task => {
+        const id = String(task.id);
+        deletedTaskUpdatedAt[id] = Math.max(recordChangeTime, Number(deletedTaskUpdatedAt[id] || 0));
+      });
+    (Array.isArray(previousData && previousData.boxes) ? previousData.boxes : [])
+      .filter(box => box && box.id != null && !currentBoxIds.has(String(box.id)))
+      .forEach(box => {
+        const id = String(box.id);
+        deletedBoxUpdatedAt[id] = Math.max(recordChangeTime, Number(deletedBoxUpdatedAt[id] || 0));
+      });
+    currentTaskIds.forEach(id => {
+      delete deletedTaskUpdatedAt[id];
+    });
+    currentBoxIds.forEach(id => {
+      delete deletedBoxUpdatedAt[id];
+    });
+    appState.data.deletedTaskUpdatedAt = deletedTaskUpdatedAt;
+    appState.data.deletedBoxUpdatedAt = deletedBoxUpdatedAt;
+    appState.data.deletedTaskIds = Array.from(new Set([
       ...(Array.isArray(previousData && previousData.deletedTaskIds) ? previousData.deletedTaskIds : []),
       ...(Array.isArray(appState.data.deletedTaskIds) ? appState.data.deletedTaskIds : []),
-      ...((Array.isArray(previousData && previousData.tasks) ? previousData.tasks : [])
-        .filter(task => task && task.id != null && !currentTaskIds.has(String(task.id)))
-        .map(task => String(task.id)))
-    ]);
-    const deletedBoxes = new Set([
+      ...Object.keys(deletedTaskUpdatedAt)
+    ])).filter(id => deletedTaskUpdatedAt[String(id)] != null || !currentTaskIds.has(String(id)));
+    appState.data.deletedBoxIds = Array.from(new Set([
       ...(Array.isArray(previousData && previousData.deletedBoxIds) ? previousData.deletedBoxIds : []),
       ...(Array.isArray(appState.data.deletedBoxIds) ? appState.data.deletedBoxIds : []),
-      ...((Array.isArray(previousData && previousData.boxes) ? previousData.boxes : [])
-        .filter(box => box && box.id != null && !currentBoxIds.has(String(box.id)))
-        .map(box => String(box.id)))
-    ]);
-    currentTaskIds.forEach(id => deletedTasks.delete(id));
-    currentBoxIds.forEach(id => deletedBoxes.delete(id));
-    appState.data.deletedTaskIds = Array.from(deletedTasks);
-    appState.data.deletedBoxIds = Array.from(deletedBoxes);
+      ...Object.keys(deletedBoxUpdatedAt)
+    ])).filter(id => deletedBoxUpdatedAt[String(id)] != null || !currentBoxIds.has(String(id)));
     appState.data.syncSchemaVersion = 1;
     const syncContentChanged = !previousData || previousSyncFingerprint !== syncFingerprint(appState.data);
     if (syncContentChanged) {
