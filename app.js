@@ -7436,12 +7436,23 @@
     addTaskContextMenuButton(menu, task.done ? "↩ Reabrir tarea" : "✓ Marcar como completadas", "toggle-done");
     addTaskContextMenuButton(menu, isBulkContext ? "✏️ Editar títulos de la selección" : "✏️ Editar tarea", "edit");
     addTaskContextMenuButton(menu, isBulkContext ? "📋 Copiar textos seleccionados" : "📋 Copiar texto", "copy");
-    if (contextTasks.some(item => !isRecurringTask(item))) {
+    const contextNoDeadlineTasks = contextTasks.filter(item => !isRecurringTask(item));
+    if (contextNoDeadlineTasks.length > 0) {
+      const bulkWillEnableNoDeadline = contextNoDeadlineTasks.some(item => !item.noDeadline);
+      const noDeadlineActionLabel = isBulkContext
+        ? (bulkWillEnableNoDeadline
+          ? "∞ Poner selección sin fecha límite"
+          : "⏳ Reactivar fecha límite de selección")
+        : (task.noDeadline ? "⏳ Volver a activar fecha límite" : "∞ Sin fecha límite");
+      const skippedRecurringCount = contextTasks.length - contextNoDeadlineTasks.length;
+      const noDeadlineActionHelp = isBulkContext
+        ? `La acción dejará ${bulkWillEnableNoDeadline ? "todas" : "ninguna"} las tareas seleccionadas compatibles con ${bulkWillEnableNoDeadline ? "sin fecha límite" : "fecha límite activa"}.${skippedRecurringCount ? ` Se omitirán ${skippedRecurringCount} tareas recurrentes.` : ""}`
+        : "Conserva el día programado, pero evita que esta tarea se marque como atrasada.";
       addTaskContextMenuButton(
         menu,
-        isBulkContext ? "∞ Cambiar fecha límite" : (task.noDeadline ? "⏳ Volver a activar fecha límite" : "∞ Sin fecha límite"),
+        noDeadlineActionLabel,
         "toggle-no-deadline",
-        { title: "La acción se aplicará a las tareas seleccionadas que no tengan repetición." }
+        { title: noDeadlineActionHelp }
       );
     }
     if (contextTasks.some(item => !item.done && isTaskOverdue(item))) {
@@ -7669,30 +7680,43 @@
       return;
     }
 
-    pushUndoSnapshot(tasks.length > 1
-      ? `Cambiar fecha límite de ${eligibleTasks.length} tareas seleccionadas`
-      : (eligibleTasks[0].noDeadline
-        ? `Activar fecha límite: ${eligibleTasks[0].title}`
-        : `Quitar fecha límite: ${eligibleTasks[0].title}`));
+    // For a bulk action, apply one consistent target state to every eligible task.
+    // Mixed selections resolve to "no deadline" so the action does what its label promises.
+    const shouldEnableNoDeadline = eligibleTasks.length > 1
+      ? !eligibleTasks.every(task => Boolean(task.noDeadline))
+      : !Boolean(eligibleTasks[0].noDeadline);
+    const isBulk = tasks.length > 1;
+
+    pushUndoSnapshot(isBulk
+      ? `${shouldEnableNoDeadline ? "Puso sin fecha límite" : "Reactivó fecha límite de"} ${eligibleTasks.length} tareas seleccionadas`
+      : (shouldEnableNoDeadline
+        ? `Sin fecha límite: ${eligibleTasks[0].title}`
+        : `Activar fecha límite: ${eligibleTasks[0].title}`));
+
     eligibleTasks.forEach(task => {
-      task.noDeadline = !Boolean(task.noDeadline);
-      if (task.noDeadline) {
+      task.noDeadline = shouldEnableNoDeadline;
+      task.updatedAt = Date.now();
+      if (shouldEnableNoDeadline) {
         delete task.overdueSince;
         delete task.overdueCarryDate;
       }
     });
 
-    if (tasks.length > 1) clearTaskSelection();
+    if (isBulk) clearTaskSelection();
     saveData(true, `Actualizó la fecha límite de ${eligibleTasks.length} tareas`);
     playUiSound("tap");
     renderBoardPreservingScroll();
+
+    const actionMessage = shouldEnableNoDeadline
+      ? (eligibleTasks.length === 1
+        ? "∞ Sin fecha límite: se conserva el día programado"
+        : `∞ ${eligibleTasks.length} tareas quedaron sin fecha límite`)
+      : (eligibleTasks.length === 1
+        ? "Fecha límite activada: la tarea podrá marcarse como atrasada"
+        : `⏳ Se reactivó la fecha límite de ${eligibleTasks.length} tareas`);
     showToast(skippedCount
-      ? `Se actualizó la fecha límite de ${eligibleTasks.length} tareas; ${skippedCount} repetitivas se omitieron`
-      : (eligibleTasks.length > 1
-        ? `Se actualizó la fecha límite de ${eligibleTasks.length} tareas`
-        : (eligibleTasks[0].noDeadline
-          ? "∞ Sin fecha límite: se conserva el día programado"
-          : "Fecha límite activada: la tarea podrá marcarse como atrasada")));
+      ? `${actionMessage}; ${skippedCount} tareas recurrentes se omitieron`
+      : actionMessage);
   }
 
   function handleTaskContextAction(action, taskId, slot = -1) {
