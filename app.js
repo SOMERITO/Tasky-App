@@ -13,7 +13,9 @@
     MEMORY: "tasky_task_memory",
     CLOUD_CHANNEL: "tasky_cloud_channel",
     FIREBASE_CONFIG: "tasky_firebase_config_v1",
-    VIEW_STATE: "tasky_view_state_v1"
+    VIEW_STATE: "tasky_view_state_v1",
+    CLOUD_BASELINE: "tasky_cloud_baseline_fingerprint_v1",
+    CLOUD_DIRTY: "tasky_cloud_local_changes_pending_v1"
   };
 
   const memoryStorage = new Map();
@@ -3386,13 +3388,6 @@
     return `${base}/${docPath}.json`;
   }
 
-  function getCloudTopicUrl(suffix = "") {
-    const proj = String((appState.firebaseConfig && appState.firebaseConfig.projectId) || appState.cloudChannel || "tasky_somerito_firebase_v1")
-      .trim()
-      .replace(/[^a-zA-Z0-9_-]/g, "_");
-    return `https://ntfy.sh/tasky_fb_${proj}${suffix}`;
-  }
-
   function packCompactEnvelope() {
     const d = appState.data;
     return JSON.stringify({
@@ -3509,6 +3504,100 @@
       birthdays: normalizeBirthdays(d.birthdays),
       settings: d.settings || {}
     });
+  }
+
+  // A device may only contribute local data when it has changes made after its
+  // last confirmed cloud snapshot. Legacy installations without a baseline are
+  // treated as potentially stale and adopt the verified remote copy on first sync.
+  function buildCurrentCloudSnapshot(data = appState.data) {
+    return {
+      ...(data || {}),
+      taskMemoryByBox: appState.taskMemory || (data && data.taskMemoryByBox) || {},
+      history: appState.history || {},
+      settings: appState.settings || {}
+    };
+  }
+
+  function getCurrentCloudFingerprint(data = appState.data) {
+    return syncFingerprint(buildCurrentCloudSnapshot(data));
+  }
+
+  function hasPendingLocalCloudChanges(data = appState.data) {
+    if (safeStorage.getItem(STORAGE_KEYS.CLOUD_DIRTY) === "1") return true;
+    const baseline = String(safeStorage.getItem(STORAGE_KEYS.CLOUD_BASELINE) || "");
+    if (!baseline) return false;
+    return getCurrentCloudFingerprint(data) !== baseline;
+  }
+
+  function markLocalCloudChangesPending() {
+    safeStorage.setItem(STORAGE_KEYS.CLOUD_DIRTY, "1");
+  }
+
+  function confirmCurrentCloudSnapshot(data = appState.data) {
+    const fingerprint = getCurrentCloudFingerprint(data);
+    if (!fingerprint) return;
+    safeStorage.setItem(STORAGE_KEYS.CLOUD_BASELINE, fingerprint);
+    safeStorage.setItem(STORAGE_KEYS.CLOUD_DIRTY, "0");
+  }
+
+  function preserveLocalSnapshotBeforeCloudAdoption(localRaw) {
+    const local = normalizeDataPayload(localRaw);
+    if (!local || !local.boxes.length) return;
+    const backup = {
+      id: `bkp_sync_guard_${Date.now()}`,
+      timestamp: Date.now(),
+      label: "Protección automática antes de adoptar Firebase",
+      boxesCount: local.boxes.length,
+      tasksCount: local.tasks.length,
+      data: local
+    };
+    appState.backups.unshift(backup);
+    if (appState.backups.length > 20) appState.backups = appState.backups.slice(0, 20);
+    safeStorage.setItem(STORAGE_KEYS.BACKUPS, JSON.stringify(appState.backups));
+  }
+
+  function adoptVerifiedCloudSnapshot(incomingRaw, localRaw = appState.data) {
+    const incoming = normalizeDataPayload(incomingRaw);
+    if (!incoming || !incoming.boxes.length || !Array.isArray(incoming.tasks)) return false;
+    const local = normalizeDataPayload(localRaw);
+    const incomingFingerprint = syncFingerprint({
+      ...incoming,
+      taskMemoryByBox: incoming.taskMemoryByBox || {},
+      history: incoming.history || {},
+      settings: incoming.settings || {}
+    });
+    const localFingerprint = local ? getCurrentCloudFingerprint(local) : "";
+    const changed = localFingerprint !== incomingFingerprint;
+
+    if (changed && local) preserveLocalSnapshotBeforeCloudAdoption(local);
+
+    appState.data = applyLocalViewStateToData(incoming, local);
+    appState.history = incoming.history && typeof incoming.history === "object" ? incoming.history : {};
+    appState.settings = {
+      ...appState.settings,
+      ...(incoming.settings && typeof incoming.settings === "object" ? incoming.settings : {})
+    };
+    appState.taskMemory = incoming.taskMemoryByBox && typeof incoming.taskMemoryByBox === "object"
+      ? { ...incoming.taskMemoryByBox }
+      : {};
+    appState.data.taskMemoryByBox = appState.taskMemory;
+    safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
+    safeStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(appState.history));
+    safeStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(appState.history));
+    safeStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(appState.settings));
+    safeStorage.setItem(STORAGE_KEYS.MEMORY, JSON.stringify(appState.taskMemory));
+    persistLocalViewState();
+    rebuildTaskMemoryFromTasks();
+    confirmCurrentCloudSnapshot();
+
+    renderBoard();
+    renderLearningGoalsPanel();
+    renderBirthdayUpcomingList();
+    const birthdayModal = document.getElementById("modal-birthdays");
+    if (birthdayModal && birthdayModal.classList.contains("open")) renderBirthdayCalendar();
+    const syncText = document.getElementById("sync-status-text");
+    if (syncText) syncText.textContent = "Sincronizado";
+    return changed;
   }
 
   function canonicalBoxKey(name) {
@@ -3754,6 +3843,15 @@
     const norm = normalizeDataPayload(incomingRaw);
     if (!norm || !Array.isArray(norm.boxes) || !norm.boxes.length) return false;
     const local = normalizeDataPayload(appState.data);
+
+    // Without a confirmed local baseline, a legacy device cache is not evidence
+    // of newer work. Adopt Firestore first, and keep a safety copy of the old cache.
+    if (!hasPendingLocalCloudChanges(local)) {
+      const changed = adoptVerifiedCloudSnapshot(norm, local);
+      if (showNotification && changed) showToast("🔄 Datos remotos verificados; se protegió la copia local anterior");
+      return changed;
+    }
+
     let merged;
     try {
       merged = mergeSyncDatasets(local, norm);
@@ -3773,6 +3871,7 @@
         safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
       }
       if (syncFingerprint(merged) !== syncFingerprint(norm)) pushCloudSync(false);
+      else confirmCurrentCloudSnapshot();
       return false;
     }
 
@@ -3789,6 +3888,7 @@
     const syncText = document.getElementById("sync-status-text");
     if (syncText) syncText.textContent = mergedMatchesIncoming ? "Sincronizado" : "Conciliando…";
     if (!mergedMatchesIncoming) pushCloudSync(false);
+    else confirmCurrentCloudSnapshot();
     if (showNotification) showToast("🔄 Datos fusionados sin perder tareas");
     return true;
   }
@@ -3890,17 +3990,6 @@
         return { url: getFirebaseFirestoreUrl(), body: JSON.stringify(fsBody) };
       })();
       const writePayloadBytes = bytesOf(firestoreBytes.body);
-      let streamPromise;
-      try {
-        streamPromise = window.fetch(getCloudTopicUrl(""), {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=UTF-8", "Cache": "yes" },
-          body: compactStr
-        }).then(response => ({ response })).catch(error => ({ error }));
-      } catch (error) {
-        streamPromise = Promise.resolve({ error });
-      }
-
       // 1. Push to Firestore. Do not set keepalive: true for large sync payloads:
       // Fetch keepalive bodies are limited to 64 KiB and can throw before reaching Firebase.
       try {
@@ -3946,17 +4035,11 @@
       }
       updateWriteDiagnostic();
 
-      // 3. Read the auxiliary transport result. Its POST was started in parallel with Firestore.
-      // ntfy accelerates device-to-device updates but never counts as durable Firebase confirmation.
-      const streamResult = await streamPromise;
-      if (streamResult && streamResult.response) {
-        const streamResponse = streamResult.response;
-        streamWriteStatus = streamResponse.ok ? `OK (HTTP ${streamResponse.status}; transporte auxiliar)` : `HTTP ${streamResponse.status}`;
-      } else {
-        const error = streamResult && streamResult.error;
-        streamWriteStatus = `No disponible · ${String(error && error.message || error || "sin respuesta").slice(0, 120)}`;
-      }
+      // The public ntfy channel is intentionally disabled because it carried full task payloads.
+      streamWriteStatus = "Desactivado por privacidad; se utiliza Firestore";
       updateWriteDiagnostic();
+
+      if (firebaseSaved) confirmCurrentCloudSnapshot();
 
       const syncText = document.getElementById("sync-status-text");
       // Show "Sincronizado" only after Firebase confirms the remote write.
@@ -4030,129 +4113,6 @@
     return "error";
   }
 
-  async function autoBootstrapFirestoreDocument(localRaw, sourceStatus) {
-    if (cloudBootstrapInFlight) return "busy";
-    cloudBootstrapInFlight = true;
-    try {
-      const cfg = appState.firebaseConfig || {};
-      const projectId = String(cfg.projectId || "").trim();
-      const parts = String(cfg.docPath || "tasky_sync/somerito_main")
-        .replace(/^\/+|\/+$/g, "")
-        .split("/")
-        .filter(Boolean);
-      if (!projectId || parts.length < 2 || parts.length % 2 !== 0) {
-        sourceStatus.firestore = "No se pudo inicializar: la ruta de documento no es válida.";
-        renderSyncDiagnostics(sourceStatus);
-        return "failed";
-      }
-
-      const candidate = normalizeDataPayload(localRaw);
-      if (!candidate || !candidate.boxes.length || !Array.isArray(candidate.tasks)) {
-        sourceStatus.firestore = "No se pudo inicializar: los datos locales no son válidos.";
-        renderSyncDiagnostics(sourceStatus);
-        return "failed";
-      }
-
-      candidate.updatedAt = Math.max(Date.now(), Number(candidate.updatedAt || 0) + 1);
-      candidate.syncSchemaVersion = 1;
-      candidate.deletedTaskIds = Array.isArray(candidate.deletedTaskIds) ? candidate.deletedTaskIds : [];
-      candidate.deletedBoxIds = Array.isArray(candidate.deletedBoxIds) ? candidate.deletedBoxIds : [];
-      candidate.bootstrapSeedData = false;
-      candidate.boxes.forEach(box => { delete box.bootstrapSeed; });
-      candidate.tasks.forEach(task => { delete task.bootstrapSeed; });
-
-      appState.data = candidate;
-      safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
-      rebuildTaskMemoryFromTasks();
-
-      const fullPayload = {
-        ...buildSyncPayload(appState.data),
-        taskMemoryByBox: appState.taskMemory,
-        history: appState.history,
-        settings: appState.settings,
-        deviceId: appState.deviceId,
-        updatedAt: Number(appState.data.updatedAt)
-      };
-      const compactStr = packCompactEnvelope();
-      const documentId = parts[parts.length - 1];
-      const collectionPath = parts.slice(0, -1).map(encodeURIComponent).join("/");
-      const keyParam = cfg.apiKey ? "&key=" + encodeURIComponent(cfg.apiKey) : "";
-      const createUrl = "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(projectId) +
-        "/databases/(default)/documents/" + collectionPath + "?documentId=" + encodeURIComponent(documentId) + keyParam;
-      const body = {
-        fields: {
-          payloadJson: { stringValue: JSON.stringify(fullPayload) },
-          compactEnvelope: { stringValue: compactStr },
-          updatedAt: { integerValue: String(fullPayload.updatedAt) },
-          deviceId: { stringValue: String(appState.deviceId) }
-        }
-      };
-
-      const response = await window.fetch(createUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
-      const responseText = await response.text();
-
-      if (response.ok) {
-        cloudSyncReady = true;
-        cloudSyncReadyConfig = getCloudSyncConfigKey();
-        sourceStatus.firestore = "Documento creado automáticamente · " + candidate.boxes.length + " casillas, " + candidate.tasks.length + " tareas";
-        renderSyncDiagnostics(sourceStatus);
-        const syncText = document.getElementById("sync-status-text");
-        if (syncText) syncText.textContent = "Sincronizado";
-        const modalSyncTime = document.getElementById("modal-sync-last-time");
-        if (modalSyncTime) modalSyncTime.textContent = `Copia inicial confirmada en Firestore a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.`;
-        lastCloudBootstrapError = "";
-        showToast("✅ Nube inicializada. La sincronización automática ya está activa.");
-        try {
-          await window.fetch(getCloudTopicUrl(""), {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=UTF-8" },
-            body: compactStr
-          });
-        } catch (e) {}
-        return "created";
-      }
-
-      let parsedError = "";
-      try {
-        const err = JSON.parse(responseText);
-        parsedError = err && err.error && err.error.message ? String(err.error.message) : responseText;
-      } catch (e) {
-        parsedError = responseText;
-      }
-      const shortError = String(parsedError || response.statusText || "Error desconocido").replace(/\s+/g, " ").slice(0, 220);
-      sourceStatus.firestore = "HTTP " + response.status + " al crear documento: " + shortError;
-      renderSyncDiagnostics(sourceStatus);
-
-      if (response.status === 409 || /ALREADY_EXISTS|already exists/i.test(shortError)) {
-        sourceStatus.firestore = "El documento fue creado por otro dispositivo; se volverá a leer automáticamente.";
-        renderSyncDiagnostics(sourceStatus);
-        return "exists";
-      }
-
-      const signature = String(response.status) + ":" + shortError;
-      if (signature !== lastCloudBootstrapError) {
-        showToast("No se pudo iniciar Firestore (HTTP " + response.status + "). Revisa Diagnóstico de conexión.", true);
-        lastCloudBootstrapError = signature;
-      }
-      return "failed";
-    } catch (error) {
-      const message = String(error && error.message || error).slice(0, 220);
-      sourceStatus.firestore = "Error al crear documento: " + message;
-      renderSyncDiagnostics(sourceStatus);
-      const signature = "exception:" + message;
-      if (signature !== lastCloudBootstrapError) {
-        showToast("La inicialización automática de Firestore falló. Revisa el diagnóstico de conexión.", true);
-        lastCloudBootstrapError = signature;
-      }
-      return "failed";
-    } finally {
-      cloudBootstrapInFlight = false;
-    }
-  }
 
   let queuedManualPullPromise = null;
   let resolveQueuedManualPull = null;
@@ -4236,46 +4196,12 @@
         sourceStatus.rtdb = `error de lectura: ${String(e && e.message || e).slice(0, 140)}`;
       }
 
-      // ntfy is a transport/history source only. It cannot authorize cloud writes by itself.
-      try {
-        const resStream = await window.fetch(getCloudTopicUrl(`/json?poll=1&since=all&_t=${Date.now()}`), { cache: "no-store" });
-        if (!resStream.ok) {
-          sourceStatus.ntfy = `HTTP ${resStream.status} ${resStream.statusText || ""}`.trim();
-        } else {
-          const responseText = await resStream.text();
-          const rows = responseText ? responseText.trim().split(/\r?\n/) : [];
-          let found = false;
-          for (let i = rows.length - 1; i >= 0; i--) {
-            try {
-              const msg = JSON.parse(rows[i]);
-              if (!msg || msg.event !== "message" || !msg.message) continue;
-              const parsed = JSON.parse(msg.message);
-              const unpacked = unpackCompactEnvelope(parsed);
-              if (isValidSnapshot(unpacked)) {
-                candidates.push(unpacked);
-                sourceStatus.ntfy = `mensaje válido · ${unpacked.boxes.length} casillas, ${unpacked.tasks.length} tareas`;
-                found = true;
-                break;
-              }
-            } catch (err) {}
-          }
-          if (!found) sourceStatus.ntfy = "HTTP 200 · no se encontró mensaje válido";
-        }
-      } catch (e) {
-        sourceStatus.ntfy = `error de lectura: ${String(e && e.message || e).slice(0, 140)}`;
-      }
+      sourceStatus.ntfy = "Desactivado por privacidad; no se consultan datos personales en canales públicos";
 
       renderSyncDiagnostics(sourceStatus);
 
-      if (durableCandidateCount === 0 && /^HTTP 404\b/.test(sourceStatus.firestore)) {
-        let bootstrapDataset = normalizeDataPayload(appState.data);
-        for (const candidate of candidates) {
-          bootstrapDataset = mergeSyncDatasets(bootstrapDataset, candidate);
-        }
-        const bootstrapResult = await autoBootstrapFirestoreDocument(bootstrapDataset, sourceStatus);
-        if (bootstrapResult === "created") return "syncing";
-        if (bootstrapResult === "exists" || bootstrapResult === "busy") return "syncing";
-      }
+      // A missing remote document never authorizes an automatic upload of local cache.
+      // Explicit recovery remains available from the user's "Rescatar y Subir Todo" action.
 
       if (durableCandidateCount === 0 || !candidates.length) {
         cloudSyncReady = false;
@@ -4366,8 +4292,9 @@
     if (now - lastSyncCatchupAt < 700) return;
     if (cloudPullInFlight) return;
     lastSyncCatchupAt = now;
-    cleanupCompletedTasksFromPreviousDays();
-    pullCloudSync(false, true);
+    pullCloudSync(false, true).then(() => {
+      if (cloudSyncReady) cleanupCompletedTasksFromPreviousDays();
+    });
   }
 
   function startCloudSyncRecovery() {
@@ -4377,7 +4304,7 @@
     syncRecoveryIntervalId = window.setInterval(() => {
       if (document.visibilityState !== "visible" || !isCloudNetworkAllowed() || cloudPullInFlight) return;
       const streamConnected = Boolean(appState.cloudEventSource && appState.cloudEventSource.readyState === 1);
-      const minimumInterval = streamConnected ? 10000 : 6000;
+      const minimumInterval = 10000;
       if (Date.now() - lastCloudPullCompletedAt < minimumInterval) return;
       pullCloudSync(false, true);
     }, 6000);
@@ -4394,62 +4321,13 @@
   }
 
   function startCloudSyncStream() {
-    if (!isCloudNetworkAllowed()) {
-      setRealtimeSyncStatus("Sin conexión de red");
-      return;
+    // Task data contains personal information. Do not publish it to the public ntfy
+    // topic; use verified Firestore polling and same-origin BroadcastChannel instead.
+    if (appState.cloudEventSource) {
+      try { appState.cloudEventSource.close(); } catch (e) {}
+      appState.cloudEventSource = null;
     }
-    if (typeof window.EventSource === "undefined") {
-      setRealtimeSyncStatus("Este WebView no ofrece EventSource; se usará recuperación periódica");
-      return;
-    }
-    setRealtimeSyncStatus("Conectando…");
-    try {
-      if (appState.cloudEventSource) {
-        appState.cloudEventSource.close();
-      }
-      const es = new window.EventSource(getCloudTopicUrl("/sse"));
-      es.onopen = () => {
-        setRealtimeSyncStatus("Conectado y escuchando cambios");
-        requestSyncCatchup();
-      };
-      es.onmessage = (ev) => {
-        try {
-          const msg = JSON.parse(ev.data);
-          if (msg && msg.message) {
-            const parsed = JSON.parse(msg.message);
-            if (parsed && parsed.d !== appState.deviceId && parsed.deviceId !== appState.deviceId) {
-              const unpacked = unpackCompactEnvelope(parsed);
-              if (unpacked) {
-                if (cloudSyncReady && cloudSyncReadyConfig === getCloudSyncConfigKey()) {
-                  const applied = applyIncomingSyncPayload(unpacked, false);
-                  const syncText = document.getElementById("sync-status-text");
-                  if (applied) {
-                    if (syncText) syncText.textContent = "Recibiendo cambios…";
-                    setRealtimeSyncStatus(`Cambio recibido a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`);
-                  } else {
-                    setRealtimeSyncStatus("Evento recibido; verificando la copia durable");
-                  }
-                } else {
-                  setRealtimeSyncStatus("Evento recibido antes de verificar Firebase; conciliación en cola");
-                }
-                // Always schedule a durable pull, including events received during startup.
-                scheduleIncomingSyncVerification();
-              }
-            }
-          }
-        } catch (error) {
-          setRealtimeSyncStatus(`Error al procesar evento: ${String(error && error.message || error).slice(0, 130)}`);
-        }
-      };
-      es.onerror = () => {
-        // EventSource reconnects automatically; the fallback covers mobile WebViews.
-        setRealtimeSyncStatus("Conexión interrumpida; reconectando…");
-        requestSyncCatchup();
-      };
-      appState.cloudEventSource = es;
-    } catch (error) {
-      setRealtimeSyncStatus(`No se pudo abrir el canal: ${String(error && error.message || error).slice(0, 130)}`);
-    }
+    setRealtimeSyncStatus("Canal público auxiliar desactivado por privacidad; Firestore es la fuente de verdad");
   }
 
   function loadRegisteredData() {
@@ -4869,7 +4747,7 @@
     const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 60);
     const msUntilMidnight = Math.max(500, nextMidnight.getTime() - now.getTime());
     midnightTimeoutId = setTimeout(() => {
-      cleanupCompletedTasksFromPreviousDays();
+      if (cloudSyncReady) cleanupCompletedTasksFromPreviousDays();
       scheduleExactMidnightRollover();
     }, msUntilMidnight);
   }
@@ -4959,6 +4837,7 @@
     const syncContentChanged = !previousData || previousSyncFingerprint !== syncFingerprint(appState.data);
     if (syncContentChanged) {
       appState.data.updatedAt = Math.max(Date.now(), Number(appState.data.updatedAt || 0) + 1);
+      markLocalCloudChangesPending();
     }
     const payloadStr = JSON.stringify(appState.data);
     const ok = safeStorage.setItem(STORAGE_KEYS.DATA, payloadStr);
@@ -11455,7 +11334,8 @@
   function boot() {
     initMobileAppNavigation();
     loadRegisteredData();
-    cleanupCompletedTasksFromPreviousDays();
+    // Do not mutate a potentially stale device cache before Firestore has been verified.
+    // The cloud pull below decides which dataset is safe to use before rollover cleanup.
     // The midnight timeout and focus/visibility handlers cover date rollover.
     // Do not poll cleanup every 5 seconds: it can trigger repeated board renders.
     scheduleExactMidnightRollover();
@@ -11472,11 +11352,13 @@
     renderBirthdayUpcomingList();
     document.documentElement.classList.remove("tasky-booting");
 
-    // Initial sync, real-time updates, and a quiet recovery poll for mobile WebViews.
-    // Incoming payloads are fingerprinted before rendering, so unchanged data won't redraw the board.
-    pullCloudSync(false);
-    startCloudSyncStream();
-    startCloudSyncRecovery();
+    // Verify Firestore before cleanup. Legacy local caches without a confirmed baseline
+    // are replaced by the remote snapshot and preserved as a local safety backup.
+    pullCloudSync(false).finally(() => {
+      if (cloudSyncReady) cleanupCompletedTasksFromPreviousDays();
+      startCloudSyncStream();
+      startCloudSyncRecovery();
+    });
   }
 
   if (document.readyState === "loading") {
