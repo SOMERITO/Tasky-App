@@ -7280,7 +7280,7 @@
     menu.appendChild(heading);
 
     addTaskContextMenuButton(menu, task.done ? "↩ Reabrir tarea" : "✓ Marcar como completadas", "toggle-done");
-    addTaskContextMenuButton(menu, isBulkContext ? "✏️ Editar títulos seleccionadas" : "✏️ Editar tarea", "edit");
+    addTaskContextMenuButton(menu, isBulkContext ? "✏️ Editar títulos de la selección" : "✏️ Editar tarea", "edit");
     addTaskContextMenuButton(menu, isBulkContext ? "📋 Copiar textos seleccionados" : "📋 Copiar texto", "copy");
     if (contextTasks.some(item => !isRecurringTask(item))) {
       addTaskContextMenuButton(
@@ -7363,7 +7363,7 @@
     if (isBulkContext ? selectedHasPriority : currentPriorityIndex >= 0) {
       addTaskContextMenuButton(
         menu,
-        isBulkContext ? "Quitar prioridades de seleccionadas" : `Quitar prioridad actual (P${currentPriorityIndex + 1})`,
+        isBulkContext ? "Quitar prioridades seleccionadas" : `Quitar prioridad actual (P${currentPriorityIndex + 1})`,
         "clear-priority"
       );
     }
@@ -7460,8 +7460,15 @@
         nextIds[freeSlot] = String(task.id);
         assignedCount++;
       });
-      saveFocusBoxPlan(boxId, nextIds, today);
+      if (nextIds.some((id, index) => id !== String(plan.taskIds[index] || ""))) {
+        saveFocusBoxPlan(boxId, nextIds, today);
+      }
     });
+
+    if (!assignedCount) {
+      showToast("No hay espacios de prioridad disponibles en las casillas de las tareas seleccionadas.", true);
+      return;
+    }
 
     clearTaskSelection();
     saveData(false, `Asignó prioridad a ${assignedCount} tareas seleccionadas`);
