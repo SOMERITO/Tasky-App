@@ -3559,13 +3559,13 @@
     );
   }
 
-  function preserveLocalSnapshotBeforeCloudAdoption(localRaw) {
+  function preserveLocalSnapshotBeforeCloudAdoption(localRaw, label = "Protección automática antes de adoptar Firebase") {
     const local = normalizeDataPayload(localRaw);
     if (!local || !local.boxes.length) return;
     const backup = {
       id: `bkp_sync_guard_${Date.now()}`,
       timestamp: Date.now(),
-      label: "Protección automática antes de adoptar Firebase",
+      label,
       boxesCount: local.boxes.length,
       tasksCount: local.tasks.length,
       data: local
@@ -3862,13 +3862,21 @@
     const norm = normalizeDataPayload(incomingRaw);
     if (!norm || !Array.isArray(norm.boxes) || !norm.boxes.length) return false;
     const local = normalizeDataPayload(appState.data);
+    const localHasPendingChanges = hasPendingLocalCloudChanges(local);
 
     // Without a confirmed local baseline, a legacy device cache is not evidence
     // of newer work. Adopt Firestore first, and keep a safety copy of the old cache.
-    if (!hasPendingLocalCloudChanges(local)) {
+    if (!localHasPendingChanges) {
       const changed = adoptVerifiedCloudSnapshot(norm, local);
       if (showNotification && changed) showToast("🔄 Datos remotos verificados; se protegió la copia local anterior");
       return changed;
+    }
+
+    if (syncFingerprint(local) !== syncFingerprint(norm)) {
+      preserveLocalSnapshotBeforeCloudAdoption(
+        local,
+        "Respaldo antes de conciliar cambios locales pendientes"
+      );
     }
 
     let merged;
@@ -4047,12 +4055,14 @@
             cloudFirestoreUpdateTime = "";
             cloudSyncReady = false;
             cloudSyncReadyConfig = "";
+            setRealtimeSyncStatus("Conflicto de versión; Firebase se volverá a leer antes de reintentar");
             firestoreWriteStatus = "Conflicto de versión: Firebase cambió desde la última lectura; escritura rechazada y se volverá a conciliar";
           } else {
             cloudFirestoreUpdateTime = "";
             cloudSyncReady = false;
             cloudSyncReadyConfig = "";
             firestoreWriteNeedsReconcile = true;
+            setRealtimeSyncStatus("Escritura no confirmada; se volverá a leer Firestore antes de continuar");
             firestoreWriteStatus = `HTTP ${res ? res.status : "sin respuesta"}${detail ? ` · ${detail}` : ""}`;
           }
         }
@@ -4157,6 +4167,7 @@
     const match = String(value || "").match(/HTTP\s+\d+/i);
     if (match) return match[0].replace(/\s+/g, "");
     if (String(value || "").startsWith("OK")) return "OK";
+    if (String(value || "").includes("Desactivado")) return "desactivado";
     if (String(value || "").includes("vacía") || String(value || "").includes("sin una copia válida") || String(value || "").includes("sin campo payloadJson")) return "200 sin datos válidos";
     return "error";
   }
