@@ -4888,12 +4888,12 @@
     // out of the active section. This is a device-local view preference, not task data.
     const previousPendingTodayBoxIds = new Set(
       (Array.isArray(previousData && previousData.tasks) ? previousData.tasks : [])
-        .filter(task => task && isCountedAsPending(task) && isTaskForToday(task))
+        .filter(task => isTaskVisibleInCasilla(task))
         .map(task => String(task.boxId))
     );
     const currentPendingTodayBoxIds = new Set(
       (Array.isArray(appState.data.tasks) ? appState.data.tasks : [])
-        .filter(task => task && isCountedAsPending(task) && isTaskForToday(task))
+        .filter(task => isTaskVisibleInCasilla(task))
         .map(task => String(task.boxId))
     );
     let autoFoldedClearedBox = false;
@@ -5483,12 +5483,36 @@
 
   function isTaskWithoutDeadlinePending(task) {
     const today = getTodayISO();
-    return Boolean(task && !task.done && task.noDeadline && task.dueDate && task.dueDate < today);
+    return Boolean(task && !task.done && task.noDeadline &&
+      (!task.dueDate || String(task.dueDate).slice(0, 10) <= today) &&
+      !isTaskRescheduledFuture(task));
   }
 
-  // No-deadline tasks stay visible for reference, but are not pending work.
+  // No-deadline tasks remain visible in their Casilla, but do not count as pending work.
   function isCountedAsPending(task) {
     return Boolean(task && !task.done && !task.noDeadline);
+  }
+
+  function isTaskVisibleInCasilla(task) {
+    return Boolean(task && !task.done && (
+      (isCountedAsPending(task) && isTaskForToday(task)) ||
+      isTaskWithoutDeadlinePending(task)
+    ));
+  }
+
+  function expandBoxesForVisibleTasks(tasks) {
+    const boxIds = new Set((tasks || [])
+      .filter(task => isTaskVisibleInCasilla(task))
+      .map(task => String(task.boxId)));
+    let changed = false;
+    (appState.data.boxes || []).forEach(box => {
+      if (boxIds.has(String(box.id)) && box.collapsed) {
+        box.collapsed = false;
+        changed = true;
+      }
+    });
+    if (changed) persistLocalViewState();
+    return changed;
   }
 
   function getTaskOverdueDisplayDate(task) {
@@ -6477,10 +6501,10 @@
 
       const pendingTasks = boxTasks.filter(task => !task.done);
       const hasPendingToday = pendingTasks.some(task => isCountedAsPending(task) && isTaskForToday(task));
+      const hasVisibleNoDeadlineTasks = pendingTasks.some(task => isTaskWithoutDeadlinePending(task));
 
-      // Section membership depends on unfinished work due today (including genuine overdue work).
-      // A task completed today or a future focus/repeat task alone must not keep a blue box above the summary.
-      if (hasPendingToday) {
+      // Keep no-deadline reference tasks in the normal Casilla section without counting them as today's workload.
+      if (hasPendingToday || hasVisibleNoDeadlineTasks) {
         activeBoxesList.push(box);
       } else {
         noTasksTodayBoxesList.push(box);
@@ -6495,7 +6519,8 @@
       const pendingBoxTasks = boxTasksAll.filter(t => !t.done);
       const recurringTasksInBox = boxTasksAll.filter(t => isRecurringTaskRecord(t));
       const doneBoxTasks = boxTasksAll.filter(t => t.done);
-      const doneTodayBoxTasks = doneBoxTasks.filter(t => isTaskForToday(t));
+      const doneTodayBoxTasks = doneBoxTasks.filter(t => isTaskForToday(t) && !t.noDeadline);
+      const noDeadlineVisibleInBox = pendingBoxTasks.filter(t => isTaskWithoutDeadlinePending(t));
 
       // Rescheduled tasks disappear from the Casilla and live in Tareas Reprogramadas until their dueDate arrives
       let visibleTasks = [];
@@ -6506,7 +6531,7 @@
       } else {
         visibleTasks = pendingBoxTasks.filter(t =>
           (
-            isTaskForToday(t) ||
+            (isCountedAsPending(t) && isTaskForToday(t)) ||
             isTaskWithoutDeadlinePending(t) ||
             (!isRecurringTask(t) && getFocusPriorityLevel(t.id) > 0) ||
             String(t.id) === String(appState.focusRevealTaskId || "")
@@ -6530,15 +6555,17 @@
       }
 
       const reschedInBox = pendingBoxTasks.filter(t => isTaskRescheduledFuture(t));
-      const todayInBox = pendingBoxTasks.filter(t => isTaskForToday(t));
+      const todayInBox = pendingBoxTasks.filter(t => isCountedAsPending(t) && isTaskForToday(t));
       const totalTodayBox = todayInBox.length + doneTodayBoxTasks.length;
       const pctTodayBox = totalTodayBox > 0 ? Math.round((doneTodayBoxTasks.length / totalTodayBox) * 100) : 0;
 
       // A task completed ahead of schedule is complete, but does not inflate today's planned progress.
-      const isAllTasksRescheduled = boxTasksAll.length > 0 && todayInBox.length === 0 && doneTodayBoxTasks.length === 0 && reschedInBox.length > 0;
+      const isAllTasksRescheduled = boxTasksAll.length > 0 && todayInBox.length === 0 &&
+        doneTodayBoxTasks.length === 0 && noDeadlineVisibleInBox.length === 0 && reschedInBox.length > 0;
       const isFullyCompletedBox = boxTasksAll.length > 0 && pendingBoxTasks.length === 0;
-      // Empty for today should share the calm blue theme even when tasks remain scheduled for later dates.
-      const isNoTasksToday = todayInBox.length === 0 && doneTodayBoxTasks.length === 0;
+      // A box with no-deadline reference tasks is not empty: keep its normal appearance.
+      const isNoTasksToday = todayInBox.length === 0 &&
+        doneTodayBoxTasks.length === 0 && noDeadlineVisibleInBox.length === 0;
       const isTodayFullyCompletedBox = totalTodayBox > 0 && todayInBox.length === 0 && doneTodayBoxTasks.length === totalTodayBox;
 
       const card = document.createElement("section");
@@ -6566,6 +6593,11 @@
         badgesHtml = `
           <span class="box-pill blue">${pctTodayBox}% hoy</span>
           <span class="box-pill amber">🕒 ${reschedInBox.length} reprogramada${reschedInBox.length === 1 ? "" : "s"}</span>
+        `;
+      } else if (totalTodayBox === 0 && noDeadlineVisibleInBox.length > 0) {
+        badgesHtml = `
+          <span class="box-pill neutral">∞ ${noDeadlineVisibleInBox.length} sin fecha límite</span>
+          ${reschedInBox.length > 0 ? `<span class="box-pill amber">🕒 ${reschedInBox.length} reprogramada${reschedInBox.length === 1 ? "" : "s"}</span>` : ""}
         `;
       } else if (totalTodayBox === 0) {
         badgesHtml = `
@@ -7704,6 +7736,7 @@
         delete task.overdueCarryDate;
       }
     });
+    expandBoxesForVisibleTasks(eligibleTasks);
 
     if (isBulk) clearTaskSelection();
     saveData(true, `Actualizó la fecha límite de ${eligibleTaskLabel}`);
@@ -9385,6 +9418,7 @@
         delete task.overdueCarryDate;
       }
     });
+    expandBoxesForVisibleTasks(changedTasks);
 
     saveData(true, targetState
       ? `Puso ${changedTaskLabel} sin fecha límite`
