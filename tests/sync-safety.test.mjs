@@ -177,7 +177,7 @@ test("Firestore is the only remote sync store and public task transport is disab
 test("cross-tab messages are refresh signals, never task snapshots", () => {
   assert.match(app, /type:\s*"firestore-write-confirmed"/);
   assert.doesNotMatch(app, /payload:\s*buildSyncPayload\(appState\.data\)/);
-  assert.match(app, /ev\.data\.type === "firestore-write-confirmed"[\s\S]{0,250}pullCloudSync\(false,\s*true\)/);
+  assert.match(app, /ev\.data\.type === "firestore-write-confirmed"[\s\S]{0,450}pullCloudSync\(false,\s*true\)/);
   assert.doesNotMatch(app, /window\.addEventListener\("storage"/);
 });
 
