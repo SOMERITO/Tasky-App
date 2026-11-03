@@ -3384,7 +3384,7 @@
   function getFirebaseFirestoreUrl() {
     const cfg = appState.firebaseConfig || {};
     const proj = String(cfg.projectId || "tasky-7a30c").trim();
-    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, "");
+    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").split("/").filter(Boolean).join("/");
     const keyParam = cfg.apiKey ? `?key=${encodeURIComponent(cfg.apiKey)}` : "";
     return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(proj)}/databases/(default)/documents/${docPath}${keyParam}`;
   }
