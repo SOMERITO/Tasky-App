@@ -6591,10 +6591,12 @@
       const isAllTasksRescheduled = boxTasksAll.length > 0 && todayInBox.length === 0 &&
         doneTodayBoxTasks.length === 0 && noDeadlineVisibleInBox.length === 0 && reschedInBox.length > 0;
       const isFullyCompletedBox = boxTasksAll.length > 0 && pendingBoxTasks.length === 0;
-      // Highlight a box when every unfinished task is marked "no deadline".
-      // Completed historical tasks do not change the current state of the box.
-      const isAllTasksWithoutDeadlineBox = pendingBoxTasks.length > 0 &&
-        pendingBoxTasks.every(task => Boolean(task.noDeadline));
+      // The user works from the tasks currently visible in the box.
+      // Hidden rescheduled tasks must not prevent the violet no-deadline theme.
+      // Do not apply this state in the completed-tasks tab.
+      const isAllTasksWithoutDeadlineBox = appState.activeTab !== "completed" &&
+        visibleTasks.length > 0 &&
+        visibleTasks.every(task => Boolean(task.noDeadline));
       // A box with no-deadline reference tasks is not empty: keep its normal appearance.
       const isNoTasksToday = todayInBox.length === 0 &&
         doneTodayBoxTasks.length === 0 && noDeadlineVisibleInBox.length === 0;
@@ -6618,7 +6620,8 @@
         `;
       } else if (isAllTasksWithoutDeadlineBox) {
         badgesHtml = `
-          <span class="box-pill violet">∞ Todas sin fecha límite</span>
+          <span class="box-pill violet">∞ ${visibleTasks.length} visibles sin fecha límite</span>
+          ${reschedInBox.length > 0 ? `<span class="box-pill amber">🕒 ${reschedInBox.length} reprogramada${reschedInBox.length === 1 ? "" : "s"}</span>` : ""}
         `;
       } else if (isAllTasksRescheduled) {
         badgesHtml = `
