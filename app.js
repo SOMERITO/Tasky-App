@@ -5461,7 +5461,8 @@
 
   function isTaskRescheduledFuture(task) {
     const today = getTodayISO();
-    return !task.done && Boolean(task.dueDate && task.dueDate > today && task.isRescheduled);
+    // A retained planning date is not a deadline: no-deadline tasks are never classified as rescheduled.
+    return !task.done && !task.noDeadline && Boolean(task.dueDate && task.dueDate > today && task.isRescheduled);
   }
 
   function isTaskCarriedToTodayFromOverdue(task) {
@@ -6590,9 +6591,10 @@
       const isAllTasksRescheduled = boxTasksAll.length > 0 && todayInBox.length === 0 &&
         doneTodayBoxTasks.length === 0 && noDeadlineVisibleInBox.length === 0 && reschedInBox.length > 0;
       const isFullyCompletedBox = boxTasksAll.length > 0 && pendingBoxTasks.length === 0;
-      // Give a distinct identity to boxes where every registered task is explicitly marked "no deadline".
-      const isAllTasksWithoutDeadlineBox = boxTasksAll.length > 0 &&
-        boxTasksAll.every(task => Boolean(task.noDeadline));
+      // Highlight a box when every unfinished task is marked "no deadline".
+      // Completed historical tasks do not change the current state of the box.
+      const isAllTasksWithoutDeadlineBox = pendingBoxTasks.length > 0 &&
+        pendingBoxTasks.every(task => Boolean(task.noDeadline));
       // A box with no-deadline reference tasks is not empty: keep its normal appearance.
       const isNoTasksToday = todayInBox.length === 0 &&
         doneTodayBoxTasks.length === 0 && noDeadlineVisibleInBox.length === 0;
@@ -6617,7 +6619,7 @@
       } else if (isAllTasksWithoutDeadlineBox) {
         badgesHtml = `
           <span class="box-pill violet">∞ Todas sin fecha límite</span>
-          <span class="box-pill neutral">${boxTasksAll.length} tarea${boxTasksAll.length === 1 ? "" : "s"} registrada${boxTasksAll.length === 1 ? "" : "s"}</span>
+          <span class="box-pill neutral">${pendingBoxTasks.length} tarea${pendingBoxTasks.length === 1 ? "" : "s"} pendiente${pendingBoxTasks.length === 1 ? "" : "s"}</span>
         `;
       } else if (isAllTasksRescheduled) {
         badgesHtml = `
@@ -6714,7 +6716,7 @@
           <div class="inline-add-wrapper">
             <form class="inline-add-form" data-box-form="${escapeHtml(box.id)}">
               <textarea class="inline-add-input" rows="1" maxlength="10000" placeholder="Escribe una tarea o pega una lista (una tarea por línea; al pegar se registra automáticamente)." autocomplete="off"></textarea>
-              <label class="inline-add-no-deadline-option" title="La tarea conserva su día programado, pero no se marcará como vencida.">
+              <label class="inline-add-no-deadline-option" title="La tarea no tendrá fecha límite y no se marcará como atrasada.">
                 <input type="checkbox" class="inline-add-no-deadline" />
                 <span>Sin fecha límite</span>
               </label>
@@ -7522,7 +7524,7 @@
         : (task.noDeadline ? "⏳ Volver a activar fecha límite" : "∞ Sin fecha límite");
       const noDeadlineActionHelp = isBulkContext
         ? `La acción dejará ${bulkWillEnableNoDeadline ? "todas" : "ninguna"} las tareas seleccionadas sin fecha límite o con fecha límite activa.`
-        : "Conserva el día programado, pero evita que esta tarea se cuente como pendiente o se marque como atrasada.";
+        : "Esta tarea no tendrá fecha límite ni se marcará como atrasada.";
       addTaskContextMenuButton(
         menu,
         noDeadlineActionLabel,
@@ -7784,7 +7786,7 @@
 
     const actionMessage = shouldEnableNoDeadline
       ? (eligibleTasks.length === 1
-        ? "∞ Sin fecha límite: se conserva el día programado"
+        ? "∞ Fecha límite desactivada para la tarea"
         : `∞ ${eligibleTasks.length} tareas quedaron sin fecha límite`)
       : (eligibleTasks.length === 1
         ? "Fecha límite activada: la tarea podrá marcarse como atrasada"
@@ -7885,8 +7887,7 @@
       subBadges += `<span class="task-daily-pill">${escapeHtml(repeatLabel)}</span>`;
     }
     if (task.noDeadline) {
-      const plannedDateLabel = task.dueDate ? ` · Programada ${formatSpanishDateLong(task.dueDate)}` : "";
-      subBadges += `<span class="task-no-deadline-tag" title="Conserva su día programado, pero nunca se marcará como vencida.">∞ Sin fecha límite${escapeHtml(plannedDateLabel)}</span>`;
+      subBadges += `<span class="task-no-deadline-tag" title="Esta tarea no tiene fecha límite y no se marcará como atrasada.">∞ Sin fecha límite</span>`;
     }
     if (isUpcomingRepeat) {
       subBadges += `<span class="task-upcoming-tag">🗓️ Próxima · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
@@ -9465,7 +9466,7 @@
     playUiSound("tap");
     renderBoardPreservingScroll();
     showToast(targetState
-      ? `∞ ${changedTaskLabel} ${changedTasks.length === 1 ? "quedó" : "quedaron"} sin fecha límite. El día programado se conserva.`
+      ? `∞ ${changedTaskLabel} ${changedTasks.length === 1 ? "quedó" : "quedaron"} sin fecha límite y no se marcará como atrasada.`
       : `⏳ Se reactivó la fecha límite de ${changedTaskLabel}.`);
     return true;
   }
@@ -9530,7 +9531,7 @@
 
       if (noDeadlineHelp) {
         if (isSingleEligibleTask) {
-          noDeadlineHelp.textContent = "Conserva el día programado y se aplica al instante; no se contará como pendiente ni como atrasada.";
+          noDeadlineHelp.textContent = "La tarea queda sin fecha límite y se aplica al instante; no se marcará como atrasada.";
         } else if (eligibleNoDeadlineTasks.length > 0) {
           noDeadlineHelp.textContent = `Se aplica al instante a las ${eligibleNoDeadlineTasks.length} tareas seleccionadas.${skippedTaskCount ? ` Se omitirán ${skippedTaskCount} tareas completadas.` : ""}`;
         } else {
