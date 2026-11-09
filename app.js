@@ -6590,13 +6590,16 @@
       const isAllTasksRescheduled = boxTasksAll.length > 0 && todayInBox.length === 0 &&
         doneTodayBoxTasks.length === 0 && noDeadlineVisibleInBox.length === 0 && reschedInBox.length > 0;
       const isFullyCompletedBox = boxTasksAll.length > 0 && pendingBoxTasks.length === 0;
+      // Give a distinct identity to boxes where every registered task is explicitly marked "no deadline".
+      const isAllTasksWithoutDeadlineBox = boxTasksAll.length > 0 &&
+        boxTasksAll.every(task => Boolean(task.noDeadline));
       // A box with no-deadline reference tasks is not empty: keep its normal appearance.
       const isNoTasksToday = todayInBox.length === 0 &&
         doneTodayBoxTasks.length === 0 && noDeadlineVisibleInBox.length === 0;
       const isTodayFullyCompletedBox = totalTodayBox > 0 && todayInBox.length === 0 && doneTodayBoxTasks.length === totalTodayBox;
 
       const card = document.createElement("section");
-      card.className = `box-card ${!appState.hasBootRendered ? "boot-animate" : ""} ${box.collapsed ? "collapsed" : ""} ${isFullyCompletedBox ? "box-fully-completed-theme" : ""} ${isTodayFullyCompletedBox && !isFullyCompletedBox ? "box-today-completed-theme" : ""} ${isEmptyStandby ? "box-empty-theme" : ""} ${isNoTasksToday ? "box-no-tasks-today-theme" : ""}`;
+      card.className = `box-card ${!appState.hasBootRendered ? "boot-animate" : ""} ${box.collapsed ? "collapsed" : ""} ${isFullyCompletedBox ? "box-fully-completed-theme" : ""} ${isTodayFullyCompletedBox && !isFullyCompletedBox ? "box-today-completed-theme" : ""} ${isEmptyStandby ? "box-empty-theme" : ""} ${isNoTasksToday ? "box-no-tasks-today-theme" : ""} ${isAllTasksWithoutDeadlineBox ? "box-all-no-deadline-theme" : ""}`;
       card.dataset.boxId = box.id;
 
       // Point 2: No "X pendientes" pill in badgesHtml — replaced by the 34x34 colored number square in .box-header-actions!
@@ -6610,6 +6613,11 @@
         badgesHtml = `
           <span class="box-pill green">✓ Todas completadas</span>
           <span class="box-pill neutral">${doneBoxTasks.length} tarea${doneBoxTasks.length === 1 ? "" : "s"} finalizada${doneBoxTasks.length === 1 ? "" : "s"}</span>
+        `;
+      } else if (isAllTasksWithoutDeadlineBox) {
+        badgesHtml = `
+          <span class="box-pill violet">∞ Todas sin fecha límite</span>
+          <span class="box-pill neutral">${boxTasksAll.length} tarea${boxTasksAll.length === 1 ? "" : "s"} registrada${boxTasksAll.length === 1 ? "" : "s"}</span>
         `;
       } else if (isAllTasksRescheduled) {
         badgesHtml = `
