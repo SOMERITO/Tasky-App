@@ -6619,7 +6619,6 @@
       } else if (isAllTasksWithoutDeadlineBox) {
         badgesHtml = `
           <span class="box-pill violet">∞ Todas sin fecha límite</span>
-          <span class="box-pill neutral">${pendingBoxTasks.length} tarea${pendingBoxTasks.length === 1 ? "" : "s"} pendiente${pendingBoxTasks.length === 1 ? "" : "s"}</span>
         `;
       } else if (isAllTasksRescheduled) {
         badgesHtml = `
