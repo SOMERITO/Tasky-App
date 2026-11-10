@@ -6016,7 +6016,7 @@
         const task = taskById.get(String(id));
         return task && !task.done &&
           String(task.boxId) === String(boxId) &&
-          isTaskForToday(task);
+          isTaskEligibleForFocusPriority(task);
       }));
       const changed = remaining.some((group, index) =>
         group.length !== boxPlan.priorities[index].length ||
@@ -6029,7 +6029,7 @@
     });
 
     (appState.data.tasks || []).forEach(task => {
-      if (!task || task.done || !isTaskForToday(task)) return;
+      if (!isTaskEligibleForFocusPriority(task)) return;
       const scheduledDate = String(task.focusPriorityDate || "");
       const scheduledLevel = Number(task.focusPriorityLevel);
       const dueDate = String(task.dueDate || today);
@@ -6124,7 +6124,7 @@
     const matchingTasks = (appState.data.tasks || [])
       .filter(task => {
         const id = String(task.id);
-        if (String(task.boxId) !== normalizedBoxId || task.done || !isTaskForToday(task) || alreadyInThisPriority.has(id)) return false;
+        if (String(task.boxId) !== normalizedBoxId || !isTaskEligibleForFocusPriority(task) || alreadyInThisPriority.has(id)) return false;
         const box = appState.data.boxes.find(entry => String(entry.id) === normalizedBoxId);
         const haystack = `${task.title || ""} ${box ? box.name : ""}`
           .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -6376,8 +6376,8 @@
       nextPriorities.forEach((group, index) => group.splice(0, group.length, ...compacted[index]));
     } else {
       const task = appState.data.tasks.find(entry => String(entry.id) === normalizedId);
-      if (!task || String(task.boxId) !== normalizedBoxId || task.done || !isTaskForToday(task)) {
-        showToast("Elige una tarea pendiente de esta casilla, programada para hoy o atrasada", true);
+      if (!isTaskEligibleForFocusPriority(task) || String(task.boxId) !== normalizedBoxId) {
+        showToast("Elige una tarea pendiente de esta casilla: programada para hoy, atrasada o sin fecha límite", true);
         renderFocusModePanel();
         return;
       }
