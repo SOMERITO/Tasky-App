@@ -7223,7 +7223,7 @@
     // First render casillas with tasks scheduled for today.
     activeBoxesList.forEach(box => renderSingleBoxCard(box, false));
 
-    // Casillas violetas (todas sus tareas visibles sin fecha límite) remain directly below scheduled work.
+    // Casillas violetas (todas sus tareas visibles sin fecha límite) quedan debajo del trabajo programado.
     purpleNoDeadlineBoxesList.forEach(box => renderSingleBoxCard(box, false));
 
     // Point 10: AUTOMATIC "TAREAS COMPLETADAS" BOX WITH FOLD / UNFOLD SUPPORT
