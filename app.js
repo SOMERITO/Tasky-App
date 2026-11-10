@@ -6513,6 +6513,7 @@
     // Preserve manual order inside each section: work due today first, then the completion summary,
     // then fully completed casillas and blue casillas with no unfinished task due today.
     const activeBoxesList = [];
+    const purpleNoDeadlineBoxesList = [];
     const completedBoxesList = [];
     const noTasksTodayBoxesList = [];
     const emptyBoxesList = [];
@@ -6530,10 +6531,23 @@
       const pendingTasks = boxTasks.filter(task => !task.done);
       const hasPendingToday = pendingTasks.some(task => isCountedAsPending(task) && isTaskForToday(task));
       const hasVisibleNoDeadlineTasks = pendingTasks.some(task => isTaskWithoutDeadlinePending(task));
+      const visiblePendingForTheme = pendingTasks.filter(task =>
+        (
+          (isCountedAsPending(task) && isTaskForToday(task)) ||
+          isTaskWithoutDeadlinePending(task) ||
+          (!isRecurringTask(task) && getFocusPriorityLevel(task.id) > 0) ||
+          String(task.id) === String(appState.focusRevealTaskId || "")
+        ) &&
+        matchesSearch(task, box.name)
+      );
+      const isPurpleNoDeadlineBox = appState.activeTab !== "completed" &&
+        visiblePendingForTheme.length > 0 &&
+        visiblePendingForTheme.every(task => Boolean(task.noDeadline));
 
-      // Keep no-deadline reference tasks in the normal Casilla section without counting them as today's workload.
+      // Keep no-deadline reference tasks visible, but place fully violet casillas
+      // after casillas that contain tasks with an active planned date.
       if (hasPendingToday || hasVisibleNoDeadlineTasks) {
-        activeBoxesList.push(box);
+        (isPurpleNoDeadlineBox ? purpleNoDeadlineBoxesList : activeBoxesList).push(box);
       } else {
         noTasksTodayBoxesList.push(box);
       }
@@ -6837,7 +6851,7 @@
 
       function moveBoxWithinVisibleSection(direction) {
         // Up/down controls move a casilla within its current visible section.
-        const sectionLists = [activeBoxesList, completedBoxesList, noTasksTodayBoxesList, emptyBoxesList];
+        const sectionLists = [activeBoxesList, purpleNoDeadlineBoxesList, completedBoxesList, noTasksTodayBoxesList, emptyBoxesList];
         const section = sectionLists.find(list => list.some(entry => String(entry.id) === String(box.id)));
         if (!section) {
           showToast("No pude identificar la sección de esta casilla", true);
@@ -6982,6 +6996,69 @@
           setTimeout(() => inlineInput.classList.remove("input-invalid"), 400);
           showToast("Escribe una tarea o pega una lista", true);
           return false;
+        }
+
+        if (!options.skipDuplicateCheck) {
+          const normalizeDuplicateTitle = value => String(value || "")
+            .normalize("NFD")
+            .replace(/[\\u0300-\\u036f]/g, "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, " ")
+            .trim()
+            .replace(/\\s+/g, " ");
+          const incomingKeys = new Set(taskTitles.map(normalizeDuplicateTitle).filter(Boolean));
+          const existingMatches = new Map();
+
+          (appState.data.tasks || []).forEach(existingTask => {
+            const normalizedTitle = normalizeDuplicateTitle(existingTask.title);
+            if (!incomingKeys.has(normalizedTitle)) return;
+            const existingBox = appState.data.boxes.find(item => String(item.id) === String(existingTask.boxId));
+            const status = existingTask.done ? "completada" : "pendiente";
+            const matchKey = `${normalizedTitle}| ${existingTask.boxId}| ${status}`;
+            if (!existingMatches.has(matchKey)) {
+              existingMatches.set(matchKey, {
+                title: existingTask.title,
+                boxName: existingBox ? existingBox.name : "Otra casilla",
+                status
+              });
+            }
+          });
+
+          const seenIncoming = new Set();
+          const repeatedIncoming = [];
+          taskTitles.forEach(title => {
+            const key = normalizeDuplicateTitle(title);
+            if (seenIncoming.has(key) && !repeatedIncoming.includes(title)) repeatedIncoming.push(title);
+            seenIncoming.add(key);
+          });
+
+          if (existingMatches.size || repeatedIncoming.length) {
+            const titleEl = document.getElementById("confirm-modal-title");
+            const messageEl = document.getElementById("confirm-modal-msg");
+            const proceedBtn = document.getElementById("btn-confirm-proceed");
+            if (titleEl && messageEl && proceedBtn) {
+              const preview = Array.from(existingMatches.values())
+                .slice(0, 4)
+                .map(match => `«${match.title}» — ${match.boxName} (${match.status})`);
+              const moreCount = Math.max(0, existingMatches.size - preview.length);
+              const messageParts = [];
+              if (preview.length) {
+                messageParts.push(`Encontré una tarea con el mismo nombre: ${preview.join("; ")}${moreCount ? `; y ${moreCount} coincidencia(s) más` : ""}.`);
+              }
+              if (repeatedIncoming.length) {
+                messageParts.push(`La lista que vas a registrar también repite: ${repeatedIncoming.slice(0, 3).map(item => `«${item}»`).join(", ")}.`);
+              }
+              titleEl.textContent = "Esta tarea ya podría existir";
+              messageEl.textContent = `${messageParts.join(" ")} ¿Deseas registrarla de todos modos?`;
+              proceedBtn.textContent = "Registrar de todos modos";
+              proceedBtn.style.background = "var(--primary)";
+              appState.confirmCallback = () => {
+                saveInlineTask(taskTitles.join("\\n"), { ...options, skipDuplicateCheck: true });
+              };
+              document.getElementById("modal-confirm").classList.add("open");
+              return true;
+            }
+          }
         }
 
         const timestamp = Date.now();
@@ -7143,8 +7220,11 @@
       container.appendChild(card);
     }
 
-    // First render casillas that have pending work for today (or an explicitly assigned focus priority).
+    // First render casillas with tasks scheduled for today.
     activeBoxesList.forEach(box => renderSingleBoxCard(box, false));
+
+    // Casillas violetas (todas sus tareas visibles sin fecha límite) remain directly below scheduled work.
+    purpleNoDeadlineBoxesList.forEach(box => renderSingleBoxCard(box, false));
 
     // Point 10: AUTOMATIC "TAREAS COMPLETADAS" BOX WITH FOLD / UNFOLD SUPPORT
     const allCompletedTasks = appState.data.tasks.filter(t => t.done && matchesSearch(t, "Tareas completadas"));
@@ -10666,6 +10746,15 @@
             }
           });
         }
+        const confirmModal = document.getElementById("modal-confirm");
+        if (confirmModal && confirmModal.classList.contains("open")) {
+          appState.confirmCallback = null;
+          const proceedBtn = document.getElementById("btn-confirm-proceed");
+          if (proceedBtn) {
+            proceedBtn.textContent = "Eliminar";
+            proceedBtn.style.background = "var(--danger)";
+          }
+        }
         document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
         document.getElementById("fab-wrapper").classList.remove("open");
       }
@@ -11258,10 +11347,12 @@
 
     document.getElementById("btn-confirm-proceed").addEventListener("click", () => {
       document.getElementById("modal-confirm").classList.remove("open");
-      if (typeof appState.confirmCallback === "function") {
-        appState.confirmCallback();
-        appState.confirmCallback = null;
-      }
+      const proceedBtn = document.getElementById("btn-confirm-proceed");
+      proceedBtn.textContent = "Eliminar";
+      proceedBtn.style.background = "var(--danger)";
+      const callback = appState.confirmCallback;
+      appState.confirmCallback = null;
+      if (typeof callback === "function") callback();
     });
 
     // Point 2: Native Firebase Configuration & Rescue Controls inside 3-Dots Modal
@@ -11373,6 +11464,14 @@
         playUiSound("tap");
         const target = document.getElementById(btn.dataset.closeModal);
         if (target) target.classList.remove("open");
+        if (btn.dataset.closeModal === "modal-confirm") {
+          appState.confirmCallback = null;
+          const proceedBtn = document.getElementById("btn-confirm-proceed");
+          if (proceedBtn) {
+            proceedBtn.textContent = "Eliminar";
+            proceedBtn.style.background = "var(--danger)";
+          }
+        }
       });
     });
 
