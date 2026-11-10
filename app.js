@@ -6717,6 +6717,9 @@
             <button type="button" class="box-ctrl-btn copy-box-btn" data-box-action="copy-box" aria-label="Copiar casilla y tareas visibles" data-tip-title="📋 Copiar casilla y tareas visibles" data-tip-desc="Copia el título de esta casilla y únicamente las tareas que se muestran actualmente en ella.">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             </button>
+            <button type="button" class="box-ctrl-btn capture-box-btn" data-box-action="capture-box" aria-label="Copiar casilla como imagen" data-tip-title="📸 Capturar casilla" data-tip-desc="Copia como imagen esta casilla tal como se muestra ahora, con sus tareas visibles.">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4H10L8.5 6H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.5L14 4z"/><circle cx="12" cy="13" r="3.2"/></svg>
+            </button>
             <button type="button" class="box-ctrl-btn collapse-right-btn" data-box-action="collapse" data-tip-title="⌄ Plegar o desplegar casilla" data-tip-desc="Oculta o muestra el listado de tareas de este bloque para despejar tu vista.">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
@@ -6832,6 +6835,79 @@
             `📋 Copiado: ${box.name.toUpperCase()} (${tasksToCopy.length} tarea${tasksToCopy.length === 1 ? "" : "s"} visibles)`,
             copyBoxBtn
           );
+        });
+      }
+
+      const captureBoxBtn = card.querySelector('[data-box-action="capture-box"]');
+      if (captureBoxBtn) {
+        captureBoxBtn.addEventListener("click", async () => {
+          if (captureBoxBtn.disabled) return;
+          captureBoxBtn.disabled = true;
+          captureBoxBtn.setAttribute("aria-busy", "true");
+          let imageBlob = null;
+
+          const downloadCapturedImage = blob => {
+            const safeBoxName = String(box.name || "casilla")
+              .normalize("NFD")
+              .replace(/[\\u0300-\\u036f]/g, "")
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "") || "casilla";
+            const objectUrl = URL.createObjectURL(blob);
+            const downloadLink = document.createElement("a");
+            downloadLink.href = objectUrl;
+            downloadLink.download = `tasky-${safeBoxName}.png`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            downloadLink.remove();
+            window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+          };
+
+          try {
+            if (typeof window.html2canvas !== "function") {
+              throw new Error("No está disponible el motor de captura de imágenes.");
+            }
+
+            // Capture only this live card. Its DOM already contains just the
+            // tasks visible in the current tab, filter and screen state.
+            const canvas = await window.html2canvas(card, {
+              backgroundColor: null,
+              scale: 2,
+              useCORS: true,
+              logging: false,
+              scrollX: -(window.scrollX || 0),
+              scrollY: -(window.scrollY || 0)
+            });
+            imageBlob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+            if (!imageBlob) throw new Error("No se pudo generar la imagen PNG.");
+
+            if (navigator.clipboard && typeof navigator.clipboard.write === "function" &&
+                typeof window.ClipboardItem === "function") {
+              try {
+                await navigator.clipboard.write([
+                  new window.ClipboardItem({ "image/png": imageBlob })
+                ]);
+                showToast(`📸 Imagen de ${box.name} copiada. Ya puedes pegarla en WhatsApp.`);
+              } catch (clipboardError) {
+                downloadCapturedImage(imageBlob);
+                showToast("El navegador no permitió copiar la imagen; la descargué en PNG para que puedas compartirla.", true);
+              }
+            } else {
+              downloadCapturedImage(imageBlob);
+              showToast("Este navegador no permite copiar imágenes directamente; descargué la casilla en PNG.");
+            }
+          } catch (error) {
+            console.error("Tasky: error al capturar casilla", error);
+            if (imageBlob) {
+              downloadCapturedImage(imageBlob);
+              showToast("No pude copiar la imagen, pero descargué la captura en PNG.", true);
+            } else {
+              showToast("No se pudo capturar esta casilla. Inténtalo nuevamente.", true);
+            }
+          } finally {
+            captureBoxBtn.disabled = false;
+            captureBoxBtn.removeAttribute("aria-busy");
+          }
         });
       }
 
