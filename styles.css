@@ -931,6 +931,42 @@ body {
   transition: box-shadow 0.25s var(--ease), border-color 0.25s var(--ease), background 0.25s var(--ease);
 }
 
+/* Keep the camera control visually consistent with the other box actions. */
+.capture-box-btn {
+  flex: 0 0 34px;
+  padding: 0;
+}
+
+.capture-box-btn svg {
+  display: block;
+  flex: 0 0 15px;
+}
+
+.capture-box-btn[aria-busy="true"] {
+  opacity: 0.58;
+  cursor: progress;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Lightweight styling is applied only to the cloned card used for image export. */
+.tasky-capture-mode,
+.tasky-capture-mode * {
+  animation: none !important;
+  transition: none !important;
+}
+
+.tasky-capture-mode {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+.tasky-capture-mode .box-ctrl-btn,
+.tasky-capture-mode .task-act-btn {
+  box-shadow: none !important;
+}
+
 .box-card.boot-animate {
   animation: fadeInSlideUp 0.36s var(--ease) both;
 }
