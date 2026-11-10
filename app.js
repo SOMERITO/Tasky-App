@@ -7001,11 +7001,11 @@
         if (!options.skipDuplicateCheck) {
           const normalizeDuplicateTitle = value => String(value || "")
             .normalize("NFD")
-            .replace(/[\\u0300-\\u036f]/g, "")
+            .replace(/[\u0300-\u036f]/g, "")
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, " ")
             .trim()
-            .replace(/\\s+/g, " ");
+            .replace(/\s+/g, " ");
           const incomingKeys = new Set(taskTitles.map(normalizeDuplicateTitle).filter(Boolean));
           const existingMatches = new Map();
 
@@ -7053,7 +7053,7 @@
               proceedBtn.textContent = "Registrar de todos modos";
               proceedBtn.style.background = "var(--primary)";
               appState.confirmCallback = () => {
-                saveInlineTask(taskTitles.join("\\n"), { ...options, skipDuplicateCheck: true });
+                saveInlineTask(taskTitles.join("\n"), { ...options, skipDuplicateCheck: true });
               };
               document.getElementById("modal-confirm").classList.add("open");
               return true;
