@@ -6875,8 +6875,6 @@
               scale: 2,
               useCORS: true,
               logging: false,
-              scrollX: -(window.scrollX || 0),
-              scrollY: -(window.scrollY || 0),
               onclone: clonedDocument => {
                 // The image is a shareable snapshot of pending work only.
                 const clonedCard = Array.from(clonedDocument.querySelectorAll(".box-card[data-box-id]"))
