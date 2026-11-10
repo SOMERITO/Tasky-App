@@ -5489,6 +5489,13 @@
       !isTaskRescheduledFuture(task));
   }
 
+  // Priorities are a manual planning aid: allow today's/overdue work and
+  // visible no-deadline reference tasks, without changing daily workload metrics.
+  function isTaskEligibleForFocusPriority(task) {
+    return Boolean(task && !task.done &&
+      (isTaskForToday(task) || isTaskWithoutDeadlinePending(task)));
+  }
+
   // No-deadline tasks remain visible in their Casilla, but do not count as pending work.
   function isCountedAsPending(task) {
     return Boolean(task && !task.done && !task.noDeadline);
@@ -7645,7 +7652,7 @@
 
     const plan = getFocusBoxPlanForToday(task.boxId);
     const currentPriorityIndex = plan.priorities.findIndex(group => group.includes(String(task.id)));
-    const eligibleForPriority = contextTasks.some(item => !item.done && isTaskForToday(item));
+    const eligibleForPriority = contextTasks.some(isTaskEligibleForFocusPriority);
     const priorityNames = [
       { number: 1, color: "Rojo", css: "p1" },
       { number: 2, color: "Amarillo", css: "p2" },
@@ -7661,9 +7668,9 @@
       let title = "";
 
       if (!eligibleForPriority) {
-        label = `P${priority.number} · Solo hoy o atrasadas`;
+        label = `P${priority.number} · Sin tareas elegibles`;
         disabled = true;
-        title = "Solo se pueden priorizar tareas pendientes para hoy o atrasadas.";
+        title = "Solo se pueden priorizar tareas pendientes para hoy, atrasadas o sin fecha límite.";
       } else if (!isBulkContext && assignedIds.includes(String(task.id))) {
         label = `✓ P${priority.number} · Ya asignada`;
         disabled = true;
@@ -7718,8 +7725,8 @@
       return;
     }
     const task = appState.data.tasks.find(entry => String(entry.id) === String(taskId));
-    if (!task || task.done || !isTaskForToday(task)) {
-      showToast("Solo puedes priorizar tareas pendientes para hoy o atrasadas", true);
+    if (!isTaskEligibleForFocusPriority(task)) {
+      showToast("Solo puedes priorizar tareas pendientes para hoy, atrasadas o sin fecha límite", true);
       return;
     }
 
@@ -7745,10 +7752,10 @@
   }
 
   function assignSelectedTasksToFocusPriority(tasks, requestedSlot) {
-    const eligibleTasks = tasks.filter(task => !task.done && isTaskForToday(task));
+    const eligibleTasks = tasks.filter(isTaskEligibleForFocusPriority);
     const ineligibleCount = tasks.length - eligibleTasks.length;
     if (!eligibleTasks.length) {
-      showToast("Solo puedes priorizar tareas pendientes para hoy o atrasadas.", true);
+      showToast("Solo puedes priorizar tareas pendientes para hoy, atrasadas o sin fecha límite.", true);
       return;
     }
 
