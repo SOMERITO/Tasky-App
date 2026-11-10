@@ -6717,8 +6717,8 @@
             <button type="button" class="box-ctrl-btn copy-box-btn" data-box-action="copy-box" aria-label="Copiar casilla y tareas visibles" data-tip-title="📋 Copiar casilla y tareas visibles" data-tip-desc="Copia el título de esta casilla y únicamente las tareas que se muestran actualmente en ella.">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             </button>
-            <button type="button" class="box-ctrl-btn capture-box-btn" data-box-action="capture-box" aria-label="Copiar casilla como imagen" data-tip-title="📸 Capturar casilla" data-tip-desc="Copia como imagen esta casilla tal como se muestra ahora, con sus tareas visibles.">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4H10L8.5 6H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.5L14 4z"/><circle cx="12" cy="13" r="3.2"/></svg>
+            <button type="button" class="box-ctrl-btn capture-box-btn" data-box-action="capture-box" aria-label="Copiar casilla como imagen" data-tip-title="Capturar casilla" data-tip-desc="Copia como imagen esta casilla tal como se muestra ahora, con sus tareas visibles.">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h-4l-1.5 2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.5L14 4z"/><circle cx="12" cy="12.5" r="3.1"/></svg>
             </button>
             <button type="button" class="box-ctrl-btn collapse-right-btn" data-box-action="collapse" data-tip-title="⌄ Plegar o desplegar casilla" data-tip-desc="Oculta o muestra el listado de tareas de este bloque para despejar tu vista.">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -6872,16 +6872,35 @@
             // tasks visible in the current tab, filter and screen state.
             const canvas = await window.html2canvas(card, {
               backgroundColor: null,
-              scale: 2,
+              // 1.4x keeps text crisp for WhatsApp while rendering far fewer
+              // pixels than the previous 2x capture.
+              scale: 1.4,
               useCORS: true,
+              imageTimeout: 0,
               logging: false,
               onclone: clonedDocument => {
-                // The image is a shareable snapshot of pending work only.
+                // Keep the live theme and the card's ancestor layout, but remove
+                // every other screen element before html2canvas paints the clone.
                 const clonedCard = Array.from(clonedDocument.querySelectorAll(".box-card[data-box-id]"))
                   .find(element => String(element.dataset.boxId) === String(box.id));
-                if (clonedCard) {
-                  clonedCard.querySelectorAll(".task-item.done").forEach(row => row.remove());
+                if (!clonedCard) return;
+
+                clonedCard.classList.add("tasky-capture-mode");
+                clonedCard.querySelectorAll(".task-item.done").forEach(row => row.remove());
+
+                // Prune sibling branches from the card up to body. This avoids
+                // laying out the entire task board while capturing one casilla.
+                let branch = clonedCard;
+                while (branch.parentElement && branch.parentElement !== clonedDocument.body) {
+                  const parent = branch.parentElement;
+                  Array.from(parent.children).forEach(child => {
+                    if (child !== branch && !child.contains(clonedCard)) child.remove();
+                  });
+                  branch = parent;
                 }
+                Array.from(clonedDocument.body.children).forEach(child => {
+                  if (child !== branch && !child.contains(clonedCard)) child.remove();
+                });
               }
             });
             imageBlob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
