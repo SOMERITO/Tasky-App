@@ -7008,10 +7008,12 @@
             .replace(/\s+/g, " ");
           const incomingKeys = new Set(taskTitles.map(normalizeDuplicateTitle).filter(Boolean));
           const existingMatches = new Map();
+          const existingDuplicateKeys = new Set();
 
           (appState.data.tasks || []).forEach(existingTask => {
             const normalizedTitle = normalizeDuplicateTitle(existingTask.title);
             if (!incomingKeys.has(normalizedTitle)) return;
+            existingDuplicateKeys.add(normalizedTitle);
             const existingBox = appState.data.boxes.find(item => String(item.id) === String(existingTask.boxId));
             const status = existingTask.done ? "completada" : "pendiente";
             const matchKey = `${normalizedTitle}| ${existingTask.boxId}| ${status}`;
@@ -7026,13 +7028,17 @@
 
           const seenIncoming = new Set();
           const repeatedIncoming = [];
-          taskTitles.forEach(title => {
+          const duplicateTaskIndexes = [];
+          taskTitles.forEach((title, index) => {
             const key = normalizeDuplicateTitle(title);
+            if (existingDuplicateKeys.has(key) || seenIncoming.has(key)) {
+              duplicateTaskIndexes.push(index);
+            }
             if (seenIncoming.has(key) && !repeatedIncoming.includes(title)) repeatedIncoming.push(title);
             seenIncoming.add(key);
           });
 
-          if (existingMatches.size || repeatedIncoming.length) {
+          if (existingMatches.size || duplicateTaskIndexes.length) {
             const titleEl = document.getElementById("confirm-modal-title");
             const messageEl = document.getElementById("confirm-modal-msg");
             const proceedBtn = document.getElementById("btn-confirm-proceed");
@@ -7053,7 +7059,11 @@
               proceedBtn.textContent = "Registrar de todos modos";
               proceedBtn.style.background = "var(--primary)";
               appState.confirmCallback = () => {
-                saveInlineTask(taskTitles.join("\n"), { ...options, skipDuplicateCheck: true });
+                saveInlineTask(taskTitles.join("\n"), {
+                  ...options,
+                  skipDuplicateCheck: true,
+                  duplicateTaskIndexes
+                });
               };
               document.getElementById("modal-confirm").classList.add("open");
               return true;
@@ -7085,6 +7095,7 @@
             repeatDays: [],
             rescheduledCount: 0,
             isRescheduled: false,
+            isDuplicate: Array.isArray(options.duplicateTaskIndexes) && options.duplicateTaskIndexes.includes(index),
             order: nextOrder + index
           });
         });
@@ -7981,6 +7992,9 @@
       subBadges += `<span class="task-overdue-tag">⚠️ Atrasada · ${escapeHtml(formatSpanishDateLong(getTaskOverdueDisplayDate(task)))}</span>`;
     } else if (isResched) {
       subBadges += `<span class="task-resched-tag">🕒 Reprogramada · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
+    }
+    if (task.isDuplicate) {
+      subBadges += '<span class="task-duplicate-marker" role="img" aria-label="Tarea duplicada" title="Esta tarea se registró aunque ya existía una tarea con el mismo nombre.">R</span>';
     }
     if (showOriginBox && box) {
       subBadges += `<span class="box-pill neutral" style="font-size:0.68rem;">${escapeHtml(box.name)}</span>`;
