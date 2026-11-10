@@ -6876,7 +6876,15 @@
               useCORS: true,
               logging: false,
               scrollX: -(window.scrollX || 0),
-              scrollY: -(window.scrollY || 0)
+              scrollY: -(window.scrollY || 0),
+              onclone: clonedDocument => {
+                // The image is a shareable snapshot of pending work only.
+                const clonedCard = Array.from(clonedDocument.querySelectorAll(".box-card[data-box-id]"))
+                  .find(element => String(element.dataset.boxId) === String(box.id));
+                if (clonedCard) {
+                  clonedCard.querySelectorAll(".task-item.done").forEach(row => row.remove());
+                }
+              }
             });
             imageBlob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
             if (!imageBlob) throw new Error("No se pudo generar la imagen PNG.");
