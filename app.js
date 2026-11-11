@@ -8033,35 +8033,60 @@
   // onto a canvas. This avoids html2canvas cloning and traversing the whole app.
   function createFastBoxSnapshotCanvas(card, box, visibleTasks) {
     const cardRect = card.getBoundingClientRect();
-    const baseWidth = Math.max(320, Math.ceil(cardRect.width));
-    const baseHeight = Math.max(150, Math.ceil(Math.max(cardRect.height, card.scrollHeight || 0)));
+    const baseWidth = Math.max(360, Math.ceil(cardRect.width));
     const outerPad = 18;
-    const scale = Math.max(0.8, Math.min(1.6, 1800 / baseWidth, 7600 / baseHeight));
+    const innerPad = 24;
+    const gapAfterHeader = 18;
+    const gapAfterProgress = 20;
+
+    const titleElement = card.querySelector(".box-name");
+    const titleStyle = getComputedStyle(titleElement || card);
+    const titleEmoji = titleElement && titleElement.querySelector(".box-emoji");
+    const titleName = titleElement && titleElement.querySelector(".box-name-text");
+    const titleText = [
+      titleEmoji ? titleEmoji.textContent.trim() : "",
+      titleName ? titleName.textContent.trim() : (titleElement ? titleElement.textContent.trim() : String(box.name || ""))
+    ].filter(Boolean).join(" ");
+
+    const countElement = card.querySelector(".box-pending-count-box");
+    const countStyle = countElement ? getComputedStyle(countElement) : null;
+    const countText = countElement ? countElement.textContent.trim() : String((visibleTasks || []).filter(task => !task.done).length);
+    const countWidth = countElement ? Math.max(38, countElement.getBoundingClientRect().width) : 42;
+    const countHeight = countElement ? Math.max(38, countElement.getBoundingClientRect().height) : 42;
+
+    const progressBar = card.querySelector(".box-progress-bar");
+    const progressLabel = card.querySelector(".box-progress-label");
+    const progressLabelText = progressLabel ? progressLabel.textContent.trim() : "";
+    const progressLabelStyle = progressLabel ? getComputedStyle(progressLabel) : null;
+    const progressBarStyle = progressBar ? getComputedStyle(progressBar) : null;
+    const progressFill = progressBar ? progressBar.querySelector(".box-progress-fill") : null;
+    const progressRatio = progressBar && progressFill && progressBar.getBoundingClientRect().width > 0
+      ? Math.max(0, Math.min(1, progressFill.getBoundingClientRect().width / progressBar.getBoundingClientRect().width))
+      : 0;
+
+    const rowById = new Map(
+      Array.from(card.querySelectorAll(".task-item[data-task-id]"))
+        .filter(row => row.getBoundingClientRect().height > 0)
+        .map(row => [String(row.dataset.taskId), row])
+    );
+    const tasksToRender = (visibleTasks || [])
+      .filter(task => task && !task.done && rowById.has(String(task.id)))
+      .map(task => ({ task, row: rowById.get(String(task.id)) }));
+
     const canvas = document.createElement("canvas");
-    canvas.width = Math.ceil((baseWidth + outerPad * 2) * scale);
-    canvas.height = Math.ceil((baseHeight + outerPad * 2) * scale);
     const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) throw new Error("No se pudo iniciar el lienzo de captura.");
-    ctx.scale(scale, scale);
-    ctx.textBaseline = "top";
-    const pageBackground = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#f4f6fb";
-    ctx.fillStyle = pageBackground;
-    ctx.fillRect(0, 0, baseWidth + outerPad * 2, baseHeight + outerPad * 2);
 
-    const cardStyle = getComputedStyle(card);
-    const relativeRect = element => {
-      const r = element.getBoundingClientRect();
-      return {
-        x: r.left - cardRect.left + outerPad,
-        y: r.top - cardRect.top + outerPad,
-        width: r.width,
-        height: r.height
-      };
+    const parsePx = (value, fallback) => {
+      const number = Number.parseFloat(value);
+      return Number.isFinite(number) ? number : fallback;
     };
-    const isTransparent = color => !color || color === "transparent" || /rgba\([^)]*,\s*0\s*\)$/.test(color);
-    const colorsFromGradient = String(cardStyle.backgroundImage || "").match(/rgba?\([^)]+\)|#[0-9a-f]{3,8}/gi) || [];
+    const parseGradientColors = value =>
+      String(value || "").match(/rgba?\([^)]+\)|#[0-9a-f]{3,8}/gi) || [];
+    const isTransparent = value =>
+      !value || value === "transparent" || /rgba\([^)]*,\s*0\s*\)$/.test(value);
 
-    const roundedRect = (x, y, width, height, radius, fill, stroke, strokeWidth) => {
+    const drawRoundedRect = (x, y, width, height, radius, fill, stroke, strokeWidth) => {
       if (width <= 0 || height <= 0) return;
       const r = Math.max(0, Math.min(Number(radius) || 0, width / 2, height / 2));
       ctx.beginPath();
@@ -8086,214 +8111,223 @@
       }
     };
 
-    const drawNodeText = (element, options) => {
-      if (!element) return;
-      options = options || {};
-      const r = relativeRect(element);
-      if (r.width <= 0 || r.height <= 0) return;
+    const makeGradientOrColor = (style, x, y, width, height) => {
+      const colors = parseGradientColors(style && style.backgroundImage);
+      if (colors.length >= 2) {
+        const gradient = ctx.createLinearGradient(x, y, x + width, y + height);
+        gradient.addColorStop(0, colors[0]);
+        gradient.addColorStop(1, colors[colors.length - 1]);
+        return gradient;
+      }
+      return style ? style.backgroundColor : "#ffffff";
+    };
 
-      const style = getComputedStyle(element);
-      const fontSize = Number.parseFloat(style.fontSize) || 14;
-      const lineHeight = Number.parseFloat(style.lineHeight) || fontSize * 1.35;
-      const padX = Math.max(0, Number(options.padX) || 0);
-      const availableWidth = Math.max(1, Number(options.maxWidth) || r.width);
-      const textWidth = Math.max(1, availableWidth - padX * 2);
-      const maxLines = Math.max(1, Math.min(10,
-        Number(options.maxLines) || Math.floor((r.height + 1) / lineHeight) || 1
-      ));
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(r.x, r.y, availableWidth, r.height);
-      ctx.clip();
-      ctx.font = style.font || (style.fontWeight || 500) + " " + fontSize + "px " + (style.fontFamily || "Arial, sans-serif");
-      ctx.fillStyle = options.color || style.color || "#172033";
-      ctx.textAlign = options.align || "left";
-      ctx.textBaseline = "top";
-
-      const rawText = String(options.text !== undefined ? options.text : element.textContent || "")
-        .replace(/\s+/g, " ").trim();
-      const words = rawText.split(" ").filter(Boolean);
-      const x = options.align === "center" ? r.x + padX + textWidth / 2
-        : options.align === "right" ? r.x + padX + textWidth : r.x + padX;
-      const startY = options.verticalCenter
-        ? r.y + Math.max(0, (r.height - lineHeight) / 2)
-        : r.y;
-
-      const fitWithEllipsis = text => {
-        let candidate = String(text || "");
-        while (candidate && ctx.measureText(candidate + "…").width > textWidth) {
-          candidate = candidate.slice(0, -1);
-        }
-        return candidate ? candidate + "…" : "…";
-      };
-
+    const wrapText = (text, font, maxWidth) => {
+      ctx.font = font;
+      const words = String(text || "").replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
       const lines = [];
-      let currentLine = "";
-      let truncated = false;
-
-      for (let index = 0; index < words.length; index++) {
-        const word = words[index];
-        const candidate = currentLine ? currentLine + " " + word : word;
-
-        if (ctx.measureText(candidate).width <= textWidth) {
-          currentLine = candidate;
-          continue;
+      let line = "";
+      words.forEach(word => {
+        if (ctx.measureText(word).width > maxWidth) {
+          if (line) {
+            lines.push(line);
+            line = "";
+          }
+          let fragment = "";
+          Array.from(word).forEach(character => {
+            const candidate = fragment + character;
+            if (fragment && ctx.measureText(candidate).width > maxWidth) {
+              lines.push(fragment);
+              fragment = character;
+            } else {
+              fragment = candidate;
+            }
+          });
+          line = fragment;
+          return;
         }
-
-        // An individual long word must be clipped cleanly, not painted on top
-        // of the preceding line.
-        if (!currentLine) {
-          lines.push(fitWithEllipsis(word));
-          truncated = index < words.length - 1 || ctx.measureText(word).width > textWidth;
-          break;
+        const candidate = line ? line + " " + word : word;
+        if (line && ctx.measureText(candidate).width > maxWidth) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = candidate;
         }
-
-        lines.push(currentLine);
-        currentLine = word;
-
-        // There is no free line left. Ellipsize the previous line and stop.
-        if (lines.length >= maxLines) {
-          truncated = true;
-          currentLine = "";
-          break;
-        }
-      }
-
-      if (currentLine && lines.length < maxLines) {
-        lines.push(currentLine);
-      } else if (currentLine && lines.length >= maxLines) {
-        truncated = true;
-      }
-
-      if (truncated && lines.length) {
-        lines[lines.length - 1] = fitWithEllipsis(lines[lines.length - 1]);
-      }
-
-      lines.slice(0, maxLines).forEach((line, index) => {
-        ctx.fillText(line, x, startY + index * lineHeight, textWidth);
       });
+      if (line) lines.push(line);
+      return lines.length ? lines : [""];
+    };
+
+    const drawLines = (lines, x, y, lineHeight, color, font, maxWidth) => {
+      ctx.save();
+      ctx.font = font;
+      ctx.fillStyle = color;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      lines.forEach((line, index) => ctx.fillText(line, x, y + index * lineHeight, maxWidth));
       ctx.restore();
     };
 
-    const drawBadge = element => {
-      if (!element) return;
-      const r = relativeRect(element);
-      if (r.width <= 0 || r.height <= 0) return;
-      const style = getComputedStyle(element);
-      const radius = Math.min(r.height / 2, Number.parseFloat(style.borderTopLeftRadius) || 7);
-      const borderWidth = Number.parseFloat(style.borderTopWidth) || 0;
-      roundedRect(r.x, r.y, r.width, r.height, radius, style.backgroundColor, style.borderColor, borderWidth);
-      drawNodeText(element, {
-        verticalCenter: true,
-        padX: isTransparent(style.backgroundColor) ? 0 : 5
-      });
-    };
+    // Keep the same typography as the app, but create a clean export layout:
+    // title left, task count upper-right, progress underneath, then tasks only.
+    const titleFontSize = parsePx(titleStyle.fontSize, 18);
+    const titleLineHeight = parsePx(titleStyle.lineHeight, titleFontSize * 1.35);
+    const titleFont = "800 " + titleFontSize + "px " + titleStyle.fontFamily;
+    const countTextFontSize = countStyle ? parsePx(countStyle.fontSize, 14) : 14;
+    const countFont = "800 " + countTextFontSize + "px " + (countStyle ? countStyle.fontFamily : titleStyle.fontFamily);
+    const headerTextWidth = Math.max(100, baseWidth - innerPad * 2 - countWidth - 28);
+    const titleLines = wrapText(titleText, titleFont, headerTextWidth).slice(0, 2);
+    const titleHeight = Math.max(titleLineHeight, titleLines.length * titleLineHeight);
+    const headerHeight = Math.max(titleHeight, countHeight);
 
-    const drawGradientOrColor = (style, r) => {
-      const gradientColors = String(style.backgroundImage || "").match(/rgba?\([^)]+\)|#[0-9a-f]{3,8}/gi) || [];
-      if (gradientColors.length >= 2) {
-        const g = ctx.createLinearGradient(r.x, r.y, r.x + r.width, r.y + r.height);
-        g.addColorStop(0, gradientColors[0]);
-        g.addColorStop(1, gradientColors[gradientColors.length - 1]);
-        return g;
-      }
-      return style.backgroundColor;
-    };
+    const progressFontSize = progressLabelStyle ? parsePx(progressLabelStyle.fontSize, 13) : 13;
+    const progressLineHeight = progressLabelStyle ? parsePx(progressLabelStyle.lineHeight, progressFontSize * 1.3) : progressFontSize * 1.3;
+    const progressFont = "700 " + progressFontSize + "px " + (progressLabelStyle ? progressLabelStyle.fontFamily : titleStyle.fontFamily);
+    const progressLabelWidth = progressLabelText
+      ? Math.max(48, ctx.measureText(progressLabelText).width + 6)
+      : 0;
+    const progressHeight = Math.max(7, progressLineHeight);
+    const progressY = outerPad + innerPad + headerHeight + gapAfterHeader;
+    const progressBarHeight = progressBar ? Math.max(5, progressBar.getBoundingClientRect().height) : 6;
+    const progressBarWidth = Math.max(80, baseWidth - innerPad * 2 - progressLabelWidth - (progressLabelText ? 14 : 0));
+    const taskStartY = progressY + Math.max(progressBarHeight, progressHeight) + gapAfterProgress;
 
-    // Card surface and border, including the violet no-deadline theme.
-    const cardX = outerPad;
-    const cardY = outerPad;
-    const cardRadius = Number.parseFloat(cardStyle.borderTopLeftRadius) || 18;
+    const taskLayouts = [];
+    tasksToRender.forEach(({ task, row }) => {
+      const titleNode = row.querySelector(".task-title");
+      const titleNodeStyle = titleNode ? getComputedStyle(titleNode) : titleStyle;
+      const fontSize = parsePx(titleNodeStyle.fontSize, 16);
+      const lineHeight = parsePx(titleNodeStyle.lineHeight, fontSize * 1.4);
+      const font = (titleNodeStyle.fontWeight || "600") + " " + fontSize + "px " + titleNodeStyle.fontFamily;
+      const titleXOffset = 58;
+      const titleMaxWidth = Math.max(100, baseWidth - innerPad * 2 - titleXOffset - 16);
+      const lines = wrapText(task.title || "", font, titleMaxWidth);
+      const rowHeight = Math.max(54, lines.length * lineHeight + 24);
+      taskLayouts.push({ task, row, lines, font, fontSize, lineHeight, titleXOffset, titleMaxWidth, rowHeight });
+    });
+
+    const tasksHeight = taskLayouts.reduce((sum, item) => sum + item.rowHeight, 0)
+      + Math.max(0, taskLayouts.length - 1) * 10;
+    const bottomPad = 24;
+    const baseHeight = Math.ceil(taskStartY - outerPad + tasksHeight + bottomPad);
+    const scale = Math.max(0.9, Math.min(1.5, 2100 / baseWidth, 7600 / Math.max(1, baseHeight)));
+    canvas.width = Math.ceil((baseWidth + outerPad * 2) * scale);
+    canvas.height = Math.ceil((baseHeight + outerPad * 2) * scale);
+    ctx.scale(scale, scale);
+
+    const pageBackground =
+      getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#f4f6fb";
+    ctx.fillStyle = pageBackground;
+    ctx.fillRect(0, 0, baseWidth + outerPad * 2, baseHeight + outerPad * 2);
+
+    const cardStyle = getComputedStyle(card);
+    const cardColors = parseGradientColors(cardStyle.backgroundImage);
     let cardFill = cardStyle.backgroundColor;
-    if (colorsFromGradient.length >= 2) {
-      const gradient = ctx.createLinearGradient(cardX, cardY, cardX + baseWidth, cardY + baseHeight);
-      gradient.addColorStop(0, colorsFromGradient[0]);
-      gradient.addColorStop(1, colorsFromGradient[colorsFromGradient.length - 1]);
+    if (cardColors.length >= 2) {
+      const gradient = ctx.createLinearGradient(outerPad, outerPad, outerPad + baseWidth, outerPad + baseHeight);
+      gradient.addColorStop(0, cardColors[0]);
+      gradient.addColorStop(1, cardColors[cardColors.length - 1]);
       cardFill = gradient;
     }
-    roundedRect(cardX, cardY, baseWidth, baseHeight, cardRadius, cardFill, cardStyle.borderColor,
-      Number.parseFloat(cardStyle.borderTopWidth) || 1);
+    drawRoundedRect(
+      outerPad, outerPad, baseWidth, baseHeight,
+      parsePx(cardStyle.borderTopLeftRadius, 18),
+      cardFill, cardStyle.borderColor, parsePx(cardStyle.borderTopWidth, 1)
+    );
 
-    // Header: title, box badges, task counter and progress indicator.
-    const title = card.querySelector(".box-name");
-    if (title) {
-      const emoji = title.querySelector(".box-emoji");
-      const name = title.querySelector(".box-name-text");
-      const titleText = [emoji ? emoji.textContent.trim() : "", name ? name.textContent.trim() : title.textContent.trim()]
-        .filter(Boolean).join(" ");
-      drawNodeText(title, { text: titleText });
+    const titleX = outerPad + innerPad;
+    const titleY = outerPad + innerPad + Math.max(0, (headerHeight - titleHeight) / 2);
+    drawLines(titleLines, titleX, titleY, titleLineHeight, titleStyle.color, titleFont, headerTextWidth);
+
+    // Task counter is anchored to the upper-right corner and vertically centered.
+    const countX = outerPad + baseWidth - innerPad - countWidth;
+    const countY = outerPad + innerPad + Math.max(0, (headerHeight - countHeight) / 2);
+    const countFill = countStyle
+      ? makeGradientOrColor(countStyle, countX, countY, countWidth, countHeight)
+      : "#3f51e8";
+    drawRoundedRect(
+      countX, countY, countWidth, countHeight,
+      countStyle ? parsePx(countStyle.borderTopLeftRadius, 10) : 10,
+      countFill,
+      countStyle ? countStyle.borderColor : "rgba(63,81,232,0.28)",
+      1
+    );
+    ctx.save();
+    ctx.font = countFont;
+    ctx.fillStyle = countStyle ? countStyle.color : "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(countText, countX + countWidth / 2, countY + countHeight / 2 + 0.5, countWidth - 8);
+    ctx.restore();
+
+    // Retain the progress bar and its "done / total hoy" label, but omit the
+    // redundant percentage chip and all editing/action controls.
+    const progressX = outerPad + innerPad;
+    const progressBarY = progressY + Math.max(0, (progressHeight - progressBarHeight) / 2);
+    const barBackground = progressBarStyle ? progressBarStyle.backgroundColor : "rgba(15,23,42,0.08)";
+    drawRoundedRect(progressX, progressBarY, progressBarWidth, progressBarHeight,
+      progressBarHeight / 2, barBackground, null, 0);
+    if (progressRatio > 0) {
+      const fillStyle = progressFill ? getComputedStyle(progressFill) : null;
+      const fillX = progressX;
+      const fillWidth = progressBarWidth * progressRatio;
+      drawRoundedRect(fillX, progressBarY, fillWidth, progressBarHeight, progressBarHeight / 2,
+        fillStyle ? makeGradientOrColor(fillStyle, fillX, progressBarY, fillWidth, progressBarHeight) : "#3b82f6", null, 0);
     }
-    card.querySelectorAll(".box-badges-row > *").forEach(drawBadge);
-
-    const count = card.querySelector(".box-pending-count-box");
-    if (count) {
-      const r = relativeRect(count);
-      const style = getComputedStyle(count);
-      const fill = drawGradientOrColor(style, r);
-      roundedRect(r.x, r.y, r.width, r.height, Number.parseFloat(style.borderTopLeftRadius) || 9,
-        fill, style.borderColor, 1);
-      drawNodeText(count, { color: style.color, align: "center", verticalCenter: true });
+    if (progressLabelText) {
+      ctx.save();
+      ctx.font = progressFont;
+      ctx.fillStyle = progressLabelStyle.color;
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+      ctx.fillText(progressLabelText, outerPad + baseWidth - innerPad,
+        progressY + progressHeight / 2, progressLabelWidth);
+      ctx.restore();
     }
 
-    const progress = card.querySelector(".box-progress-bar");
-    if (progress) {
-      const r = relativeRect(progress);
-      const style = getComputedStyle(progress);
-      roundedRect(r.x, r.y, r.width, r.height, r.height / 2, style.backgroundColor);
-      const fillElement = progress.querySelector(".box-progress-fill");
-      if (fillElement) {
-        const fr = relativeRect(fillElement);
-        const fs = getComputedStyle(fillElement);
-        roundedRect(fr.x, fr.y, fr.width, fr.height, fr.height / 2, drawGradientOrColor(fs, fr));
-      }
-    }
-    drawNodeText(card.querySelector(".box-progress-label"), { verticalCenter: true });
+    // Export only current, visible pending tasks. No date badges or action buttons.
+    let rowY = taskStartY;
+    taskLayouts.forEach(layout => {
+      const rowX = outerPad + innerPad;
+      const rowWidth = baseWidth - innerPad * 2;
+      const rowStyle = getComputedStyle(layout.row);
+      const titleXInRow = rowX + layout.titleXOffset;
+      drawRoundedRect(
+        rowX, rowY, rowWidth, layout.rowHeight,
+        parsePx(rowStyle.borderTopLeftRadius, 14),
+        rowStyle.backgroundColor || "#ffffff",
+        rowStyle.borderColor || "rgba(15,23,42,0.08)",
+        Math.max(1, parsePx(rowStyle.borderTopWidth, 1))
+      );
 
-    // Only rows present in the current board DOM and in visibleTasks are exported.
-    // Hidden rescheduled tasks and completed rows are therefore not reintroduced.
-    const allowedIds = new Set((visibleTasks || []).filter(task => !task.done).map(task => String(task.id)));
-    const rows = Array.from(card.querySelectorAll(".task-item[data-task-id]"))
-      .filter(row => allowedIds.has(String(row.dataset.taskId)) && row.getBoundingClientRect().height > 0);
-
-    rows.forEach(row => {
-      const r = relativeRect(row);
-      const style = getComputedStyle(row);
-      const radius = Number.parseFloat(style.borderTopLeftRadius) || 13;
-      roundedRect(r.x, r.y, r.width, r.height, radius,
-        style.backgroundColor, style.borderColor, Number.parseFloat(style.borderTopWidth) || 1);
-
-      const priority = row.classList.contains("focus-priority-1") ? 1
-        : row.classList.contains("focus-priority-2") ? 2
-        : row.classList.contains("focus-priority-3") ? 3 : 0;
+      const priority = layout.row.classList.contains("focus-priority-1") ? 1
+        : layout.row.classList.contains("focus-priority-2") ? 2
+        : layout.row.classList.contains("focus-priority-3") ? 3 : 0;
       if (priority) {
         const accent = priority === 1 ? "#dc2626" : priority === 2 ? "#ca8a04" : "#16a34a";
-        roundedRect(r.x, r.y + 5, 4, Math.max(0, r.height - 10), 2, accent);
+        drawRoundedRect(rowX, rowY + 6, 4, layout.rowHeight - 12, 2, accent, null, 0);
       }
 
-      const check = row.querySelector(".task-check-circle");
-      if (check) {
-        const cr = relativeRect(check);
-        const cs = getComputedStyle(check);
-        const diameter = Math.min(cr.width, cr.height) - 2;
-        ctx.beginPath();
-        ctx.arc(cr.x + cr.width / 2, cr.y + cr.height / 2, Math.max(4, diameter / 2), 0, Math.PI * 2);
-        ctx.lineWidth = Number.parseFloat(cs.borderTopWidth) || 1.7;
-        ctx.strokeStyle = cs.borderColor || "#cbd5e1";
-        ctx.stroke();
-      }
+      const checkStyle = getComputedStyle(layout.row.querySelector(".task-check-circle") || layout.row);
+      const checkX = rowX + 27;
+      const checkY = rowY + layout.rowHeight / 2;
+      ctx.beginPath();
+      ctx.arc(checkX, checkY, 10, 0, Math.PI * 2);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = checkStyle.borderColor || "rgba(15,23,42,0.24)";
+      ctx.stroke();
 
-      const taskTitle = row.querySelector(".task-title");
-      const taskTextWrap = row.querySelector(".task-text-wrap");
-      const titleColumnWidth = taskTextWrap ? taskTextWrap.getBoundingClientRect().width : 0;
-      drawNodeText(taskTitle, titleColumnWidth > 0 ? { maxWidth: titleColumnWidth } : undefined);
-      row.querySelectorAll(".task-sub-badges > *").forEach(drawBadge);
+      const textY = rowY + Math.max(10, (layout.rowHeight - layout.lines.length * layout.lineHeight) / 2);
+      drawLines(layout.lines, titleXInRow, textY, layout.lineHeight,
+        getComputedStyle(layout.row.querySelector(".task-title") || layout.row).color,
+        layout.font, layout.titleMaxWidth);
+      rowY += layout.rowHeight + 10;
     });
 
     return canvas;
   }
 
-  function createTaskRowElement(task, box, showOriginBox = false) {
+function createTaskRowElement(task, box, showOriginBox = false) {
     const item = document.createElement("div");
     const focusPriority = getFocusPriorityLevel(task.id);
     item.className = `task-item ${task.done ? "done" : ""} ${appState.selectedTaskIds && appState.selectedTaskIds.has(String(task.id)) ? "multi-selected" : ""} ${focusPriority ? `focus-priority-task focus-priority-${focusPriority}` : ""}`;
