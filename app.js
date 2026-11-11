@@ -8603,6 +8603,15 @@ function createTaskRowElement(task, box, showOriginBox = false) {
   }
 
   let completionHistoryPeriod = "today";
+  let completionHistorySearchQuery = "";
+
+  function normalizeCompletionSearchText(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("es-PE")
+      .trim();
+  }
 
   function renderCompletionHistory() {
     const list = document.getElementById("completion-history-list");
@@ -8614,22 +8623,37 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     const weekStart = getLearningWeekStartISO(today);
     const weekEnd = addDaysISO(weekStart, 6);
     const allEvents = normalizeCompletionLog(appState.data.completionLog).filter(event => !event.reversed);
-    const visibleEvents = allEvents.filter(event => completionHistoryPeriod === "today"
+    const periodEvents = allEvents.filter(event => completionHistoryPeriod === "today"
       ? event.completedDate === today
       : event.completedDate >= weekStart && event.completedDate <= weekEnd);
+    const normalizedQuery = normalizeCompletionSearchText(completionHistorySearchQuery);
+    const visibleEvents = periodEvents.filter(event => {
+      if (!normalizedQuery) return true;
+      const searchableText = normalizeCompletionSearchText(
+        String(event.title || "") + " " + String(event.boxName || "")
+      );
+      return searchableText.includes(normalizedQuery);
+    });
 
     rangeLabel.textContent = completionHistoryPeriod === "today"
       ? `Hoy · ${formatLearningDate(today)}`
       : `${formatLearningDate(weekStart)} – ${formatLearningDate(weekEnd)}`;
-    summary.textContent = visibleEvents.length
-      ? `${visibleEvents.length} tarea${visibleEvents.length === 1 ? "" : "s"} completada${visibleEvents.length === 1 ? "" : "s"} ${completionHistoryPeriod === "today" ? "hoy" : "esta semana"}`
-      : `Todavía no hay tareas registradas como completadas ${completionHistoryPeriod === "today" ? "hoy" : "esta semana"}.`;
+    const periodLabel = completionHistoryPeriod === "today" ? "hoy" : "esta semana";
+    summary.textContent = normalizedQuery
+      ? (visibleEvents.length
+        ? `${visibleEvents.length} coincidencia${visibleEvents.length === 1 ? "" : "s"} de ${periodEvents.length} tarea${periodEvents.length === 1 ? "" : "s"} completada${periodEvents.length === 1 ? "" : "s"} ${periodLabel}`
+        : `No encontré tareas que coincidan con "${completionHistorySearchQuery}" ${periodLabel}.`)
+      : (visibleEvents.length
+        ? `${visibleEvents.length} tarea${visibleEvents.length === 1 ? "" : "s"} completada${visibleEvents.length === 1 ? "" : "s"} ${periodLabel}`
+        : `Todavía no hay tareas registradas como completadas ${periodLabel}.`);
     list.innerHTML = "";
 
     if (!visibleEvents.length) {
       const empty = document.createElement("div");
       empty.className = "completion-history-empty";
-      empty.textContent = "Cuando marques una tarea como completada, aparecerá aquí con su casilla y fecha.";
+      empty.textContent = normalizedQuery
+        ? "Prueba con otra palabra o cambia entre Hoy y Esta semana."
+        : "Cuando marques una tarea como completada, aparecerá aquí con su casilla y fecha.";
       list.appendChild(empty);
       return;
     }
@@ -11478,6 +11502,29 @@ function createTaskRowElement(task, box, showOriginBox = false) {
         playUiSound("tap");
       });
     });
+
+    const completionSearchInput = document.getElementById("completion-history-search");
+    const completionSearchClear = document.getElementById("completion-history-search-clear");
+    if (completionSearchInput) {
+      autoCapitalizeInputEl(completionSearchInput);
+      completionSearchInput.addEventListener("input", () => {
+        completionHistorySearchQuery = completionSearchInput.value;
+        if (completionSearchClear) {
+          completionSearchClear.hidden = !completionSearchInput.value;
+        }
+        renderCompletionHistory();
+      });
+    }
+    if (completionSearchClear) {
+      completionSearchClear.addEventListener("click", () => {
+        if (!completionSearchInput) return;
+        completionSearchInput.value = "";
+        completionHistorySearchQuery = "";
+        completionSearchClear.hidden = true;
+        renderCompletionHistory();
+        completionSearchInput.focus();
+      });
+    }
 
     document.getElementById("btn-filter-overdue").addEventListener("click", () => {
       playUiSound("tap");
