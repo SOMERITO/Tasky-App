@@ -1490,6 +1490,10 @@ body {
   line-height: 1.5;
 }
 
+#edit-task-description-group[hidden] {
+  display: none !important;
+}
+
 .form-label-optional {
   color: var(--muted);
   font-size: 0.75rem;
