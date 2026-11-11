@@ -8064,14 +8064,15 @@
       ? Math.max(0, Math.min(1, progressFill.getBoundingClientRect().width / progressBar.getBoundingClientRect().width))
       : 0;
 
+    // visibleTasks is the authoritative list already filtered and sorted by the live board.
+    // Do not discard a task just because its DOM row is temporarily missing or has no measurable height.
     const rowById = new Map(
       Array.from(card.querySelectorAll(".task-item[data-task-id]"))
-        .filter(row => row.getBoundingClientRect().height > 0)
         .map(row => [String(row.dataset.taskId), row])
     );
     const tasksToRender = (visibleTasks || [])
-      .filter(task => task && !task.done && rowById.has(String(task.id)))
-      .map(task => ({ task, row: rowById.get(String(task.id)) }));
+      .filter(task => task && !task.done)
+      .map(task => ({ task, row: rowById.get(String(task.id)) || null }));
 
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d", { alpha: false });
@@ -8195,11 +8196,11 @@
 
     const taskLayouts = [];
     tasksToRender.forEach(({ task, row }) => {
-      const titleNode = row.querySelector(".task-title");
+      const titleNode = row ? row.querySelector(".task-title") : null;
       const titleNodeStyle = titleNode ? getComputedStyle(titleNode) : titleStyle;
       const fontSize = parsePx(titleNodeStyle.fontSize, 16);
       const lineHeight = parsePx(titleNodeStyle.lineHeight, fontSize * 1.4);
-      const font = (titleNodeStyle.fontWeight || "600") + " " + fontSize + "px " + titleNodeStyle.fontFamily;
+      const font = (titleNodeStyle.fontWeight || "600") + " " + fontSize + "px " + (titleNodeStyle.fontFamily || titleStyle.fontFamily);
       const titleXOffset = 58;
       const titleMaxWidth = Math.max(100, baseWidth - innerPad * 2 - titleXOffset - 16);
       const lines = wrapText(task.title || "", font, titleMaxWidth);
@@ -8291,25 +8292,27 @@
     taskLayouts.forEach(layout => {
       const rowX = outerPad + innerPad;
       const rowWidth = baseWidth - innerPad * 2;
-      const rowStyle = getComputedStyle(layout.row);
+      const rowStyle = layout.row ? getComputedStyle(layout.row) : null;
       const titleXInRow = rowX + layout.titleXOffset;
       drawRoundedRect(
         rowX, rowY, rowWidth, layout.rowHeight,
-        parsePx(rowStyle.borderTopLeftRadius, 14),
-        rowStyle.backgroundColor || "#ffffff",
-        rowStyle.borderColor || "rgba(15,23,42,0.08)",
-        Math.max(1, parsePx(rowStyle.borderTopWidth, 1))
+        rowStyle ? parsePx(rowStyle.borderTopLeftRadius, 14) : 14,
+        rowStyle ? (rowStyle.backgroundColor || "#ffffff") : "#ffffff",
+        rowStyle ? (rowStyle.borderColor || "rgba(15,23,42,0.08)") : "rgba(15,23,42,0.08)",
+        rowStyle ? Math.max(1, parsePx(rowStyle.borderTopWidth, 1)) : 1
       );
 
-      const priority = layout.row.classList.contains("focus-priority-1") ? 1
-        : layout.row.classList.contains("focus-priority-2") ? 2
-        : layout.row.classList.contains("focus-priority-3") ? 3 : 0;
+      const priority = layout.row && layout.row.classList.contains("focus-priority-1") ? 1
+        : layout.row && layout.row.classList.contains("focus-priority-2") ? 2
+        : layout.row && layout.row.classList.contains("focus-priority-3") ? 3
+        : getFocusPriorityLevel(layout.task.id);
       if (priority) {
         const accent = priority === 1 ? "#dc2626" : priority === 2 ? "#ca8a04" : "#16a34a";
         drawRoundedRect(rowX, rowY + 6, 4, layout.rowHeight - 12, 2, accent, null, 0);
       }
 
-      const checkStyle = getComputedStyle(layout.row.querySelector(".task-check-circle") || layout.row);
+      const checkElement = layout.row && layout.row.querySelector(".task-check-circle");
+      const checkStyle = getComputedStyle(checkElement || layout.row || card);
       const checkX = rowX + 27;
       const checkY = rowY + layout.rowHeight / 2;
       ctx.beginPath();
@@ -8319,9 +8322,11 @@
       ctx.stroke();
 
       const textY = rowY + Math.max(10, (layout.rowHeight - layout.lines.length * layout.lineHeight) / 2);
+      const taskTitleColor = layout.row
+        ? getComputedStyle(layout.row.querySelector(".task-title") || layout.row).color
+        : getComputedStyle(card).color;
       drawLines(layout.lines, titleXInRow, textY, layout.lineHeight,
-        getComputedStyle(layout.row.querySelector(".task-title") || layout.row).color,
-        layout.font, layout.titleMaxWidth);
+        taskTitleColor, layout.font, layout.titleMaxWidth);
       rowY += layout.rowHeight + 10;
     });
 
