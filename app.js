@@ -8107,16 +8107,20 @@
       const maxLines = Math.max(1, Math.min(8, Math.floor((r.height + 1) / lineHeight)));
       let line = "";
       let lineIndex = 0;
-      const x = options.align === "center" ? r.x + r.width / 2 : options.align === "right" ? r.x + r.width : r.x;
+      const padX = Math.max(0, Number(options.padX) || 0);
+      const textX = r.x + padX;
+      const textWidth = Math.max(0, r.width - padX * 2);
+      const x = options.align === "center" ? textX + textWidth / 2 : options.align === "right" ? textX + textWidth : textX;
+      const startY = options.verticalCenter ? r.y + Math.max(0, (r.height - lineHeight) / 2) : r.y;
       for (let i = 0; i < words.length; i++) {
         const test = line ? line + " " + words[i] : words[i];
         if (line && ctx.measureText(test).width > r.width - 2) {
-          ctx.fillText(line, x, r.y + lineIndex * lineHeight, r.width);
+          ctx.fillText(line, x, startY + lineIndex * lineHeight, textWidth || r.width);
           lineIndex++;
           line = words[i];
           if (lineIndex >= maxLines) {
             line = line.replace(/[.,;:!?]?$/, "") + "…";
-            ctx.fillText(line, x, r.y + (maxLines - 1) * lineHeight, r.width);
+            ctx.fillText(line, x, startY + (maxLines - 1) * lineHeight, textWidth || r.width);
             ctx.restore();
             return;
           }
@@ -8124,7 +8128,7 @@
           line = test;
         }
       }
-      if (line && lineIndex < maxLines) ctx.fillText(line, x, r.y + lineIndex * lineHeight, r.width);
+      if (line && lineIndex < maxLines) ctx.fillText(line, x, startY + lineIndex * lineHeight, textWidth || r.width);
       ctx.restore();
     };
 
@@ -8136,7 +8140,10 @@
       const radius = Math.min(r.height / 2, Number.parseFloat(style.borderTopLeftRadius) || 7);
       const borderWidth = Number.parseFloat(style.borderTopWidth) || 0;
       roundedRect(r.x, r.y, r.width, r.height, radius, style.backgroundColor, style.borderColor, borderWidth);
-      drawNodeText(element);
+      drawNodeText(element, {
+        verticalCenter: true,
+        padX: isTransparent(style.backgroundColor) ? 0 : 5
+      });
     };
 
     const drawGradientOrColor = (style, r) => {
@@ -8166,7 +8173,13 @@
 
     // Header: title, box badges, task counter and progress indicator.
     const title = card.querySelector(".box-name");
-    drawNodeText(title);
+    if (title) {
+      const emoji = title.querySelector(".box-emoji");
+      const name = title.querySelector(".box-name-text");
+      const titleText = [emoji ? emoji.textContent.trim() : "", name ? name.textContent.trim() : title.textContent.trim()]
+        .filter(Boolean).join(" ");
+      drawNodeText(title, { text: titleText });
+    }
     card.querySelectorAll(".box-badges-row > *").forEach(drawBadge);
 
     const count = card.querySelector(".box-pending-count-box");
@@ -8176,7 +8189,7 @@
       const fill = drawGradientOrColor(style, r);
       roundedRect(r.x, r.y, r.width, r.height, Number.parseFloat(style.borderTopLeftRadius) || 9,
         fill, style.borderColor, 1);
-      drawNodeText(count, { color: style.color, align: "center" });
+      drawNodeText(count, { color: style.color, align: "center", verticalCenter: true });
     }
 
     const progress = card.querySelector(".box-progress-bar");
@@ -8191,7 +8204,7 @@
         roundedRect(fr.x, fr.y, fr.width, fr.height, fr.height / 2, drawGradientOrColor(fs, fr));
       }
     }
-    drawNodeText(card.querySelector(".box-progress-label"));
+    drawNodeText(card.querySelector(".box-progress-label"), { verticalCenter: true });
 
     // Only rows present in the current board DOM and in visibleTasks are exported.
     // Hidden rescheduled tasks and completed rows are therefore not reintroduced.
