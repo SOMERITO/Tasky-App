@@ -1468,6 +1468,36 @@ body {
   color: var(--primary);
 }
 
+.task-description {
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+.task-description-input {
+  min-height: 100px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.form-label-optional {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+
+
 .task-item.done .task-title {
   text-decoration: line-through;
   color: var(--muted);
