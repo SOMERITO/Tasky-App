@@ -8183,8 +8183,9 @@
     const progressFontSize = progressLabelStyle ? parsePx(progressLabelStyle.fontSize, 13) : 13;
     const progressLineHeight = progressLabelStyle ? parsePx(progressLabelStyle.lineHeight, progressFontSize * 1.3) : progressFontSize * 1.3;
     const progressFont = "700 " + progressFontSize + "px " + (progressLabelStyle ? progressLabelStyle.fontFamily : titleStyle.fontFamily);
+    ctx.font = progressFont;
     const progressLabelWidth = progressLabelText
-      ? Math.max(48, ctx.measureText(progressLabelText).width + 6)
+      ? Math.max(48, ctx.measureText(progressLabelText).width + 8)
       : 0;
     const progressHeight = Math.max(7, progressLineHeight);
     const progressY = outerPad + innerPad + headerHeight + gapAfterHeader;
