@@ -6849,14 +6849,14 @@
           const downloadCapturedImage = blob => {
             const safeBoxName = String(box.name || "casilla")
               .normalize("NFD")
-              .replace(/[\\u0300-\\u036f]/g, "")
+              .replace(/[\u0300-\u036f]/g, "")
               .toLowerCase()
               .replace(/[^a-z0-9]+/g, "-")
               .replace(/^-+|-+$/g, "") || "casilla";
             const objectUrl = URL.createObjectURL(blob);
             const downloadLink = document.createElement("a");
             downloadLink.href = objectUrl;
-            downloadLink.download = `tasky-${safeBoxName}.png`;
+            downloadLink.download = "tasky-" + safeBoxName + ".png";
             document.body.appendChild(downloadLink);
             downloadLink.click();
             downloadLink.remove();
@@ -6864,45 +6864,8 @@
           };
 
           try {
-            if (typeof window.html2canvas !== "function") {
-              throw new Error("No está disponible el motor de captura de imágenes.");
-            }
-
-            // Capture only this live card. Its DOM already contains just the
-            // tasks visible in the current tab, filter and screen state.
-            const canvas = await window.html2canvas(card, {
-              backgroundColor: null,
-              // 1.4x keeps text crisp for WhatsApp while rendering far fewer
-              // pixels than the previous 2x capture.
-              scale: 1.4,
-              useCORS: true,
-              imageTimeout: 0,
-              logging: false,
-              onclone: clonedDocument => {
-                // Keep the live theme and the card's ancestor layout, but remove
-                // every other screen element before html2canvas paints the clone.
-                const clonedCard = Array.from(clonedDocument.querySelectorAll(".box-card[data-box-id]"))
-                  .find(element => String(element.dataset.boxId) === String(box.id));
-                if (!clonedCard) return;
-
-                clonedCard.classList.add("tasky-capture-mode");
-                clonedCard.querySelectorAll(".task-item.done").forEach(row => row.remove());
-
-                // Prune sibling branches from the card up to body. This avoids
-                // laying out the entire task board while capturing one casilla.
-                let branch = clonedCard;
-                while (branch.parentElement && branch.parentElement !== clonedDocument.body) {
-                  const parent = branch.parentElement;
-                  Array.from(parent.children).forEach(child => {
-                    if (child !== branch && !child.contains(clonedCard)) child.remove();
-                  });
-                  branch = parent;
-                }
-                Array.from(clonedDocument.body.children).forEach(child => {
-                  if (child !== branch && !child.contains(clonedCard)) child.remove();
-                });
-              }
-            });
+            // Render a compact share image from this casilla's live DOM and visible rows.
+            const canvas = createFastBoxSnapshotCanvas(card, box, visibleTasks);
             imageBlob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
             if (!imageBlob) throw new Error("No se pudo generar la imagen PNG.");
 
@@ -6912,7 +6875,7 @@
                 await navigator.clipboard.write([
                   new window.ClipboardItem({ "image/png": imageBlob })
                 ]);
-                showToast(`📸 Imagen de ${box.name} copiada. Ya puedes pegarla en WhatsApp.`);
+                showToast("📸 Imagen de " + box.name + " copiada. Ya puedes pegarla en WhatsApp.");
               } catch (clipboardError) {
                 downloadCapturedImage(imageBlob);
                 showToast("El navegador no permitió copiar la imagen; la descargué en PNG para que puedas compartirla.", true);
@@ -8064,6 +8027,207 @@
       default:
         break;
     }
+  }
+
+  // Fast image export: draw only the visible content of one casilla directly
+  // onto a canvas. This avoids html2canvas cloning and traversing the whole app.
+  function createFastBoxSnapshotCanvas(card, box, visibleTasks) {
+    const cardRect = card.getBoundingClientRect();
+    const baseWidth = Math.max(320, Math.ceil(cardRect.width));
+    const baseHeight = Math.max(150, Math.ceil(Math.max(cardRect.height, card.scrollHeight || 0)));
+    const outerPad = 18;
+    const scale = Math.max(0.8, Math.min(1.6, 1800 / baseWidth, 7600 / baseHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.ceil((baseWidth + outerPad * 2) * scale);
+    canvas.height = Math.ceil((baseHeight + outerPad * 2) * scale);
+    const ctx = canvas.getContext("2d", { alpha: false });
+    if (!ctx) throw new Error("No se pudo iniciar el lienzo de captura.");
+    ctx.scale(scale, scale);
+    ctx.textBaseline = "top";
+
+    const cardStyle = getComputedStyle(card);
+    const relativeRect = element => {
+      const r = element.getBoundingClientRect();
+      return {
+        x: r.left - cardRect.left + outerPad,
+        y: r.top - cardRect.top + outerPad,
+        width: r.width,
+        height: r.height
+      };
+    };
+    const isTransparent = color => !color || color === "transparent" || /rgba\([^)]*,\s*0\s*\)$/.test(color);
+    const colorsFromGradient = String(cardStyle.backgroundImage || "").match(/rgba?\([^)]+\)|#[0-9a-f]{3,8}/gi) || [];
+
+    const roundedRect = (x, y, width, height, radius, fill, stroke, strokeWidth) => {
+      if (width <= 0 || height <= 0) return;
+      const r = Math.max(0, Math.min(Number(radius) || 0, width / 2, height / 2));
+      ctx.beginPath();
+      if (typeof ctx.roundRect === "function") {
+        ctx.roundRect(x, y, width, height, r);
+      } else {
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + width, y, x + width, y + height, r);
+        ctx.arcTo(x + width, y + height, x, y + height, r);
+        ctx.arcTo(x, y + height, x, y, r);
+        ctx.arcTo(x, y, x + width, y, r);
+        ctx.closePath();
+      }
+      if (fill && !isTransparent(fill)) {
+        ctx.fillStyle = fill;
+        ctx.fill();
+      }
+      if (stroke && strokeWidth > 0 && !isTransparent(stroke)) {
+        ctx.lineWidth = strokeWidth;
+        ctx.strokeStyle = stroke;
+        ctx.stroke();
+      }
+    };
+
+    const drawNodeText = (element, options) => {
+      if (!element) return;
+      options = options || {};
+      const r = relativeRect(element);
+      if (r.width <= 0 || r.height <= 0) return;
+      const style = getComputedStyle(element);
+      const fontSize = Number.parseFloat(style.fontSize) || 14;
+      const lineHeight = Number.parseFloat(style.lineHeight) || fontSize * 1.35;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(r.x, r.y, r.width, r.height);
+      ctx.clip();
+      ctx.font = style.font || (style.fontWeight || 500) + " " + fontSize + "px " + (style.fontFamily || "Arial, sans-serif");
+      ctx.fillStyle = options.color || style.color || "#172033";
+      ctx.textAlign = options.align || "left";
+      ctx.textBaseline = "top";
+      const rawText = String(options.text !== undefined ? options.text : element.textContent || "").replace(/\s+/g, " ").trim();
+      const words = rawText.split(" ").filter(Boolean);
+      const maxLines = Math.max(1, Math.min(8, Math.floor((r.height + 1) / lineHeight)));
+      let line = "";
+      let lineIndex = 0;
+      const x = options.align === "center" ? r.x + r.width / 2 : options.align === "right" ? r.x + r.width : r.x;
+      for (let i = 0; i < words.length; i++) {
+        const test = line ? line + " " + words[i] : words[i];
+        if (line && ctx.measureText(test).width > r.width - 2) {
+          ctx.fillText(line, x, r.y + lineIndex * lineHeight, r.width);
+          lineIndex++;
+          line = words[i];
+          if (lineIndex >= maxLines) {
+            line = line.replace(/[.,;:!?]?$/, "") + "…";
+            ctx.fillText(line, x, r.y + (maxLines - 1) * lineHeight, r.width);
+            ctx.restore();
+            return;
+          }
+        } else {
+          line = test;
+        }
+      }
+      if (line && lineIndex < maxLines) ctx.fillText(line, x, r.y + lineIndex * lineHeight, r.width);
+      ctx.restore();
+    };
+
+    const drawBadge = element => {
+      if (!element) return;
+      const r = relativeRect(element);
+      if (r.width <= 0 || r.height <= 0) return;
+      const style = getComputedStyle(element);
+      const radius = Math.min(r.height / 2, Number.parseFloat(style.borderTopLeftRadius) || 7);
+      const borderWidth = Number.parseFloat(style.borderTopWidth) || 0;
+      roundedRect(r.x, r.y, r.width, r.height, radius, style.backgroundColor, style.borderColor, borderWidth);
+      drawNodeText(element);
+    };
+
+    const drawGradientOrColor = (style, r) => {
+      const gradientColors = String(style.backgroundImage || "").match(/rgba?\([^)]+\)|#[0-9a-f]{3,8}/gi) || [];
+      if (gradientColors.length >= 2) {
+        const g = ctx.createLinearGradient(r.x, r.y, r.x + r.width, r.y + r.height);
+        g.addColorStop(0, gradientColors[0]);
+        g.addColorStop(1, gradientColors[gradientColors.length - 1]);
+        return g;
+      }
+      return style.backgroundColor;
+    };
+
+    // Card surface and border, including the violet no-deadline theme.
+    const cardX = outerPad;
+    const cardY = outerPad;
+    const cardRadius = Number.parseFloat(cardStyle.borderTopLeftRadius) || 18;
+    let cardFill = cardStyle.backgroundColor;
+    if (colorsFromGradient.length >= 2) {
+      const gradient = ctx.createLinearGradient(cardX, cardY, cardX + baseWidth, cardY + baseHeight);
+      gradient.addColorStop(0, colorsFromGradient[0]);
+      gradient.addColorStop(1, colorsFromGradient[colorsFromGradient.length - 1]);
+      cardFill = gradient;
+    }
+    roundedRect(cardX, cardY, baseWidth, baseHeight, cardRadius, cardFill, cardStyle.borderColor,
+      Number.parseFloat(cardStyle.borderTopWidth) || 1);
+
+    // Header: title, box badges, task counter and progress indicator.
+    const title = card.querySelector(".box-name");
+    drawNodeText(title);
+    card.querySelectorAll(".box-badges-row > *").forEach(drawBadge);
+
+    const count = card.querySelector(".box-pending-count-box");
+    if (count) {
+      const r = relativeRect(count);
+      const style = getComputedStyle(count);
+      const fill = drawGradientOrColor(style, r);
+      roundedRect(r.x, r.y, r.width, r.height, Number.parseFloat(style.borderTopLeftRadius) || 9,
+        fill, style.borderColor, 1);
+      drawNodeText(count, { color: style.color, align: "center" });
+    }
+
+    const progress = card.querySelector(".box-progress-bar");
+    if (progress) {
+      const r = relativeRect(progress);
+      const style = getComputedStyle(progress);
+      roundedRect(r.x, r.y, r.width, r.height, r.height / 2, style.backgroundColor);
+      const fillElement = progress.querySelector(".box-progress-fill");
+      if (fillElement) {
+        const fr = relativeRect(fillElement);
+        const fs = getComputedStyle(fillElement);
+        roundedRect(fr.x, fr.y, fr.width, fr.height, fr.height / 2, drawGradientOrColor(fs, fr));
+      }
+    }
+    drawNodeText(card.querySelector(".box-progress-label"));
+
+    // Only rows present in the current board DOM and in visibleTasks are exported.
+    // Hidden rescheduled tasks and completed rows are therefore not reintroduced.
+    const allowedIds = new Set((visibleTasks || []).filter(task => !task.done).map(task => String(task.id)));
+    const rows = Array.from(card.querySelectorAll(".task-item[data-task-id]"))
+      .filter(row => allowedIds.has(String(row.dataset.taskId)) && row.getBoundingClientRect().height > 0);
+
+    rows.forEach(row => {
+      const r = relativeRect(row);
+      const style = getComputedStyle(row);
+      const radius = Number.parseFloat(style.borderTopLeftRadius) || 13;
+      roundedRect(r.x, r.y, r.width, r.height, radius,
+        style.backgroundColor, style.borderColor, Number.parseFloat(style.borderTopWidth) || 1);
+
+      const priority = row.classList.contains("focus-priority-1") ? 1
+        : row.classList.contains("focus-priority-2") ? 2
+        : row.classList.contains("focus-priority-3") ? 3 : 0;
+      if (priority) {
+        const accent = priority === 1 ? "#dc2626" : priority === 2 ? "#ca8a04" : "#16a34a";
+        roundedRect(r.x, r.y + 5, 4, Math.max(0, r.height - 10), 2, accent);
+      }
+
+      const check = row.querySelector(".task-check-circle");
+      if (check) {
+        const cr = relativeRect(check);
+        const cs = getComputedStyle(check);
+        const diameter = Math.min(cr.width, cr.height) - 2;
+        ctx.beginPath();
+        ctx.arc(cr.x + cr.width / 2, cr.y + cr.height / 2, Math.max(4, diameter / 2), 0, Math.PI * 2);
+        ctx.lineWidth = Number.parseFloat(cs.borderTopWidth) || 1.7;
+        ctx.strokeStyle = cs.borderColor || "#cbd5e1";
+        ctx.stroke();
+      }
+
+      drawNodeText(row.querySelector(".task-title"));
+      row.querySelectorAll(".task-sub-badges > *").forEach(drawBadge);
+    });
+
+    return canvas;
   }
 
   function createTaskRowElement(task, box, showOriginBox = false) {
