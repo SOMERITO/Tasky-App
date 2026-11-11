@@ -3056,6 +3056,7 @@
         id: String(t.id || `task_${Date.now()}_${idx}`),
         boxId: String(t.boxId || (boxes[0] ? boxes[0].id : "box_casa")),
         title: capitalizeFirst(t.title || t.name || "Tarea"),
+        description: String(t.description || "").trim().slice(0, 800),
         completedDate: t.completedDate ? String(t.completedDate) : (Boolean(t.done || t.completed) ? today : null),
         done: Boolean(t.done || t.completed),
         createdAt: Number(t.createdAt || Date.now()),
@@ -3427,7 +3428,8 @@
         x.overdueCarryDate || "",
         Array.isArray(x.skippedDates) ? x.skippedDates : [],
         Number(x.updatedAt || 0),
-        x.noDeadline ? 1 : 0
+        x.noDeadline ? 1 : 0,
+        String(x.description || "")
       ])
     });
   }
@@ -3467,7 +3469,8 @@
         overdueCarryDate: arr[13] || null,
         skippedDates: Array.isArray(arr[14]) ? arr[14] : [],
         updatedAt: Number(arr[15] || 0),
-        noDeadline: Boolean(arr[16])
+        noDeadline: Boolean(arr[16]),
+        description: String(arr[17] || "")
       }));
       return normalizeDataPayload({
         boxes,
@@ -7677,6 +7680,13 @@
 
     addTaskContextMenuButton(menu, task.done ? "↩ Reabrir tarea" : "✓ Marcar como completadas", "toggle-done");
     addTaskContextMenuButton(menu, isBulkContext ? "✏️ Editar títulos de la selección" : "✏️ Editar tarea", "edit");
+    if (!isBulkContext) {
+      addTaskContextMenuButton(menu, task.description
+        ? "📝 Editar descripción"
+        : "📝 Añadir descripción", "description", {
+        title: "Añade contexto, instrucciones o detalles sin cambiar el nombre de la tarea."
+      });
+    }
     addTaskContextMenuButton(menu, isBulkContext ? "📋 Copiar textos seleccionados" : "📋 Copiar texto", "copy");
     const contextNoDeadlineTasks = contextTasks.filter(item => !item.done);
     if (contextNoDeadlineTasks.length > 0) {
@@ -7977,6 +7987,14 @@
       case "edit":
         playUiSound("modalOpen");
         openEditTaskTitleModal(task.id);
+        break;
+      case "description":
+        playUiSound("modalOpen");
+        openEditTaskTitleModal(task.id);
+        setTimeout(() => {
+          const descriptionInput = document.getElementById("input-edit-task-description");
+          if (descriptionInput) descriptionInput.focus();
+        }, 90);
         break;
       case "copy":
         copyTaskOrSelectedGroup(task.id);
@@ -8371,6 +8389,11 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     const repeatLabel = formatRepeatBadgeLabel(task);
     const hasRepeat = Boolean(repeatLabel);
 
+    const taskDescription = String(task.description || "").trim();
+    const descriptionHtml = taskDescription
+      ? `<div class="task-description" title="Detalle de la tarea">${escapeHtml(taskDescription)}</div>`
+      : "";
+
     let subBadges = "";
     if (focusPriority) {
       subBadges += `<span class="task-focus-priority-badge task-focus-priority-badge-p${focusPriority}">P${focusPriority} · PRIORIDAD ${focusPriority}</span>`;
@@ -8407,7 +8430,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </button>
         <div class="task-text-wrap">
-          <div class="task-title" data-tip-title="✏️ Editar tarea" data-tip-desc="Haz clic sobre el texto para modificar la descripción de esta tarea.">${escapeHtml(task.title)}</div>
+          <div class="task-title" data-tip-title="✏️ Editar tarea" data-tip-desc="Haz clic sobre el texto para modificar el nombre y la descripción de esta tarea.">${escapeHtml(task.title)}</div>
+          ${descriptionHtml}
           ${subBadges ? `<div class="task-sub-badges">${subBadges}</div>` : ""}
         </div>
       </div>
@@ -10590,6 +10614,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     appState.editingTaskId = targetTasks.length === 1 ? task.id : null;
 
     const input = document.getElementById("input-edit-task-title");
+    const descriptionInput = document.getElementById("input-edit-task-description");
+    const descriptionGroup = document.getElementById("edit-task-description-group");
     const modalTitle = document.getElementById("modal-edit-task-title");
     const label = document.querySelector('label[for="input-edit-task-title"]');
     if (targetTasks.length > 1) {
@@ -10597,11 +10623,15 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       if (label) label.textContent = `Nuevo nombre para las ${targetTasks.length} tareas seleccionadas`;
       input.value = "";
       input.placeholder = "Escribe el mismo nombre para todas";
+      if (descriptionGroup) descriptionGroup.hidden = true;
+      if (descriptionInput) descriptionInput.value = "";
     } else {
       if (modalTitle) modalTitle.textContent = "Editar tarea";
-      if (label) label.textContent = "Descripción de la tarea";
+      if (label) label.textContent = "Nombre de la tarea";
       input.value = task.title;
       input.placeholder = "";
+      if (descriptionGroup) descriptionGroup.hidden = false;
+      if (descriptionInput) descriptionInput.value = String(task.description || "");
     }
     document.getElementById("modal-edit-task").classList.add("open");
     setTimeout(() => input.focus(), 60);
@@ -11768,6 +11798,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
 
     // Edit Task Title Form Submit
     autoCapitalizeInputEl(document.getElementById("input-edit-task-title"));
+    autoCapitalizeInputEl(document.getElementById("input-edit-task-description"));
     document.getElementById("form-edit-task").addEventListener("submit", (e) => {
       e.preventDefault();
       const input = document.getElementById("input-edit-task-title");
@@ -11786,23 +11817,30 @@ function createTaskRowElement(task, box, showOriginBox = false) {
         showToast("Las tareas que intentabas editar ya no están disponibles.", true);
         return;
       }
+      const descriptionInput = document.getElementById("input-edit-task-description");
+      const descriptionValue = descriptionInput ? String(descriptionInput.value || "").trim().slice(0, 800) : "";
       pushUndoSnapshot(tasks.length > 1
         ? `Editar título de ${tasks.length} tareas seleccionadas`
-        : `Editar: ${tasks[0].title}`);
+        : `Editar tarea: ${tasks[0].title}`);
       tasks.forEach(task => {
         task.title = val;
+        if (tasks.length === 1) {
+          task.description = descriptionValue;
+        }
         learnTaskTitle(val, task.boxId);
       });
       appState.editingTaskIds = [];
       appState.editingTaskId = null;
       if (tasks.length > 1) clearTaskSelection();
       playUiSound("tap");
-      saveData(true, `Actualizó el título de ${tasks.length} tareas`);
+      saveData(true, tasks.length === 1
+        ? "Actualizó el nombre y la descripción de una tarea"
+        : `Actualizó el título de ${tasks.length} tareas`);
       document.getElementById("modal-edit-task").classList.remove("open");
       renderBoard();
       showToast(tasks.length > 1
         ? `Título actualizado en ${tasks.length} tareas`
-        : "Tarea actualizada");
+        : (descriptionValue ? "Tarea y descripción actualizadas" : "Tarea actualizada"));
     });
 
     document.getElementById("btn-confirm-proceed").addEventListener("click", () => {
