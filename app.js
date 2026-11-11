@@ -8044,6 +8044,9 @@
     if (!ctx) throw new Error("No se pudo iniciar el lienzo de captura.");
     ctx.scale(scale, scale);
     ctx.textBaseline = "top";
+    const pageBackground = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#f4f6fb";
+    ctx.fillStyle = pageBackground;
+    ctx.fillRect(0, 0, baseWidth + outerPad * 2, baseHeight + outerPad * 2);
 
     const cardStyle = getComputedStyle(card);
     const relativeRect = element => {
