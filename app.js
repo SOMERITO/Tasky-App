@@ -8091,44 +8091,88 @@
       options = options || {};
       const r = relativeRect(element);
       if (r.width <= 0 || r.height <= 0) return;
+
       const style = getComputedStyle(element);
       const fontSize = Number.parseFloat(style.fontSize) || 14;
       const lineHeight = Number.parseFloat(style.lineHeight) || fontSize * 1.35;
+      const padX = Math.max(0, Number(options.padX) || 0);
+      const availableWidth = Math.max(1, Number(options.maxWidth) || r.width);
+      const textWidth = Math.max(1, availableWidth - padX * 2);
+      const maxLines = Math.max(1, Math.min(10,
+        Number(options.maxLines) || Math.floor((r.height + 1) / lineHeight) || 1
+      ));
+
       ctx.save();
       ctx.beginPath();
-      ctx.rect(r.x, r.y, r.width, r.height);
+      ctx.rect(r.x, r.y, availableWidth, r.height);
       ctx.clip();
       ctx.font = style.font || (style.fontWeight || 500) + " " + fontSize + "px " + (style.fontFamily || "Arial, sans-serif");
       ctx.fillStyle = options.color || style.color || "#172033";
       ctx.textAlign = options.align || "left";
       ctx.textBaseline = "top";
-      const rawText = String(options.text !== undefined ? options.text : element.textContent || "").replace(/\s+/g, " ").trim();
+
+      const rawText = String(options.text !== undefined ? options.text : element.textContent || "")
+        .replace(/\s+/g, " ").trim();
       const words = rawText.split(" ").filter(Boolean);
-      const maxLines = Math.max(1, Math.min(8, Math.floor((r.height + 1) / lineHeight)));
-      let line = "";
-      let lineIndex = 0;
-      const padX = Math.max(0, Number(options.padX) || 0);
-      const textX = r.x + padX;
-      const textWidth = Math.max(0, r.width - padX * 2);
-      const x = options.align === "center" ? textX + textWidth / 2 : options.align === "right" ? textX + textWidth : textX;
-      const startY = options.verticalCenter ? r.y + Math.max(0, (r.height - lineHeight) / 2) : r.y;
-      for (let i = 0; i < words.length; i++) {
-        const test = line ? line + " " + words[i] : words[i];
-        if (line && ctx.measureText(test).width > r.width - 2) {
-          ctx.fillText(line, x, startY + lineIndex * lineHeight, textWidth || r.width);
-          lineIndex++;
-          line = words[i];
-          if (lineIndex >= maxLines) {
-            line = line.replace(/[.,;:!?]?$/, "") + "…";
-            ctx.fillText(line, x, startY + (maxLines - 1) * lineHeight, textWidth || r.width);
-            ctx.restore();
-            return;
-          }
-        } else {
-          line = test;
+      const x = options.align === "center" ? r.x + padX + textWidth / 2
+        : options.align === "right" ? r.x + padX + textWidth : r.x + padX;
+      const startY = options.verticalCenter
+        ? r.y + Math.max(0, (r.height - lineHeight) / 2)
+        : r.y;
+
+      const fitWithEllipsis = text => {
+        let candidate = String(text || "");
+        while (candidate && ctx.measureText(candidate + "…").width > textWidth) {
+          candidate = candidate.slice(0, -1);
+        }
+        return candidate ? candidate + "…" : "…";
+      };
+
+      const lines = [];
+      let currentLine = "";
+      let truncated = false;
+
+      for (let index = 0; index < words.length; index++) {
+        const word = words[index];
+        const candidate = currentLine ? currentLine + " " + word : word;
+
+        if (ctx.measureText(candidate).width <= textWidth) {
+          currentLine = candidate;
+          continue;
+        }
+
+        // An individual long word must be clipped cleanly, not painted on top
+        // of the preceding line.
+        if (!currentLine) {
+          lines.push(fitWithEllipsis(word));
+          truncated = index < words.length - 1 || ctx.measureText(word).width > textWidth;
+          break;
+        }
+
+        lines.push(currentLine);
+        currentLine = word;
+
+        // There is no free line left. Ellipsize the previous line and stop.
+        if (lines.length >= maxLines) {
+          truncated = true;
+          currentLine = "";
+          break;
         }
       }
-      if (line && lineIndex < maxLines) ctx.fillText(line, x, startY + lineIndex * lineHeight, textWidth || r.width);
+
+      if (currentLine && lines.length < maxLines) {
+        lines.push(currentLine);
+      } else if (currentLine && lines.length >= maxLines) {
+        truncated = true;
+      }
+
+      if (truncated && lines.length) {
+        lines[lines.length - 1] = fitWithEllipsis(lines[lines.length - 1]);
+      }
+
+      lines.slice(0, maxLines).forEach((line, index) => {
+        ctx.fillText(line, x, startY + index * lineHeight, textWidth);
+      });
       ctx.restore();
     };
 
@@ -8239,7 +8283,10 @@
         ctx.stroke();
       }
 
-      drawNodeText(row.querySelector(".task-title"));
+      const taskTitle = row.querySelector(".task-title");
+      const taskTextWrap = row.querySelector(".task-text-wrap");
+      const titleColumnWidth = taskTextWrap ? taskTextWrap.getBoundingClientRect().width : 0;
+      drawNodeText(taskTitle, titleColumnWidth > 0 ? { maxWidth: titleColumnWidth } : undefined);
       row.querySelectorAll(".task-sub-badges > *").forEach(drawBadge);
     });
 
