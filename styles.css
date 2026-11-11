@@ -949,24 +949,6 @@ body {
   box-shadow: none;
 }
 
-/* Lightweight styling is applied only to the cloned card used for image export. */
-.tasky-capture-mode,
-.tasky-capture-mode * {
-  animation: none !important;
-  transition: none !important;
-}
-
-.tasky-capture-mode {
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-  box-shadow: none !important;
-}
-
-.tasky-capture-mode .box-ctrl-btn,
-.tasky-capture-mode .task-act-btn {
-  box-shadow: none !important;
-}
-
 .box-card.boot-animate {
   animation: fadeInSlideUp 0.36s var(--ease) both;
 }
