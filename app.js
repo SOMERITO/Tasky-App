@@ -8064,15 +8064,39 @@
       ? Math.max(0, Math.min(1, progressFill.getBoundingClientRect().width / progressBar.getBoundingClientRect().width))
       : 0;
 
-    // visibleTasks is the authoritative list already filtered and sorted by the live board.
-    // Do not discard a task just because its DOM row is temporarily missing or has no measurable height.
-    const rowById = new Map(
-      Array.from(card.querySelectorAll(".task-item[data-task-id]"))
-        .map(row => [String(row.dataset.taskId), row])
-    );
-    const tasksToRender = (visibleTasks || [])
+    // Read the rows that are actually rendered inside this casilla first.
+    // This mirrors the current UI exactly and avoids losing rows if the render
+    // array captured by an event handler is stale.
+    const taskById = new Map((appState.data.tasks || []).map(task => [String(task.id), task]));
+    (visibleTasks || []).forEach(task => {
+      if (task && task.id != null) taskById.set(String(task.id), task);
+    });
+    const liveRows = Array.from(card.querySelectorAll(".task-item[data-task-id]"))
+      .filter(row => {
+        const style = getComputedStyle(row);
+        const rect = row.getBoundingClientRect();
+        return style.display !== "none" && style.visibility !== "hidden" &&
+          rect.width > 0 && rect.height > 0;
+      });
+    const domTasks = liveRows.map(row => {
+      const id = String(row.dataset.taskId || "");
+      const task = taskById.get(id);
+      if (task) return { task, row };
+      const titleNode = row.querySelector(".task-title");
+      return titleNode ? {
+        task: { id, title: titleNode.textContent.trim(), done: row.classList.contains("done") },
+        row
+      } : null;
+    }).filter(entry => entry && !entry.task.done && !entry.row.classList.contains("done"));
+
+    const stateTasks = (visibleTasks || [])
       .filter(task => task && !task.done)
-      .map(task => ({ task, row: rowById.get(String(task.id)) || null }));
+      .map(task => ({ task, row: null }));
+    // For an expanded casilla, prefer actual live DOM rows; use visible task data
+    // only as a fallback. A folded casilla correctly exports no hidden tasks.
+    const tasksToRender = card.classList.contains("collapsed")
+      ? []
+      : (domTasks.length ? domTasks : stateTasks);
 
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d", { alpha: false });
