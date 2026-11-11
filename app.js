@@ -8246,8 +8246,34 @@
       const titleXOffset = 58;
       const titleMaxWidth = Math.max(100, baseWidth - innerPad * 2 - titleXOffset - 16);
       const lines = wrapText(task.title || "", font, titleMaxWidth);
-      const rowHeight = Math.max(54, lines.length * lineHeight + 24);
-      taskLayouts.push({ task, row, lines, font, fontSize, lineHeight, titleXOffset, titleMaxWidth, rowHeight });
+      const descriptionNode = row ? row.querySelector(".task-description") : null;
+      const descriptionText = String(task.description || (descriptionNode ? descriptionNode.textContent : "") || "").trim();
+      const descriptionStyle = descriptionNode ? getComputedStyle(descriptionNode) : titleNodeStyle;
+      const descriptionFontSize = parsePx(descriptionStyle.fontSize, Math.max(12, fontSize * 0.78));
+      const descriptionLineHeight = parsePx(descriptionStyle.lineHeight, descriptionFontSize * 1.45);
+      const descriptionFont = (descriptionStyle.fontWeight || "500") + " " + descriptionFontSize + "px " +
+        (descriptionStyle.fontFamily || titleNodeStyle.fontFamily || titleStyle.fontFamily);
+      let descriptionLines = descriptionText
+        ? wrapText(descriptionText, descriptionFont, titleMaxWidth)
+        : [];
+      if (descriptionLines.length > 3) {
+        descriptionLines = descriptionLines.slice(0, 3);
+        ctx.font = descriptionFont;
+        let lastLine = descriptionLines[2];
+        while (lastLine && ctx.measureText(lastLine + "…").width > titleMaxWidth) {
+          lastLine = lastLine.slice(0, -1);
+        }
+        descriptionLines[2] = (lastLine || "").trimEnd() + "…";
+      }
+      const descriptionGap = descriptionLines.length ? 4 : 0;
+      const textContentHeight = lines.length * lineHeight +
+        descriptionGap + descriptionLines.length * descriptionLineHeight;
+      const rowHeight = Math.max(54, textContentHeight + 24);
+      taskLayouts.push({
+        task, row, lines, font, fontSize, lineHeight, titleXOffset, titleMaxWidth,
+        descriptionLines, descriptionFont, descriptionFontSize, descriptionLineHeight,
+        descriptionGap, rowHeight
+      });
     });
 
     const tasksHeight = taskLayouts.reduce((sum, item) => sum + item.rowHeight, 0)
@@ -8363,12 +8389,22 @@
       ctx.strokeStyle = checkStyle.borderColor || "rgba(15,23,42,0.24)";
       ctx.stroke();
 
-      const textY = rowY + Math.max(10, (layout.rowHeight - layout.lines.length * layout.lineHeight) / 2);
+      const totalTextHeight = layout.lines.length * layout.lineHeight +
+        layout.descriptionGap + layout.descriptionLines.length * layout.descriptionLineHeight;
+      const textY = rowY + Math.max(10, (layout.rowHeight - totalTextHeight) / 2);
       const taskTitleColor = layout.row
         ? getComputedStyle(layout.row.querySelector(".task-title") || layout.row).color
         : getComputedStyle(card).color;
       drawLines(layout.lines, titleXInRow, textY, layout.lineHeight,
         taskTitleColor, layout.font, layout.titleMaxWidth);
+      if (layout.descriptionLines.length) {
+        const descriptionY = textY + layout.lines.length * layout.lineHeight + layout.descriptionGap;
+        const descriptionColor = layout.row && layout.row.querySelector(".task-description")
+          ? getComputedStyle(layout.row.querySelector(".task-description")).color
+          : "#64748b";
+        drawLines(layout.descriptionLines, titleXInRow, descriptionY,
+          layout.descriptionLineHeight, descriptionColor, layout.descriptionFont, layout.titleMaxWidth);
+      }
       rowY += layout.rowHeight + 10;
     });
 
