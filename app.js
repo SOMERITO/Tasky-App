@@ -2136,7 +2136,7 @@
 
   function formatOverdueDateLabel(isoStr) {
     const overdueDate = String(isoStr || "").slice(0, 10);
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(overdueDate)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(overdueDate)) {
       return formatSpanishDateLong(isoStr);
     }
 
