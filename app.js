@@ -2134,6 +2134,23 @@
     return `${DAY_FULL_NAMES[d.getDay()]}, ${d.getDate()} de ${months[d.getMonth()]}`;
   }
 
+  function formatOverdueDateLabel(isoStr) {
+    const overdueDate = String(isoStr || "").slice(0, 10);
+    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(overdueDate)) {
+      return formatSpanishDateLong(isoStr);
+    }
+
+    const todayParts = getTodayISO().split("-").map(Number);
+    const overdueParts = overdueDate.split("-").map(Number);
+    const todayUtc = Date.UTC(todayParts[0], todayParts[1] - 1, todayParts[2]);
+    const overdueUtc = Date.UTC(overdueParts[0], overdueParts[1] - 1, overdueParts[2]);
+    const daysOverdue = Math.round((todayUtc - overdueUtc) / 86400000);
+
+    if (daysOverdue === 1) return "Ayer";
+    if (daysOverdue > 1) return `Hace ${daysOverdue} días`;
+    return formatSpanishDateLong(overdueDate);
+  }
+
   function buildRestoredUserDataset() {
     const today = getTodayISO();
     const boxes = [
@@ -8447,7 +8464,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       const originalOverdueDate = task.overdueSince || getTaskOverdueDisplayDate(task);
       subBadges += `<span class="task-carried-today-tag" title="Esta tarea estaba atrasada y fue trasladada a la lista de hoy.">↪ Venía atrasada · Pasada para hoy · Vencía el ${escapeHtml(formatSpanishDateLong(originalOverdueDate))}</span>`;
     } else if (isOverdue) {
-      subBadges += `<span class="task-overdue-tag">⚠️ Atrasada · ${escapeHtml(formatSpanishDateLong(getTaskOverdueDisplayDate(task)))}</span>`;
+      const overdueDisplayDate = getTaskOverdueDisplayDate(task);
+      subBadges += `<span class="task-overdue-tag" title="Venció el ${escapeHtml(formatSpanishDateLong(overdueDisplayDate))}">⚠️ Atrasada · ${escapeHtml(formatOverdueDateLabel(overdueDisplayDate))}</span>`;
     } else if (isResched) {
       subBadges += `<span class="task-resched-tag">🕒 Reprogramada · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
     }
