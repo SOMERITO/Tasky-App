@@ -10172,6 +10172,9 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       todayPreset.hidden = !isDeadlineMode;
       todayPreset.style.display = isDeadlineMode ? "" : "none";
       todayPreset.setAttribute("aria-hidden", isDeadlineMode ? "false" : "true");
+      const presetLabels = todayPreset.querySelectorAll("span");
+      if (presetLabels[0]) presetLabels[0].textContent = isDeadlineMode ? "📌 Vence hoy" : "☀️ Para hoy";
+      if (presetLabels[1]) presetLabels[1].textContent = isDeadlineMode ? "Fecha límite inmediata" : "Mover al tablero de hoy";
     }
 
     const noDeadlineInput = document.getElementById("input-resched-no-deadline");
