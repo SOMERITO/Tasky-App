@@ -6202,9 +6202,13 @@
 
       const metadata = document.createElement("span");
       metadata.className = "focus-suggestion-meta";
-      const dueLabel = task.dueDate && task.dueDate < getTodayISO()
-        ? `Atrasada · ${formatSpanishDateLong(task.dueDate)}`
-        : "Para hoy";
+      const dueLabel = isTaskCarriedToTodayFromOverdue(task)
+        ? `Pasada para hoy · Venció el ${formatSpanishDateLong(getTaskOverdueDisplayDate(task))}`
+        : (isTaskOverdue(task)
+          ? `Atrasada · ${formatOverdueDateLabel(getTaskOverdueDisplayDate(task))}`
+          : (task.dueDate && task.dueDate > getTodayISO()
+            ? `Programada para ${formatSpanishDateLong(task.dueDate)}`
+            : "Para hoy"));
       metadata.textContent = `${box ? box.name + " · " : ""}${dueLabel}`;
       button.appendChild(metadata);
       suggestions.appendChild(button);
@@ -6347,11 +6351,15 @@
         taskTitle.textContent = task.title || "Tarea sin título";
         const meta = document.createElement("span");
         meta.className = "focus-priority-context";
-        const dueLabel = task.dueDate
-          ? (task.dueDate > getTodayISO()
-            ? "Programada para " + formatSpanishDateLong(task.dueDate)
-            : (task.dueDate < getTodayISO() ? "Atrasada · " + formatSpanishDateLong(task.dueDate) : "Programada para hoy"))
-          : "Sin fecha específica";
+        const dueLabel = isTaskCarriedToTodayFromOverdue(task)
+          ? "Pasada para hoy · Venció el " + formatSpanishDateLong(getTaskOverdueDisplayDate(task))
+          : (isTaskOverdue(task)
+            ? "Atrasada · " + formatOverdueDateLabel(getTaskOverdueDisplayDate(task))
+            : (task.dueDate
+              ? (task.dueDate > getTodayISO()
+                ? "Programada para " + formatSpanishDateLong(task.dueDate)
+                : "Programada para hoy")
+              : "Sin fecha específica"));
         meta.textContent = (entry.box ? entry.box.name + " · " : "") + dueLabel;
         content.append(taskTitle, meta);
 
