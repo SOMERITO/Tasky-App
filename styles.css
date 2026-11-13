@@ -1617,6 +1617,18 @@ body {
   border-color: rgba(37, 99, 235, 0.22);
 }
 
+.task-act-btn.deadline-active {
+  color: #059669;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.24);
+}
+
+[data-theme="dark"] .task-act-btn.deadline-active {
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.28);
+}
+
 .task-act-btn.repeat-active {
   color: var(--primary-2);
   background: rgba(79, 70, 229, 0.13);
@@ -2080,6 +2092,23 @@ body {
 [data-theme="dark"] .task-no-deadline-tag {
   background: rgba(99, 102, 241, 0.18);
   color: #a5b4fc;
+}
+
+.task-deadline-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+[data-theme="dark"] .task-deadline-tag {
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
 }
 
 .task-overdue-tag {
