@@ -5666,10 +5666,18 @@
     document.getElementById("badge-overdue-count").textContent = String(overdueTasks.length);
   }
 
+  function normalizeTaskSearchText(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\\u0300-\\u036f]/g, "")
+      .toLocaleLowerCase("es-PE");
+  }
+
   function matchesSearch(task, boxName) {
     if (!appState.searchQuery) return true;
-    const q = appState.searchQuery.toLowerCase();
-    return task.title.toLowerCase().includes(q) || (boxName || "").toLowerCase().includes(q);
+    const q = normalizeTaskSearchText(appState.searchQuery);
+    return normalizeTaskSearchText(task && task.title).includes(q) ||
+      normalizeTaskSearchText(boxName).includes(q);
   }
 
   // ==========================================================================
@@ -6619,7 +6627,7 @@
         return (Number(a.order) || 0) - (Number(b.order) || 0);
       });
 
-      if (appState.searchQuery && visibleTasks.length === 0 && !box.name.toLowerCase().includes(appState.searchQuery.toLowerCase())) {
+      if (appState.searchQuery && visibleTasks.length === 0 && !normalizeTaskSearchText(box.name).includes(normalizeTaskSearchText(appState.searchQuery))) {
         return;
       }
 
