@@ -5670,12 +5670,11 @@
     return String(value || "")
       .normalize("NFC")
       .toLocaleLowerCase("es-PE")
-      .replace(/ñ/g, "\\uE000")
+      .replace(/ñ/g, "\uE000")
       .normalize("NFD")
-      .replace(/[\\u0300-\\u036f]/g, "")
-      .replace(/\\uE000/g, "ñ");
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\uE000/g, "ñ");
   }
-
   function matchesSearch(task, boxName) {
     if (!appState.searchQuery) return true;
     const q = normalizeTaskSearchText(appState.searchQuery);
