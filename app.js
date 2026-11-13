@@ -7739,7 +7739,13 @@
       });
     }
     if (contextTasks.some(item => !item.done)) addTaskContextMenuButton(menu, "☀️ Pasar para mañana", "tomorrow");
-    addTaskContextMenuButton(menu, "📅 Reprogramar fecha", "reschedule");
+    if (!isBulkContext && task.noDeadline && !task.done) {
+      addTaskContextMenuButton(menu, "📅 Agregar fecha límite", "set-deadline", {
+        title: "Elige el día en que esta tarea debe quedar completada."
+      });
+    } else {
+      addTaskContextMenuButton(menu, "📅 Reprogramar fecha", "reschedule");
+    }
     addTaskContextMenuButton(menu, isBulkContext ? `🔁 Configurar repetición (${contextTasks.length})` : "🔁 Configurar repetición", "repeat");
 
     addTaskContextMenuDivider(menu);
@@ -8051,6 +8057,10 @@
         showToast("Pasada para mañana ☀️");
         break;
       }
+      case "set-deadline":
+        playUiSound("tap");
+        openDatePickerModal(task.id, { mode: "deadline" });
+        break;
       case "reschedule":
         playUiSound("tap");
         openDatePickerModal(task.id);
@@ -8519,9 +8529,14 @@ function createTaskRowElement(task, box, showOriginBox = false) {
         <button type="button" class="task-act-btn ${isResched ? "sun-active" : ""}" data-task-action="today" data-tip-title="☀️ Pasar para Mañana" data-tip-desc="Pasa inmediatamente esta tarea para el día de mañana (+1 día).">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
         </button>
+        ${task.noDeadline && !task.done ? `
+        <button type="button" class="task-act-btn set-deadline-btn" data-task-action="set-deadline" aria-label="Agregar fecha límite" data-tip-title="📅 Agregar fecha límite" data-tip-desc="Elige el día en que esta tarea debe quedar completada.">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M12 14v5M9.5 16.5h5"/></svg>
+        </button>
+        ` : `
         <button type="button" class="task-act-btn ${isResched ? "calendar-active" : ""}" data-task-action="reschedule" data-tip-title="📅 Reprogramar Fecha" data-tip-desc="Elige una nueva fecha en el calendario para postergar o planificar esta tarea.">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        </button>
+        </button>`}
         <button type="button" class="task-act-btn ${hasRepeat ? "repeat-active" : ""}" data-task-action="toggle-daily" data-tip-title="🔁 Configurar Repetición" data-tip-desc="Elige si deseas repetir la tarea todos los días, algunos días o un día específico.">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
         </button>
@@ -8601,10 +8616,21 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       showToast("Pasada para mañana ☀️");
     });
 
-    item.querySelector('[data-task-action="reschedule"]').addEventListener("click", () => {
-      playUiSound("tap");
-      openDatePickerModal(task.id);
-    });
+    const setDeadlineButton = item.querySelector('[data-task-action="set-deadline"]');
+    if (setDeadlineButton) {
+      setDeadlineButton.addEventListener("click", event => {
+        event.stopPropagation();
+        playUiSound("tap");
+        openDatePickerModal(task.id, { mode: "deadline" });
+      });
+    }
+    const rescheduleButton = item.querySelector('[data-task-action="reschedule"]');
+    if (rescheduleButton) {
+      rescheduleButton.addEventListener("click", () => {
+        playUiSound("tap");
+        openDatePickerModal(task.id);
+      });
+    }
 
     // Point 8: Open Custom Repeat Days Picker Modal
     item.querySelector('[data-task-action="toggle-daily"]').addEventListener("click", () => {
@@ -9961,6 +9987,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     grid.innerHTML = "";
 
     const totalCells = 42;
+    const allowTodayAsDeadline = document.getElementById("modal-date-picker")?.dataset.mode === "deadline";
     for (let i = 0; i < totalCells; i++) {
       let cellYear = calState.viewYear;
       let cellMonth = calState.viewMonth;
@@ -9992,7 +10019,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       btn.type = "button";
       const isToday = iso === todayIso;
       const isSelected = iso === calState.selectedIso;
-      const isPastOrToday = iso <= todayIso;
+      const isPastOrToday = allowTodayAsDeadline ? iso < todayIso : iso <= todayIso;
       const countOnDay = taskCountByDate[iso] || 0;
 
       btn.className = [
@@ -10003,11 +10030,13 @@ function createTaskRowElement(task, box, showOriginBox = false) {
         isPastOrToday ? "is-disabled-day" : ""
       ].filter(Boolean).join(" ");
 
-      // Point 1: Do not allow rescheduling a task for today or past dates in the Reschedule Calendar
+      // Normal rescheduling starts tomorrow; assigning a first deadline may also use today.
       if (isPastOrToday) {
         btn.disabled = true;
         btn.setAttribute("aria-disabled", "true");
         btn.title = isToday ? "Hoy (elige otro día para reprogramar)" : "Fecha pasada no disponible";
+      } else if (allowTodayAsDeadline && isToday) {
+        btn.title = "Establecer fecha límite para hoy";
       }
 
       btn.innerHTML = `
@@ -10078,44 +10107,75 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     return true;
   }
 
-  function openDatePickerModal(taskIdOrIds) {
-    // Clicking the calendar on a selected task should apply the same date to the full selection.
-    const useSelectedGroup = !Array.isArray(taskIdOrIds) &&
+  function openDatePickerModal(taskIdOrIds, options = {}) {
+    const isDeadlineMode = Boolean(options && options.mode === "deadline");
+    // Clicking the regular calendar on a selected task applies one date to the selection.
+    // The dedicated deadline action always targets one task only.
+    const useSelectedGroup = !isDeadlineMode && !Array.isArray(taskIdOrIds) &&
       appState.selectedTaskIds &&
       appState.selectedTaskIds.size > 1 &&
       appState.selectedTaskIds.has(String(taskIdOrIds));
-    const isBulk = Array.isArray(taskIdOrIds) || Boolean(useSelectedGroup);
-    const requestedIds = Array.isArray(taskIdOrIds)
-      ? Array.from(new Set(taskIdOrIds.map(id => String(id))))
-      : (useSelectedGroup
-        ? Array.from(new Set(Array.from(appState.selectedTaskIds).map(id => String(id))))
-        : [String(taskIdOrIds)]);
+    const isBulk = !isDeadlineMode && (Array.isArray(taskIdOrIds) || Boolean(useSelectedGroup));
+    const requestedIds = isDeadlineMode
+      ? [String(taskIdOrIds)]
+      : (Array.isArray(taskIdOrIds)
+        ? Array.from(new Set(taskIdOrIds.map(id => String(id))))
+        : (useSelectedGroup
+          ? Array.from(new Set(Array.from(appState.selectedTaskIds).map(id => String(id))))
+          : [String(taskIdOrIds)]));
     let tasks = appState.data.tasks.filter(task => requestedIds.includes(String(task.id)));
     if (isBulk) tasks = tasks.filter(task => !task.done);
-    if (!tasks.length) return;
+    if (isDeadlineMode) tasks = tasks.filter(task => !task.done && Boolean(task.noDeadline));
+    if (!tasks.length) {
+      if (isDeadlineMode) showToast("Esta tarea ya tiene una fecha límite activa o está completada.", true);
+      return;
+    }
 
     if (!isBulk) clearTaskSelection();
     appState.reschedulingTaskIds = tasks.map(task => String(task.id));
     appState.reschedulingTaskId = tasks.length === 1 ? tasks[0].id : null;
 
+    const dateModal = document.getElementById("modal-date-picker");
+    if (dateModal) dateModal.dataset.mode = isDeadlineMode ? "deadline" : "reschedule";
     const dateTitle = document.getElementById("date-modal-title");
     const taskName = document.getElementById("resched-task-name");
-    if (dateTitle) dateTitle.textContent = tasks.length === 1 ? "Reprogramar tarea" : `Reprogramar ${tasks.length} tareas`;
+    const dateEyebrow = dateModal && dateModal.querySelector(".modal-eyebrow");
+    const dateLabel = dateModal && dateModal.querySelector('label[for="input-resched-date"]');
+    const saveDateButton = dateModal && dateModal.querySelector('#form-date-picker button[type="submit"]');
+    if (dateEyebrow) dateEyebrow.textContent = isDeadlineMode ? "📅 FECHA LÍMITE" : "📅 PLANIFICAR FECHA";
+    if (dateTitle) dateTitle.textContent = isDeadlineMode
+      ? "Agregar fecha límite"
+      : (tasks.length === 1 ? "Reprogramar tarea" : `Reprogramar ${tasks.length} tareas`);
     if (taskName) {
-      taskName.textContent = tasks.length === 1
+      taskName.textContent = isDeadlineMode
         ? tasks[0].title
-        : `Se aplicará la misma fecha a ${tasks.length} tareas seleccionadas.`;
+        : (tasks.length === 1
+          ? tasks[0].title
+          : `Se aplicará la misma fecha a ${tasks.length} tareas seleccionadas.`);
     }
+    if (dateLabel) dateLabel.textContent = isDeadlineMode
+      ? "Elige cuándo vence esta tarea"
+      : "O elegir fecha específica en calendario";
+    if (saveDateButton) saveDateButton.textContent = isDeadlineMode ? "Guardar fecha límite" : "Guardar fecha";
 
     const todayIso = getTodayISO();
     const tomorrowIso = addDaysISO(todayIso, 1);
     const dateInput = document.getElementById("input-resched-date");
-    // Display today as the reference date, but min prevents it from being selected as a due date.
-    dateInput.min = tomorrowIso;
+    // A first deadline can be today; ordinary rescheduling starts tomorrow.
+    dateInput.min = isDeadlineMode ? todayIso : tomorrowIso;
     dateInput.value = todayIso;
+
+    const todayPreset = dateModal && dateModal.querySelector('[data-date-preset="today"]');
+    if (todayPreset) {
+      todayPreset.hidden = !isDeadlineMode;
+      todayPreset.style.display = isDeadlineMode ? "" : "none";
+      todayPreset.setAttribute("aria-hidden", isDeadlineMode ? "false" : "true");
+    }
 
     const noDeadlineInput = document.getElementById("input-resched-no-deadline");
     const noDeadlineHelp = document.getElementById("resched-no-deadline-help");
+    const noDeadlineGroup = noDeadlineInput && noDeadlineInput.closest(".form-group");
+    if (noDeadlineGroup) noDeadlineGroup.hidden = isDeadlineMode;
     if (noDeadlineInput) {
       const eligibleNoDeadlineTasks = tasks.filter(task => !task.done);
       const skippedTaskCount = tasks.length - eligibleNoDeadlineTasks.length;
@@ -10124,9 +10184,9 @@ function createTaskRowElement(task, box, showOriginBox = false) {
         eligibleNoDeadlineTasks.every(task => Boolean(task.noDeadline));
       const someEligibleWithoutDeadline = eligibleNoDeadlineTasks.some(task => Boolean(task.noDeadline));
 
-      noDeadlineInput.checked = allEligibleWithoutDeadline;
-      noDeadlineInput.indeterminate = someEligibleWithoutDeadline && !allEligibleWithoutDeadline;
-      noDeadlineInput.disabled = eligibleNoDeadlineTasks.length === 0;
+      noDeadlineInput.checked = isDeadlineMode ? false : allEligibleWithoutDeadline;
+      noDeadlineInput.indeterminate = !isDeadlineMode && someEligibleWithoutDeadline && !allEligibleWithoutDeadline;
+      noDeadlineInput.disabled = isDeadlineMode || eligibleNoDeadlineTasks.length === 0;
       noDeadlineInput.dataset.userChanged = "false";
       // Use the property rather than addEventListener so opening the modal repeatedly
       // never stacks duplicate handlers.
@@ -10137,7 +10197,9 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       };
 
       if (noDeadlineHelp) {
-        if (isSingleEligibleTask) {
+        if (isDeadlineMode) {
+          noDeadlineHelp.textContent = "Al guardar, la tarea tendrá una fecha límite y podrá marcarse como atrasada si no se completa.";
+        } else if (isSingleEligibleTask) {
           noDeadlineHelp.textContent = "La tarea queda sin fecha límite y se aplica al instante; no se marcará como atrasada.";
         } else if (eligibleNoDeadlineTasks.length > 0) {
           noDeadlineHelp.textContent = `Se aplica al instante a las ${eligibleNoDeadlineTasks.length} tareas seleccionadas.${skippedTaskCount ? ` Se omitirán ${skippedTaskCount} tareas completadas.` : ""}`;
@@ -10164,26 +10226,35 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     if (!tasks.length) return;
     const isBulk = tasks.length > 1;
     const today = getTodayISO();
+    const dateModal = document.getElementById("modal-date-picker");
+    const isDeadlineMode = Boolean(dateModal && dateModal.dataset.mode === "deadline");
+    const minimumDate = isDeadlineMode ? today : addDaysISO(today, 1);
 
-    if (!moveToToday && (!newDateIso || newDateIso <= today)) {
-      showToast("Elige una fecha futura (desde mañana) para reprogramar", true);
+    if (!moveToToday && (!newDateIso || newDateIso < minimumDate)) {
+      showToast(isDeadlineMode
+        ? "Elige hoy o una fecha futura para establecer el vencimiento"
+        : "Elige una fecha futura (desde mañana) para reprogramar", true);
       return;
     }
 
-    const actionLabel = isBulk
-      ? `Reprogramó ${tasks.length} tareas seleccionadas`
-      : `Reprogramó: ${tasks[0].title}`;
+    const actionLabel = isDeadlineMode
+      ? `Asignó fecha límite: ${tasks[0].title}`
+      : (isBulk
+        ? `Reprogramó ${tasks.length} tareas seleccionadas`
+        : `Reprogramó: ${tasks[0].title}`);
     pushUndoSnapshot(isBulk ? `Reprogramar ${tasks.length} tareas` : `Reprogramar: ${tasks[0].title}`);
 
     const noDeadlineInput = document.getElementById("input-resched-no-deadline");
     const noDeadlineWasChanged = Boolean(noDeadlineInput && noDeadlineInput.dataset.userChanged === "true");
     // In a bulk operation, preserve each task's current setting unless the user
     // explicitly changes the checkbox. When changed, apply one state to all eligible tasks.
-    const applyNoDeadline = !noDeadlineInput || noDeadlineInput.disabled
-      ? null
-      : (isBulk
-        ? (noDeadlineWasChanged ? Boolean(noDeadlineInput.checked) : null)
-        : Boolean(noDeadlineInput.checked));
+    const applyNoDeadline = isDeadlineMode
+      ? false
+      : (!noDeadlineInput || noDeadlineInput.disabled
+        ? null
+        : (isBulk
+          ? (noDeadlineWasChanged ? Boolean(noDeadlineInput.checked) : null)
+          : Boolean(noDeadlineInput.checked)));
 
     // Capture each task's active or previously preserved priority before changing its date.
     const priorityByTaskId = new Map();
@@ -10227,34 +10298,47 @@ function createTaskRowElement(task, box, showOriginBox = false) {
         delete task.focusPriorityDate;
       }
 
-      if (applyNoDeadline !== null) {
-        task.noDeadline = applyNoDeadline;
-        if (applyNoDeadline) {
-          delete task.overdueSince;
-          delete task.overdueCarryDate;
-        }
-      }
-      if (moveToToday) {
-        task.dueDate = today;
-        task.isRescheduled = false;
-        task.rescheduledCount = 0;
-      } else {
+      if (isDeadlineMode) {
+        task.noDeadline = false;
         task.dueDate = newDateIso;
-        task.isRescheduled = true;
-        task.rescheduledCount = (task.rescheduledCount || 0) + 1;
+        task.isRescheduled = newDateIso > today;
+        delete task.overdueSince;
+        delete task.overdueCarryDate;
+      } else {
+        if (applyNoDeadline !== null) {
+          task.noDeadline = applyNoDeadline;
+          if (applyNoDeadline) {
+            delete task.overdueSince;
+            delete task.overdueCarryDate;
+          }
+        }
+        if (moveToToday) {
+          task.dueDate = today;
+          task.isRescheduled = false;
+          task.rescheduledCount = 0;
+        } else {
+          task.dueDate = newDateIso;
+          task.isRescheduled = true;
+          task.rescheduledCount = (task.rescheduledCount || 0) + 1;
+        }
       }
       task.updatedAt = Date.now();
     });
 
     playUiSound("reschedule");
-    document.getElementById("modal-date-picker").classList.remove("open");
+    dateModal.classList.remove("open");
+    dateModal.dataset.mode = "reschedule";
     appState.reschedulingTaskIds = [];
     appState.reschedulingTaskId = null;
     if (isBulk) clearTaskSelection();
     saveData(true, actionLabel);
     renderBoardPreservingScroll();
     updateTaskActionModalsAfterBulkChange();
-    if (moveToToday) {
+    if (isDeadlineMode) {
+      showToast(newDateIso === today
+        ? "📅 Fecha límite establecida para hoy"
+        : `📅 Fecha límite establecida · ${formatSpanishDateLong(newDateIso)}`);
+    } else if (moveToToday) {
       showToast(tasks.length === 1 ? "☀️ Tarea programada para hoy" : `☀️ ${tasks.length} tareas programadas para hoy`);
     } else {
       showToast(tasks.length === 1
@@ -11716,7 +11800,11 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       btn.addEventListener("click", () => {
         const preset = btn.dataset.datePreset;
         const today = getTodayISO();
-        if (preset === "today" || preset === "dayafter") {
+        if (preset === "today") {
+          if (document.getElementById("modal-date-picker")?.dataset.mode === "deadline") {
+            applyTaskRescheduleDate(today, false);
+          }
+        } else if (preset === "dayafter") {
           applyTaskRescheduleDate(addDaysISO(today, 2), false);
         } else if (preset === "tomorrow") {
           applyTaskRescheduleDate(addDaysISO(today, 1), false);
@@ -11763,11 +11851,15 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     document.getElementById("input-resched-date").addEventListener("change", (e) => {
       const val = e.target.value;
       const today = getTodayISO();
+      const isDeadlineMode = document.getElementById("modal-date-picker")?.dataset.mode === "deadline";
+      const minimumDate = isDeadlineMode ? today : addDaysISO(today, 1);
       if (val && val.split("-").length === 3) {
-        if (val <= today) {
-          const tomorrowIso = addDaysISO(today, 1);
-          e.target.value = tomorrowIso;
-          showToast("No puedes reprogramar para hoy; elige desde mañana", true);
+        if (val < minimumDate) {
+          e.target.value = minimumDate;
+          calState.selectedIso = minimumDate;
+          showToast(isDeadlineMode
+            ? "La fecha límite no puede ser anterior a hoy"
+            : "No puedes reprogramar para hoy; elige desde mañana", true);
           return;
         }
         calState.selectedIso = val;
@@ -11778,8 +11870,12 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     document.getElementById("form-date-picker").addEventListener("submit", (e) => {
       e.preventDefault();
       const val = document.getElementById("input-resched-date").value || calState.selectedIso;
-      if (!val || val <= getTodayISO()) {
-        showToast("Selecciona una fecha futura (desde mañana)", true);
+      const isDeadlineMode = document.getElementById("modal-date-picker")?.dataset.mode === "deadline";
+      const minimumDate = isDeadlineMode ? getTodayISO() : addDaysISO(getTodayISO(), 1);
+      if (!val || val < minimumDate) {
+        showToast(isDeadlineMode
+          ? "Selecciona hoy o una fecha futura para la fecha límite"
+          : "Selecciona una fecha futura (desde mañana)", true);
         return;
       }
       applyTaskRescheduleDate(val, false);
