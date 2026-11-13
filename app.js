@@ -10333,6 +10333,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
         // Keep the task on its planned day. Only the deadline field changes.
         task.deadlineDate = newDateIso;
         task.noDeadline = false;
+        delete task.overdueSince;
+        delete task.overdueCarryDate;
       } else {
         const preservedLevel = priorityByTaskId.get(String(task.id)) || 0;
         if (preservedLevel > 0) {
