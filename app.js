@@ -3078,6 +3078,8 @@
         done: Boolean(t.done || t.completed),
         createdAt: Number(t.createdAt || Date.now()),
         dueDate: due,
+        deadlineDate: /^\d{4}-\d{2}-\d{2}$/.test(String(t.deadlineDate || ""))
+          ? String(t.deadlineDate).slice(0, 10) : "",
         noDeadline: Boolean(t.noDeadline),
         frequency: freq,
         repeatDays: repDays,
@@ -3446,7 +3448,8 @@
         Array.isArray(x.skippedDates) ? x.skippedDates : [],
         Number(x.updatedAt || 0),
         x.noDeadline ? 1 : 0,
-        String(x.description || "")
+        String(x.description || ""),
+        String(x.deadlineDate || "")
       ])
     });
   }
@@ -3487,7 +3490,8 @@
         skippedDates: Array.isArray(arr[14]) ? arr[14] : [],
         updatedAt: Number(arr[15] || 0),
         noDeadline: Boolean(arr[16]),
-        description: String(arr[17] || "")
+        description: String(arr[17] || ""),
+        deadlineDate: String(arr[18] || "")
       }));
       return normalizeDataPayload({
         boxes,
@@ -5493,13 +5497,20 @@
       task.dueDate === today);
   }
 
+  function getTaskDeadlineDate(task) {
+    if (!task || task.noDeadline) return "";
+    const explicitDeadline = String(task.deadlineDate || "").slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(explicitDeadline)) return explicitDeadline;
+    // Backward compatibility: older tasks used dueDate as their deadline.
+    return String(task.dueDate || "").slice(0, 10);
+  }
+
   function isTaskOverdue(task) {
     const today = getTodayISO();
-    // A task explicitly moved to today is no longer overdue today.
-    // Keep overdueSince/overdueCarryDate separately so its original due date
-    // can be remembered and the task can become overdue again only after it
-    // remains unfinished past today's date.
-    return Boolean(task && !task.done && !task.noDeadline && task.dueDate && task.dueDate < today);
+    const deadlineDate = getTaskDeadlineDate(task);
+    // Moving an overdue task to today temporarily clears the overdue state for today.
+    const carriedToToday = isTaskCarriedToTodayFromOverdue(task);
+    return Boolean(task && !task.done && deadlineDate && deadlineDate < today && !carriedToToday);
   }
 
   function isTaskWithoutDeadlinePending(task) {
@@ -5572,7 +5583,7 @@
   function getTaskOverdueDisplayDate(task) {
     return isTaskCarriedToTodayFromOverdue(task) && task.overdueSince
       ? task.overdueSince
-      : (task && task.dueDate) || "";
+      : getTaskDeadlineDate(task);
   }
 
   function isTaskUpcomingRepeat(task) {
@@ -7741,12 +7752,20 @@
       });
     }
     if (contextTasks.some(item => !item.done)) addTaskContextMenuButton(menu, "☀️ Pasar para mañana", "tomorrow");
-    if (!isBulkContext && task.noDeadline && !task.done) {
-      addTaskContextMenuButton(menu, "📅 Agregar fecha límite", "set-deadline", {
-        title: "Elige el día en que esta tarea debe quedar completada."
+    if (!isBulkContext && !task.done) {
+      addTaskContextMenuButton(
+        menu,
+        task.noDeadline ? "📅 Agregar fecha límite" : "📅 Editar fecha límite",
+        "set-deadline",
+        { title: "Establece o modifica el vencimiento sin mover la tarea de su día programado." }
+      );
+    }
+    if (!isBulkContext) {
+      addTaskContextMenuButton(menu, "📅 Reprogramar tarea", "reschedule", {
+        title: "Cambia el día en que aparecerá la tarea; no modifica su fecha límite."
       });
     } else {
-      addTaskContextMenuButton(menu, "📅 Reprogramar fecha", "reschedule");
+      addTaskContextMenuButton(menu, "📅 Reprogramar selección", "reschedule");
     }
     addTaskContextMenuButton(menu, isBulkContext ? `🔁 Configurar repetición (${contextTasks.length})` : "🔁 Configurar repetición", "repeat");
 
@@ -8478,6 +8497,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     }
     if (task.noDeadline) {
       subBadges += `<span class="task-no-deadline-tag" title="Esta tarea no tiene fecha límite y no se marcará como atrasada.">∞ Sin fecha límite</span>`;
+    } else if (task.deadlineDate && !isOverdue && !isCarriedToTodayFromOverdue) {
+      subBadges += `<span class="task-deadline-tag" title="Fecha límite: ${escapeHtml(formatSpanishDateLong(task.deadlineDate))}">📅 Límite · ${escapeHtml(formatSpanishDateLong(task.deadlineDate))}</span>`;
     }
     if (isUpcomingRepeat) {
       subBadges += `<span class="task-upcoming-tag">🗓️ Próxima · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
@@ -8531,14 +8552,14 @@ function createTaskRowElement(task, box, showOriginBox = false) {
         <button type="button" class="task-act-btn ${isResched ? "sun-active" : ""}" data-task-action="today" data-tip-title="☀️ Pasar para Mañana" data-tip-desc="Pasa inmediatamente esta tarea para el día de mañana (+1 día).">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
         </button>
-        ${task.noDeadline && !task.done ? `
-        <button type="button" class="task-act-btn set-deadline-btn" data-task-action="set-deadline" aria-label="Agregar fecha límite" data-tip-title="📅 Agregar fecha límite" data-tip-desc="Elige el día en que esta tarea debe quedar completada.">
+        ${!task.done ? `
+        <button type="button" class="task-act-btn set-deadline-btn ${task.deadlineDate && !task.noDeadline ? "deadline-active" : ""}" data-task-action="set-deadline" aria-label="${task.noDeadline ? "Agregar fecha límite" : "Editar fecha límite"}" data-tip-title="${task.noDeadline ? "📅 Agregar fecha límite" : "📅 Editar fecha límite"}" data-tip-desc="Establece o modifica el vencimiento sin cambiar el día en que aparece esta tarea.">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M12 14v5M9.5 16.5h5"/></svg>
         </button>
-        ` : `
-        <button type="button" class="task-act-btn ${isResched ? "calendar-active" : ""}" data-task-action="reschedule" data-tip-title="📅 Reprogramar Fecha" data-tip-desc="Elige una nueva fecha en el calendario para postergar o planificar esta tarea.">
+        ` : ""}
+        <button type="button" class="task-act-btn ${isResched ? "calendar-active" : ""}" data-task-action="reschedule" data-tip-title="📅 Reprogramar tarea" data-tip-desc="Cambia el día en que esta tarea aparecerá en tu tablero. No modifica su fecha límite.">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        </button>`}
+        </button>
         <button type="button" class="task-act-btn ${hasRepeat ? "repeat-active" : ""}" data-task-action="toggle-daily" data-tip-title="🔁 Configurar Repetición" data-tip-desc="Elige si deseas repetir la tarea todos los días, algunos días o un día específico.">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
         </button>
@@ -9978,11 +9999,13 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     const daysInMonth = new Date(calState.viewYear, calState.viewMonth + 1, 0).getDate();
     const daysInPrevMonth = new Date(calState.viewYear, calState.viewMonth, 0).getDate();
 
-    // Count scheduled tasks per date to display workload dots
+    // Calendar dots reflect planned dates while rescheduling, or deadlines while editing a deadline.
     const taskCountByDate = {};
+    const isDeadlineMode = document.getElementById("modal-date-picker")?.dataset.mode === "deadline";
     appState.data.tasks.forEach(t => {
-      if (!t.done && t.dueDate) {
-        taskCountByDate[t.dueDate] = (taskCountByDate[t.dueDate] || 0) + 1;
+      const calendarDate = isDeadlineMode ? getTaskDeadlineDate(t) : t.dueDate;
+      if (!t.done && calendarDate) {
+        taskCountByDate[calendarDate] = (taskCountByDate[calendarDate] || 0) + 1;
       }
     });
 
@@ -10127,9 +10150,9 @@ function createTaskRowElement(task, box, showOriginBox = false) {
           : [String(taskIdOrIds)]));
     let tasks = appState.data.tasks.filter(task => requestedIds.includes(String(task.id)));
     if (isBulk) tasks = tasks.filter(task => !task.done);
-    if (isDeadlineMode) tasks = tasks.filter(task => !task.done && Boolean(task.noDeadline));
+    if (isDeadlineMode) tasks = tasks.filter(task => !task.done);
     if (!tasks.length) {
-      if (isDeadlineMode) showToast("Esta tarea ya tiene una fecha límite activa o está completada.", true);
+      if (isDeadlineMode) showToast("No se puede asignar una fecha límite a una tarea completada.", true);
       return;
     }
 
@@ -10146,7 +10169,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     const saveDateButton = dateModal && dateModal.querySelector('#form-date-picker button[type="submit"]');
     if (dateEyebrow) dateEyebrow.textContent = isDeadlineMode ? "📅 FECHA LÍMITE" : "📅 PLANIFICAR FECHA";
     if (dateTitle) dateTitle.textContent = isDeadlineMode
-      ? "Agregar fecha límite"
+      ? (tasks[0].noDeadline ? "Agregar fecha límite" : "Editar fecha límite")
       : (tasks.length === 1 ? "Reprogramar tarea" : `Reprogramar ${tasks.length} tareas`);
     if (taskName) {
       taskName.textContent = isDeadlineMode
@@ -10163,9 +10186,11 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     const todayIso = getTodayISO();
     const tomorrowIso = addDaysISO(todayIso, 1);
     const dateInput = document.getElementById("input-resched-date");
-    // A first deadline can be today; ordinary rescheduling starts tomorrow.
+    // A deadline can be today or later and is prefilled independently from the planned date.
     dateInput.min = isDeadlineMode ? todayIso : tomorrowIso;
-    dateInput.value = todayIso;
+    const existingDeadline = isDeadlineMode ? getTaskDeadlineDate(tasks[0]) : "";
+    const selectedDate = existingDeadline && existingDeadline >= todayIso ? existingDeadline : todayIso;
+    dateInput.value = selectedDate;
 
     const todayPreset = dateModal && dateModal.querySelector('[data-date-preset="today"]');
     if (todayPreset) {
@@ -10203,7 +10228,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
 
       if (noDeadlineHelp) {
         if (isDeadlineMode) {
-          noDeadlineHelp.textContent = "Al guardar, la tarea tendrá una fecha límite y podrá marcarse como atrasada si no se completa.";
+          noDeadlineHelp.textContent = "La fecha límite se guarda por separado: la tarea seguirá apareciendo en su día programado.";
         } else if (isSingleEligibleTask) {
           noDeadlineHelp.textContent = "La tarea queda sin fecha límite y se aplica al instante; no se marcará como atrasada.";
         } else if (eligibleNoDeadlineTasks.length > 0) {
@@ -10214,10 +10239,10 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       }
     }
 
-    const parts = todayIso.split("-");
+    const parts = selectedDate.split("-");
     calState.viewYear = Number(parts[0]) || new Date().getFullYear();
     calState.viewMonth = (Number(parts[1]) || (new Date().getMonth() + 1)) - 1;
-    calState.selectedIso = todayIso;
+    calState.selectedIso = selectedDate;
     renderProVisualCalendar();
 
     document.getElementById("modal-date-picker").classList.add("open");
@@ -10243,18 +10268,20 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     }
 
     const actionLabel = isDeadlineMode
-      ? `Asignó fecha límite: ${tasks[0].title}`
+      ? `${tasks[0].noDeadline ? "Asignó" : "Actualizó"} fecha límite: ${tasks[0].title}`
       : (isBulk
         ? `Reprogramó ${tasks.length} tareas seleccionadas`
         : `Reprogramó: ${tasks[0].title}`);
-    pushUndoSnapshot(isBulk ? `Reprogramar ${tasks.length} tareas` : `Reprogramar: ${tasks[0].title}`);
+    pushUndoSnapshot(isDeadlineMode
+      ? `Fecha límite: ${tasks[0].title}`
+      : (isBulk ? `Reprogramar ${tasks.length} tareas` : `Reprogramar: ${tasks[0].title}`));
 
     const noDeadlineInput = document.getElementById("input-resched-no-deadline");
     const noDeadlineWasChanged = Boolean(noDeadlineInput && noDeadlineInput.dataset.userChanged === "true");
     // In a bulk operation, preserve each task's current setting unless the user
     // explicitly changes the checkbox. When changed, apply one state to all eligible tasks.
     const applyNoDeadline = isDeadlineMode
-      ? false
+      ? null
       : (!noDeadlineInput || noDeadlineInput.disabled
         ? null
         : (isBulk
@@ -10274,7 +10301,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
 
     // A future-rescheduled task leaves today's priority queue, but carries its current
     // priority level to the destination date. Removing several tasks compacts the queue once.
-    if (!moveToToday) {
+    if (!moveToToday && !isDeadlineMode) {
       const idsByBox = new Map();
       tasks.forEach(task => {
         if (!(priorityByTaskId.get(String(task.id)) > 0)) return;
@@ -10294,22 +10321,20 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     }
 
     tasks.forEach(task => {
-      const preservedLevel = priorityByTaskId.get(String(task.id)) || 0;
-      if (preservedLevel > 0) {
-        task.focusPriorityLevel = preservedLevel;
-        task.focusPriorityDate = moveToToday ? today : newDateIso;
-      } else {
-        delete task.focusPriorityLevel;
-        delete task.focusPriorityDate;
-      }
-
       if (isDeadlineMode) {
+        // Keep the task on its planned day. Only the deadline field changes.
+        task.deadlineDate = newDateIso;
         task.noDeadline = false;
-        task.dueDate = newDateIso;
-        task.isRescheduled = newDateIso > today;
-        delete task.overdueSince;
-        delete task.overdueCarryDate;
       } else {
+        const preservedLevel = priorityByTaskId.get(String(task.id)) || 0;
+        if (preservedLevel > 0) {
+          task.focusPriorityLevel = preservedLevel;
+          task.focusPriorityDate = moveToToday ? today : newDateIso;
+        } else {
+          delete task.focusPriorityLevel;
+          delete task.focusPriorityDate;
+        }
+
         if (applyNoDeadline !== null) {
           task.noDeadline = applyNoDeadline;
           if (applyNoDeadline) {
@@ -10341,8 +10366,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     updateTaskActionModalsAfterBulkChange();
     if (isDeadlineMode) {
       showToast(newDateIso === today
-        ? "📅 Fecha límite establecida para hoy"
-        : `📅 Fecha límite establecida · ${formatSpanishDateLong(newDateIso)}`);
+        ? "📅 Fecha límite guardada para hoy"
+        : `📅 Fecha límite guardada · ${formatSpanishDateLong(newDateIso)}`);
     } else if (moveToToday) {
       showToast(tasks.length === 1 ? "☀️ Tarea programada para hoy" : `☀️ ${tasks.length} tareas programadas para hoy`);
     } else {
@@ -10393,7 +10418,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     appState.data.tasks.forEach((task) => {
       if (idsSet.has(String(task.id))) {
         const wasOverdue = isTaskOverdue(task);
-        const originalOverdueDate = String(task.overdueSince || task.dueDate || "");
+        const originalOverdueDate = String(task.overdueSince || getTaskDeadlineDate(task) || task.dueDate || "");
         task.dueDate = today;
         task.isRescheduled = false;
         task.rescheduledCount = 0;
