@@ -5668,9 +5668,12 @@
 
   function normalizeTaskSearchText(value) {
     return String(value || "")
+      .normalize("NFC")
+      .toLocaleLowerCase("es-PE")
+      .replace(/ñ/g, "\\uE000")
       .normalize("NFD")
       .replace(/[\\u0300-\\u036f]/g, "")
-      .toLocaleLowerCase("es-PE");
+      .replace(/\\uE000/g, "ñ");
   }
 
   function matchesSearch(task, boxName) {
