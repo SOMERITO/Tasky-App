@@ -7722,10 +7722,12 @@
         ? (bulkWillEnableNoDeadline
           ? "∞ Poner selección sin fecha límite"
           : "⏳ Reactivar fecha límite de selección")
-        : (task.noDeadline ? "⏳ Volver a activar fecha límite" : "∞ Sin fecha límite");
+        : (task.noDeadline ? "⏳ Reactivar fecha guardada" : "∞ Sin fecha límite");
       const noDeadlineActionHelp = isBulkContext
         ? `La acción dejará ${bulkWillEnableNoDeadline ? "todas" : "ninguna"} las tareas seleccionadas sin fecha límite o con fecha límite activa.`
-        : "Esta tarea no tendrá fecha límite ni se marcará como atrasada.";
+        : (task.noDeadline
+          ? "Restaura la fecha que esta tarea tenía guardada anteriormente, sin abrir el calendario."
+          : "Esta tarea no tendrá fecha límite ni se marcará como atrasada.");
       addTaskContextMenuButton(
         menu,
         noDeadlineActionLabel,
