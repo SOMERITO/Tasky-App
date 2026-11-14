@@ -12472,9 +12472,13 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     if (hourInput) hourInput.value = String(deadlineReminderSettings.hour);
     if (permissionText) permissionText.textContent = getDeadlineReminderPermissionMessage();
     if (statusText) {
-      statusText.textContent = deadlineReminderSettings.enabled
-        ? `Activo · aviso a las ${String(deadlineReminderSettings.hour).padStart(2, "0")}:00`
-        : "Desactivado en este dispositivo";
+      const permissionGranted = "Notification" in window &&
+        window.isSecureContext && window.Notification.permission === "granted";
+      statusText.textContent = !deadlineReminderSettings.enabled
+        ? "Desactivado en este dispositivo"
+        : (permissionGranted
+          ? `Activo · aviso a las ${String(deadlineReminderSettings.hour).padStart(2, "0")}:00`
+          : "Configuración guardada, pero falta el permiso de notificaciones del navegador.");
     }
   }
 
