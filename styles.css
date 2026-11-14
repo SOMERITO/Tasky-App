@@ -7254,3 +7254,17 @@ body.focus-mode-open #boxes-container {
     gap: 8px;
   }
 }
+
+.smart-filter-results-list .task-origin-box-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 21px;
+  padding: 2px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: .69rem !important;
+  font-weight: 800;
+  letter-spacing: .01em;
+}
