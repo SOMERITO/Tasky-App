@@ -6616,6 +6616,109 @@
     if (!container) return;
     container.innerHTML = "";
 
+    const activeSmartFilter = appState.taskStatusFilter || "all";
+    if (activeSmartFilter !== "all" && appState.activeTab !== "completed") {
+      const boxById = new Map((appState.data.boxes || []).map(box => [String(box.id), box]));
+      const boxOrder = new Map((appState.data.boxes || []).map(box => [String(box.id), Number(box.order) || 0]));
+      const taskOrder = task => Number(task && task.order) || 0;
+      const filteredTasks = (appState.data.tasks || [])
+        .filter(task => matchesSmartTaskFilter(task))
+        .filter(task => {
+          const box = boxById.get(String(task.boxId));
+          return matchesSearch(task, box ? box.name : "");
+        })
+        .sort((a, b) => {
+          if (activeSmartFilter === "overdue" || activeSmartFilter === "due-soon") {
+            const dateA = getTaskDeadlineDate(a) || "";
+            const dateB = getTaskDeadlineDate(b) || "";
+            const dateCompare = dateA.localeCompare(dateB);
+            if (dateCompare !== 0) return activeSmartFilter === "overdue" ? dateCompare : dateCompare;
+          }
+          if (activeSmartFilter === "rescheduled") {
+            const dateCompare = String(a.dueDate || "").localeCompare(String(b.dueDate || ""));
+            if (dateCompare !== 0) return dateCompare;
+          }
+          const boxCompare = (boxOrder.get(String(a.boxId)) || 0) - (boxOrder.get(String(b.boxId)) || 0);
+          return boxCompare || taskOrder(a) - taskOrder(b);
+        });
+
+      const filterLabels = {
+        overdue: "⚠️ Tareas atrasadas",
+        "no-deadline": "∞ Tareas sin fecha límite",
+        "due-soon": "📅 Vencen en los próximos 7 días",
+        rescheduled: "🔁 Tareas reprogramadas"
+      };
+      const filterDescriptions = {
+        overdue: "Todas las tareas pendientes cuyo vencimiento ya pasó, sin separarlas por casilla.",
+        "no-deadline": "Todas las tareas pendientes que no tienen fecha límite registrada.",
+        "due-soon": "Todas las tareas pendientes con vencimiento entre hoy y los próximos siete días.",
+        rescheduled: "Todas las tareas pendientes programadas para una fecha futura."
+      };
+
+      const resultsSection = document.createElement("section");
+      resultsSection.className = "smart-filter-results";
+      resultsSection.setAttribute("aria-live", "polite");
+
+      const resultsHeader = document.createElement("div");
+      resultsHeader.className = "smart-filter-results-header";
+      const resultsTitle = document.createElement("div");
+      resultsTitle.className = "smart-filter-results-title";
+      const heading = document.createElement("h2");
+      heading.textContent = filterLabels[activeSmartFilter] || "Tareas filtradas";
+      const description = document.createElement("p");
+      description.textContent = filterDescriptions[activeSmartFilter] || "Resultados del filtro seleccionado.";
+      resultsTitle.append(heading, description);
+
+      const countBadge = document.createElement("span");
+      countBadge.className = "smart-filter-results-total";
+      countBadge.textContent = `${filteredTasks.length} tarea${filteredTasks.length === 1 ? "" : "s"}`;
+      resultsHeader.append(resultsTitle, countBadge);
+      resultsSection.appendChild(resultsHeader);
+
+      const resultsList = document.createElement("div");
+      resultsList.className = "smart-filter-results-list";
+      if (!filteredTasks.length) {
+        const empty = document.createElement("div");
+        empty.className = "smart-filter-results-empty";
+        empty.textContent = appState.searchQuery
+          ? "No hay tareas que coincidan con este filtro y tu búsqueda."
+          : "No hay tareas pendientes que coincidan con este filtro.";
+        resultsList.appendChild(empty);
+      } else {
+        filteredTasks.forEach(task => {
+          const box = boxById.get(String(task.boxId)) || {
+            id: task.boxId,
+            name: "Casilla no disponible",
+            emoji: ""
+          };
+          const row = createTaskRowElement(task, box, true);
+          row.classList.add("smart-filter-task-row");
+          resultsList.appendChild(row);
+        });
+      }
+      resultsSection.appendChild(resultsList);
+      container.appendChild(resultsSection);
+
+      appState.hasBootRendered = true;
+      updateMultiSelectUI();
+      renderFocusModePanel();
+      updateAllBoxesToggleButton();
+
+      const restoreFilteredViewport = () => {
+        const currentX = Number.isFinite(window.scrollX) ? window.scrollX : (window.pageXOffset || 0);
+        const currentY = Number.isFinite(window.scrollY) ? window.scrollY : (window.pageYOffset || 0);
+        if (Math.abs(currentX - viewportScrollX) > 1 || Math.abs(currentY - viewportScrollY) > 1) {
+          window.scrollTo(viewportScrollX, viewportScrollY);
+        }
+      };
+      if (typeof window.requestAnimationFrame === "function") {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(restoreFilteredViewport));
+      } else {
+        restoreFilteredViewport();
+      }
+      return;
+    }
+
     const sortedBoxes = appState.data.boxes.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
 
     // Preserve manual order inside each section: work due today first, then the completion summary,
@@ -8696,6 +8799,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     // Point 8: Hold-to-Drag works on any blank space of the task or even holding on the row
     item.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 || e.ctrlKey || e.metaKey || e.target.closest("button") || e.target.closest("input")) return;
+      if (item.closest(".smart-filter-results")) return;
       beginHoldDrag("task", task.id, item, e.clientX, e.clientY);
     });
 
