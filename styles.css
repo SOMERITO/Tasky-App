@@ -7144,6 +7144,7 @@ body.focus-mode-open #boxes-container {
 .box-emoji-choice {
   min-height: 43px;
   font-size: 1.32rem;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
 }
 @media (max-width: 480px) {
   .box-emoji-gallery {
