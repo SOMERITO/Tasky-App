@@ -275,6 +275,10 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           <span>Mi productividad</span>
         </button>
+        <button type="button" id="btn-open-deadline-reminders" class="pill-btn deadline-reminder-pill" aria-haspopup="dialog" aria-controls="modal-deadline-reminders" data-tip-title="🔔 Recordatorios de vencimientos" data-tip-desc="Configura avisos del navegador antes de que venzan tus tareas.">
+          <span aria-hidden="true">🔔</span>
+          <span>Recordatorios</span>
+        </button>
         <button type="button" id="btn-open-birthdays" class="pill-btn birthday-calendar-btn" aria-haspopup="dialog" aria-controls="modal-birthdays" data-tip-title="🎂 Calendario de cumpleaños" data-tip-desc="Consulta los 12 meses, registra cumpleaños y edita fechas importantes.">
           <span aria-hidden="true">🎂</span>
           <span>Cumpleaños</span>
@@ -293,6 +297,30 @@
         </button>
       </div>
     </nav>
+
+    <section class="task-smart-filter-bar" aria-label="Filtros inteligentes de tareas">
+      <div class="task-smart-filter-heading">
+        <strong>Filtrar tareas</strong>
+        <span id="task-smart-filter-summary">Todas las pendientes</span>
+      </div>
+      <div class="task-smart-filter-options" role="group" aria-label="Filtrar por estado">
+        <button type="button" class="task-smart-filter-chip is-active" data-smart-filter="all" aria-pressed="true">
+          Todas <span class="task-smart-filter-count">0</span>
+        </button>
+        <button type="button" class="task-smart-filter-chip filter-overdue" data-smart-filter="overdue" aria-pressed="false">
+          ⚠️ Atrasadas <span class="task-smart-filter-count">0</span>
+        </button>
+        <button type="button" class="task-smart-filter-chip filter-no-deadline" data-smart-filter="no-deadline" aria-pressed="false">
+          ∞ Sin fecha límite <span class="task-smart-filter-count">0</span>
+        </button>
+        <button type="button" class="task-smart-filter-chip filter-due-soon" data-smart-filter="due-soon" aria-pressed="false">
+          📅 Vencen en 7 días <span class="task-smart-filter-count">0</span>
+        </button>
+        <button type="button" class="task-smart-filter-chip filter-rescheduled" data-smart-filter="rescheduled" aria-pressed="false">
+          🔁 Reprogramadas <span class="task-smart-filter-count">0</span>
+        </button>
+      </div>
+    </section>
 
     <section id="focus-mode-panel" class="focus-mode-panel" aria-label="Modo Enfoque" hidden>
       <div class="focus-mode-header">
@@ -812,6 +840,38 @@
         </div>
       </div>
 
+      <section class="prod-compliance-summary" aria-label="Resumen de cumplimiento y vencimientos">
+        <div class="prod-compliance-heading">
+          <div>
+            <strong>Seguimiento de cumplimiento</strong>
+            <span id="prod-kpi-week-range">Esta semana</span>
+          </div>
+          <small>Datos del historial y del estado actual de tus tareas</small>
+        </div>
+        <div class="prod-compliance-grid">
+          <article class="prod-compliance-card">
+            <span>Completadas esta semana</span>
+            <strong id="prod-kpi-week-completed">0</strong>
+            <small>Registros confirmados</small>
+          </article>
+          <article class="prod-compliance-card overdue">
+            <span>Atrasadas pendientes</span>
+            <strong id="prod-kpi-overdue">0</strong>
+            <small>Vencimiento anterior a hoy</small>
+          </article>
+          <article class="prod-compliance-card no-deadline">
+            <span>Sin fecha límite</span>
+            <strong id="prod-kpi-no-deadline">0</strong>
+            <small>Tareas pendientes</small>
+          </article>
+          <article class="prod-compliance-card due-soon">
+            <span>Vencen en 7 días</span>
+            <strong id="prod-kpi-due-soon">0</strong>
+            <small>Incluye los vencimientos de hoy</small>
+          </article>
+        </div>
+      </section>
+
       <!-- 2 Top Charts: 7-Day Velocity + Box Distribution -->
       <div class="prod-charts-grid">
         <div class="prod-chart-card">
@@ -1138,6 +1198,61 @@
       <div class="modal-footer">
         <button type="button" class="btn-secondary" data-close-modal="modal-confirm">Cancelar</button>
         <button type="button" id="btn-confirm-proceed" class="btn-primary" style="background:var(--danger);">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-deadline-reminders" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="deadline-reminder-title">
+    <div class="modal-dialog deadline-reminder-dialog">
+      <div class="modal-header">
+        <div>
+          <div class="modal-eyebrow">🔔 AVISOS PERSONALES</div>
+          <h3 id="deadline-reminder-title" class="modal-title">Recordatorios de vencimientos</h3>
+          <p class="deadline-reminder-intro">Recibe un aviso del navegador para las tareas pendientes que tengan una fecha límite activa.</p>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal="modal-deadline-reminders" aria-label="Cerrar">✕</button>
+      </div>
+
+      <div class="deadline-reminder-settings">
+        <label class="deadline-reminder-toggle">
+          <input type="checkbox" id="deadline-reminders-enabled" />
+          <span>
+            <strong>Activar recordatorios</strong>
+            <small>Solo se enviarán avisos de tareas que todavía no estén completadas.</small>
+          </span>
+        </label>
+
+        <div class="deadline-reminder-form-grid">
+          <label class="deadline-reminder-field" for="deadline-reminder-lead">
+            <span>¿Cuándo quieres recibir el aviso?</span>
+            <select id="deadline-reminder-lead" class="form-select">
+              <option value="0">El mismo día del vencimiento</option>
+              <option value="1" selected>Un día antes</option>
+              <option value="3">Tres días antes</option>
+            </select>
+          </label>
+          <label class="deadline-reminder-field" for="deadline-reminder-hour">
+            <span>Hora del recordatorio</span>
+            <select id="deadline-reminder-hour" class="form-select">
+              <option value="8">08:00 a. m.</option>
+              <option value="9" selected>09:00 a. m.</option>
+              <option value="12">12:00 p. m.</option>
+              <option value="18">06:00 p. m.</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="deadline-reminder-permission">
+          <strong>Permiso del navegador</strong>
+          <span id="deadline-reminder-permission">Comprobando disponibilidad…</span>
+        </div>
+        <p class="deadline-reminder-note">Los avisos se comprueban mientras Tasky está abierto en este dispositivo. Si cierras la pestaña o el navegador, no se enviarán recordatorios en segundo plano.</p>
+        <div id="deadline-reminder-status" class="deadline-reminder-status" role="status">Desactivado en este dispositivo</div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" data-close-modal="modal-deadline-reminders">Cancelar</button>
+        <button type="button" id="btn-save-deadline-reminders" class="btn-primary">Guardar configuración</button>
       </div>
     </div>
   </div>
