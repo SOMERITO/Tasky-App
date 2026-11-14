@@ -2344,6 +2344,7 @@
       docPath: "tasky_sync/somerito_main"
     },
     activeTab: "all",
+    taskStatusFilter: "all",
     searchQuery: "",
     focusRevealTaskId: null,
     quotes: QUOTES_POOL.slice(),
@@ -5675,6 +5676,7 @@
 
     document.getElementById("badge-rescheduled-count").textContent = String(reschedTasks.length);
     document.getElementById("badge-overdue-count").textContent = String(overdueTasks.length);
+    updateSmartTaskFilterUI();
   }
 
   function normalizeTaskSearchText(value) {
@@ -5691,6 +5693,56 @@
     const q = normalizeTaskSearchText(appState.searchQuery);
     return normalizeTaskSearchText(task && task.title).includes(q) ||
       normalizeTaskSearchText(boxName).includes(q);
+  }
+
+  function matchesSmartTaskFilter(task) {
+    if (!task || task.done) return false;
+    const filter = appState.taskStatusFilter || "all";
+    if (filter === "all") return true;
+    if (filter === "overdue") return isTaskOverdue(task) && !isTaskCarriedToTodayFromOverdue(task);
+    if (filter === "no-deadline") return Boolean(task.noDeadline);
+    if (filter === "rescheduled") return isTaskRescheduledFuture(task);
+    if (filter === "due-soon") {
+      const deadline = getTaskDeadlineDate(task);
+      const today = getTodayISO();
+      return Boolean(!task.noDeadline && deadline && deadline >= today && deadline <= addDaysISO(today, 7));
+    }
+    return true;
+  }
+
+  function updateSmartTaskFilterUI() {
+    const today = getTodayISO();
+    const nextWeek = addDaysISO(today, 7);
+    const pending = (appState.data.tasks || []).filter(task => task && !task.done);
+    const counts = {
+      all: pending.length,
+      overdue: pending.filter(task => isTaskOverdue(task) && !isTaskCarriedToTodayFromOverdue(task)).length,
+      "no-deadline": pending.filter(task => Boolean(task.noDeadline)).length,
+      "due-soon": pending.filter(task => {
+        const deadline = getTaskDeadlineDate(task);
+        return Boolean(!task.noDeadline && deadline && deadline >= today && deadline <= nextWeek);
+      }).length,
+      rescheduled: pending.filter(task => isTaskRescheduledFuture(task)).length
+    };
+    document.querySelectorAll("[data-smart-filter]").forEach(button => {
+      const value = button.dataset.smartFilter || "all";
+      const active = value === (appState.taskStatusFilter || "all");
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+      const count = button.querySelector(".task-smart-filter-count");
+      if (count) count.textContent = String(counts[value] || 0);
+    });
+    const summary = document.getElementById("task-smart-filter-summary");
+    if (summary) {
+      const labels = {
+        all: "Todas las pendientes",
+        overdue: "Tareas atrasadas",
+        "no-deadline": "Sin fecha límite",
+        "due-soon": "Vencen en los próximos 7 días",
+        rescheduled: "Tareas reprogramadas"
+      };
+      summary.textContent = labels[appState.taskStatusFilter || "all"] || labels.all;
+    }
   }
 
   // ==========================================================================
@@ -6592,6 +6644,7 @@
           (isCountedAsPending(task) && isTaskForToday(task)) ||
           isTaskWithoutDeadlinePending(task) ||
           (!isRecurringTask(task) && getFocusPriorityLevel(task.id) > 0) ||
+          (appState.taskStatusFilter !== "all" && matchesSmartTaskFilter(task)) ||
           String(task.id) === String(appState.focusRevealTaskId || "")
         ) &&
         matchesSearch(task, box.name)
@@ -6632,6 +6685,7 @@
             (isCountedAsPending(t) && isTaskForToday(t)) ||
             isTaskWithoutDeadlinePending(t) ||
             (!isRecurringTask(t) && getFocusPriorityLevel(t.id) > 0) ||
+            (appState.taskStatusFilter !== "all" && matchesSmartTaskFilter(t)) ||
             String(t.id) === String(appState.focusRevealTaskId || "")
           ) &&
           matchesSearch(t, box.name)
@@ -6648,6 +6702,7 @@
         return (Number(a.order) || 0) - (Number(b.order) || 0);
       });
 
+      if (appState.taskStatusFilter !== "all" && visibleTasks.length === 0) return;
       if (appState.searchQuery && visibleTasks.length === 0 && !normalizeTaskSearchText(box.name).includes(normalizeTaskSearchText(appState.searchQuery))) {
         return;
       }
@@ -11055,6 +11110,18 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     const recurringCount = tasks.filter(t => t.frequency !== "once" || (t.repeatDays && t.repeatDays.length > 0)).length;
     const focusScore = tasks.length > 0 ? Math.round(((tasks.length - reschedCount) / tasks.length) * 100) : 100;
     const monthlyTotal = (appState.data.monthlyCompletedBase || 66) + tasks.filter(t => t.done).length;
+    const weekStart = getLearningWeekStartISO(todayIso);
+    const weekEnd = addDaysISO(weekStart, 6);
+    const completedThisWeek = normalizeCompletionLog(appState.data.completionLog)
+      .filter(event => !event.reversed && event.completedDate >= weekStart && event.completedDate <= weekEnd).length;
+    const overdueNow = tasks.filter(task => !task.done &&
+      isTaskOverdue(task) && !isTaskCarriedToTodayFromOverdue(task)).length;
+    const withoutDeadlineNow = tasks.filter(task => !task.done && Boolean(task.noDeadline)).length;
+    const dueSoonNow = tasks.filter(task => {
+      const deadline = getTaskDeadlineDate(task);
+      return Boolean(!task.done && !task.noDeadline && deadline &&
+        deadline >= todayIso && deadline <= addDaysISO(todayIso, 7));
+    }).length;
 
     // Find dominant box
     let topBoxName = "CASA";
@@ -11073,6 +11140,16 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     document.getElementById("prod-kpi-recurring").textContent = String(recurringCount);
     document.getElementById("prod-kpi-resched").textContent = String(reschedCount);
     document.getElementById("prod-kpi-topbox").textContent = `${topBoxName} (${topBoxCount})`;
+    const weeklyCompletedEl = document.getElementById("prod-kpi-week-completed");
+    const overdueNowEl = document.getElementById("prod-kpi-overdue");
+    const noDeadlineNowEl = document.getElementById("prod-kpi-no-deadline");
+    const dueSoonNowEl = document.getElementById("prod-kpi-due-soon");
+    const weekRangeEl = document.getElementById("prod-kpi-week-range");
+    if (weeklyCompletedEl) weeklyCompletedEl.textContent = String(completedThisWeek);
+    if (overdueNowEl) overdueNowEl.textContent = String(overdueNow);
+    if (noDeadlineNowEl) noDeadlineNowEl.textContent = String(withoutDeadlineNow);
+    if (dueSoonNowEl) dueSoonNowEl.textContent = String(dueSoonNow);
+    if (weekRangeEl) weekRangeEl.textContent = `${formatLearningDate(weekStart)} – ${formatLearningDate(weekEnd)}`;
 
     // Per-box breakdown list
     const breakdownEl = document.getElementById("prod-boxes-breakdown");
@@ -11549,7 +11626,20 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       btn.addEventListener("click", () => {
         playUiSound("tap");
         appState.activeTab = btn.dataset.tab;
+        appState.taskStatusFilter = "all";
         document.querySelectorAll("[data-tab]").forEach(b => b.classList.toggle("active", b === btn));
+        renderBoard();
+      });
+    });
+
+    document.querySelectorAll("[data-smart-filter]").forEach(button => {
+      button.addEventListener("click", () => {
+        appState.taskStatusFilter = button.dataset.smartFilter || "all";
+        appState.activeTab = "all";
+        document.querySelectorAll("[data-tab]").forEach(tab => {
+          tab.classList.toggle("active", tab.dataset.tab === "all");
+        });
+        playUiSound("tap");
         renderBoard();
       });
     });
@@ -11579,6 +11669,17 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     document.getElementById("btn-open-productivity").addEventListener("click", () => {
       playUiSound("tap");
       openProductivityModal();
+    });
+
+    const reminderOpenButton = document.getElementById("btn-open-deadline-reminders");
+    if (reminderOpenButton) reminderOpenButton.addEventListener("click", () => {
+      playUiSound("tap");
+      openDeadlineReminderModal();
+    });
+    const reminderSaveButton = document.getElementById("btn-save-deadline-reminders");
+    if (reminderSaveButton) reminderSaveButton.addEventListener("click", () => {
+      playUiSound("tap");
+      saveDeadlineReminderSettingsFromModal();
     });
 
     const birthdayOpenButton = document.getElementById("btn-open-birthdays");
@@ -12318,6 +12419,157 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     });
   }
 
+  const TASKY_DEADLINE_REMINDER_SETTINGS_KEY = "tasky_deadline_reminders_v1";
+  const TASKY_DEADLINE_REMINDER_SENT_KEY = "tasky_deadline_reminders_sent_v1";
+  let deadlineReminderSettings = { enabled: false, leadDays: 1, hour: 9 };
+  let deadlineReminderSentKeys = [];
+  let deadlineReminderTimer = null;
+
+  function loadDeadlineReminderSettings() {
+    try {
+      const raw = safeStorage.getItem(TASKY_DEADLINE_REMINDER_SETTINGS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const leadDays = Number(parsed && parsed.leadDays);
+        const hour = Number(parsed && parsed.hour);
+        deadlineReminderSettings = {
+          enabled: Boolean(parsed && parsed.enabled),
+          leadDays: [0, 1, 3].includes(leadDays) ? leadDays : 1,
+          hour: [8, 9, 12, 18].includes(hour) ? hour : 9
+        };
+      }
+    } catch (e) {}
+    try {
+      const sent = JSON.parse(safeStorage.getItem(TASKY_DEADLINE_REMINDER_SENT_KEY) || "[]");
+      deadlineReminderSentKeys = Array.isArray(sent) ? sent.filter(value => typeof value === "string").slice(-100) : [];
+    } catch (e) {
+      deadlineReminderSentKeys = [];
+    }
+  }
+
+  function persistDeadlineReminderSettings() {
+    safeStorage.setItem(TASKY_DEADLINE_REMINDER_SETTINGS_KEY, JSON.stringify(deadlineReminderSettings));
+  }
+
+  function getDeadlineReminderPermissionMessage() {
+    if (!("Notification" in window)) return "Este navegador no admite notificaciones del sistema.";
+    if (!window.isSecureContext) return "Las notificaciones requieren una conexión segura (HTTPS) o localhost.";
+    if (window.Notification.permission === "granted") return "Permiso concedido en este dispositivo.";
+    if (window.Notification.permission === "denied") {
+      return "El navegador bloqueó las notificaciones. Cambia el permiso de este sitio desde su configuración.";
+    }
+    return "Al guardar, el navegador te pedirá permiso para mostrar notificaciones.";
+  }
+
+  function renderDeadlineReminderSettings() {
+    const enabledInput = document.getElementById("deadline-reminders-enabled");
+    const leadInput = document.getElementById("deadline-reminder-lead");
+    const hourInput = document.getElementById("deadline-reminder-hour");
+    const permissionText = document.getElementById("deadline-reminder-permission");
+    const statusText = document.getElementById("deadline-reminder-status");
+    if (enabledInput) enabledInput.checked = Boolean(deadlineReminderSettings.enabled);
+    if (leadInput) leadInput.value = String(deadlineReminderSettings.leadDays);
+    if (hourInput) hourInput.value = String(deadlineReminderSettings.hour);
+    if (permissionText) permissionText.textContent = getDeadlineReminderPermissionMessage();
+    if (statusText) {
+      statusText.textContent = deadlineReminderSettings.enabled
+        ? `Activo · aviso a las ${String(deadlineReminderSettings.hour).padStart(2, "0")}:00`
+        : "Desactivado en este dispositivo";
+    }
+  }
+
+  function openDeadlineReminderModal() {
+    renderDeadlineReminderSettings();
+    const modal = document.getElementById("modal-deadline-reminders");
+    if (modal) modal.classList.add("open");
+  }
+
+  async function saveDeadlineReminderSettingsFromModal() {
+    const enabledInput = document.getElementById("deadline-reminders-enabled");
+    const leadInput = document.getElementById("deadline-reminder-lead");
+    const hourInput = document.getElementById("deadline-reminder-hour");
+    let enabled = Boolean(enabledInput && enabledInput.checked);
+    if (enabled) {
+      if (!("Notification" in window) || !window.isSecureContext) {
+        showToast("Este entorno no puede mostrar notificaciones del sistema.", true);
+        if (enabledInput) enabledInput.checked = false;
+        return;
+      }
+      let permission = window.Notification.permission;
+      if (permission === "default") {
+        try { permission = await window.Notification.requestPermission(); }
+        catch (error) { permission = "denied"; }
+      }
+      if (permission !== "granted") {
+        showToast("No se activaron los recordatorios porque falta el permiso de notificaciones.", true);
+        if (enabledInput) enabledInput.checked = false;
+        renderDeadlineReminderSettings();
+        return;
+      }
+    }
+    deadlineReminderSettings = {
+      enabled,
+      leadDays: [0, 1, 3].includes(Number(leadInput && leadInput.value)) ? Number(leadInput.value) : 1,
+      hour: [8, 9, 12, 18].includes(Number(hourInput && hourInput.value)) ? Number(hourInput.value) : 9
+    };
+    persistDeadlineReminderSettings();
+    renderDeadlineReminderSettings();
+    const modal = document.getElementById("modal-deadline-reminders");
+    if (modal) modal.classList.remove("open");
+    if (enabled) {
+      showToast("🔔 Recordatorios activados en este dispositivo.");
+      checkDeadlineReminders();
+    } else {
+      showToast("Recordatorios de vencimientos desactivados.");
+    }
+  }
+
+  function checkDeadlineReminders() {
+    if (!deadlineReminderSettings.enabled || !("Notification" in window) ||
+        window.Notification.permission !== "granted") return;
+    if (new Date().getHours() < deadlineReminderSettings.hour) return;
+    const today = getTodayISO();
+    const targetDeadline = addDaysISO(today, deadlineReminderSettings.leadDays);
+    const dueTasks = (appState.data.tasks || []).filter(task =>
+      task && !task.done && !task.noDeadline && getTaskDeadlineDate(task) === targetDeadline
+    );
+    if (!dueTasks.length) return;
+    const signature = dueTasks.map(task => String(task.id)).sort().join(",");
+    const sentKey = `${today}|${deadlineReminderSettings.leadDays}|${signature}`;
+    if (deadlineReminderSentKeys.includes(sentKey)) return;
+    const leadText = deadlineReminderSettings.leadDays === 0
+      ? "Vencen hoy"
+      : deadlineReminderSettings.leadDays === 1
+        ? "Vencen mañana"
+        : `Vencen en ${deadlineReminderSettings.leadDays} días`;
+    const names = dueTasks.slice(0, 3).map(task => task.title || "Tarea sin título");
+    const remaining = dueTasks.length - names.length;
+    const body = `${leadText}: ${names.join(" · ")}${remaining > 0 ? ` · y ${remaining} más` : ""}`;
+    try {
+      const notification = new window.Notification("Tasky · Recordatorio de vencimientos", {
+        body,
+        tag: `tasky-deadline-${today}-${deadlineReminderSettings.leadDays}`,
+        renotify: false
+      });
+      notification.onclick = () => { window.focus(); notification.close(); };
+      deadlineReminderSentKeys.push(sentKey);
+      deadlineReminderSentKeys = deadlineReminderSentKeys.slice(-100);
+      safeStorage.setItem(TASKY_DEADLINE_REMINDER_SENT_KEY, JSON.stringify(deadlineReminderSentKeys));
+    } catch (error) {}
+  }
+
+  function initDeadlineReminderScheduler() {
+    loadDeadlineReminderSettings();
+    if (deadlineReminderTimer) window.clearInterval(deadlineReminderTimer);
+    checkDeadlineReminders();
+    deadlineReminderTimer = window.setInterval(checkDeadlineReminders, 60000);
+    window.addEventListener("focus", checkDeadlineReminders);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") checkDeadlineReminders();
+    });
+    renderDeadlineReminderSettings();
+  }
+
   function boot() {
     initMobileAppNavigation();
     loadRegisteredData();
@@ -12334,6 +12586,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     initProTooltips();
     initEvents();
     renderBoard();
+    initDeadlineReminderScheduler();
     renderLearningGoalsPanel();
     renderBirthdayUpcomingList();
     document.documentElement.classList.remove("tasky-booting");
