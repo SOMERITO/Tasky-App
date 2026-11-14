@@ -7075,3 +7075,88 @@ body.focus-mode-open #boxes-container {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Searchable task-box emoji picker */
+.box-emoji-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: 2px 0 7px;
+}
+.box-emoji-search {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 38px 9px 39px;
+  border-radius: 11px;
+  font-size: .84rem;
+}
+.box-emoji-search-icon {
+  position: absolute;
+  left: 13px;
+  z-index: 1;
+  color: var(--muted);
+  pointer-events: none;
+}
+.box-emoji-search-clear {
+  position: absolute;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 27px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.box-emoji-search-clear:hover {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.box-emoji-search-clear[hidden] {
+  display: none !important;
+}
+.box-emoji-results {
+  min-height: 16px;
+  margin: 0 0 7px;
+  color: var(--muted);
+  font-size: .72rem;
+  line-height: 1.35;
+}
+.box-emoji-gallery {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 7px;
+  max-height: 252px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 3px 5px 1px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+.box-emoji-choice {
+  min-height: 43px;
+  font-size: 1.32rem;
+}
+@media (max-width: 480px) {
+  .box-emoji-gallery {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    max-height: 225px;
+    gap: 6px;
+  }
+  .box-emoji-choice {
+    min-height: 40px;
+    font-size: 1.22rem;
+  }
+  .box-emoji-search {
+    min-height: 40px;
+    font-size: .8rem;
+  }
+}
