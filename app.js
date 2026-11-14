@@ -8332,13 +8332,52 @@
         descriptionLines[2] = (lastLine || "").trimEnd() + "…";
       }
       const descriptionGap = descriptionLines.length ? 4 : 0;
+      const statusBadges = [];
+      if (task.noDeadline) {
+        statusBadges.push({
+          text: "∞ Sin fecha límite",
+          fill: "#eef2ff",
+          color: "#4338ca",
+          stroke: "#c7d2fe"
+        });
+      } else if (isTaskCarriedToTodayFromOverdue(task)) {
+        statusBadges.push({
+          text: "↪ Venía atrasada · Pasada para hoy · Vencía el " +
+            formatSpanishDateLong(getTaskOverdueDisplayDate(task)),
+          fill: "#eff6ff",
+          color: "#1d4ed8",
+          stroke: "#bfdbfe"
+        });
+      } else if (isTaskOverdue(task)) {
+        statusBadges.push({
+          text: "⚠️ Atrasada · " + formatOverdueDateLabel(getTaskOverdueDisplayDate(task)),
+          fill: "#fef2f2",
+          color: "#b91c1c",
+          stroke: "#fecaca"
+        });
+      }
+      const statusFontSize = 11;
+      const statusFont = "700 " + statusFontSize + "px " + (titleStyle.fontFamily || "Inter, sans-serif");
+      const statusLineHeight = 14;
+      const statusLayouts = statusBadges.map(badge => {
+        const badgeLines = wrapText(badge.text, statusFont, Math.max(70, titleMaxWidth - 16));
+        ctx.font = statusFont;
+        const textWidth = Math.max(...badgeLines.map(line => ctx.measureText(line).width));
+        const badgeWidth = Math.min(titleMaxWidth, Math.max(92, Math.ceil(textWidth + 18)));
+        const badgeHeight = Math.max(20, badgeLines.length * statusLineHeight + 8);
+        return { ...badge, lines: badgeLines, width: badgeWidth, height: badgeHeight };
+      });
+      const statusGap = statusLayouts.length ? 7 : 0;
+      const statusHeight = statusLayouts.reduce((sum, badge) => sum + badge.height, 0) +
+        Math.max(0, statusLayouts.length - 1) * 5;
       const textContentHeight = lines.length * lineHeight +
-        descriptionGap + descriptionLines.length * descriptionLineHeight;
+        descriptionGap + descriptionLines.length * descriptionLineHeight +
+        statusGap + statusHeight;
       const rowHeight = Math.max(54, textContentHeight + 24);
       taskLayouts.push({
         task, row, lines, font, fontSize, lineHeight, titleXOffset, titleMaxWidth,
         descriptionLines, descriptionFont, descriptionFontSize, descriptionLineHeight,
-        descriptionGap, rowHeight
+        descriptionGap, statusLayouts, statusFont, statusLineHeight, statusGap, rowHeight
       });
     });
 
@@ -8470,6 +8509,19 @@
           : "#64748b";
         drawLines(layout.descriptionLines, titleXInRow, descriptionY,
           layout.descriptionLineHeight, descriptionColor, layout.descriptionFont, layout.titleMaxWidth);
+      }
+
+      if (layout.statusLayouts && layout.statusLayouts.length) {
+        let statusY = textY + layout.lines.length * layout.lineHeight +
+          layout.descriptionGap + layout.descriptionLines.length * layout.descriptionLineHeight +
+          (layout.descriptionLines.length ? layout.statusGap : layout.statusGap);
+        layout.statusLayouts.forEach(badge => {
+          drawRoundedRect(titleXInRow, statusY, badge.width, badge.height, 8,
+            badge.fill, badge.stroke, 1);
+          drawLines(badge.lines, titleXInRow + 9, statusY + 4,
+            layout.statusLineHeight, badge.color, layout.statusFont, badge.width - 18);
+          statusY += badge.height + 5;
+        });
       }
       rowY += layout.rowHeight + 10;
     });
