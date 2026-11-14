@@ -629,26 +629,13 @@
             <button type="button" id="btn-clear-box-emoji" class="btn-secondary box-emoji-clear" aria-label="Quitar emoji" title="Quitar emoji">Quitar</button>
           </div>
           <p id="box-emoji-help" class="box-emoji-help">Pega tu propio emoji o elige uno de los siguientes.</p>
-          <div class="box-emoji-gallery" role="group" aria-label="Elegir un emoji para la casilla">
-            <button type="button" class="box-emoji-choice" data-box-emoji="🏠" aria-label="Casa" aria-pressed="false">🏠</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="🛒" aria-label="Mercado" aria-pressed="false">🛒</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="💼" aria-label="Oficina" aria-pressed="false">💼</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="📚" aria-label="Estudio" aria-pressed="false">📚</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="🎯" aria-label="Objetivos" aria-pressed="false">🎯</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="🧹" aria-label="Limpieza" aria-pressed="false">🧹</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="🛏️" aria-label="Dormitorio" aria-pressed="false">🛏️</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="🧺" aria-label="Ropa" aria-pressed="false">🧺</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="🍽️" aria-label="Comida" aria-pressed="false">🍽️</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="🚿" aria-label="Baño" aria-pressed="false">🚿</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="🏋️" aria-label="Ejercicio" aria-pressed="false">🏋️</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="💻" aria-label="Computadora" aria-pressed="false">💻</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="🚗" aria-label="Auto" aria-pressed="false">🚗</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="💰" aria-label="Finanzas" aria-pressed="false">💰</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="📦" aria-label="Paquetes" aria-pressed="false">📦</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="🐶" aria-label="Mascota" aria-pressed="false">🐶</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="🌱" aria-label="Hábitos" aria-pressed="false">🌱</button>
-            <button type="button" class="box-emoji-choice" data-box-emoji="✍️" aria-label="Escritura" aria-pressed="false">✍️</button>
+          <div class="box-emoji-search-wrap">
+            <svg class="box-emoji-search-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+            <input type="search" id="input-box-emoji-search" class="form-input box-emoji-search" placeholder="Buscar emoji: casa, trabajo, comida..." autocomplete="off" aria-label="Buscar un emoji por nombre o categoría" />
+            <button type="button" id="btn-clear-box-emoji-search" class="box-emoji-search-clear" aria-label="Limpiar búsqueda" title="Limpiar búsqueda" hidden>×</button>
           </div>
+          <p id="box-emoji-results" class="box-emoji-results" aria-live="polite">Elige entre la colección de emojis.</p>
+          <div id="box-emoji-gallery" class="box-emoji-gallery" role="group" aria-label="Elegir un emoji para la casilla"></div>
         </div>
 
         <div class="modal-footer">
