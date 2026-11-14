@@ -8342,8 +8342,7 @@
         });
       } else if (isTaskCarriedToTodayFromOverdue(task)) {
         statusBadges.push({
-          text: "↪ Venía atrasada · Pasada para hoy · Vencía el " +
-            formatSpanishDateLong(getTaskOverdueDisplayDate(task)),
+          text: "↪ Pasada para hoy",
           fill: "#eff6ff",
           color: "#1d4ed8",
           stroke: "#bfdbfe"
@@ -8356,28 +8355,50 @@
           stroke: "#fecaca"
         });
       }
-      const statusFontSize = 11;
+
+      // Keep status badges on the same baseline as the last title/description line.
+      // This preserves the original task-card height and prevents lower cards from drifting.
+      const statusFontSize = 10;
       const statusFont = "700 " + statusFontSize + "px " + (titleStyle.fontFamily || "Inter, sans-serif");
-      const statusLineHeight = 14;
-      const statusLayouts = statusBadges.map(badge => {
-        const badgeLines = wrapText(badge.text, statusFont, Math.max(70, titleMaxWidth - 16));
+      const statusLineHeight = 12;
+      let statusLayout = null;
+      let statusPosition = "";
+      if (statusBadges.length) {
+        const badge = statusBadges[0];
         ctx.font = statusFont;
-        const textWidth = Math.max(...badgeLines.map(line => ctx.measureText(line).width));
-        const badgeWidth = Math.min(titleMaxWidth, Math.max(92, Math.ceil(textWidth + 18)));
-        const badgeHeight = Math.max(20, badgeLines.length * statusLineHeight + 8);
-        return { ...badge, lines: badgeLines, width: badgeWidth, height: badgeHeight };
-      });
-      const statusGap = statusLayouts.length ? 7 : 0;
-      const statusHeight = statusLayouts.reduce((sum, badge) => sum + badge.height, 0) +
-        Math.max(0, statusLayouts.length - 1) * 5;
+        const measuredWidth = ctx.measureText(badge.text).width;
+        const badgeWidth = Math.min(166, Math.max(86, Math.ceil(measuredWidth + 16)));
+        const badgeText = (() => {
+          let value = badge.text;
+          while (value.length > 1 && ctx.measureText(value + "…").width > badgeWidth - 16) {
+            value = value.slice(0, -1);
+          }
+          return value.length < badge.text.length ? value.trimEnd() + "…" : value;
+        })();
+        statusLayout = { ...badge, text: badgeText, width: badgeWidth, height: 18 };
+        statusPosition = descriptionLines.length ? "description" : "title";
+
+        const textFont = statusPosition === "description" ? descriptionFont : font;
+        const textLines = statusPosition === "description" ? descriptionLines : lines;
+        const availableTextWidth = Math.max(42, titleMaxWidth - badgeWidth - 10);
+        ctx.font = textFont;
+        const lastIndex = textLines.length - 1;
+        let lastLine = textLines[lastIndex] || "";
+        while (lastLine.length > 1 && ctx.measureText(lastLine + "…").width > availableTextWidth) {
+          lastLine = lastLine.slice(0, -1);
+        }
+        textLines[lastIndex] = lastLine.length < (textLines[lastIndex] || "").length
+          ? lastLine.trimEnd() + "…"
+          : lastLine;
+      }
+
       const textContentHeight = lines.length * lineHeight +
-        descriptionGap + descriptionLines.length * descriptionLineHeight +
-        statusGap + statusHeight;
+        descriptionGap + descriptionLines.length * descriptionLineHeight;
       const rowHeight = Math.max(54, textContentHeight + 24);
       taskLayouts.push({
         task, row, lines, font, fontSize, lineHeight, titleXOffset, titleMaxWidth,
         descriptionLines, descriptionFont, descriptionFontSize, descriptionLineHeight,
-        descriptionGap, statusLayouts, statusFont, statusLineHeight, statusGap, rowHeight
+        descriptionGap, statusLayout, statusPosition, statusFont, statusLineHeight, rowHeight
       });
     });
 
@@ -8511,17 +8532,27 @@
           layout.descriptionLineHeight, descriptionColor, layout.descriptionFont, layout.titleMaxWidth);
       }
 
-      if (layout.statusLayouts && layout.statusLayouts.length) {
-        let statusY = textY + layout.lines.length * layout.lineHeight +
-          layout.descriptionGap + layout.descriptionLines.length * layout.descriptionLineHeight +
-          (layout.descriptionLines.length ? layout.statusGap : layout.statusGap);
-        layout.statusLayouts.forEach(badge => {
-          drawRoundedRect(titleXInRow, statusY, badge.width, badge.height, 8,
-            badge.fill, badge.stroke, 1);
-          drawLines(badge.lines, titleXInRow + 9, statusY + 4,
-            layout.statusLineHeight, badge.color, layout.statusFont, badge.width - 18);
-          statusY += badge.height + 5;
-        });
+      if (layout.statusLayout) {
+        const isDescriptionLine = layout.statusPosition === "description";
+        const statusLines = isDescriptionLine ? layout.descriptionLines : layout.lines;
+        const statusLine = statusLines[statusLines.length - 1] || "";
+        const statusTextFont = isDescriptionLine ? layout.descriptionFont : layout.font;
+        const statusTextLineHeight = isDescriptionLine ? layout.descriptionLineHeight : layout.lineHeight;
+        const statusTextY = isDescriptionLine
+          ? textY + layout.lines.length * layout.lineHeight + layout.descriptionGap +
+            (layout.descriptionLines.length - 1) * layout.descriptionLineHeight
+          : textY + (layout.lines.length - 1) * layout.lineHeight;
+        ctx.save();
+        ctx.font = statusTextFont;
+        const statusX = titleXInRow + ctx.measureText(statusLine).width + 7;
+        ctx.restore();
+        const badgeX = Math.min(statusX, rowX + rowWidth - layout.statusLayout.width - 12);
+        const badgeY = statusTextY + Math.max(0, (statusTextLineHeight - layout.statusLayout.height) / 2);
+        drawRoundedRect(badgeX, badgeY, layout.statusLayout.width, layout.statusLayout.height, 7,
+          layout.statusLayout.fill, layout.statusLayout.stroke, 1);
+        drawLines([layout.statusLayout.text], badgeX + 8, badgeY + 3,
+          layout.statusLineHeight, layout.statusLayout.color, layout.statusFont,
+          layout.statusLayout.width - 16);
       }
       rowY += layout.rowHeight + 10;
     });
