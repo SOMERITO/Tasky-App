@@ -10938,6 +10938,187 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     setTimeout(() => input.focus(), 60);
   }
 
+  // Curated, searchable emoji catalogue for task boxes. The browser/device
+  // renders native emoji artwork (Apple style on iPhone and Apple devices).
+  const BOX_EMOJI_OPTIONS = [
+    ["🏠", "Casa", "hogar vivienda familia"],
+    ["🏡", "Casa con jardín", "hogar vivienda jardin"],
+    ["🏢", "Edificio", "oficina trabajo empresa"],
+    ["🏬", "Centro comercial", "tienda compras mercado"],
+    ["🏪", "Tienda", "negocio ventas mercado"],
+    ["🛒", "Mercado", "compras supermercado carrito"],
+    ["🛍️", "Compras", "tienda bolsas ropa shopping"],
+    ["🧾", "Boletas", "recibos pagos facturas"],
+    ["💳", "Tarjetas", "banco pagos credito debito"],
+    ["💵", "Dinero", "efectivo billetes finanzas"],
+    ["💰", "Ahorros", "dinero finanzas presupuesto"],
+    ["🏦", "Banco", "finanzas cuenta banco"],
+    ["📈", "Inversiones", "finanzas ahorro crecimiento"],
+    ["📉", "Presupuesto", "gastos balance finanzas"],
+    ["💼", "Trabajo", "oficina empleo empresa laboral"],
+    ["🗂️", "Archivos", "documentos carpetas oficina"],
+    ["📁", "Carpeta", "archivos documentos trabajo"],
+    ["📎", "Documentos", "papeles oficina pendientes"],
+    ["📝", "Notas", "apuntes escribir lista"],
+    ["📌", "Pendientes", "tareas importante pin"],
+    ["📅", "Calendario", "agenda fechas planificar"],
+    ["⏰", "Tiempo", "reloj alarma horario"],
+    ["🎯", "Objetivos", "metas enfoque productividad"],
+    ["✅", "Completado", "hecho listo terminado"],
+    ["📊", "Estadísticas", "datos reportes productividad"],
+    ["💡", "Ideas", "creatividad inspiración"],
+    ["📚", "Estudio", "libros aprendizaje colegio universidad"],
+    ["📖", "Lectura", "libro leer literatura"],
+    ["✏️", "Escritura", "lapiz tareas apuntes"],
+    ["✍️", "Redacción", "escribir caligrafia"],
+    ["🎓", "Educación", "estudios graduacion universidad"],
+    ["🏫", "Colegio", "escuela clases alumnos"],
+    ["🧮", "Matemáticas", "numeros calculo operaciones"],
+    ["🔬", "Ciencia", "laboratorio investigacion"],
+    ["🧪", "Experimentos", "quimica laboratorio"],
+    ["💻", "Computadora", "tecnologia laptop trabajo"],
+    ["🖥️", "Monitor", "pc computadora escritorio"],
+    ["📱", "Celular", "movil telefono smartphone"],
+    ["⌨️", "Teclado", "computacion tecnologia"],
+    ["🖨️", "Impresora", "impresiones oficina documentos"],
+    ["📷", "Fotografía", "camara fotos imagenes"],
+    ["🎨", "Diseño", "arte pintura creatividad"],
+    ["🎬", "Videos", "peliculas edicion cine"],
+    ["🎧", "Audio", "musica auriculares sonido"],
+    ["🎮", "Videojuegos", "juegos consola gaming"],
+    ["🧹", "Limpieza", "aseo ordenar limpiar"],
+    ["🧽", "Lavar", "limpieza cocina esponja"],
+    ["🧺", "Ropa", "lavanderia lavar canasta"],
+    ["🧼", "Higiene", "limpieza jabon cuidado"],
+    ["🛏️", "Dormitorio", "cama habitacion descanso"],
+    ["🛋️", "Sala", "muebles hogar sofa"],
+    ["🚿", "Baño", "ducha aseo"],
+    ["🪥", "Higiene dental", "dientes cepillo salud"],
+    ["🪴", "Plantas", "jardin macetas hogar"],
+    ["🌱", "Hábitos", "crecimiento rutina naturaleza"],
+    ["🌻", "Jardín", "flores plantas naturaleza"],
+    ["🍳", "Cocina", "desayuno cocinar sarten"],
+    ["🥘", "Comida", "almuerzo preparar cocinar"],
+    ["🍽️", "Alimentación", "platos comida comedor"],
+    ["🥗", "Ensaladas", "comida saludable verduras"],
+    ["🍎", "Frutas", "alimentos nutricion"],
+    ["☕", "Café", "bebidas desayuno pausa"],
+    ["🧊", "Bebidas", "hielo agua cocina"],
+    ["🥫", "Despensa", "conservas alimentos mercado"],
+    ["🍰", "Postres", "dulces reposteria"],
+    ["🧑‍🍳", "Cocinar", "chef recetas cocina"],
+    ["🏋️", "Gimnasio", "ejercicio pesas entrenamiento"],
+    ["🏃", "Correr", "deporte cardio running"],
+    ["🚴", "Ciclismo", "bicicleta deporte"],
+    ["🧘", "Bienestar", "yoga meditacion relajacion"],
+    ["⚽", "Fútbol", "deportes pelota"],
+    ["🏀", "Básquet", "baloncesto deporte"],
+    ["🏐", "Vóley", "voleibol deporte"],
+    ["🏊", "Natación", "piscina deporte"],
+    ["🥇", "Logros", "metas premios primer lugar"],
+    ["❤️", "Salud", "corazon bienestar"],
+    ["🩺", "Medicina", "doctor consulta salud"],
+    ["💊", "Medicinas", "farmacia tratamiento"],
+    ["🦷", "Dentista", "odontologia dientes"],
+    ["🧠", "Mental", "mente psicologia bienestar"],
+    ["🐶", "Perro", "mascota animal perro"],
+    ["🐱", "Gato", "mascota animal gato"],
+    ["🐾", "Mascotas", "animales veterinaria"],
+    ["🐰", "Conejo", "mascota animal"],
+    ["🐦", "Aves", "pajaro mascota animales"],
+    ["👨‍👩‍👧‍👦", "Familia", "hijos padres hogar"],
+    ["👶", "Bebé", "bebe niños familia"],
+    ["🧒", "Niños", "hijos colegio familia"],
+    ["🎂", "Cumpleaños", "fiesta celebracion"],
+    ["🎁", "Regalos", "obsequios cumpleaños"],
+    ["🎉", "Celebración", "fiesta evento"],
+    ["❤️‍🔥", "Amor", "pareja cariño corazon"],
+    ["💌", "Mensajes", "cartas comunicacion"],
+    ["📞", "Llamadas", "telefono contacto"],
+    ["✉️", "Correo", "email mensajes"],
+    ["🚗", "Auto", "carro vehiculo transporte"],
+    ["🚕", "Taxi", "transporte movilidad"],
+    ["🚌", "Bus", "autobus transporte"],
+    ["🚲", "Bicicleta", "movilidad transporte"],
+    ["✈️", "Viajes", "avion vacaciones turismo"],
+    ["🧳", "Maletas", "equipaje viaje"],
+    ["🗺️", "Mapa", "ubicacion rutas viaje"],
+    ["📍", "Ubicación", "lugar direccion mapa"],
+    ["⛽", "Combustible", "gasolina auto"],
+    ["🔧", "Reparaciones", "herramientas mantenimiento"],
+    ["🛠️", "Proyectos", "construccion herramientas"],
+    ["🔨", "Arreglos", "martillo reparaciones"],
+    ["📦", "Paquetes", "envios cajas pedidos"],
+    ["🚚", "Entregas", "delivery transporte"],
+    ["🌎", "Mundo", "planeta medio ambiente"],
+    ["🌳", "Naturaleza", "arbol ambiente"],
+    ["☀️", "Sol", "clima verano energia"],
+    ["🌧️", "Lluvia", "clima invierno"],
+    ["🔥", "Importante", "urgente prioridad"],
+    ["⭐", "Favoritos", "destacado especial"],
+    ["🔔", "Avisos", "notificaciones recordatorios"],
+    ["🔒", "Seguridad", "privacidad claves"],
+    ["🧰", "Herramientas", "reparar caja herramientas"],
+    ["🧵", "Costura", "ropa manualidades"],
+    ["🪡", "Manualidades", "coser aguja"],
+    ["🧩", "Rompecabezas", "juegos retos"],
+    ["🎵", "Música", "canciones sonido"],
+    ["🎸", "Guitarra", "instrumento musica"],
+    ["🏕️", "Camping", "aire libre aventura"],
+    ["🏖️", "Playa", "vacaciones mar"],
+    ["🏞️", "Paseos", "naturaleza excursiones"],
+    ["🛐", "Reflexión", "espiritualidad momento personal"],
+    ["🙏", "Agradecimiento", "gratitud apoyo"],
+    ["🕯️", "Calma", "pausa tranquilidad"],
+    ["🧑‍🚒", "Bomberos", "emergencia rescate compañía"],
+    ["🚒", "Compañía", "bomberos emergencia incendio"],
+    ["🚑", "Emergencias", "ambulancia salud rescate"],
+    ["🦺", "Seguridad", "proteccion trabajo"],
+    ["🪖", "Capacitación", "entrenamiento equipo"],
+    ["📣", "Anuncios", "comunicados avisos"],
+    ["🏆", "Premios", "logros objetivos"],
+    ["🧭", "Planificación", "direccion orientación"],
+    ["🪄", "Creatividad", "ideas magia"],
+    ["💬", "Conversaciones", "chat mensajes"],
+    ["🌈", "Inspiración", "colores creatividad"]
+  ];
+
+  function renderBoxEmojiGallery() {
+    const gallery = document.getElementById("box-emoji-gallery");
+    const searchInput = document.getElementById("input-box-emoji-search");
+    const clearSearch = document.getElementById("btn-clear-box-emoji-search");
+    const resultsLabel = document.getElementById("box-emoji-results");
+    if (!gallery) return;
+
+    const query = normalizeTaskSearchText(searchInput ? searchInput.value : "");
+    if (clearSearch) clearSearch.hidden = !query;
+    const filtered = BOX_EMOJI_OPTIONS.filter(([emoji, label, keywords]) => {
+      if (!query) return true;
+      const searchable = normalizeTaskSearchText(`${label} ${keywords} ${emoji}`);
+      return searchable.includes(query);
+    });
+
+    gallery.innerHTML = "";
+    filtered.forEach(([emoji, label]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "box-emoji-choice";
+      button.dataset.boxEmoji = emoji;
+      button.textContent = emoji;
+      button.title = label;
+      button.setAttribute("aria-label", label);
+      button.setAttribute("aria-pressed", "false");
+      gallery.appendChild(button);
+    });
+
+    if (resultsLabel) {
+      resultsLabel.textContent = query
+        ? (filtered.length ? `${filtered.length} emoji${filtered.length === 1 ? "" : "s"} para «${searchInput.value.trim()}»` : `No encontré emojis para «${searchInput.value.trim()}».`)
+        : `${BOX_EMOJI_OPTIONS.length} emojis disponibles · busca por nombre o categoría.`;
+    }
+    syncBoxEmojiPickerUI();
+  }
+
   function syncBoxEmojiPickerUI() {
     const input = document.getElementById("input-box-emoji");
     const selected = String(input ? input.value : "").trim();
@@ -10954,6 +11135,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     const titleEl = document.getElementById("modal-box-title");
     const nameInput = document.getElementById("input-box-name");
     const emojiInput = document.getElementById("input-box-emoji");
+    const emojiSearchInput = document.getElementById("input-box-emoji-search");
+    if (emojiSearchInput) emojiSearchInput.value = "";
 
     if (boxId) {
       const box = appState.data.boxes.find(b => b.id === boxId);
@@ -12093,18 +12276,42 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       });
     }
 
-    // Optional emoji for casillas: select from the quick gallery or paste an emoji directly.
+    // Searchable emoji gallery; native system artwork is used on each device.
     const boxEmojiInput = document.getElementById("input-box-emoji");
+    const boxEmojiSearchInput = document.getElementById("input-box-emoji-search");
+    const boxEmojiGallery = document.getElementById("box-emoji-gallery");
+    const clearBoxEmojiSearchButton = document.getElementById("btn-clear-box-emoji-search");
     if (boxEmojiInput) {
       boxEmojiInput.addEventListener("input", syncBoxEmojiPickerUI);
-      document.querySelectorAll("[data-box-emoji]").forEach(button => {
-        button.addEventListener("click", () => {
+      renderBoxEmojiGallery();
+      if (boxEmojiSearchInput) {
+        boxEmojiSearchInput.addEventListener("input", renderBoxEmojiGallery);
+        boxEmojiSearchInput.addEventListener("keydown", event => {
+          if (event.key === "Escape" && boxEmojiSearchInput.value) {
+            boxEmojiSearchInput.value = "";
+            renderBoxEmojiGallery();
+          }
+        });
+      }
+      if (clearBoxEmojiSearchButton) {
+        clearBoxEmojiSearchButton.addEventListener("click", () => {
+          if (boxEmojiSearchInput) {
+            boxEmojiSearchInput.value = "";
+            renderBoxEmojiGallery();
+            boxEmojiSearchInput.focus();
+          }
+        });
+      }
+      if (boxEmojiGallery) {
+        boxEmojiGallery.addEventListener("click", event => {
+          const button = event.target.closest("[data-box-emoji]");
+          if (!button) return;
           boxEmojiInput.value = button.dataset.boxEmoji;
           syncBoxEmojiPickerUI();
           boxEmojiInput.focus();
           playUiSound("tap");
         });
-      });
+      }
       const clearBoxEmojiButton = document.getElementById("btn-clear-box-emoji");
       if (clearBoxEmojiButton) {
         clearBoxEmojiButton.addEventListener("click", () => {
