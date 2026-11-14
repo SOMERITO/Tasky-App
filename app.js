@@ -11149,6 +11149,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       nameInput.value = "";
       if (emojiInput) emojiInput.value = "";
     }
+    renderBoxEmojiGallery();
     syncBoxEmojiPickerUI();
     modal.classList.add("open");
     setTimeout(() => nameInput.focus(), 60);
