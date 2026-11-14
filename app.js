@@ -5732,6 +5732,8 @@
       const count = button.querySelector(".task-smart-filter-count");
       if (count) count.textContent = String(counts[value] || 0);
     });
+    const boxToggle = document.getElementById("btn-toggle-all-boxes");
+    if (boxToggle) boxToggle.hidden = (appState.taskStatusFilter || "all") !== "all";
     const summary = document.getElementById("task-smart-filter-summary");
     if (summary) {
       const labels = {
@@ -8740,7 +8742,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       subBadges += '<span class="task-duplicate-marker" role="img" aria-label="Tarea duplicada" title="Esta tarea se registró aunque ya existía una tarea con el mismo nombre.">R</span>';
     }
     if (showOriginBox && box) {
-      subBadges += `<span class="box-pill neutral" style="font-size:0.68rem;">${escapeHtml(box.name)}</span>`;
+      subBadges += `<span class="box-pill neutral task-origin-box-tag" title="Casilla de origen">${escapeHtml(box.name)}</span>`;
     }
 
     item.innerHTML = `
@@ -11925,6 +11927,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       button.addEventListener("click", () => {
         appState.taskStatusFilter = button.dataset.smartFilter || "all";
         appState.activeTab = "all";
+        const focusPanel = document.getElementById("focus-mode-panel");
+        if (focusPanel && !focusPanel.hidden) setFocusModeVisibility(false);
         document.querySelectorAll("[data-tab]").forEach(tab => {
           tab.classList.toggle("active", tab.dataset.tab === "all");
         });
