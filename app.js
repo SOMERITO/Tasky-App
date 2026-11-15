@@ -7334,7 +7334,7 @@
           const repeatedIncoming = [];
           const duplicateTaskIndexes = [];
           taskTitles.forEach((title, index) => {
-            const key = normalizeDuplicateTitle(title);
+            const key = normalizeDuplicateTaskTitle(title);
             if (existingDuplicateKeys.has(key) || seenIncoming.has(key)) {
               duplicateTaskIndexes.push(index);
             }
