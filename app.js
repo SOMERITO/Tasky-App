@@ -9901,7 +9901,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
             : "Sin fecha programada";
         return '<div class="duplicate-audit-occurrence">' +
           '<span class="duplicate-audit-occurrence-number">#' + (index + 1) + '</span>' +
-          '<div class="duplicate-audit-occurrence-copy"><strong>' + status + '</strong><small>' + escapeHtml(dateLabel) + '</small></div>' +
+          '<div class="duplicate-audit-occurrence-copy"><strong>Fecha de la tarea</strong><small>' + escapeHtml(dateLabel) + '</small></div>' +
           '<span class="duplicate-audit-status ' + statusClass + '">' + status + '</span>' +
           '</div>';
       }).join("");
