@@ -5593,6 +5593,41 @@
       task.dueDate && task.dueDate > today && !task.isRescheduled);
   }
 
+  function normalizeDuplicateTaskTitle(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .replace(/\s+/g, " ");
+  }
+
+  function getDuplicateTaskGroupsInBox(boxId) {
+    const groups = new Map();
+    (appState.data.tasks || []).forEach(task => {
+      if (String(task.boxId) !== String(boxId)) return;
+      const key = normalizeDuplicateTaskTitle(task.title);
+      if (!key) return;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(task);
+    });
+    return Array.from(groups.values())
+      .filter(group => group.length > 1)
+      .sort((a, b) => String(a[0].title || "").localeCompare(String(b[0].title || ""), "es"));
+  }
+
+  function isTaskDuplicateWithinBox(task) {
+    if (!task) return false;
+    const key = normalizeDuplicateTaskTitle(task.title);
+    if (!key) return false;
+    return (appState.data.tasks || []).some(other =>
+      other !== task &&
+      String(other.boxId) === String(task.boxId) &&
+      normalizeDuplicateTaskTitle(other.title) === key
+    );
+  }
+
   function isRecurringTask(task) {
     return Boolean(task && (
       task.frequency !== "once" ||
@@ -7279,30 +7314,19 @@
         }
 
         if (!options.skipDuplicateCheck) {
-          const normalizeDuplicateTitle = value => String(value || "")
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, " ")
-            .trim()
-            .replace(/\s+/g, " ");
-          const incomingKeys = new Set(taskTitles.map(normalizeDuplicateTitle).filter(Boolean));
+          const incomingKeys = new Set(taskTitles.map(normalizeDuplicateTaskTitle).filter(Boolean));
           const existingMatches = new Map();
           const existingDuplicateKeys = new Set();
 
           (appState.data.tasks || []).forEach(existingTask => {
-            const normalizedTitle = normalizeDuplicateTitle(existingTask.title);
+            if (String(existingTask.boxId) !== String(box.id)) return;
+            const normalizedTitle = normalizeDuplicateTaskTitle(existingTask.title);
             if (!incomingKeys.has(normalizedTitle)) return;
             existingDuplicateKeys.add(normalizedTitle);
-            const existingBox = appState.data.boxes.find(item => String(item.id) === String(existingTask.boxId));
             const status = existingTask.done ? "completada" : "pendiente";
-            const matchKey = `${normalizedTitle}| ${existingTask.boxId}| ${status}`;
+            const matchKey = normalizedTitle + "|" + status;
             if (!existingMatches.has(matchKey)) {
-              existingMatches.set(matchKey, {
-                title: existingTask.title,
-                boxName: existingBox ? existingBox.name : "Otra casilla",
-                status
-              });
+              existingMatches.set(matchKey, { title: existingTask.title, status });
             }
           });
 
@@ -7323,18 +7347,18 @@
             const messageEl = document.getElementById("confirm-modal-msg");
             const proceedBtn = document.getElementById("btn-confirm-proceed");
             if (titleEl && messageEl && proceedBtn) {
-              const preview = Array.from(existingMatches.values())
-                .slice(0, 4)
-                .map(match => `«${match.title}» — ${match.boxName} (${match.status})`);
+              const preview = Array.from(existingMatches.values()).slice(0, 4)
+                .map(match => "«" + match.title + "» (" + match.status + ")");
               const moreCount = Math.max(0, existingMatches.size - preview.length);
               const messageParts = [];
               if (preview.length) {
-                messageParts.push(`Encontré una tarea con el mismo nombre: ${preview.join("; ")}${moreCount ? `; y ${moreCount} coincidencia(s) más` : ""}.`);
+                messageParts.push("Ya existe en esta casilla: " + preview.join("; ") +
+                  (moreCount ? "; y " + moreCount + " coincidencia(s) más" : "") + ".");
               }
               if (repeatedIncoming.length) {
                 messageParts.push(`La lista que vas a registrar también repite: ${repeatedIncoming.slice(0, 3).map(item => `«${item}»`).join(", ")}.`);
               }
-              titleEl.textContent = "Esta tarea ya podría existir";
+              titleEl.textContent = "Esta tarea ya existe en esta casilla";
               messageEl.textContent = `${messageParts.join(" ")} ¿Deseas registrarla de todos modos?`;
               proceedBtn.textContent = "Registrar de todos modos";
               proceedBtn.style.background = "var(--primary)";
@@ -8738,8 +8762,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     } else if (isResched) {
       subBadges += `<span class="task-resched-tag">🕒 Reprogramada · ${escapeHtml(formatSpanishDateLong(task.dueDate))}</span>`;
     }
-    if (task.isDuplicate) {
-      subBadges += '<span class="task-duplicate-marker" role="img" aria-label="Tarea duplicada" title="Esta tarea se registró aunque ya existía una tarea con el mismo nombre.">R</span>';
+    if (isTaskDuplicateWithinBox(task)) {
+      subBadges += '<button type="button" class="task-duplicate-marker" data-task-action="duplicate-audit" aria-label="Ver tareas repetidas en esta casilla" title="Ver todas las tareas con el mismo nombre dentro de esta casilla">R</button>';
     }
     if (showOriginBox && box) {
       subBadges += `<span class="box-pill neutral task-origin-box-tag" title="Casilla de origen">${escapeHtml(box.name)}</span>`;
@@ -8822,6 +8846,15 @@ function createTaskRowElement(task, box, showOriginBox = false) {
 
     const checkBtn = item.querySelector(".task-check-circle");
     checkBtn.addEventListener("click", () => toggleTaskDone(task.id, checkBtn));
+
+    const duplicateAuditButton = item.querySelector('[data-task-action="duplicate-audit"]');
+    if (duplicateAuditButton) {
+      duplicateAuditButton.addEventListener("click", event => {
+        event.stopPropagation();
+        playUiSound("tap");
+        openBoxDuplicateAudit(task.boxId, task.id);
+      });
+    }
     item.querySelector(".task-title").addEventListener("click", () => {
       if (dragEngine.justDragged) return;
       playUiSound("modalOpen");
@@ -9822,6 +9855,78 @@ function createTaskRowElement(task, box, showOriginBox = false) {
         </div>
       </article>`;
     }).join("");
+  }
+
+
+  let duplicateAuditBoxId = null;
+
+  function renderBoxDuplicateAudit(boxId, sourceTaskId = null) {
+    const box = appState.data.boxes.find(item => String(item.id) === String(boxId));
+    const subtitle = document.getElementById("duplicate-audit-subtitle");
+    const summaryTitle = document.getElementById("duplicate-audit-summary-title");
+    const summaryText = document.getElementById("duplicate-audit-summary-text");
+    const taskList = document.getElementById("duplicate-audit-task-list");
+    if (!box || !subtitle || !summaryTitle || !summaryText || !taskList) return;
+
+    const groups = getDuplicateTaskGroupsInBox(box.id);
+    const sourceGroupIndex = groups.findIndex(group =>
+      group.some(task => String(task.id) === String(sourceTaskId))
+    );
+    if (sourceGroupIndex > 0) groups.unshift(groups.splice(sourceGroupIndex, 1)[0]);
+
+    const totalTasks = groups.reduce((total, group) => total + group.length, 0);
+    subtitle.textContent = groups.length
+      ? groups.length + (groups.length === 1 ? " nombre repetido" : " nombres repetidos") + " en " + box.name
+      : "No hay tareas con el mismo nombre dentro de esta casilla";
+    summaryTitle.textContent = groups.length
+      ? totalTasks + " tareas agrupadas en " + groups.length + (groups.length === 1 ? " coincidencia" : " coincidencias")
+      : "No se detectaron tareas repetidas";
+    summaryText.textContent = "Solo se comparan tareas de esta casilla. Los nombres iguales en otras casillas no se consideran repeticiones.";
+
+    if (!groups.length) {
+      taskList.innerHTML = '<div class="duplicate-audit-empty"><span aria-hidden="true">✓</span><strong>No hay tareas repetidas en esta casilla</strong><p>Cuando dos o más tareas compartan el mismo nombre aquí, aparecerán en este registro.</p></div>';
+      return;
+    }
+
+    taskList.innerHTML = groups.map((group, groupIndex) => {
+      const title = String(group[0].title || "");
+      const occurrences = group.map((task, index) => {
+        const isOverdue = !task.done && isTaskOverdue(task);
+        const status = task.done ? "Completada" : isOverdue ? "Atrasada" : "Pendiente";
+        const statusClass = task.done ? "is-completed" : isOverdue ? "is-overdue" : "is-pending";
+        const dateLabel = task.noDeadline
+          ? "Sin fecha límite"
+          : task.dueDate
+            ? "Programada para " + formatSpanishDateLong(String(task.dueDate).slice(0, 10))
+            : "Sin fecha programada";
+        return '<div class="duplicate-audit-occurrence">' +
+          '<span class="duplicate-audit-occurrence-number">#' + (index + 1) + '</span>' +
+          '<div class="duplicate-audit-occurrence-copy"><strong>' + status + '</strong><small>' + escapeHtml(dateLabel) + '</small></div>' +
+          '<span class="duplicate-audit-status ' + statusClass + '">' + status + '</span>' +
+          '</div>';
+      }).join("");
+
+      return '<article class="duplicate-audit-group-card ' + (groupIndex === 0 && sourceGroupIndex >= 0 ? "is-focused" : "") + '">' +
+        '<div class="duplicate-audit-group-heading">' +
+          '<span class="duplicate-audit-group-mark" aria-hidden="true">R</span>' +
+          '<div><strong>' + escapeHtml(title) + '</strong><span>' + group.length + ' tareas con este mismo nombre</span></div>' +
+        '</div>' +
+        '<div class="duplicate-audit-occurrences">' + occurrences + '</div>' +
+        '</article>';
+    }).join("");
+  }
+
+  function openBoxDuplicateAudit(boxId, sourceTaskId = null) {
+    duplicateAuditBoxId = String(boxId);
+    renderBoxDuplicateAudit(boxId, sourceTaskId);
+    const modal = document.getElementById("modal-duplicate-audit");
+    if (modal) modal.classList.add("open");
+  }
+
+  function closeBoxDuplicateAudit() {
+    const modal = document.getElementById("modal-duplicate-audit");
+    if (modal) modal.classList.remove("open");
+    duplicateAuditBoxId = null;
   }
 
   function openBoxRecurringAudit(boxId) {
@@ -12098,6 +12203,15 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     if (recurringAuditModal) recurringAuditModal.addEventListener("click", event => {
       if (event.target === recurringAuditModal) closeBoxRecurringAudit();
     });
+    const duplicateAuditModal = document.getElementById("modal-duplicate-audit");
+    const duplicateAuditClose = document.getElementById("btn-close-duplicate-audit");
+    const duplicateAuditCloseFooter = document.getElementById("btn-close-duplicate-audit-footer");
+    if (duplicateAuditClose) duplicateAuditClose.addEventListener("click", closeBoxDuplicateAudit);
+    if (duplicateAuditCloseFooter) duplicateAuditCloseFooter.addEventListener("click", closeBoxDuplicateAudit);
+    if (duplicateAuditModal) duplicateAuditModal.addEventListener("click", event => {
+      if (event.target === duplicateAuditModal) closeBoxDuplicateAudit();
+    });
+
     if (recurringAuditTaskList) recurringAuditTaskList.addEventListener("click", event => {
       const daysEditButton = event.target.closest("[data-repeat-audit-edit-task]");
       const titleEditButton = event.target.closest("[data-repeat-audit-edit-title-task]");
