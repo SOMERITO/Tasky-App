@@ -75,6 +75,8 @@ function setMessage(text, isError = false) {
 }
 
 function showLogin(text = "") {
+  document.documentElement.removeAttribute("data-tasky-workspace");
+  document.documentElement.removeAttribute("data-tasky-role");
   if (loginPanel) loginPanel.hidden = false;
   if (picker) picker.hidden = true;
   pickerOpen = false;
