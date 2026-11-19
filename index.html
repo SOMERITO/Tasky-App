@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" class="tasky-booting">
+<html lang="es" class="tasky-booting tasky-auth-required">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -40,6 +40,39 @@
   <!-- Point 4: Fast, Minimal Notification Pill Positioned Below Top Navbar -->
   <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
 
+  <div id="tasky-auth-gate" class="tasky-auth-gate" role="dialog" aria-modal="true" aria-labelledby="tasky-auth-title">
+    <div class="tasky-auth-panel">
+      <div class="tasky-auth-brand">
+        <div class="tasky-auth-mark" aria-hidden="true">T</div>
+        <div>
+          <p class="tasky-auth-eyebrow">ORGANIZACIÓN PERSONAL Y FAMILIAR</p>
+          <h1 id="tasky-auth-title">Bienvenido a Tasky</h1>
+          <p class="tasky-auth-subtitle">Inicia sesión para entrar a tus espacios.</p>
+        </div>
+      </div>
+
+      <form id="tasky-login-form" class="tasky-auth-form" novalidate>
+        <label for="tasky-login-email">Correo electrónico</label>
+        <input id="tasky-login-email" name="email" type="email" autocomplete="username" required placeholder="tu@correo.com" />
+        <label for="tasky-login-password">Contraseña</label>
+        <input id="tasky-login-password" name="password" type="password" autocomplete="current-password" required placeholder="Tu contraseña" />
+        <button id="tasky-login-submit" class="tasky-auth-primary" type="submit">Iniciar sesión</button>
+        <button id="tasky-password-reset" class="tasky-auth-link" type="button">Olvidé mi contraseña</button>
+      </form>
+
+      <section id="tasky-workspace-picker" class="tasky-workspace-picker" hidden>
+        <p class="tasky-auth-eyebrow">TU CUENTA</p>
+        <h2>Elige tu espacio</h2>
+        <p id="tasky-auth-user-label" class="tasky-auth-subtitle"></p>
+        <div id="tasky-workspace-options" class="tasky-workspace-options"></div>
+        <button id="tasky-auth-signout" class="tasky-auth-link" type="button">Cerrar sesión</button>
+      </section>
+
+      <p id="tasky-auth-message" class="tasky-auth-message" role="status" aria-live="polite"></p>
+      <p class="tasky-auth-footer">Acceso privado para integrantes autorizados de Tasky.</p>
+    </div>
+  </div>
+
   <!-- Top Navigation & Search Bar -->
   <header class="top-navbar">
     <div class="brand-cluster">
@@ -68,6 +101,8 @@
         <button type="button" id="btn-sound-toggle" class="icon-btn" aria-label="Sonidos" data-tip-title="🔊 Efectos de Sonido" data-tip-desc="Activa o silencia las confirmaciones acústicas al completar o mover tareas."></button>
 
         <button type="button" id="btn-theme-toggle" class="icon-btn" aria-label="Tema" data-tip-title="🌗 Apariencia Visual" data-tip-desc="Alterna entre el modo claro luminoso y el modo oscuro profundo."></button>
+
+        <button type="button" id="btn-tasky-account" class="tasky-account-button" aria-label="Cambiar espacio o cerrar sesión" title="Cambiar espacio o cerrar sesión">Mi espacio</button>
 
         <button type="button" id="btn-more-options" class="icon-btn" aria-label="Más opciones" data-tip-title="••• Estado de Sincronización y Copias" data-tip-desc="Consulta los detalles de sincronización, copias automáticas e importación/exportación JSON.">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
@@ -1294,7 +1329,8 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261119-no-public-ntfy-1"></script>
+  <script src="app.js?v=20261119-multi-workspace-auth-foundation-1"></script>
   <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
+  <script type="module" src="tasky-auth.js?v=20261119-auth-1"></script>
 </body>
 </html>
