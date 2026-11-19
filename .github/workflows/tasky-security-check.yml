@@ -27,6 +27,7 @@ jobs:
         run: |
           node --check app.js
           node --check mobile-app.js
+          node --check tasky-auth.js
 
       - name: Ensure public ntfy transport is absent
         run: |
