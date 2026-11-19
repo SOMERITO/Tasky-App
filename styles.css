@@ -7350,3 +7350,104 @@ body.focus-mode-open #boxes-container {
   .duplicate-audit-footer { align-items: stretch; flex-direction: column; }
   .duplicate-audit-footer button { width: 100%; justify-content: center; }
 }
+
+
+/* Professional daily birthday reminder popup. */
+.birthday-today-backdrop { z-index: 125; }
+.birthday-today-dialog {
+  width: min(500px, calc(100vw - 28px));
+  max-width: 500px;
+  padding: 25px;
+  border-radius: 22px;
+}
+.birthday-today-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.birthday-today-heading {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+}
+.birthday-today-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 15px;
+  background: rgba(59, 130, 246, .09);
+  font-size: 1.45rem;
+}
+[data-theme="dark"] .birthday-today-icon { background: rgba(96, 165, 250, .13); }
+.birthday-today-header .modal-title { margin-top: 2px; font-size: 1.28rem; }
+.birthday-today-date {
+  margin-top: 19px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.birthday-today-intro {
+  margin: 18px 0 10px;
+  color: var(--text-secondary);
+  font-size: .85rem;
+  line-height: 1.5;
+}
+.birthday-today-people { display: flex; flex-direction: column; gap: 8px; }
+.birthday-today-person {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface-solid);
+}
+.birthday-today-person-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: var(--surface-muted);
+  font-size: 1rem;
+}
+.birthday-today-person strong {
+  color: var(--text);
+  font-size: .9rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.birthday-today-message {
+  margin: 15px 0 0;
+  color: var(--text-secondary);
+  font-size: .8rem;
+  line-height: 1.55;
+}
+.birthday-today-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 22px;
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+}
+.birthday-today-footer button { min-height: 38px; padding: 8px 15px; font-size: .78rem; }
+@media (max-width: 560px) {
+  .birthday-today-dialog {
+    width: calc(100vw - 22px);
+    padding: 18px 15px;
+    border-radius: 18px;
+  }
+  .birthday-today-footer { flex-direction: column-reverse; }
+  .birthday-today-footer button { width: 100%; justify-content: center; }
+}
