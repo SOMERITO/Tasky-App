@@ -13155,6 +13155,18 @@ function createTaskRowElement(task, box, showOriginBox = false) {
 
     document.documentElement.classList.remove("tasky-auth-required");
     document.documentElement.classList.add("tasky-workspace-active");
+    const workspaceShell = document.querySelector(".app-shell");
+    const childBanner = document.getElementById("tasky-child-readonly-banner");
+    const backupOptionsButton = document.getElementById("btn-more-options");
+    if (membership.role === "child") {
+      if (workspaceShell) workspaceShell.setAttribute("inert", "");
+      if (childBanner) childBanner.hidden = false;
+      if (backupOptionsButton) backupOptionsButton.hidden = true;
+    } else {
+      if (workspaceShell) workspaceShell.removeAttribute("inert");
+      if (childBanner) childBanner.hidden = true;
+      if (backupOptionsButton) backupOptionsButton.hidden = false;
+    }
     const authGate = document.getElementById("tasky-auth-gate");
     if (authGate) authGate.hidden = true;
     const accountButton = document.getElementById("btn-tasky-account");
