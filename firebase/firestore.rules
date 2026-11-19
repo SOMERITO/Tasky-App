@@ -13,7 +13,11 @@ service cloud.firestore {
     function hasMembership(workspaceId) {
       return signedIn()
         && exists(accessPath(workspaceId))
-        && get(accessPath(workspaceId)).data.active == true;
+        && get(accessPath(workspaceId)).data.active == true
+        && (
+          get(accessPath(workspaceId)).data.role != 'child'
+          || get(accessPath(workspaceId)).data.childAccessEnabled == true
+        );
     }
 
     function isAdult(workspaceId) {
@@ -23,7 +27,8 @@ service cloud.firestore {
 
     function isChild(workspaceId) {
       return hasMembership(workspaceId)
-        && get(accessPath(workspaceId)).data.role == 'child';
+        && get(accessPath(workspaceId)).data.role == 'child'
+        && get(accessPath(workspaceId)).data.childAccessEnabled == true;
     }
 
     match /user_access/{uid}/workspaces/{workspaceId} {
