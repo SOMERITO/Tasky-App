@@ -1,0 +1,36 @@
+name: Tasky security checks
+
+on:
+  push:
+    branches:
+      - security/remove-public-ntfy
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  syntax-and-privacy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check app.js
+          node --check mobile-app.js
+
+      - name: Ensure public ntfy transport is absent
+        run: |
+          if grep -nE 'ntfy\.sh|getCloudTopicUrl|since=all|/json\?poll' app.js mobile-app.js; then
+            echo "Public ntfy transport reference detected."
+            exit 1
+          fi
