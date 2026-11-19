@@ -16,6 +16,7 @@
 - Leah crea una solicitud `new_task` válida en `workspaces/leah/task_requests`.
 - Leah crea una solicitud `completion` válida.
 - Todos los miembros leen notificaciones del espacio Leah.
+- José o Camila (guardian) pueden crear notificaciones compartidas válidas.
 
 ## Debe rechazarse
 - Visitante lee o escribe cualquier workspace.
@@ -26,7 +27,7 @@
 - Leah actualiza o elimina cualquier solicitud después de crearla.
 - Leah crea una solicitud con `createdBy` de otro UID, estado distinto de `pending`, campos no permitidos o tipo desconocido.
 - Usuario miembro de un workspace consulta uno donde no tiene membresía.
-- Miembro crea una notificación con autoría falsa.
+- Leah crea una notificación compartida (solo los adultos pueden generarlas).
 
 ## Verificación en la aplicación
 - Cerrar sesión elimina el tablero visible y el estado del workspace activo.
