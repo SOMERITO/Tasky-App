@@ -13089,9 +13089,16 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     renderDeadlineReminderSettings();
   }
 
+  let taskyWorkspaceBooted = false;
+
   function boot() {
+    if (taskyWorkspaceBooted || !activeWorkspaceId) return;
+    taskyWorkspaceBooted = true;
     initMobileAppNavigation();
     loadRegisteredData();
+    appState.firebaseConfig.docPath = "workspaces/" + activeWorkspaceId + "/shared/main";
+    appState.firebaseConfig.databaseURL = "";
+    appState.cloudChannel = "tasky_workspace_" + activeWorkspaceId;
     cleanupCompletedTasksFromPreviousDays();
     // The midnight timeout and focus/visibility handlers cover date rollover.
     // Do not poll cleanup every 5 seconds: it can trigger repeated board renders.
@@ -13119,9 +13126,51 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     startCloudSyncRecovery();
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot);
-  } else {
+  window.addEventListener("tasky:workspace-ready", (event) => {
+    const detail = event && event.detail ? event.detail : {};
+    const authApi = window.TaskyAuth;
+    const workspaceId = String(detail.workspaceId || "");
+    if (!authApi || !authApi.currentUser || authApi.currentUser.uid !== detail.uid) return;
+    if (!["jose", "camila", "leah"].includes(workspaceId)) return;
+    const membership = typeof authApi.getMembership === "function"
+      ? authApi.getMembership(workspaceId)
+      : null;
+    if (!membership || membership.active !== true || membership.role !== detail.role) return;
+
+    activeWorkspaceId = workspaceId;
+    activeWorkspaceContext = {
+      uid: authApi.currentUser.uid,
+      email: authApi.currentUser.email || "",
+      displayName: String(detail.displayName || ""),
+      workspaceId,
+      workspaceName: String(detail.workspaceName || workspaceId),
+      role: membership.role
+    };
+    activeStorageNamespace = "tasky:v2:" + workspaceId;
+    appState.activeWorkspace = { ...activeWorkspaceContext };
+    appState.firebaseConfig.docPath = "workspaces/" + workspaceId + "/shared/main";
+    appState.firebaseConfig.databaseURL = "";
+    appState.cloudChannel = "tasky_workspace_" + workspaceId;
+    initializeWorkspaceBroadcastChannel();
+
+    document.documentElement.classList.remove("tasky-auth-required");
+    document.documentElement.classList.add("tasky-workspace-active");
+    const authGate = document.getElementById("tasky-auth-gate");
+    if (authGate) authGate.hidden = true;
+    const accountButton = document.getElementById("btn-tasky-account");
+    if (accountButton) {
+      accountButton.textContent = activeWorkspaceContext.workspaceName;
+      accountButton.setAttribute("aria-label", "Cambiar espacio o cerrar sesión");
+      accountButton.title = "Cambiar espacio o cerrar sesión";
+    }
     boot();
-  }
+  });
+
+  window.addEventListener("tasky:open-workspace-picker", () => {
+    document.documentElement.classList.add("tasky-auth-required");
+    document.documentElement.classList.remove("tasky-workspace-active");
+    const authGate = document.getElementById("tasky-auth-gate");
+    if (authGate) authGate.hidden = false;
+    window.dispatchEvent(new CustomEvent("tasky:show-workspace-picker"));
+  });
 })();
