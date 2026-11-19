@@ -9118,7 +9118,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     return normalizeBirthdays(appState.data.birthdays).filter(entry => !entry.deleted);
   }
 
-  const TASKY_BIRTHDAY_POPUP_LAST_SHOWN_KEY = "tasky_birthday_popup_last_shown_v1";
+  const TASKY_BIRTHDAY_POPUP_ACKNOWLEDGED_KEY = "tasky_birthday_popup_acknowledged_date_v1";
+  let todayBirthdayPopupSessionDismissedDate = "";
   let todayBirthdayPopupSchedulerReady = false;
   let todayBirthdayPopupTimer = null;
 
@@ -9134,17 +9135,20 @@ function createTaskRowElement(task, box, showOriginBox = false) {
   function checkTodayBirthdayPopup() {
     if (!todayBirthdayPopupSchedulerReady || document.visibilityState === "hidden") return false;
     const today = getTodayISO();
-    if (safeStorage.getItem(TASKY_BIRTHDAY_POPUP_LAST_SHOWN_KEY) === today) return false;
+    if (safeStorage.getItem(TASKY_BIRTHDAY_POPUP_ACKNOWLEDGED_KEY) === today) return false;
+    if (todayBirthdayPopupSessionDismissedDate === today) return false;
+
+    const modal = document.getElementById("modal-today-birthdays");
+    if (!modal || modal.classList.contains("open")) return false;
 
     const birthdays = getTodayBirthdayEntries();
     if (!birthdays.length) return false;
 
-    const modal = document.getElementById("modal-today-birthdays");
     const dateLabel = document.getElementById("birthday-today-date");
     const intro = document.getElementById("birthday-today-intro");
     const people = document.getElementById("birthday-today-people");
     const message = document.getElementById("birthday-today-message");
-    if (!modal || !dateLabel || !intro || !people || !message) return false;
+    if (!dateLabel || !intro || !people || !message) return false;
 
     const todayDate = new Date(today + "T12:00:00");
     const formattedDate = todayDate.toLocaleDateString("es-PE", {
@@ -9168,8 +9172,23 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       : "Te recordamos tener presentes estas fechas y hacerles llegar sus saludos.";
 
     modal.classList.add("open");
-    safeStorage.setItem(TASKY_BIRTHDAY_POPUP_LAST_SHOWN_KEY, today);
     return true;
+  }
+
+  function dismissTodayBirthdayPopupForCurrentPage() {
+    todayBirthdayPopupSessionDismissedDate = getTodayISO();
+    const modal = document.getElementById("modal-today-birthdays");
+    if (modal) modal.classList.remove("open");
+  }
+
+  function acknowledgeTodayBirthdays() {
+    const today = getTodayISO();
+    safeStorage.setItem(TASKY_BIRTHDAY_POPUP_ACKNOWLEDGED_KEY, today);
+    todayBirthdayPopupSessionDismissedDate = today;
+    const modal = document.getElementById("modal-today-birthdays");
+    if (modal) modal.classList.remove("open");
+    playUiSound("complete");
+    showToast("Cumpleaños de hoy confirmados. No volveremos a recordártelos hoy.");
   }
 
   function startTodayBirthdayPopupScheduler() {
@@ -12153,13 +12172,31 @@ function createTaskRowElement(task, box, showOriginBox = false) {
 
     const todayBirthdayPopup = document.getElementById("modal-today-birthdays");
     const todayBirthdayCalendarButton = document.getElementById("btn-birthday-today-open-calendar");
+    const todayBirthdayAcknowledgeButton = document.getElementById("btn-birthday-today-acknowledge");
+    const todayBirthdayCloseButton = todayBirthdayPopup &&
+      todayBirthdayPopup.querySelector('[data-close-modal="modal-today-birthdays"]');
+
+    if (todayBirthdayAcknowledgeButton) {
+      todayBirthdayAcknowledgeButton.addEventListener("click", acknowledgeTodayBirthdays);
+    }
+    if (todayBirthdayCloseButton) {
+      todayBirthdayCloseButton.addEventListener("click", dismissTodayBirthdayPopupForCurrentPage);
+    }
     if (todayBirthdayCalendarButton) todayBirthdayCalendarButton.addEventListener("click", () => {
-      if (todayBirthdayPopup) todayBirthdayPopup.classList.remove("open");
+      dismissTodayBirthdayPopupForCurrentPage();
       playUiSound("tap");
       openBirthdayCalendarModal({ expandUpcoming: true, todayOnly: true });
     });
     if (todayBirthdayPopup) todayBirthdayPopup.addEventListener("click", event => {
-      if (event.target === todayBirthdayPopup) todayBirthdayPopup.classList.remove("open");
+      if (event.target === todayBirthdayPopup) dismissTodayBirthdayPopupForCurrentPage();
+    });
+
+    // Acknowledging today's birthdays in one tab closes an already-open reminder in other tabs.
+    window.addEventListener("storage", event => {
+      if (event.key !== TASKY_BIRTHDAY_POPUP_ACKNOWLEDGED_KEY) return;
+      if (event.newValue !== getTodayISO()) return;
+      todayBirthdayPopupSessionDismissedDate = getTodayISO();
+      if (todayBirthdayPopup) todayBirthdayPopup.classList.remove("open");
     });
 
     const birthdayOpenButton = document.getElementById("btn-open-birthdays");
