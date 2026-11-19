@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261115-duplicate-audit-1" />
+  <link rel="stylesheet" href="styles.css?v=20261119-birthday-popup-1" />
   <link rel="stylesheet" href="mobile-app.css?v=20261030-mobile-pull-refresh-1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -1132,6 +1132,30 @@
     </div>
   </div>
 
+  <!-- Daily birthday reminder: shown once per local calendar day -->
+  <div id="modal-today-birthdays" class="modal-backdrop birthday-today-backdrop" role="dialog" aria-modal="true" aria-labelledby="birthday-today-title">
+    <div class="modal-dialog birthday-today-dialog">
+      <div class="birthday-today-header">
+        <div class="birthday-today-heading">
+          <span class="birthday-today-icon" aria-hidden="true">🎂</span>
+          <div>
+            <div class="modal-eyebrow">RECORDATORIO PERSONAL</div>
+            <h3 id="birthday-today-title" class="modal-title">Cumpleaños de hoy</h3>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal="modal-today-birthdays" aria-label="Cerrar recordatorio">✕</button>
+      </div>
+      <div id="birthday-today-date" class="birthday-today-date"></div>
+      <p id="birthday-today-intro" class="birthday-today-intro">Hoy es el cumpleaños de:</p>
+      <div id="birthday-today-people" class="birthday-today-people" aria-live="polite"></div>
+      <p id="birthday-today-message" class="birthday-today-message">Te recordamos tener presente esta fecha y hacerle llegar tus saludos.</p>
+      <div class="birthday-today-footer">
+        <button type="button" id="btn-birthday-today-open-calendar" class="btn-primary">Ver calendario</button>
+        <button type="button" class="btn-secondary" data-close-modal="modal-today-birthdays">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Registry of same-casilla tasks with repeated names -->
   <div id="modal-duplicate-audit" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="duplicate-audit-title">
     <div class="modal-dialog wide duplicate-audit-dialog">
@@ -1270,7 +1294,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261115-task-save-fix-1"></script>
+  <script src="app.js?v=20261119-birthday-popup-1"></script>
   <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
 </body>
 </html>
