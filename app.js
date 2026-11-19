@@ -4062,7 +4062,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261119-multi-workspace-auth-foundation-1";
+  const TASKY_BUILD_ID = "20261119-multi-workspace-auth-foundation-2";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -13155,6 +13155,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
 
     document.documentElement.classList.remove("tasky-auth-required");
     document.documentElement.classList.add("tasky-workspace-active");
+    document.documentElement.dataset.taskyWorkspace = workspaceId;
+    document.documentElement.dataset.taskyRole = membership.role;
     const workspaceShell = document.querySelector(".app-shell");
     const childBanner = document.getElementById("tasky-child-readonly-banner");
     const backupOptionsButton = document.getElementById("btn-more-options");
