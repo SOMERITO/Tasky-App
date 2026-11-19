@@ -101,7 +101,7 @@ function renderWorkspaceOptions() {
   options.replaceChildren();
   const allowed = [...memberships.entries()]
     .filter(([, membership]) => membership && membership.active === true)
-    .sort(([a], [b]) => (a === "leah" ? -1 : b === "leah" ? 1 : a.localeCompare(b)));
+    .sort(([a], [b]) => (a === "leah" ? 1 : b === "leah" ? -1 : a.localeCompare(b)));
 
   if (!allowed.length) {
     setMessage("Esta cuenta todavía no tiene espacios asignados. Solicita al administrador que complete sus permisos.", true);
@@ -160,7 +160,8 @@ async function loadMemberships(user) {
         workspaceMetadata[workspaceId] &&
         value.workspaceId === workspaceId &&
         value.active === true &&
-        ["owner", "guardian", "child"].includes(value.role)
+        ["owner", "guardian", "child"].includes(value.role) &&
+        (value.role !== "child" || value.childAccessEnabled === true)
       ) {
         next.set(workspaceId, {
           active: true,
