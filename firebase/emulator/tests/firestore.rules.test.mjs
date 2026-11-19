@@ -41,6 +41,7 @@ before(async () => {
         active: true,
         role,
         workspaceId,
+        ...(role === "child" ? { childAccessEnabled: true } : {}),
         displayName: `Tasky ${workspaceId}`
       });
     }
@@ -223,4 +224,19 @@ test("only an adult can create or change workspace membership records", async ()
   }));
 
   await assertFails(deleteDoc(doc(leah, "user_access/leah/workspaces/leah")));
+});
+
+test("Leah's child workspace access stays disabled until private module data is separated", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "user_access/child-paused/workspaces/leah"), {
+      active: true,
+      role: "child",
+      workspaceId: "leah",
+      childAccessEnabled: false,
+      displayName: "Tasky Leah"
+    });
+  });
+  const db = env.authenticatedContext("child-paused").firestore();
+  await assertFails(getDoc(doc(db, "workspaces/leah/shared/main")));
+  await assertFails(getDoc(doc(db, "workspaces/leah/task_requests/seed")));
 });
