@@ -13158,6 +13158,25 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     const workspaceShell = document.querySelector(".app-shell");
     const childBanner = document.getElementById("tasky-child-readonly-banner");
     const backupOptionsButton = document.getElementById("btn-more-options");
+    const projectIdInput = document.getElementById("input-firebase-project-id");
+    const rtdbUrlInput = document.getElementById("input-firebase-db-url");
+    const workspacePathInput = document.getElementById("input-cloud-sync-channel");
+    const rawConfigInput = document.getElementById("input-firebase-raw-paste");
+    const rescueButton = document.getElementById("btn-firebase-rescue-migrate");
+    if (projectIdInput) {
+      projectIdInput.value = "tasky-7a30c";
+      projectIdInput.readOnly = true;
+    }
+    if (rtdbUrlInput) {
+      rtdbUrlInput.value = "Desactivada; Tasky usa Firestore autenticado";
+      rtdbUrlInput.disabled = true;
+    }
+    if (workspacePathInput) {
+      workspacePathInput.value = "workspaces/" + workspaceId + "/shared/main";
+      workspacePathInput.readOnly = true;
+    }
+    if (rawConfigInput) rawConfigInput.hidden = true;
+    if (rescueButton) rescueButton.hidden = true;
     if (membership.role === "child") {
       if (workspaceShell) workspaceShell.setAttribute("inert", "");
       if (childBanner) childBanner.hidden = false;
