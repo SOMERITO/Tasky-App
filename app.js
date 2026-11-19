@@ -16,20 +16,39 @@
     VIEW_STATE: "tasky_view_state_v1"
   };
 
+  let activeWorkspaceId = "";
+  let activeWorkspaceContext = null;
+  let activeStorageNamespace = "";
+  const GLOBAL_STORAGE_KEYS = new Set([STORAGE_KEYS.FIREBASE_CONFIG]);
   const memoryStorage = new Map();
+
+  function getScopedStorageKey(key) {
+    return !activeStorageNamespace || GLOBAL_STORAGE_KEYS.has(key)
+      ? key
+      : activeStorageNamespace + ":" + key;
+  }
 
   const safeStorage = {
     getItem(key) {
+      const scopedKey = getScopedStorageKey(key);
       try {
-        const val = window.localStorage.getItem(key);
+        const val = window.localStorage.getItem(scopedKey);
         if (val !== null) return val;
+        // Legacy Tasky keys belong only to José. Never use them for Camila or Leah.
+        if (activeWorkspaceId === "jose" && scopedKey !== key) {
+          const legacyVal = window.localStorage.getItem(key);
+          if (legacyVal !== null) return legacyVal;
+        }
       } catch (e) {}
-      return memoryStorage.has(key) ? memoryStorage.get(key) : null;
+      if (memoryStorage.has(scopedKey)) return memoryStorage.get(scopedKey);
+      if (activeWorkspaceId === "jose" && scopedKey !== key && memoryStorage.has(key)) return memoryStorage.get(key);
+      return null;
     },
     setItem(key, value) {
-      memoryStorage.set(key, value);
+      const scopedKey = getScopedStorageKey(key);
+      memoryStorage.set(scopedKey, value);
       try {
-        window.localStorage.setItem(key, value);
+        window.localStorage.setItem(scopedKey, value);
         return true;
       } catch (e) {
         return false;
