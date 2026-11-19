@@ -742,23 +742,23 @@
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;padding-top:10px;border-top:1px solid rgba(22,163,74,0.20);">
           <div>
-            <label class="form-label" for="input-firebase-project-id" style="font-size:0.75rem;margin-bottom:4px;">🔥 Proyecto Firebase (`projectId`)</label>
-            <input type="text" id="input-firebase-project-id" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" placeholder="ID del proyecto de Firebase" value="tasky-7a30c" />
+            <label class="form-label" for="input-firebase-project-id" style="font-size:0.75rem;margin-bottom:4px;">🔥 Proyecto Firebase administrado por Tasky</label>
+            <input type="text" id="input-firebase-project-id" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" value="tasky-7a30c" readonly aria-readonly="true" />
           </div>
           <div>
-            <label class="form-label" for="input-firebase-db-url" style="font-size:0.75rem;margin-bottom:4px;">🔗 URL Realtime Database o Colección</label>
-            <input type="text" id="input-firebase-db-url" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" placeholder="Opcional: https://tu-app.firebaseio.com" />
+            <label class="form-label" for="input-firebase-db-url" style="font-size:0.75rem;margin-bottom:4px;">🔗 Realtime Database</label>
+            <input type="text" id="input-firebase-db-url" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" value="Desactivada; Tasky usa Firestore autenticado" disabled />
           </div>
           <div>
-            <label class="form-label" for="input-cloud-sync-channel" style="font-size:0.75rem;margin-bottom:4px;">🔑 Ruta de Documento / Canal en Firebase</label>
-            <input type="text" id="input-cloud-sync-channel" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" value="tasky_sync/somerito_main" />
+            <label class="form-label" for="input-cloud-sync-channel" style="font-size:0.75rem;margin-bottom:4px;">🔑 Ruta del espacio activo</label>
+            <input type="text" id="input-cloud-sync-channel" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" value="Se asigna al seleccionar un espacio" readonly aria-readonly="true" />
           </div>
         </div>
 
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:4px;">
-          <input type="text" id="input-firebase-raw-paste" class="form-input" style="flex:1;min-width:220px;padding:7px 11px;font-size:0.80rem;background:var(--surface-solid);" placeholder="O pega aquí tu bloque firebaseConfig = { apiKey, projectId, ... } para conectar otro proyecto..." />
+          <input type="text" id="input-firebase-raw-paste" class="form-input" style="display:none;flex:1;min-width:220px;padding:7px 11px;font-size:0.80rem;background:var(--surface-solid);" disabled aria-hidden="true" />
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button type="button" id="btn-firebase-rescue-migrate" class="btn-primary" style="padding:8px 14px;font-size:0.80rem;background:linear-gradient(135deg,#f59e0b,#ea580c);">🔥 Rescatar y Subir Todo a Firebase</button>
+            <button type="button" id="btn-firebase-rescue-migrate" class="btn-primary" style="display:none;padding:8px 14px;font-size:0.80rem;background:linear-gradient(135deg,#f59e0b,#ea5800);" disabled>🔥 Rescatar y Subir Todo a Firebase</button>
             <button type="button" id="btn-cloud-sync-now" class="btn-primary" style="padding:8px 14px;font-size:0.80rem;">🔄 Sincronizar ahora</button>
           </div>
         </div>
