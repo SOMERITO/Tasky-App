@@ -83,7 +83,7 @@ service cloud.firestore {
 
     match /workspaces/{workspaceId}/notifications/{notificationId} {
       allow read: if hasMembership(workspaceId);
-      allow create: if hasMembership(workspaceId)
+      allow create: if isAdult(workspaceId)
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt is timestamp
         && request.resource.data.keys().hasOnly([
