@@ -7451,3 +7451,278 @@ body.focus-mode-open #boxes-container {
   .birthday-today-footer { flex-direction: column-reverse; }
   .birthday-today-footer button { width: 100%; justify-content: center; }
 }
+
+
+/* ==========================================================================
+   TASKY MULTI-WORKSPACE AUTH GATE · PERSONAL + FAMILY SPACES
+   ========================================================================= */
+.tasky-auth-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 28px 18px;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(244, 167, 200, 0.42), transparent 32%),
+    radial-gradient(circle at 88% 82%, rgba(168, 85, 247, 0.25), transparent 34%),
+    rgba(248, 246, 251, 0.97);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.tasky-auth-gate[hidden] {
+  display: none !important;
+}
+.tasky-auth-panel {
+  width: min(100%, 480px);
+  padding: clamp(24px, 5vw, 38px);
+  border: 1px solid rgba(168, 85, 247, 0.16);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 28px 90px rgba(39, 22, 49, 0.16);
+  color: #17131D;
+}
+.tasky-auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+.tasky-auth-mark {
+  display: grid;
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border-radius: 19px;
+  background: linear-gradient(145deg, #F4A7C8, #A855F7);
+  color: #17131D;
+  font-size: 27px;
+  font-weight: 900;
+  box-shadow: 0 10px 26px rgba(168, 85, 247, 0.2);
+}
+.tasky-auth-eyebrow {
+  margin: 0 0 6px;
+  color: #9333EA;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.tasky-auth-brand h1,
+.tasky-workspace-picker h2 {
+  margin: 0;
+  color: #17131D;
+  font-size: clamp(24px, 4vw, 30px);
+  line-height: 1.13;
+  font-weight: 850;
+}
+.tasky-auth-subtitle {
+  margin: 7px 0 0;
+  color: #766d7e;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.tasky-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.tasky-auth-form label {
+  margin-top: 7px;
+  color: #30283a;
+  font-size: 12px;
+  font-weight: 750;
+}
+.tasky-auth-form input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #e7ddea;
+  border-radius: 13px;
+  outline: none;
+  background: #fff;
+  color: #17131D;
+  font: inherit;
+  font-size: 14px;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.tasky-auth-form input:focus {
+  border-color: #A855F7;
+  box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.12);
+}
+.tasky-auth-primary {
+  width: 100%;
+  min-height: 49px;
+  margin-top: 13px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(110deg, #A855F7, #D946EF 58%, #F4A7C8);
+  color: #17131D;
+  font-size: 14px;
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: 0 11px 24px rgba(168, 85, 247, 0.22);
+}
+.tasky-auth-primary:disabled {
+  opacity: .62;
+  cursor: wait;
+}
+.tasky-auth-link {
+  display: inline-flex;
+  justify-content: center;
+  min-height: 39px;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: #7E22CE;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.tasky-auth-message {
+  min-height: 18px;
+  margin: 13px 0 0;
+  color: #7E22CE;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.tasky-auth-message.is-error {
+  color: #BE123C;
+}
+.tasky-auth-footer {
+  margin: 14px 0 0;
+  color: #918998;
+  font-size: 10px;
+  text-align: center;
+}
+.tasky-workspace-picker h2 {
+  font-size: 23px;
+}
+.tasky-workspace-options {
+  display: grid;
+  gap: 11px;
+  margin: 20px 0 12px;
+}
+.tasky-workspace-option {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  min-height: 76px;
+  padding: 13px 15px;
+  border: 1px solid #e9dff0;
+  border-radius: 17px;
+  background: #fff;
+  color: #17131D;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+.tasky-workspace-option:hover,
+.tasky-workspace-option:focus-visible {
+  transform: translateY(-1px);
+  border-color: #C084FC;
+  outline: none;
+  box-shadow: 0 10px 25px rgba(126, 34, 206, 0.1);
+}
+.tasky-workspace-option[data-workspace="leah"] {
+  border: 1.5px solid #D946EF;
+  background: linear-gradient(110deg, rgba(252, 231, 243, .78), rgba(243, 232, 255, .75));
+}
+.tasky-workspace-option-icon {
+  display: grid;
+  flex: 0 0 43px;
+  width: 43px;
+  height: 43px;
+  place-items: center;
+  border-radius: 14px;
+  background: #F3E8FF;
+  color: #7E22CE;
+  font-size: 21px;
+}
+.tasky-workspace-option[data-workspace="leah"] .tasky-workspace-option-icon {
+  background: #F4A7C8;
+  color: #17131D;
+}
+.tasky-workspace-option-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.tasky-workspace-option-title {
+  color: #17131D;
+  font-size: 14px;
+  font-weight: 850;
+}
+.tasky-workspace-option-description {
+  color: #7a7081;
+  font-size: 11px;
+}
+.tasky-workspace-option-role {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(168, 85, 247, .1);
+  color: #7E22CE;
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.tasky-account-button {
+  max-width: 155px;
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid rgba(168, 85, 247, .22);
+  border-radius: 11px;
+  background: linear-gradient(110deg, rgba(244, 167, 200, .22), rgba(168, 85, 247, .13));
+  color: var(--text, #17131D);
+  font-size: 11px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+html.tasky-auth-required .top-navbar,
+html.tasky-auth-required .app-shell {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+@media (max-width: 540px) {
+  .tasky-auth-gate {
+    align-items: flex-start;
+    padding: 14px 11px;
+  }
+  .tasky-auth-panel {
+    margin: auto 0;
+    padding: 23px 18px;
+    border-radius: 23px;
+  }
+  .tasky-auth-brand {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .tasky-auth-mark {
+    flex-basis: 47px;
+    width: 47px;
+    height: 47px;
+    border-radius: 15px;
+    font-size: 23px;
+  }
+  .tasky-workspace-option {
+    min-height: 70px;
+    padding: 11px;
+  }
+  .tasky-workspace-option-role {
+    display: none;
+  }
+  .tasky-account-button {
+    max-width: 105px;
+    padding: 0 7px;
+    font-size: 10px;
+  }
+}
