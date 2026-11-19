@@ -3407,13 +3407,6 @@
     return `${base}/${docPath}.json`;
   }
 
-  function getCloudTopicUrl(suffix = "") {
-    const proj = String((appState.firebaseConfig && appState.firebaseConfig.projectId) || appState.cloudChannel || "tasky_somerito_firebase_v1")
-      .trim()
-      .replace(/[^a-zA-Z0-9_-]/g, "_");
-    return `https://ntfy.sh/tasky_fb_${proj}${suffix}`;
-  }
-
   function packCompactEnvelope() {
     const d = appState.data;
     return JSON.stringify({
@@ -3883,7 +3876,6 @@
       let firebaseSaved = false;
       let firestoreWriteStatus = "No se intentó la escritura";
       let rtdbWriteStatus = "URL no configurada";
-      let streamWriteStatus = "No comprobado";
       const describeResponseError = raw => {
         const source = String(raw || "").trim();
         if (!source) return "";
@@ -3902,7 +3894,7 @@
       const updateWriteDiagnostic = () => {
         const details = document.getElementById("sync-write-diagnostic-details");
         if (!details) return;
-        details.textContent = `Última escritura — Firestore: ${firestoreWriteStatus} · Realtime Database: ${rtdbWriteStatus} · Canal auxiliar: ${streamWriteStatus}`;
+        details.textContent = `Última escritura — Firestore: ${firestoreWriteStatus} · Realtime Database: ${rtdbWriteStatus} · Canal público: desactivado por seguridad`;
       };
       const firestoreBytes = (() => {
         const fsBody = {
@@ -3916,17 +3908,6 @@
         return { url: getFirebaseFirestoreUrl(), body: JSON.stringify(fsBody) };
       })();
       const writePayloadBytes = bytesOf(firestoreBytes.body);
-      let streamPromise;
-      try {
-        streamPromise = window.fetch(getCloudTopicUrl(""), {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=UTF-8", "Cache": "yes" },
-          body: compactStr
-        }).then(response => ({ response })).catch(error => ({ error }));
-      } catch (error) {
-        streamPromise = Promise.resolve({ error });
-      }
-
       // 1. Push to Firestore. Do not set keepalive: true for large sync payloads:
       // Fetch keepalive bodies are limited to 64 KiB and can throw before reaching Firebase.
       try {
@@ -3972,17 +3953,7 @@
       }
       updateWriteDiagnostic();
 
-      // 3. Read the auxiliary transport result. Its POST was started in parallel with Firestore.
-      // ntfy accelerates device-to-device updates but never counts as durable Firebase confirmation.
-      const streamResult = await streamPromise;
-      if (streamResult && streamResult.response) {
-        const streamResponse = streamResult.response;
-        streamWriteStatus = streamResponse.ok ? `OK (HTTP ${streamResponse.status}; transporte auxiliar)` : `HTTP ${streamResponse.status}`;
-      } else {
-        const error = streamResult && streamResult.error;
-        streamWriteStatus = `No disponible · ${String(error && error.message || error || "sin respuesta").slice(0, 120)}`;
-      }
-      updateWriteDiagnostic();
+      // The public ntfy transport was removed. Firestore is the only cloud write target.
 
       const syncText = document.getElementById("sync-status-text");
       // Show "Sincronizado" only after Firebase confirms the remote write.
@@ -4020,13 +3991,13 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261103-no-deadline-boxes-3";
+  const TASKY_BUILD_ID = "20261119-no-public-ntfy-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
       ["Firestore", statuses.firestore || "sin respuesta"],
       ["Realtime Database", statuses.rtdb || "sin respuesta"],
-      ["ntfy (canal auxiliar)", statuses.ntfy || "no comprobado"]
+      ["Canal público", "desactivado por seguridad"]
     ];
     const fullText = entries.map(([name, value]) => `${name}: ${value}`).join(" · ");
     const details = document.getElementById("sync-diagnostic-details");
@@ -4132,13 +4103,6 @@
         if (modalSyncTime) modalSyncTime.textContent = `Copia inicial confirmada en Firestore a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.`;
         lastCloudBootstrapError = "";
         showToast("✅ Nube inicializada. La sincronización automática ya está activa.");
-        try {
-          await window.fetch(getCloudTopicUrl(""), {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=UTF-8" },
-            body: compactStr
-          });
-        } catch (e) {}
         return "created";
       }
 
@@ -4204,8 +4168,7 @@
       let durableCandidateCount = 0;
       const sourceStatus = {
         firestore: "no consultado",
-        rtdb: "no consultada",
-        ntfy: "no consultado"
+        rtdb: "no consultada"
       };
       const isValidSnapshot = (norm) => Boolean(norm && Array.isArray(norm.boxes) &&
         norm.boxes.length && Array.isArray(norm.tasks) && Number(norm.updatedAt || 0) > 0);
@@ -4262,34 +4225,7 @@
         sourceStatus.rtdb = `error de lectura: ${String(e && e.message || e).slice(0, 140)}`;
       }
 
-      // ntfy is a transport/history source only. It cannot authorize cloud writes by itself.
-      try {
-        const resStream = await window.fetch(getCloudTopicUrl(`/json?poll=1&since=all&_t=${Date.now()}`), { cache: "no-store" });
-        if (!resStream.ok) {
-          sourceStatus.ntfy = `HTTP ${resStream.status} ${resStream.statusText || ""}`.trim();
-        } else {
-          const responseText = await resStream.text();
-          const rows = responseText ? responseText.trim().split(/\r?\n/) : [];
-          let found = false;
-          for (let i = rows.length - 1; i >= 0; i--) {
-            try {
-              const msg = JSON.parse(rows[i]);
-              if (!msg || msg.event !== "message" || !msg.message) continue;
-              const parsed = JSON.parse(msg.message);
-              const unpacked = unpackCompactEnvelope(parsed);
-              if (isValidSnapshot(unpacked)) {
-                candidates.push(unpacked);
-                sourceStatus.ntfy = `mensaje válido · ${unpacked.boxes.length} casillas, ${unpacked.tasks.length} tareas`;
-                found = true;
-                break;
-              }
-            } catch (err) {}
-          }
-          if (!found) sourceStatus.ntfy = "HTTP 200 · no se encontró mensaje válido";
-        }
-      } catch (e) {
-        sourceStatus.ntfy = `error de lectura: ${String(e && e.message || e).slice(0, 140)}`;
-      }
+      // The public ntfy history transport was removed for privacy.
 
       renderSyncDiagnostics(sourceStatus);
 
@@ -4420,62 +4356,13 @@
   }
 
   function startCloudSyncStream() {
-    if (!isCloudNetworkAllowed()) {
-      setRealtimeSyncStatus("Sin conexión de red");
-      return;
+    // Public ntfy topics were removed because their contents are publicly readable.
+    // Durable synchronization continues through Firestore and periodic recovery.
+    if (appState.cloudEventSource) {
+      try { appState.cloudEventSource.close(); } catch (e) {}
+      appState.cloudEventSource = null;
     }
-    if (typeof window.EventSource === "undefined") {
-      setRealtimeSyncStatus("Este WebView no ofrece EventSource; se usará recuperación periódica");
-      return;
-    }
-    setRealtimeSyncStatus("Conectando…");
-    try {
-      if (appState.cloudEventSource) {
-        appState.cloudEventSource.close();
-      }
-      const es = new window.EventSource(getCloudTopicUrl("/sse"));
-      es.onopen = () => {
-        setRealtimeSyncStatus("Conectado y escuchando cambios");
-        requestSyncCatchup();
-      };
-      es.onmessage = (ev) => {
-        try {
-          const msg = JSON.parse(ev.data);
-          if (msg && msg.message) {
-            const parsed = JSON.parse(msg.message);
-            if (parsed && parsed.d !== appState.deviceId && parsed.deviceId !== appState.deviceId) {
-              const unpacked = unpackCompactEnvelope(parsed);
-              if (unpacked) {
-                if (cloudSyncReady && cloudSyncReadyConfig === getCloudSyncConfigKey()) {
-                  const applied = applyIncomingSyncPayload(unpacked, false);
-                  const syncText = document.getElementById("sync-status-text");
-                  if (applied) {
-                    if (syncText) syncText.textContent = "Recibiendo cambios…";
-                    setRealtimeSyncStatus(`Cambio recibido a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`);
-                  } else {
-                    setRealtimeSyncStatus("Evento recibido; verificando la copia durable");
-                  }
-                } else {
-                  setRealtimeSyncStatus("Evento recibido antes de verificar Firebase; conciliación en cola");
-                }
-                // Always schedule a durable pull, including events received during startup.
-                scheduleIncomingSyncVerification();
-              }
-            }
-          }
-        } catch (error) {
-          setRealtimeSyncStatus(`Error al procesar evento: ${String(error && error.message || error).slice(0, 130)}`);
-        }
-      };
-      es.onerror = () => {
-        // EventSource reconnects automatically; the fallback covers mobile WebViews.
-        setRealtimeSyncStatus("Conexión interrumpida; reconectando…");
-        requestSyncCatchup();
-      };
-      appState.cloudEventSource = es;
-    } catch (error) {
-      setRealtimeSyncStatus(`No se pudo abrir el canal: ${String(error && error.message || error).slice(0, 130)}`);
-    }
+    setRealtimeSyncStatus("Canal público desactivado por seguridad; recuperación periódica activa");
   }
 
   function loadRegisteredData() {
