@@ -3439,20 +3439,20 @@
         if (parsed && typeof parsed === "object" && parsed.projectId) {
           const parsedProjectId = String(parsed.projectId).trim();
           if (parsedProjectId === "esbas-2026" || parsedProjectId === "tasky-7a30c") {
-            // Migrate stale devices to the verified Tasky web config. Keep the chosen Firestore path.
-            // Preserve a Realtime Database URL only when the saved config is already Tasky's project.
+            // Multi-workspace Tasky is pinned to the verified project and authenticated Firestore.
             const migrated = {
               ...appState.firebaseConfig,
-              docPath: String(parsed.docPath || appState.firebaseConfig.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, ""),
-              databaseURL: parsedProjectId === "tasky-7a30c" ? String(parsed.databaseURL || "") : ""
+              docPath: activeWorkspaceId
+                ? "workspaces/" + activeWorkspaceId + "/shared/main"
+                : "tasky_sync/somerito_main",
+              databaseURL: ""
             };
             appState.firebaseConfig = migrated;
             safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(migrated));
           } else {
-            appState.firebaseConfig = {
-              ...appState.firebaseConfig,
-              ...parsed
-            };
+            // Ignore saved custom project configurations. All workspaces share the verified Tasky project.
+            appState.firebaseConfig = { ...appState.firebaseConfig };
+            safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(appState.firebaseConfig));
           }
         }
       }
