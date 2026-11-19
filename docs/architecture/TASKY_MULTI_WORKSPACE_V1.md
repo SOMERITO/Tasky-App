@@ -83,7 +83,7 @@ workspaces/leah/notifications/{notificationId}
   eventType, title, createdAt, createdBy, audience
 ```
 
-Los datos privados de salud y gastos van en documentos separados: Firestore Rules autorizan documentos completos, no campos individuales de un mismo documento. No incluir detalles privados de adultos dentro de `shared/main`.
+Los datos privados de salud y gastos van en documentos separados: Firestore Rules autorizan documentos completos, no campos individuales de un mismo documento. No incluir detalles privados de adultos dentro de `shared/main`. La membresía infantil debe llevar `childAccessEnabled: false` y solo podrá activarse después de implementar y probar la separación de datos privados del tablero compartido.
 
 ## Permisos de Firestore
 
