@@ -2323,6 +2323,42 @@
     };
   }
 
+  function buildEmptyWorkspaceDataset(workspaceId) {
+    const leahModules = [
+      ["box_escolar", "ESCOLAR", "#F4A7C8", "📚"],
+      ["box_evaluaciones", "EVALUACIONES", "#A855F7", "📝"],
+      ["box_materiales", "MATERIALES", "#F4A7C8", "🎒"],
+      ["box_actividades", "ACTIVIDADES", "#A855F7", "🎨"],
+      ["box_coordinacion", "COORDINACIÓN FAMILIAR", "#F4A7C8", "👨‍👩‍👧"],
+      ["box_salud", "SALUD Y CITAS", "#A855F7", "💗"],
+      ["box_habitos", "HÁBITOS Y RUTINAS", "#F4A7C8", "🌷"],
+      ["box_gastos", "GASTOS RELACIONADOS CON LEAH", "#A855F7", "💜"]
+    ];
+    const modules = workspaceId === "leah"
+      ? leahModules
+      : [["box_pendientes", "PENDIENTES", "#A855F7", "✓"]];
+    const boxes = modules.map(([id, name, color, emoji], order) => ({
+      id, name, color, emoji, order, collapsed: false
+    }));
+    return {
+      boxes,
+      tasks: [],
+      monthlyCompletedBase: 0,
+      completedBoxCollapsed: false,
+      learningGoals: { daily: {}, weekly: {} },
+      focusPlan: { date: "", byBox: {}, updatedAt: 0 },
+      completionLog: [],
+      dismissedTaskSuggestionsByBox: {},
+      taskMemoryByBox: {},
+      birthdays: [],
+      deletedTaskIds: [],
+      deletedBoxIds: [],
+      syncSchemaVersion: 2,
+      bootstrapSeedData: false,
+      updatedAt: Date.now()
+    };
+  }
+
   const appState = {
     data: {
       boxes: [],
@@ -2347,6 +2383,7 @@
     redoStack: [],
     cloudChannel: "tasky_somerito_jose_sync_v1",
     cloudEventSource: null,
+    activeWorkspace: null,
     deviceId: `dev_${Math.random().toString(36).slice(2, 10)}`,
     hasBootRendered: false,
     selectedRescheduledIds: new Set(),
@@ -3338,19 +3375,24 @@
     const details = document.getElementById("sync-realtime-status-details");
     if (details) details.textContent = `Canal en tiempo real: ${realtimeSyncStatus}`;
   }
-  try {
-    if (typeof window.BroadcastChannel !== "undefined") {
-      syncBroadcastChannel = new window.BroadcastChannel("tasky_firebase_realtime_bus");
+  function initializeWorkspaceBroadcastChannel() {
+    try {
+      if (syncBroadcastChannel) syncBroadcastChannel.close();
+      syncBroadcastChannel = null;
+      if (!activeWorkspaceId || typeof window.BroadcastChannel === "undefined") return;
+      syncBroadcastChannel = new window.BroadcastChannel("tasky_firebase_realtime_bus_" + activeWorkspaceId);
       syncBroadcastChannel.onmessage = (ev) => {
         if (ev.data && ev.data.payload && ev.data.deviceId !== appState.deviceId) {
           applyIncomingSyncPayload(ev.data.payload, false);
         }
       };
+    } catch (e) {
+      syncBroadcastChannel = null;
     }
-  } catch (e) {}
+  }
 
   window.addEventListener("storage", (ev) => {
-    if (ev.key === STORAGE_KEYS.DATA && ev.newValue) {
+    if (ev.key === getScopedStorageKey(STORAGE_KEYS.DATA) && ev.newValue) {
       try {
         const parsed = JSON.parse(ev.newValue);
         applyIncomingSyncPayload(parsed, false);
@@ -3358,8 +3400,22 @@
     }
   });
 
+  async function getFirestoreAuthHeaders() {
+    const authApi = window.TaskyAuth;
+    if (!authApi || !authApi.currentUser || typeof authApi.getIdToken !== "function") {
+      throw new Error("Se requiere una sesión autenticada para acceder a Firestore.");
+    }
+    const token = await authApi.getIdToken();
+    if (!token) throw new Error("Firebase Authentication no entregó un token válido.");
+    return {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    };
+  }
+
   function isCloudNetworkAllowed() {
     return (
+      Boolean(window.TaskyAuth && window.TaskyAuth.currentUser && activeWorkspaceId) &&
       typeof window.fetch === "function" &&
       (window.location.protocol === "https:" || window.location.protocol === "http:") &&
       navigator.onLine !== false
@@ -3417,13 +3473,8 @@
   }
 
   function getFirebaseRtdbUrl() {
-    const cfg = appState.firebaseConfig || {};
-    // Only query Realtime Database when its exact URL is configured.
-    // Tasky's registered Firebase Web SDK config does not contain databaseURL, so do not guess a host.
-    const base = String(cfg.databaseURL || "").trim().replace(/\/+$/, "");
-    if (!base) return "";
-    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, "");
-    return `${base}/${docPath}.json`;
+    // Multi-workspace Tasky uses authenticated Firestore only. No alternate RTDB path.
+    return "";
   }
 
   function packCompactEnvelope() {
@@ -3930,9 +3981,10 @@
       // 1. Push to Firestore. Do not set keepalive: true for large sync payloads:
       // Fetch keepalive bodies are limited to 64 KiB and can throw before reaching Firebase.
       try {
+        const authHeaders = await getFirestoreAuthHeaders();
         const res = await window.fetch(firestoreBytes.url, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders,
           body: firestoreBytes.body
         });
         if (res && res.ok) {
@@ -4010,7 +4062,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261119-no-public-ntfy-1";
+  const TASKY_BUILD_ID = "20261119-multi-workspace-auth-foundation-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -4048,6 +4100,11 @@
 
   async function autoBootstrapFirestoreDocument(localRaw, sourceStatus) {
     if (cloudBootstrapInFlight) return "busy";
+    if (activeWorkspaceContext && activeWorkspaceContext.role === "child") {
+      sourceStatus.firestore = "Un adulto debe inicializar este espacio antes del primer uso.";
+      renderSyncDiagnostics(sourceStatus);
+      return "blocked-child-bootstrap";
+    }
     cloudBootstrapInFlight = true;
     try {
       const cfg = appState.firebaseConfig || {};
@@ -4104,9 +4161,10 @@
         }
       };
 
+      const authHeaders = await getFirestoreAuthHeaders();
       const response = await window.fetch(createUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders,
         body: JSON.stringify(body)
       });
       const responseText = await response.text();
@@ -4197,7 +4255,8 @@
 
       try {
         const fsUrl = getFirebaseFirestoreUrl();
-        const res = await window.fetch(fsUrl, { cache: "no-store" });
+        const authHeaders = await getFirestoreAuthHeaders();
+        const res = await window.fetch(fsUrl, { headers: authHeaders, cache: "no-store" });
         if (!res.ok) {
           sourceStatus.firestore = `HTTP ${res.status} ${res.statusText || ""}`.trim();
         } else {
@@ -4420,10 +4479,12 @@
 
     const alreadyRestoredV143 = safeStorage.getItem("tasky_restored_v143_full");
     if (!loaded || (!loaded.boxes.length && !loaded.tasks.length)) {
-      loaded = buildRestoredUserDataset();
+      loaded = activeWorkspaceId === "jose"
+        ? buildRestoredUserDataset()
+        : buildEmptyWorkspaceDataset(activeWorkspaceId);
       safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(loaded));
-      safeStorage.setItem("tasky_restored_v143_full", "true");
-    } else if (!alreadyRestoredV143) {
+      if (activeWorkspaceId === "jose") safeStorage.setItem("tasky_restored_v143_full", "true");
+    } else if (activeWorkspaceId === "jose" && !alreadyRestoredV143) {
       const baseline = buildRestoredUserDataset();
       baseline.boxes.forEach((baseBox) => {
         // Match the original stable ID first so a renamed casilla is never recreated under its old label.
@@ -5295,8 +5356,8 @@
 
   function saveQuoteDeckState() {
     try {
-      if (typeof localStorage !== "undefined" && quoteDeckState) {
-        localStorage.setItem(QUOTE_DECK_STORAGE_KEY, JSON.stringify(quoteDeckState));
+      if (quoteDeckState) {
+        safeStorage.setItem(QUOTE_DECK_STORAGE_KEY, JSON.stringify(quoteDeckState));
       }
     } catch (_) {
       // Continue with the in-memory deck if storage is unavailable.
@@ -5310,9 +5371,7 @@
 
     let saved = null;
     try {
-      if (typeof localStorage !== "undefined") {
-        saved = JSON.parse(localStorage.getItem(QUOTE_DECK_STORAGE_KEY) || "null");
-      }
+      saved = JSON.parse(safeStorage.getItem(QUOTE_DECK_STORAGE_KEY) || "null");
     } catch (_) {
       saved = null;
     }
