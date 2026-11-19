@@ -1,0 +1,100 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function accessPath(workspaceId) {
+      return /databases/$(database)/documents/user_access/$(request.auth.uid)/workspaces/$(workspaceId);
+    }
+
+    function hasMembership(workspaceId) {
+      return signedIn()
+        && exists(accessPath(workspaceId))
+        && get(accessPath(workspaceId)).data.active == true;
+    }
+
+    function isAdult(workspaceId) {
+      return hasMembership(workspaceId)
+        && get(accessPath(workspaceId)).data.role in ['owner', 'guardian'];
+    }
+
+    function isChild(workspaceId) {
+      return hasMembership(workspaceId)
+        && get(accessPath(workspaceId)).data.role == 'child';
+    }
+
+    match /user_access/{uid}/workspaces/{workspaceId} {
+      allow get, list: if signedIn() && request.auth.uid == uid;
+      allow create, update, delete: if false;
+    }
+
+    match /workspaces/{workspaceId} {
+      allow get: if hasMembership(workspaceId);
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    match /workspaces/{workspaceId}/shared/{documentId} {
+      allow read: if hasMembership(workspaceId);
+      allow create, update, delete: if isAdult(workspaceId);
+    }
+
+    match /workspaces/{workspaceId}/adult_private/{documentId} {
+      allow read, write: if isAdult(workspaceId);
+    }
+
+    match /workspaces/{workspaceId}/task_requests/{requestId} {
+      allow read: if hasMembership(workspaceId);
+
+      allow create: if isChild(workspaceId)
+        && request.resource.data.keys().hasOnly([
+          'type', 'createdBy', 'createdAt', 'status',
+          'title', 'description', 'module',
+          'scheduledDate', 'deadlineDate', 'priority',
+          'relatedTaskId'
+        ])
+        && request.resource.data.keys().hasAll([
+          'type', 'createdBy', 'createdAt', 'status'
+        ])
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.status == 'pending'
+        && (
+          (
+            request.resource.data.type == 'new_task'
+            && request.resource.data.title is string
+            && request.resource.data.title.size() > 0
+            && request.resource.data.title.size() <= 180
+            && request.resource.data.module is string
+          )
+          ||
+          (
+            request.resource.data.type == 'completion'
+            && request.resource.data.relatedTaskId is string
+            && request.resource.data.relatedTaskId.size() > 0
+          )
+        );
+
+      allow update, delete: if isAdult(workspaceId);
+    }
+
+    match /workspaces/{workspaceId}/notifications/{notificationId} {
+      allow read: if hasMembership(workspaceId);
+      allow create: if hasMembership(workspaceId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.keys().hasOnly([
+          'eventType', 'title', 'createdAt', 'createdBy', 'audience', 'readBy'
+        ]);
+      allow update, delete: if isAdult(workspaceId);
+    }
+
+    // Deny all paths not explicitly allowed above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
