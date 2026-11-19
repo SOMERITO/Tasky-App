@@ -3808,6 +3808,7 @@
     renderLearningGoalsPanel();
     // Keep the count fresh even with the calendar closed; redraw its contents when it is open.
     renderBirthdayUpcomingList();
+    if (todayBirthdayPopupSchedulerReady) checkTodayBirthdayPopup();
     const birthdayModal = document.getElementById("modal-birthdays");
     if (birthdayModal && birthdayModal.classList.contains("open")) renderBirthdayCalendar();
     const mergedMatchesIncoming = syncFingerprint(merged) === syncFingerprint(norm);
@@ -9117,6 +9118,75 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     return normalizeBirthdays(appState.data.birthdays).filter(entry => !entry.deleted);
   }
 
+  const TASKY_BIRTHDAY_POPUP_LAST_SHOWN_KEY = "tasky_birthday_popup_last_shown_v1";
+  let todayBirthdayPopupSchedulerReady = false;
+  let todayBirthdayPopupTimer = null;
+
+  function getTodayBirthdayEntries() {
+    const today = getTodayISO();
+    const month = Number(today.slice(5, 7));
+    const day = Number(today.slice(8, 10));
+    return getActiveBirthdays()
+      .filter(entry => Number(entry.month) === month && Number(entry.day) === day)
+      .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es"));
+  }
+
+  function checkTodayBirthdayPopup() {
+    if (!todayBirthdayPopupSchedulerReady || document.visibilityState === "hidden") return false;
+    const today = getTodayISO();
+    if (safeStorage.getItem(TASKY_BIRTHDAY_POPUP_LAST_SHOWN_KEY) === today) return false;
+
+    const birthdays = getTodayBirthdayEntries();
+    if (!birthdays.length) return false;
+
+    const modal = document.getElementById("modal-today-birthdays");
+    const dateLabel = document.getElementById("birthday-today-date");
+    const intro = document.getElementById("birthday-today-intro");
+    const people = document.getElementById("birthday-today-people");
+    const message = document.getElementById("birthday-today-message");
+    if (!modal || !dateLabel || !intro || !people || !message) return false;
+
+    const todayDate = new Date(today + "T12:00:00");
+    const formattedDate = todayDate.toLocaleDateString("es-PE", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    });
+    dateLabel.textContent = formattedDate.charAt(0).toLocaleUpperCase("es") + formattedDate.slice(1);
+    intro.textContent = birthdays.length === 1
+      ? "Hoy es el cumpleaños de:"
+      : "Hoy celebran su cumpleaños:";
+    people.innerHTML = birthdays.map(entry =>
+      '<div class="birthday-today-person">' +
+        '<span class="birthday-today-person-icon" aria-hidden="true">🎂</span>' +
+        '<strong>' + escapeHtml(entry.name) + '</strong>' +
+      '</div>'
+    ).join("");
+    message.textContent = birthdays.length === 1
+      ? "Te recordamos tener presente esta fecha y hacerle llegar tus saludos."
+      : "Te recordamos tener presentes estas fechas y hacerles llegar sus saludos.";
+
+    modal.classList.add("open");
+    safeStorage.setItem(TASKY_BIRTHDAY_POPUP_LAST_SHOWN_KEY, today);
+    return true;
+  }
+
+  function startTodayBirthdayPopupScheduler() {
+    if (todayBirthdayPopupSchedulerReady) {
+      checkTodayBirthdayPopup();
+      return;
+    }
+    todayBirthdayPopupSchedulerReady = true;
+    checkTodayBirthdayPopup();
+    if (todayBirthdayPopupTimer) window.clearInterval(todayBirthdayPopupTimer);
+    todayBirthdayPopupTimer = window.setInterval(checkTodayBirthdayPopup, 60000);
+    window.addEventListener("focus", checkTodayBirthdayPopup);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") checkTodayBirthdayPopup();
+    });
+  }
+
   function getBirthdayMonthDayKey(birthday) {
     return String(birthday.month).padStart(2, "0") + "-" + String(birthday.day).padStart(2, "0");
   }
@@ -9589,6 +9659,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     saveData(true, `${id ? "Actualizó" : "Registró"} cumpleaños: ${name}`);
     closeBirthdayEditor();
     renderBirthdayCalendar();
+    if (todayBirthdayPopupSchedulerReady) checkTodayBirthdayPopup();
     showToast(id ? "🎉 Cumpleaños actualizado" : "🎂 Cumpleaños registrado");
   }
 
@@ -12080,6 +12151,17 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       saveDeadlineReminderSettingsFromModal();
     });
 
+    const todayBirthdayPopup = document.getElementById("modal-today-birthdays");
+    const todayBirthdayCalendarButton = document.getElementById("btn-birthday-today-open-calendar");
+    if (todayBirthdayCalendarButton) todayBirthdayCalendarButton.addEventListener("click", () => {
+      if (todayBirthdayPopup) todayBirthdayPopup.classList.remove("open");
+      playUiSound("tap");
+      openBirthdayCalendarModal({ expandUpcoming: true, todayOnly: true });
+    });
+    if (todayBirthdayPopup) todayBirthdayPopup.addEventListener("click", event => {
+      if (event.target === todayBirthdayPopup) todayBirthdayPopup.classList.remove("open");
+    });
+
     const birthdayOpenButton = document.getElementById("btn-open-birthdays");
     if (birthdayOpenButton) birthdayOpenButton.addEventListener("click", () => {
       playUiSound("tap");
@@ -13028,7 +13110,9 @@ function createTaskRowElement(task, box, showOriginBox = false) {
 
     // Initial sync, real-time updates, and a quiet recovery poll for mobile WebViews.
     // Incoming payloads are fingerprinted before rendering, so unchanged data won't redraw the board.
-    pullCloudSync(false);
+    pullCloudSync(false).finally(() => {
+      startTodayBirthdayPopupScheduler();
+    });
     startCloudSyncStream();
     startCloudSyncRecovery();
   }
