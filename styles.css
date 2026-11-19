@@ -7769,3 +7769,24 @@ html.tasky-auth-required #tasky-auth-gate {
   visibility: visible !important;
   pointer-events: auto !important;
 }
+
+
+/* Leah's shared family space uses her favorite palette. */
+html[data-tasky-workspace="leah"] {
+  --bg: #fbf6fc;
+  --surface: rgba(255, 255, 255, 0.9);
+  --surface-solid: #ffffff;
+  --surface-muted: rgba(252, 244, 251, 0.9);
+  --surface-hover: rgba(250, 232, 247, 0.96);
+  --text: #17131D;
+  --text-secondary: #4b3c52;
+  --muted: #786a80;
+  --primary: #A855F7;
+  --primary-hover: #9333EA;
+  --primary-2: #D946EF;
+  --primary-soft: rgba(168, 85, 247, 0.12);
+}
+html[data-tasky-workspace="leah"] .brand-logo {
+  filter: drop-shadow(0 3px 14px rgba(217, 70, 239, 0.16));
+}
+#btn-more-options[hidden] { display: none !important; }
