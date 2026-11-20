@@ -91,7 +91,12 @@ function parseModuleDocument(snapshot, module) {
 }
 
 function moduleDataFromDocOrDefault(snapshot, module) {
-  return parseModuleDocument(snapshot, module) || makeDefaultModule(module);
+  if (!snapshot || !snapshot.exists()) return makeDefaultModule(module);
+  const parsed = parseModuleDocument(snapshot, module);
+  if (!parsed) {
+    throw new Error("El documento privado " + module.documentId + " no tiene un formato válido; se bloqueó la migración para no sobrescribir datos.");
+  }
+  return parsed;
 }
 
 function parseSharedDocument(snapshot) {
@@ -137,6 +142,10 @@ function isGuardianContext(context) {
 }
 
 async function initialize(initialData, taskMemory, context) {
+  stopListeners();
+  ready = false;
+  currentUid = "";
+  currentModules = [];
   if (!isGuardianContext(context)) {
     ready = false;
     currentUid = "";
