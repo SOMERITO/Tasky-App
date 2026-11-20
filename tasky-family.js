@@ -606,13 +606,21 @@ async function reviewChildTask(taskId, decision) {
   if (!task || task.status !== "awaiting_review") return;
   setRequestBusy(true);
   try {
-    await updateDoc(doc(db, ...CHILD_TASKS_PATH, String(taskId)), {
-      status: decision === "approved" ? "completed" : "pending",
-      reviewedBy: activeUid,
-      reviewedAt: serverTimestamp(),
-      reviewNote: decision === "approved" ? "" : "Revisa la actividad y vuelve a marcarla cuando esté lista.",
-      completedAt: decision === "approved" ? Timestamp.now() : null,
-      updatedAt: serverTimestamp()
+    await runTransaction(db, async (transaction) => {
+      const taskRef = doc(db, ...CHILD_TASKS_PATH, String(taskId));
+      const taskSnapshot = await transaction.get(taskRef);
+      if (!taskSnapshot.exists()) throw new Error("La tarea ya no existe.");
+      if ((taskSnapshot.data() || {}).status !== "awaiting_review") {
+        throw new Error("Esta tarea ya fue revisada o cambió de estado.");
+      }
+      transaction.update(taskRef, {
+        status: decision === "approved" ? "completed" : "pending",
+        reviewedBy: activeUid,
+        reviewedAt: serverTimestamp(),
+        reviewNote: decision === "approved" ? "" : "Revisa la actividad y vuelve a marcarla cuando esté lista.",
+        completedAt: decision === "approved" ? Timestamp.now() : null,
+        updatedAt: serverTimestamp()
+      });
     });
     if (decision === "rejected") {
       window.alert("La tarea volvió a pendientes. Leah podrá revisarla y editarla.");
