@@ -5,26 +5,48 @@ import {
   signInWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
-  getIdToken
+  getIdToken,
+  connectAuthEmulator
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js";
 import {
   getFirestore,
   collection,
-  getDocs
+  getDocs,
+  connectFirestoreEmulator
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 
-const firebaseConfig = Object.freeze({
-  apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YhrvEcb8",
-  authDomain: "tasky-7a30c.firebaseapp.com",
-  projectId: "tasky-7a30c",
-  storageBucket: "tasky-7a30c.firebasestorage.app",
-  messagingSenderId: "505071526437",
-  appId: "1:505071526437:web:6c9eb46dbb4fef296655cc6"
-});
+const emulatorRequested = window.__TASKY_USE_FIREBASE_EMULATORS__ === true;
+const localHosts = new Set(["localhost", "127.0.0.1"]);
+if (emulatorRequested && !localHosts.has(window.location.hostname)) {
+  throw new Error("Tasky Firebase Emulators solo se pueden usar desde localhost.");
+}
+
+const firebaseConfig = Object.freeze(emulatorRequested
+  ? {
+      apiKey: "tasky-emulator-api-key",
+      authDomain: "localhost",
+      projectId: "demo-tasky-auth",
+      storageBucket: "demo-tasky-auth.appspot.com",
+      messagingSenderId: "000000000000",
+      appId: "1:000000000000:web:tasky-auth-emulator"
+    }
+  : {
+      apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YhrvEcb8",
+      authDomain: "tasky-7a30c.firebaseapp.com",
+      projectId: "tasky-7a30c",
+      storageBucket: "tasky-7a30c.firebasestorage.app",
+      messagingSenderId: "505071526437",
+      appId: "1:505071526437:web:6c9eb46dbb4fef296655cc6"
+    });
 
 const app = initializeApp(firebaseConfig, "tasky-multi-workspace");
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+if (emulatorRequested) {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
 
 const gate = document.getElementById("tasky-auth-gate");
 const loginForm = document.getElementById("tasky-login-form");
@@ -106,7 +128,7 @@ function renderWorkspaceOptions() {
     .sort(([a], [b]) => (a === "leah" ? 1 : b === "leah" ? -1 : a.localeCompare(b)));
 
   if (!allowed.length) {
-    setMessage("Esta cuenta todavía no tiene espacios asignados. Solicita al administrador que complete sus permisos.", true);
+    setMessage("Esta cuenta inició sesión, pero todavía no tiene espacios habilitados. Solicita al administrador que complete la configuración de acceso.", true);
     return;
   }
 
@@ -178,7 +200,6 @@ async function loadMemberships(user) {
 
     if (!memberships.size) {
       showPicker();
-      setMessage("La cuenta inició sesión, pero todavía no tiene espacios asignados.", true);
       return;
     }
 
