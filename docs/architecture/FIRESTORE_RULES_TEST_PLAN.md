@@ -63,7 +63,7 @@ Fecha de actualización: 20 de noviembre de 2026.
 - El fixture de navegador bloquea las llamadas a endpoints reales de Firebase y no carga el motor de sincronización de producción.
 
 ## Resultado CI más reciente
-- GitHub Actions Auth + Firestore Emulator + Chromium: **25 aprobadas, 0 fallidas** (ejecución #115; incluye 6 pruebas de navegador para el selector previo de perfiles).
-- Tasky Security Checks: **aprobada** (ejecución #69).
+- Última línea base histórica antes de los cambios login-first y child_tasks: 25 aprobadas, 0 fallidas (ejecución anterior #115); no valida los cambios nuevos.
+- Las pruebas actualizadas deben ejecutarse nuevamente en GitHub Actions antes de publicar reglas o desplegar.
 - Las pruebas usan identidades y membresías ficticias en emuladores locales; no modifican Firebase real.
-- La integración visual y la migración de datos reales aún requieren validación en staging; no habilitar la cuenta infantil.
+- La integración visual y la migración de datos reales aún requieren validación en staging; no habilitar la cuenta infantil en producción.
