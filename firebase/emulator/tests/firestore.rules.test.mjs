@@ -140,13 +140,25 @@ test("Leah can submit a new task and a completion request, but cannot approve or
     relatedTaskId: "adult-created-task"
   }));
 
-  await assertFails(updateDoc(newTaskRef, { status: "approved" }));
+  await assertFails(updateDoc(newTaskRef, {
+    status: "approved",
+    reviewedBy: "leah",
+    reviewedAt: new Date(),
+    reviewNote: "",
+    createdTaskId: "task_child_cannot_create"
+  }));
   await assertFails(deleteDoc(doc(db, "workspaces/leah/task_requests/seed")));
 
   const guardian = env.authenticatedContext("jose").firestore();
-  await assertSucceeds(updateDoc(doc(guardian, "workspaces/leah/task_requests/leah-new-task"), {
-    status: "approved"
+  const requestRef = doc(guardian, "workspaces/leah/task_requests/leah-new-task");
+  await assertSucceeds(updateDoc(requestRef, {
+    status: "approved",
+    reviewedBy: "jose",
+    reviewedAt: new Date(),
+    reviewNote: "Aprobada por un adulto.",
+    createdTaskId: "task_approved_request"
   }));
+  await assertFails(updateDoc(requestRef, { title: "Intento de alterar la solicitud original" }));
 });
 
 test("Leah cannot create malformed requests or impersonate another user", async () => {
