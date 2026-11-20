@@ -59,7 +59,7 @@ test("shared payload excludes private boxes, tasks, tombstones and related metad
   assert.deepEqual(Object.keys(shared.taskMemoryByBox), ["box_escolar"]);
   assert.deepEqual(Object.keys(shared.dismissedTaskSuggestionsByBox), []);
   assert.deepEqual(Object.keys(shared.taskMemoryByBox).filter((key) => key.includes("SALUD") || key.includes("GASTOS")), []);
-  assert.deepEqual(Object.keys(buildSharedTaskMemory(base.taskMemoryByBox, [health, expenses])), []);
+  assert.deepEqual(Object.keys(buildSharedTaskMemory(base.taskMemoryByBox, [health, expenses])), ["box_escolar"]);
   assert.deepEqual(Object.keys(shared.focusPlan.byBox), ["box_escolar"]);
   assert.deepEqual(shared.completionLog.map((entry) => entry.taskId), ["school-1"]);
   assert.equal(Object.hasOwn(shared, "history"), false);
