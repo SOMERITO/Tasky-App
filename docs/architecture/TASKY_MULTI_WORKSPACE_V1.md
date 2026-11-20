@@ -75,6 +75,11 @@ workspaces/leah/adult_private/health
 workspaces/leah/adult_private/expenses
   expenseDetails, amounts, payer, receipts
 
+workspaces/leah/access_control/private_modules
+  ready: true
+  schemaVersion: 1
+  migrationVersion: "20261120-private-health-expenses-1"
+
 workspaces/leah/task_requests/{requestId}
   type: "new_task" | "completion"
   createdBy, createdAt, status: "pending"
@@ -92,6 +97,7 @@ Los datos privados de salud y gastos van en documentos separados: Firestore Rule
 - `workspaces/{workspaceId}`: lectura para miembros activos; escritura administrativa únicamente.
 - `workspaces/{workspaceId}/shared/{docId}`: lectura para miembros activos; escritura para owner/guardian.
 - `workspaces/{workspaceId}/adult_private/{docId}`: lectura y escritura solo para owner/guardian.
+- `workspaces/{workspaceId}/access_control/{controlId}`: lectura y escritura solo para owner/guardian; el marcador de migración debe existir antes de que una membresía child pueda leer datos compartidos.
 - `workspaces/{workspaceId}/task_requests/{requestId}`: lectura para todos los miembros; Leah puede crear solicitudes validadas; solo owner/guardian puede aprobar, rechazar, editar o eliminar solicitudes.
 - `workspaces/{workspaceId}/notifications/{notificationId}`: lectura para todos los miembros; creación validada por la aplicación y las reglas; sin acceso de usuarios externos.
 - Denegar todo documento que no esté permitido explícitamente.
@@ -104,7 +110,7 @@ Los datos privados de salud y gastos van en documentos separados: Firestore Rule
 4. Cuando Leah termina una tarea, crea una solicitud `completion`.
 5. El adulto verifica y marca la tarea como completada en la misma transacción que aprueba la solicitud. Leah no modifica directamente el documento principal ni puede borrar una tarea adulta.
 
-El flujo de solicitudes y la bandeja de revisión están implementados en esta rama. El acceso infantil sigue deshabilitado hasta separar los módulos privados de Salud y Gastos y completar pruebas de staging. Las reglas limitan las solicitudes a módulos permitidos (Escolar, Evaluaciones, Materiales, Actividades, Coordinación familiar y Hábitos), evitando que Leah solicite tareas dentro de Salud o Gastos.
+El flujo de solicitudes y la bandeja de revisión están implementados en esta rama. La separación transaccional de los módulos Salud y Gastos también está implementada; el acceso infantil continúa deshabilitado en la membresía y no debe habilitarse hasta completar pruebas integrales de staging. Las reglas limitan las solicitudes a módulos permitidos (Escolar, Evaluaciones, Materiales, Actividades, Coordinación familiar y Hábitos), evitando que Leah solicite tareas dentro de Salud o Gastos.
 
 Así se conserva el motor actual, que serializa el tablero compartido en un documento, sin conceder a la cuenta infantil permiso para sobrescribir o eliminar cualquier tarea de ese documento.
 
