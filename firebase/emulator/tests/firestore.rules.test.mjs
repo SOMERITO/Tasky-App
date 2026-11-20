@@ -403,7 +403,8 @@ test("a guardian migrates fictitious legacy health and expense data atomically b
     },
     completionLog: [
       { id: "migration-health-event", taskId: "migration-health-1", title: "Control pediátrico ficticio", boxId: "box_salud", boxName: "SALUD Y CITAS", completedDate: "2026-11-19", completedAt: 1, updatedAt: 1 },
-      { id: "migration-expense-event", taskId: "migration-expense-1", title: "Reembolso ficticio", boxId: "box_gastos", boxName: "GASTOS RELACIONADOS CON LEAH", completedDate: "2026-11-19", completedAt: 1, updatedAt: 1 }
+      { id: "migration-expense-event", taskId: "migration-expense-1", title: "Reembolso ficticio", boxId: "box_gastos", boxName: "GASTOS RELACIONADOS CON LEAH", completedDate: "2026-11-19", completedAt: 1, updatedAt: 1 },
+      { id: "migration-health-deleted-event", taskId: "migration-health-deleted", title: "Evento histórico de salud confidencial ficticio", boxId: "box_salud", boxName: "SALUD Y CITAS", completedDate: "2026-11-18", completedAt: 1, updatedAt: 1 }
     ],
     history: { lastAction: "Control pediátrico ficticio · Reembolso ficticio" },
     updatedAt: 20,
@@ -527,10 +528,13 @@ test("a guardian migrates fictitious legacy health and expense data atomically b
   assert.equal(sanitizedText.includes("Recordatorio clínico ficticio"), false);
   assert.equal(sanitizedText.includes("Pago ficticio del mes"), false);
   assert.equal(sanitizedText.includes("migration-health-event"), false);
+  assert.equal(sanitizedText.includes("Evento histórico de salud confidencial ficticio"), false);
+  assert.equal(sanitizedText.includes("migration-health-deleted-event"), false);
   assert.equal(sanitizedText.includes("lastAction"), false);
 
   assert.equal(health.tasks.some((task) => task.id === "migration-health-1"), true);
   assert.equal(health.deletedTaskIds.includes("migration-health-deleted"), true);
+  assert.equal(health.completionLog.some((event) => event.id === "migration-health-deleted-event"), true);
   assert.equal(health.taskMemoryByBox["box_mem_SALUD Y CITAS"][0], "Recordatorio clínico ficticio");
   assert.equal(health.dismissedTaskSuggestionsByBox["box_mem_SALUD Y CITAS"][0], "Sugerencia médica ficticia");
   assert.equal(expenses.tasks.some((task) => task.id === "migration-expense-1"), true);
