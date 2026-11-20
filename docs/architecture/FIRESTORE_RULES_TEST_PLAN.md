@@ -14,7 +14,7 @@ Fecha de actualización: 20 de noviembre de 2026.
 - José lee y escribe `workspaces/jose/shared/main`.
 - Camila lee y escribe `workspaces/camila/shared/main`.
 - José y Camila leen y escriben `workspaces/leah/shared/main`.
-- Leah lee `workspaces/leah/shared/main`.
+- Leah lee `workspaces/leah/shared/main` únicamente cuando existe `access_control/private_modules` con `ready: true` y `schemaVersion: 1`.
 - Leah crea una solicitud `new_task` válida en `workspaces/leah/task_requests`.
 - Leah crea una solicitud `completion` válida.
 - Un adulto revisa una solicitud pendiente y actualiza únicamente los campos de revisión.
@@ -26,7 +26,9 @@ Fecha de actualización: 20 de noviembre de 2026.
 - Visitante lee o escribe cualquier workspace.
 - José lee o escribe `workspaces/camila/**`.
 - Camila lee o escribe `workspaces/jose/**`.
-- Leah lee `workspaces/leah/adult_private/**`.
+- Leah lee o escribe `workspaces/leah/adult_private/**`.
+- Leah o un visitante lee o modifica `workspaces/leah/access_control/private_modules`.
+- Una membresía child habilitada lee `shared/main` o `task_requests` antes de completar la migración privada.
 - Leah crea, actualiza o elimina `workspaces/leah/shared/main`.
 - Leah actualiza o elimina cualquier solicitud después de crearla.
 - Leah crea una solicitud con `createdBy` de otro UID, estado distinto de `pending`, campos no permitidos o tipo desconocido.
@@ -42,8 +44,10 @@ Fecha de actualización: 20 de noviembre de 2026.
 - El token de Firebase Authentication acompaña todas las solicitudes a Firestore.
 - No existe publicación, lectura o SSE en ntfy.sh.
 - La aprobación de una solicitud actualiza el tablero y el estado de la solicitud en una sola transacción.
-- El acceso infantil permanece deshabilitado hasta validar el aislamiento de Salud y Gastos en staging.
+- La aplicación crea `adult_private/health`, `adult_private/expenses` y sanitiza `shared/main` en una misma transacción; el marcador se escribe solo al completar esa operación.
+- Un documento `shared/main` existente pero ilegible bloquea la migración y no crea el marcador.
+- El acceso infantil permanece deshabilitado hasta validar el aislamiento completo de Salud y Gastos en staging.
 
 ## Resultado CI más reciente
-- Firestore Emulator: **11 aprobadas, 0 fallidas**.
+- Firestore Emulator: **16 aprobadas, 0 fallidas** (última ejecución completada antes del ajuste final de la migración fail-closed; la nueva ejecución está en curso).
 - Comprobación de sintaxis JavaScript y ausencia de referencias `ntfy.sh`: aprobada.
