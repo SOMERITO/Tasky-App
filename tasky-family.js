@@ -54,6 +54,7 @@ function node(tag, className, text) {
 function makeButton(label, className, onClick) {
   const button = node("button", className, label);
   button.type = "button";
+  button.disabled = Boolean(requestBusy);
   button.addEventListener("click", onClick);
   return button;
 }
@@ -634,7 +635,6 @@ function setRequestBusy(busy) {
   }
   renderChildTaskList();
   updateCompletionTaskOptions();
-  renderChildTaskList();
 }
 
 function createRequestCard(requestId, request) {
