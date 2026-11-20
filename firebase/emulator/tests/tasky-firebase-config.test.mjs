@@ -30,6 +30,12 @@ test("Firebase Hosting staging domains select only Tasky-Staging", () => {
   }
 });
 
+test("Firebase Hosting preview channels also select Tasky-Staging", () => {
+  const environment = resolveEnvironment("tasky-staging-82acb--pr-42-abc123.web.app");
+  assert.equal(environment.name, "staging");
+  assert.equal(environment.projectId, "tasky-staging-82acb");
+});
+
 test("local emulator mode is explicit and uses emulator endpoints", () => {
   const environment = resolveEnvironment("localhost", true);
   assert.equal(environment.name, "emulator");
