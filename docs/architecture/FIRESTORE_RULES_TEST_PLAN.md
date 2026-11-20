@@ -48,7 +48,18 @@ Fecha de actualización: 20 de noviembre de 2026.
 - Un documento `shared/main` existente pero ilegible bloquea la migración y no crea el marcador.
 - El acceso infantil permanece deshabilitado hasta validar el aislamiento completo de Salud y Gastos en staging.
 
+## Pruebas de navegador del acceso
+- La pantalla inicial muestra José, Cams y Leah antes de mostrar el formulario de credenciales.
+- La selección del perfil no otorga permisos: la cuenta autenticada debe tener una membresía activa para ese espacio.
+- José puede elegir José y entrar como owner.
+- Cams puede elegir Cams y entrar como owner.
+- José puede elegir Leah y entrar como guardian.
+- La cuenta infantil de Leah no entra mientras `childAccessEnabled` siga deshabilitado.
+- Una cuenta sin membresía para el perfil elegido recibe acceso denegado.
+- El fixture de navegador bloquea las llamadas a endpoints reales de Firebase y no carga el motor de sincronización de producción.
+
 ## Resultado CI más reciente
-- Firestore Emulator: **19 aprobadas, 0 fallidas** en la última ejecución completada (incluye migración ficticia transaccional, aislamiento de Salud/Gastos, historial de tareas eliminadas, rechazo de tablero corrupto y barrera previa al acceso infantil).
-- Comprobación de sintaxis JavaScript y ausencia de referencias `ntfy.sh`: aprobada sobre el mismo commit.
+- GitHub Actions Auth + Firestore Emulator + Chromium: **25 aprobadas, 0 fallidas** (ejecución #115; incluye 6 pruebas de navegador para el selector previo de perfiles).
+- Tasky Security Checks: **aprobada** (ejecución #69).
+- Las pruebas usan identidades y membresías ficticias en emuladores locales; no modifican Firebase real.
 - La integración visual y la migración de datos reales aún requieren validación en staging; no habilitar la cuenta infantil.
