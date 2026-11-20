@@ -12,7 +12,9 @@ No se creará una segunda página web para Leah ni se reutilizará otra aplicaci
 ## Decisiones confirmadas
 
 - Aplicación única y URL actual de Tasky José.
-- Inicio de sesión individual con Firebase Authentication (correo y contraseña).
+- Pantalla inicial de selección de perfil: José, Cams o Leah.
+- Inicio de sesión individual con Firebase Authentication (correo y contraseña) después de elegir el perfil.
+- La cuenta autenticada debe tener una membresía activa en el workspace seleccionado; el nombre visible no es una credencial ni una autorización.
 - Sin registro público: las tres cuentas se provisionarán por el administrador; no habrá botón de auto-registro.
 - Espacios:
   - `jose`: solo José; privado.
@@ -43,12 +45,13 @@ Los UID y correos reales se asignarán cuando se creen las cuentas en Firebase A
 Se mantiene el proyecto Firebase existente `tasky-7a30c`, que actualmente tiene Firestore bloqueado con `allow read, write: if false`. No crear otro proyecto para Leah.
 
 Antes de reabrir Firestore, la aplicación debe:
-1. Autenticar al usuario con Firebase Authentication.
-2. Obtener y renovar el ID token de Firebase.
-3. Enviar el token como `Authorization: Bearer <ID_TOKEN>` en cada solicitud Firestore REST (o utilizar el SDK de Firebase).
-4. Leer los espacios permitidos desde el documento de acceso del UID autenticado.
-5. Rechazar cualquier espacio sin una membresía activa.
-6. Nunca confiar en el nombre del perfil o el workspaceId enviado por el navegador como autorización.
+1. Mostrar la selección inicial de José, Cams o Leah.
+2. Autenticar al usuario con Firebase Authentication.
+3. Obtener y renovar el ID token de Firebase.
+4. Enviar el token como `Authorization: Bearer <ID_TOKEN>` en cada solicitud Firestore REST (o utilizar el SDK de Firebase).
+5. Leer las membresías del UID autenticado y comprobar que incluya el workspace elegido.
+6. Rechazar cualquier espacio sin una membresía activa.
+7. Nunca confiar en el nombre del perfil o el workspaceId enviado por el navegador como autorización.
 
 La API key del cliente identifica el proyecto, pero no reemplaza la autenticación ni las reglas. No incluir credenciales de cuentas de servicio, claves privadas ni tokens en el código.
 
@@ -110,7 +113,7 @@ Los datos privados de salud y gastos van en documentos separados: Firestore Rule
 4. Cuando Leah termina una tarea, crea una solicitud `completion`.
 5. El adulto verifica y marca la tarea como completada en la misma transacción que aprueba la solicitud. Leah no modifica directamente el documento principal ni puede borrar una tarea adulta.
 
-El flujo de solicitudes y la bandeja de revisión están implementados en esta rama. La separación transaccional de Salud y Gastos tiene además una prueba de migración con datos ficticios en Firestore Emulator (19 pruebas aprobadas en total). El acceso infantil continúa deshabilitado en la membresía y no debe habilitarse hasta completar pruebas integrales en una instancia de staging. Las reglas limitan las solicitudes a módulos permitidos (Escolar, Evaluaciones, Materiales, Actividades, Coordinación familiar y Hábitos), evitando que Leah solicite tareas dentro de Salud o Gastos.
+El flujo de solicitudes y la bandeja de revisión están implementados en esta rama. La separación transaccional de Salud y Gastos tiene además pruebas de migración con datos ficticios en Firestore Emulator. La integración Auth + Firestore + Chromium más reciente aprobó 25 pruebas en total, incluidas seis pruebas de navegador de la selección inicial José/Cams/Leah. El acceso infantil continúa deshabilitado en la membresía y no debe habilitarse hasta completar pruebas integrales en una instancia de staging. Las reglas limitan las solicitudes a módulos permitidos (Escolar, Evaluaciones, Materiales, Actividades, Coordinación familiar y Hábitos), evitando que Leah solicite tareas dentro de Salud o Gastos.
 
 Así se conserva el motor actual, que serializa el tablero compartido en un documento, sin conceder a la cuenta infantil permiso para sobrescribir o eliminar cualquier tarea de ese documento.
 
@@ -141,8 +144,8 @@ La primera versión implementará un centro de notificaciones dentro de Tasky, v
 ## Fases de implementación
 
 1. **Fundación de seguridad (esta rama):** modelo de datos, reglas propuestas y pruebas negativas.
-2. **Autenticación:** pantalla de inicio de sesión, persistencia segura de sesión, recuperación de contraseña y cierre de sesión; sin auto-registro.
-3. **Membresías y selector:** cargar los espacios permitidos por UID y mostrar el selector.
+2. **Autenticación:** selector inicial José/Cams/Leah, formulario de correo y contraseña, persistencia segura de sesión, recuperación y cierre de sesión; sin auto-registro.
+3. **Membresías y autorización:** verificar en Firestore que el UID autenticado tenga una membresía activa para el perfil seleccionado; el selector no concede acceso por sí solo.
 4. **Aislamiento local/cloud:** prefijos por workspace, Firestore con ID token y carga/guardado de documentos separados.
 5. **Flujo infantil:** implementado en esta rama: solicitudes de nuevas tareas y finalización, bandeja de adultos y aprobación transaccional; pendiente de staging con una cuenta infantil habilitada.
 6. **Privacidad por módulo:** capa de aislamiento y migración transaccional implementadas en esta rama; pendientes pruebas integrales de aplicación y staging antes de habilitar a Leah.
