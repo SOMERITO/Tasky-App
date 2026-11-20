@@ -46,7 +46,9 @@
     "tasky-staging-82acb.firebaseapp.com"
   ]);
   const isEmulator = emulatorRequested && localHosts.has(hostname);
-  const isStaging = !isEmulator && stagingHosts.has(hostname);
+  const isStagingHost = stagingHosts.has(hostname) ||
+    (hostname.startsWith("tasky-staging-82acb--") && hostname.endsWith(".web.app"));
+  const isStaging = !isEmulator && isStagingHost;
   const config = isEmulator ? emulatorConfig : isStaging ? stagingConfig : productionConfig;
 
   root.TaskyFirebaseEnvironment = Object.freeze({
