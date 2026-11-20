@@ -268,7 +268,7 @@ function renderAdultAssignedTaskList() {
     const card = node("article", "tasky-family-request tasky-family-assigned-task");
     const top = node("div", "tasky-family-request-top");
     const title = node("h4", "tasky-family-request-title", task.title || "Tarea sin título");
-    if (task.done) title.classList.add("is-struck");
+    if (task.done || pendingRequests.has(taskId)) title.classList.add("is-struck");
     const status = task.done
       ? node("span", "tasky-family-status is-approved", "Completada")
       : node("span", "tasky-family-status " + (pendingRequests.has(taskId) ? "is-awaiting-review" : "is-pending"),
