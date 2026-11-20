@@ -7,7 +7,9 @@ on:
     paths:
       - "firebase/**"
       - "tests/**"
+      - "app.js"
       - "tasky-private-data.js"
+      - "tasky-private-modules.js"
       - ".github/workflows/firestore-rules-tests.yml"
   pull_request:
     branches:
