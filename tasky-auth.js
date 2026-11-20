@@ -38,6 +38,7 @@ if (firebaseEnvironment.isEmulator) {
 
 const gate = document.getElementById("tasky-auth-gate");
 const profilePicker = document.getElementById("tasky-profile-picker");
+const credentialsPanel = document.getElementById("tasky-login-credentials");
 const profileSelect = document.getElementById("tasky-profile-select");
 const loginForm = document.getElementById("tasky-login-form");
 const message = document.getElementById("tasky-auth-message");
@@ -121,13 +122,61 @@ function setGateVisible(visible) {
   }
 }
 
+function setSubmitLabel(label) {
+  if (submitButton) submitButton.textContent = label;
+}
+
 function showLogin(text = "", isError = false) {
+  if (credentialsPanel) credentialsPanel.hidden = false;
+  if (profilePicker) profilePicker.hidden = true;
+  if (loginForm) loginForm.hidden = false;
+  if (signoutButton) signoutButton.hidden = true;
+  if (resetButton) resetButton.hidden = false;
+  if (submitButton) {
+    submitButton.disabled = false;
+    setSubmitLabel("Iniciar sesión");
+  }
+  setGateVisible(true);
+  setMessage(text, isError);
+}
+
+function showWorkspacePicker(text = "", isError = false) {
+  if (credentialsPanel) credentialsPanel.hidden = true;
   if (profilePicker) profilePicker.hidden = false;
   if (loginForm) loginForm.hidden = false;
-  if (profileSelect) profileSelect.value = selectedWorkspaceId;
-  if (signoutButton) signoutButton.hidden = !currentUser;
+  if (resetButton) resetButton.hidden = true;
+  if (signoutButton) signoutButton.hidden = false;
+
+  if (profileSelect) {
+    const previouslySelected = String(profileSelect.value || selectedWorkspaceId || "");
+    profileSelect.replaceChildren();
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = memberships.size ? "Selecciona un espacio" : "No hay espacios disponibles";
+    profileSelect.append(placeholder);
+
+    memberships.forEach((membership, workspaceId) => {
+      const meta = workspaceMetadata[workspaceId];
+      if (!meta) return;
+      const option = document.createElement("option");
+      option.value = workspaceId;
+      const roleLabel = meta.roleLabels && meta.roleLabels[membership.role]
+        ? meta.roleLabels[membership.role]
+        : "Acceso autorizado";
+      option.textContent = meta.name + " · " + roleLabel;
+      profileSelect.append(option);
+    });
+
+    profileSelect.value = memberships.has(previouslySelected) ? previouslySelected : "";
+    profileSelect.disabled = memberships.size === 0;
+  }
+
   if (submitButton) {
-    submitButton.textContent = "Entrar a " + (workspaceMetadata[selectedWorkspaceId]?.shortName || "Tasky");
+    submitButton.disabled = memberships.size === 0;
+    const selected = String(profileSelect && profileSelect.value || "");
+    setSubmitLabel(selected && workspaceMetadata[selected]
+      ? "Entrar a " + workspaceMetadata[selected].shortName
+      : "Continuar");
   }
   setGateVisible(true);
   setMessage(text, isError);
@@ -135,30 +184,23 @@ function showLogin(text = "", isError = false) {
 }
 
 function selectWorkspace(workspaceId) {
-  if (!workspaceId) {
-    clearSelectedWorkspace();
-    if (currentUser) window.location.reload();
-    return;
-  }
-  const meta = workspaceMetadata[workspaceId];
-  if (!meta) {
-    setMessage("Selecciona un perfil válido.", true);
+  if (!currentUser || !memberships.has(workspaceId)) {
+    showWorkspacePicker("Selecciona uno de los espacios autorizados para tu cuenta.", true);
     return;
   }
   if (!persistSelectedWorkspace(workspaceId)) return;
   if (passwordInput) passwordInput.value = "";
-  if (currentUser) {
-    // Clear the previous workspace's in-memory data before switching.
-    window.location.reload();
-    return;
-  }
-  if (submitButton) submitButton.textContent = "Entrar a " + meta.shortName;
-  setMessage("Has seleccionado " + meta.name + ". Ingresa con tu correo y contraseña.");
+  // Reloading clears all in-memory data from the previously active workspace.
+  window.location.reload();
 }
 
 if (profileSelect) {
   profileSelect.addEventListener("change", () => {
-    selectWorkspace(String(profileSelect.value || ""));
+    const workspaceId = String(profileSelect.value || "");
+    setSubmitLabel(workspaceId && workspaceMetadata[workspaceId]
+      ? "Entrar a " + workspaceMetadata[workspaceId].shortName
+      : "Continuar");
+    setMessage("");
   });
 }
 
@@ -199,28 +241,27 @@ async function loadMemberships(user) {
 
     const selected = readSelectedWorkspace();
     selectedWorkspaceId = selected;
-
-    if (!selected) {
-      showLogin("Selecciona primero el espacio al que deseas ingresar.");
-      return;
-    }
-
-    if (memberships.has(selected)) {
+    if (selected && memberships.has(selected)) {
       dispatchWorkspaceReady(selected);
       return;
     }
+    if (selected) clearSelectedWorkspace();
 
-    const meta = workspaceMetadata[selected];
-    showLogin(
-      "Esta cuenta no tiene autorización para entrar a " + meta.name + ". Verifica que estés usando la cuenta correcta o selecciona otro perfil.",
-      true
-    );
+    if (!memberships.size) {
+      showWorkspacePicker(
+        "Tu cuenta fue identificada, pero todavía no tiene espacios autorizados. Solicita a un administrador que configure tu acceso.",
+        true
+      );
+      return;
+    }
+
+    showWorkspacePicker("Identidad verificada. Selecciona el espacio al que deseas ingresar.");
   } catch (error) {
     authResolved = true;
-    showLogin(
+    showWorkspacePicker(
       error && error.code === "permission-denied"
         ? "No se pudieron verificar tus permisos. Comprueba las reglas y la membresía de esta cuenta."
-        : "No se pudieron cargar tus permisos. Comprueba tu conexión e inténtalo nuevamente.",
+        : "No se pudieron cargar tus espacios. Comprueba tu conexión e inténtalo nuevamente.",
       true
     );
   } finally {
@@ -251,24 +292,32 @@ function dispatchWorkspaceReady(workspaceId) {
 if (loginForm) {
   loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const email = String(emailInput && emailInput.value || "").trim();
-    const password = String(passwordInput && passwordInput.value || "");
 
-    if (!selectedWorkspaceId) {
-      showLogin("Selecciona primero José, Cams o Leah.");
+    if (currentUser) {
+      const workspaceId = String(profileSelect && profileSelect.value || "");
+      if (!workspaceId || !memberships.has(workspaceId)) {
+        showWorkspacePicker("Selecciona uno de los espacios autorizados para tu cuenta.", true);
+        return;
+      }
+      selectWorkspace(workspaceId);
       return;
     }
+
+    const email = String(emailInput && emailInput.value || "").trim();
+    const password = String(passwordInput && passwordInput.value || "");
     if (!email || !password) {
-      setMessage("Escribe el correo y la contraseña de la cuenta autorizada.", true);
+      setMessage("Escribe tu correo y contraseña para continuar.", true);
       return;
     }
 
     submitButton.disabled = true;
-    submitButton.textContent = "Verificando…";
+    submitButton.textContent = "Verificando cuenta…";
     setMessage("");
+    clearSelectedWorkspace();
     try {
       await signInWithEmailAndPassword(auth, email, password);
       if (passwordInput) passwordInput.value = "";
+      setMessage("Cuenta verificada. Estamos cargando tus espacios autorizados.");
     } catch (error) {
       setMessage(
         error && ["auth/invalid-credential", "auth/user-not-found", "auth/wrong-password"].includes(error.code)
@@ -278,9 +327,8 @@ if (loginForm) {
             : "No se pudo iniciar sesión. Comprueba la conexión y los datos ingresados.",
         true
       );
-    } finally {
       submitButton.disabled = false;
-      submitButton.textContent = "Entrar a " + (workspaceMetadata[selectedWorkspaceId]?.shortName || "Tasky");
+      setSubmitLabel("Iniciar sesión");
     }
   });
 }
@@ -309,7 +357,7 @@ if (signoutButton) {
       memberships = new Map();
       await signOut(auth);
       currentUser = null;
-      showLogin("Has cerrado sesión. Elige un perfil para continuar.");
+      showLogin("Has cerrado sesión. Ingresa con tu correo y contraseña.");
     } catch (error) {
       setMessage("No se pudo cerrar la sesión. Inténtalo nuevamente.", true);
     }
@@ -319,7 +367,7 @@ if (signoutButton) {
 if (accountButton) {
   accountButton.addEventListener("click", () => {
     window.dispatchEvent(new CustomEvent("tasky:open-workspace-picker"));
-    showLogin("Elige el espacio al que deseas cambiar.");
+    showWorkspacePicker("Elige uno de los espacios autorizados para tu cuenta.");
   });
 }
 
@@ -363,6 +411,6 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  showLogin();
+  showWorkspacePicker("Verificando los espacios autorizados de tu cuenta…");
   await loadMemberships(user);
 });
