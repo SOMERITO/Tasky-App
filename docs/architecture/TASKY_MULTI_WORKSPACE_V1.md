@@ -5,7 +5,7 @@ Estado: implementación parcial en la rama de desarrollo; no desplegada.
 
 ## Objetivo
 
-Mantener una sola aplicación web y una sola URL de Tasky. Después de iniciar sesión, cada integrante verá únicamente los espacios autorizados. Los datos, permisos, preferencias y cachés de cada espacio deben estar aislados.
+Mantener una sola aplicación web y una sola URL de Tasky. La pantalla inicial muestra tres opciones: José, Cams y Leah. Después de elegir un perfil, el usuario se autentica con su correo y contraseña; Firebase y Firestore verifican que su UID tenga una membresía activa para el espacio elegido. La selección visual nunca concede permisos por sí sola. Los datos, permisos, preferencias y cachés de cada espacio deben estar aislados.
 
 No se creará una segunda página web para Leah ni se reutilizará otra aplicación móvil. Tasky Leah será un espacio compartido dentro de la aplicación actual.
 
