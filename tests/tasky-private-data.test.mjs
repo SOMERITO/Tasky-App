@@ -41,8 +41,9 @@ const base = {
   },
   completionLog: [
     { id: "school-event", taskId: "school-1", title: "Leer" },
-    { id: "health-event", taskId: "health-1", title: "Cita médica" },
-    { id: "expense-event", taskId: "expense-1", title: "Pago de terapia" }
+    { id: "health-event", taskId: "health-1", title: "Cita médica", boxId: "box_salud" },
+    { id: "expense-event", taskId: "expense-1", title: "Pago de terapia", boxId: "box_gastos" },
+    { id: "health-deleted-event", taskId: "health-deleted", title: "Evento histórico de salud", boxId: "box_salud" }
   ],
   updatedAt: 10
 };
@@ -63,6 +64,22 @@ test("shared payload excludes private boxes, tasks, tombstones and related metad
   assert.deepEqual(Object.keys(shared.focusPlan.byBox), ["box_escolar"]);
   assert.deepEqual(shared.completionLog.map((entry) => entry.taskId), ["school-1"]);
   assert.equal(Object.hasOwn(shared, "history"), false);
+  const health = moduleDataFromWorkspace(base, "box_salud", ["health-deleted"]);
+  assert.equal(health.taskIds.includes("health-deleted"), true);
+  assert.equal(health.completionLog.some((entry) => entry.id === "health-deleted-event"), true);
+});
+
+test("a deleted private task completion cannot leak from shared history without a private task index", () => {
+  const shared = buildSharedWorkspacePayload({
+    boxes: [{ id: "box_escolar", name: "ESCOLAR" }],
+    tasks: [],
+    completionLog: [
+      { id: "event-secret", taskId: "already-deleted-private-task", boxId: "box_salud", title: "Detalle clínico antiguo" },
+      { id: "event-school", taskId: "school-task", boxId: "box_escolar", title: "Tarea escolar" }
+    ]
+  }, []);
+
+  assert.deepEqual(shared.completionLog.map((entry) => entry.id), ["event-school"]);
 });
 
 test("private module merge preserves newer task edits and explicit deletions", () => {
