@@ -349,6 +349,20 @@ test("only an adult can create or change workspace membership records", async ()
   await assertFails(deleteDoc(doc(leah, "user_access/leah/workspaces/leah")));
 });
 
+test("only adults can inspect or change the private-module migration gate", async () => {
+  const guardian = env.authenticatedContext("jose").firestore();
+  const child = env.authenticatedContext("leah").firestore();
+  const outsider = env.authenticatedContext("intruder").firestore();
+
+  await assertSucceeds(getDoc(doc(guardian, "workspaces/leah/access_control/private_modules")));
+  await assertFails(getDoc(doc(child, "workspaces/leah/access_control/private_modules")));
+  await assertFails(setDoc(doc(child, "workspaces/leah/access_control/private_modules"), {
+    ready: true,
+    schemaVersion: 1
+  }));
+  await assertFails(getDoc(doc(outsider, "workspaces/leah/access_control/private_modules")));
+});
+
 test("an enabled child membership is still blocked until private-module migration is complete", async () => {
   await env.withSecurityRulesDisabled(async (context) => {
     await setDoc(doc(context.firestore(), "user_access/child-before-migration/workspaces/leah-before-migration"), {
