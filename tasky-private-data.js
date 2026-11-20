@@ -31,7 +31,26 @@ export function isPrivateModuleId(moduleId) {
   return PRIVATE_MODULE_ID_SET.has(String(moduleId || ""));
 }
 
-export function moduleDataFromWorkspace(sourceRaw, moduleId, knownTaskIds = [], taskMemoryRaw = null) {
+export function privateModuleMemoryKeys(moduleId, box = null, knownKeys = []) {
+  if (!isPrivateModuleId(moduleId)) return [];
+  const keys = new Set([String(moduleId), ...uniqueStrings(knownKeys)]);
+  const name = String(box && box.name || "").trim();
+  if (name) keys.add("box_mem_" + name.toUpperCase());
+  // Keep prior known key variants when a private module was renamed.
+  if (moduleId === "box_salud") keys.add("box_mem_SALUD Y CITAS");
+  if (moduleId === "box_gastos") keys.add("box_mem_GASTOS RELACIONADOS CON LEAH");
+  return Array.from(keys);
+}
+
+function selectMemoryEntries(source, keys) {
+  const result = {};
+  keys.forEach((key) => {
+    if (Array.isArray(source[key])) result[key] = clone(source[key]);
+  });
+  return result;
+}
+
+export function moduleDataFromWorkspace(sourceRaw, moduleId, knownTaskIds = [], taskMemoryRaw = null, knownMemoryKeys = []) {
   if (!isPrivateModuleId(moduleId)) throw new Error("Módulo privado desconocido.");
   const source = asObject(sourceRaw);
   const box = asArray(source.boxes).find((item) => String(item && item.id) === moduleId);
@@ -41,10 +60,13 @@ export function moduleDataFromWorkspace(sourceRaw, moduleId, knownTaskIds = [], 
   const currentTaskIds = tasks.map((item) => String(item.id || "")).filter(Boolean);
   const taskIds = uniqueStrings([...knownTaskIds, ...currentTaskIds]);
   const deletedTaskIds = uniqueStrings(source.deletedTaskIds).filter((id) => taskIds.includes(id));
-  const sourceMemory = asObject(taskMemoryRaw || source.taskMemoryByBox);
-  const memory = Array.isArray(sourceMemory[moduleId])
-    ? { [moduleId]: clone(sourceMemory[moduleId]) }
-    : {};
+  const sourceMemory = { ...asObject(source.taskMemoryByBox), ...asObject(taskMemoryRaw) };
+  const memoryKeys = privateModuleMemoryKeys(moduleId, box, [
+    ...knownMemoryKeys,
+    ...Object.keys(asObject(source.taskMemoryByBox)).filter((key) => key.startsWith("box_mem_")),
+    ...Object.keys(asObject(taskMemoryRaw)).filter((key) => key.startsWith("box_mem_"))
+  ]);
+  const memory = selectMemoryEntries(sourceMemory, memoryKeys);
   const sourceFocus = asObject(source.focusPlan);
   const focusByBox = asObject(sourceFocus.byBox);
   const focusPlan = Object.prototype.hasOwnProperty.call(focusByBox, moduleId)
@@ -54,7 +76,7 @@ export function moduleDataFromWorkspace(sourceRaw, moduleId, knownTaskIds = [], 
         byBox: { [moduleId]: clone(focusByBox[moduleId]) }
       }
     : { date: String(sourceFocus.date || ""), updatedAt: Number(sourceFocus.updatedAt || 0), byBox: {} };
-  const dismissed = asObject(source.dismissedTaskSuggestionsByBox);
+  const dismissed = selectMemoryEntries(asObject(source.dismissedTaskSuggestionsByBox), memoryKeys);
   const completionLog = asArray(source.completionLog)
     .filter((entry) => entry && taskIds.includes(String(entry.taskId || "")))
     .map((entry) => clone(entry));
@@ -65,8 +87,9 @@ export function moduleDataFromWorkspace(sourceRaw, moduleId, knownTaskIds = [], 
     tasks,
     taskIds,
     deletedTaskIds,
-    deletedBoxIds: uniqueStrings(source.deletedBoxIds).filter((id) => id === moduleId),
+    deletedBoxIds: [],
     taskMemoryByBox: memory,
+    memoryKeys,
     focusPlan,
     dismissedTaskSuggestionsByBox: Object.prototype.hasOwnProperty.call(dismissed, moduleId)
       ? { [moduleId]: clone(dismissed[moduleId]) }
@@ -110,33 +133,35 @@ export function mergePrivateModuleData(...rawEntries) {
     });
 
     const memory = asObject(entry.taskMemoryByBox);
-    if (Array.isArray(memory[moduleId])) {
-      const merged = Array.isArray(taskMemoryByBox[moduleId]) ? taskMemoryByBox[moduleId] : [];
+    Object.entries(memory).forEach(([key, values]) => {
+      if (!Array.isArray(values)) return;
+      const merged = Array.isArray(taskMemoryByBox[key]) ? taskMemoryByBox[key] : [];
       const seen = new Set(merged.map((value) => String(value).toLowerCase()));
-      memory[moduleId].forEach((value) => {
+      values.forEach((value) => {
         const title = String(value || "").trim();
         if (title && !seen.has(title.toLowerCase())) {
           merged.push(title);
           seen.add(title.toLowerCase());
         }
       });
-      taskMemoryByBox[moduleId] = merged.slice(-500);
-    }
+      taskMemoryByBox[key] = merged.slice(-500);
+    });
 
     const dismissed = asObject(entry.dismissedTaskSuggestionsByBox);
-    if (Array.isArray(dismissed[moduleId])) {
-      const merged = Array.isArray(dismissedTaskSuggestionsByBox[moduleId])
-        ? dismissedTaskSuggestionsByBox[moduleId] : [];
+    Object.entries(dismissed).forEach(([key, values]) => {
+      if (!Array.isArray(values)) return;
+      const merged = Array.isArray(dismissedTaskSuggestionsByBox[key])
+        ? dismissedTaskSuggestionsByBox[key] : [];
       const seen = new Set(merged.map((value) => String(value).toLowerCase()));
-      dismissed[moduleId].forEach((value) => {
+      values.forEach((value) => {
         const title = String(value || "").trim();
         if (title && !seen.has(title.toLowerCase())) {
           merged.push(title);
           seen.add(title.toLowerCase());
         }
       });
-      dismissedTaskSuggestionsByBox[moduleId] = merged.slice(-500);
-    }
+      dismissedTaskSuggestionsByBox[key] = merged.slice(-500);
+    });
 
     const entryFocus = asObject(entry.focusPlan);
     const entryByBox = asObject(entryFocus.byBox);
@@ -191,11 +216,36 @@ export function collectPrivateTaskIds(modulesRaw) {
   return ids;
 }
 
+export function collectPrivateMemoryKeys(modulesRaw) {
+  const modules = Array.isArray(modulesRaw) ? modulesRaw : Object.values(asObject(modulesRaw));
+  const keys = new Set();
+  modules.forEach((moduleData) => {
+    if (!moduleData || !isPrivateModuleId(moduleData.moduleId)) return;
+    privateModuleMemoryKeys(
+      moduleData.moduleId,
+      moduleData.box,
+      [
+        ...uniqueStrings(moduleData.memoryKeys),
+        ...Object.keys(asObject(moduleData.taskMemoryByBox)),
+        ...Object.keys(asObject(moduleData.dismissedTaskSuggestionsByBox))
+      ]
+    ).forEach((key) => keys.add(key));
+  });
+  return keys;
+}
+
+export function buildSharedTaskMemory(memoryRaw, modulesRaw = []) {
+  const source = { ...asObject(memoryRaw) };
+  collectPrivateMemoryKeys(modulesRaw).forEach((key) => delete source[key]);
+  return source;
+}
+
 export function buildSharedWorkspacePayload(sourceRaw, modulesRaw = []) {
   const source = clone(asObject(sourceRaw)) || {};
   const privateModules = Array.isArray(modulesRaw) ? modulesRaw : Object.values(asObject(modulesRaw));
   const privateTaskIds = collectPrivateTaskIds(privateModules);
   const privateBoxIds = new Set(Object.keys(PRIVATE_MODULE_IDS));
+  const privateMemoryKeys = collectPrivateMemoryKeys(privateModules);
 
   source.boxes = asArray(source.boxes)
     .filter((box) => box && !privateBoxIds.has(String(box.id)))
@@ -208,13 +258,13 @@ export function buildSharedWorkspacePayload(sourceRaw, modulesRaw = []) {
 
   const taskMemory = asObject(source.taskMemoryByBox);
   Object.keys(taskMemory).forEach((key) => {
-    if (privateBoxIds.has(key)) delete taskMemory[key];
+    if (privateBoxIds.has(key) || privateMemoryKeys.has(key)) delete taskMemory[key];
   });
   source.taskMemoryByBox = taskMemory;
 
   const dismissed = asObject(source.dismissedTaskSuggestionsByBox);
   Object.keys(dismissed).forEach((key) => {
-    if (privateBoxIds.has(key)) delete dismissed[key];
+    if (privateBoxIds.has(key) || privateMemoryKeys.has(key)) delete dismissed[key];
   });
   source.dismissedTaskSuggestionsByBox = dismissed;
 
@@ -256,13 +306,13 @@ export function attachPrivateModulesToWorkspace(sharedRaw, modulesRaw = []) {
     uniqueStrings(moduleData.deletedBoxIds).forEach((id) => deletedBoxIds.add(id));
 
     const memory = asObject(moduleData.taskMemoryByBox);
-    if (Array.isArray(memory[moduleData.moduleId])) {
-      taskMemoryByBox[moduleData.moduleId] = clone(memory[moduleData.moduleId]);
-    }
+    Object.entries(memory).forEach(([key, values]) => {
+      if (Array.isArray(values)) taskMemoryByBox[key] = clone(values);
+    });
     const privateDismissed = asObject(moduleData.dismissedTaskSuggestionsByBox);
-    if (Array.isArray(privateDismissed[moduleData.moduleId])) {
-      dismissed[moduleData.moduleId] = clone(privateDismissed[moduleData.moduleId]);
-    }
+    Object.entries(privateDismissed).forEach(([key, values]) => {
+      if (Array.isArray(values)) dismissed[key] = clone(values);
+    });
     const privateFocus = asObject(moduleData.focusPlan);
     const privateFocusByBox = asObject(privateFocus.byBox);
     if (privateFocusByBox[moduleData.moduleId]) focusByBox[moduleData.moduleId] = clone(privateFocusByBox[moduleData.moduleId]);
