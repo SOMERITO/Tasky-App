@@ -3549,14 +3549,14 @@
 
   function getFirebaseFirestoreApiBase() {
     const configuredBase = window.TaskyFirebaseEnvironment && window.TaskyFirebaseEnvironment.firestoreApiBase;
-    return String(configuredBase || "https://firestore.googleapis.com/v1").replace(/\\/+$/, "");
+    return String(configuredBase || "https://firestore.googleapis.com/v1").replace(/\/+$/, "");
   }
 
   function getFirebaseFirestoreUrl() {
     const cfg = appState.firebaseConfig || {};
     const environmentProjectId = window.TaskyFirebaseEnvironment && window.TaskyFirebaseEnvironment.projectId;
     const proj = String(cfg.projectId || environmentProjectId || "tasky-7a30c").trim();
-    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\\/+|\\/+$/g, "");
+    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, "");
     const keyParam = cfg.apiKey ? `?key=${encodeURIComponent(cfg.apiKey)}` : "";
     return `${getFirebaseFirestoreApiBase()}/projects/${encodeURIComponent(proj)}/databases/(default)/documents/${docPath}${keyParam}`;
   }
