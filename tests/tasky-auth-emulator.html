@@ -8,34 +8,40 @@
     body { font: 16px system-ui, sans-serif; max-width: 36rem; margin: 3rem auto; padding: 0 1rem; }
     label { display: block; margin-top: 1rem; }
     input, button { box-sizing: border-box; width: 100%; padding: .75rem; margin-top: .4rem; }
-    .tasky-workspace-options { display: grid; gap: .75rem; }
-    .tasky-workspace-option { text-align: left; cursor: pointer; border: 1px solid #bbb; border-radius: .6rem; }
-    .tasky-workspace-option-title, .tasky-workspace-option-description, .tasky-workspace-option-role { display: block; }
-    .tasky-workspace-option-title { font-weight: 700; }
+    button { cursor: pointer; }
+    [hidden] { display: none !important; }
+    .tasky-profile-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+    .tasky-profile-option { min-height: 6rem; border: 1px solid #bbb; border-radius: .6rem; }
+    .tasky-profile-avatar, .tasky-profile-name, .tasky-profile-description { display: block; }
     #tasky-auth-message { min-height: 1.5rem; }
   </style>
 </head>
 <body>
   <main id="tasky-auth-gate" role="dialog" aria-modal="true">
     <h1 id="tasky-auth-title">Bienvenido a Tasky</h1>
-    <form id="tasky-login-form">
+    <section id="tasky-profile-picker">
+      <h2>¿Quién va a ingresar?</h2>
+      <div id="tasky-profile-options">
+        <button class="tasky-profile-option" data-workspace="jose" type="button">José</button>
+        <button class="tasky-profile-option" data-workspace="camila" type="button">Cams</button>
+        <button class="tasky-profile-option" data-workspace="leah" type="button">Leah</button>
+      </div>
+    </section>
+    <form id="tasky-login-form" hidden>
+      <div id="tasky-selected-profile" hidden><h2 id="tasky-selected-profile-name"></h2></div>
+      <button id="tasky-change-profile" type="button">Cambiar perfil</button>
       <label for="tasky-login-email">Correo electrónico</label>
       <input id="tasky-login-email" name="email" type="email" autocomplete="username" required>
       <label for="tasky-login-password">Contraseña</label>
       <input id="tasky-login-password" name="password" type="password" autocomplete="current-password" required>
-      <button id="tasky-login-submit" type="submit">Iniciar sesión</button>
+      <button id="tasky-login-submit" type="submit">Entrar a Tasky</button>
       <button id="tasky-password-reset" type="button">Olvidé mi contraseña</button>
     </form>
-    <section id="tasky-workspace-picker" hidden>
-      <p id="tasky-auth-user-label"></p>
-      <div id="tasky-workspace-options" class="tasky-workspace-options"></div>
-      <button id="tasky-auth-signout" type="button">Cerrar sesión</button>
-    </section>
+    <button id="tasky-auth-signout" type="button" hidden>Cerrar sesión</button>
     <p id="tasky-auth-message" role="status" aria-live="polite"></p>
   </main>
   <output id="tasky-test-result" aria-live="polite"></output>
   <script>
-    // This fixture is served only from localhost in CI. It never loads app.js or production sync.
     window.__TASKY_USE_FIREBASE_EMULATORS__ = true;
     window.addEventListener("tasky:workspace-ready", (event) => {
       document.documentElement.dataset.taskyWorkspace = event.detail.workspaceId;
@@ -44,6 +50,6 @@
         event.detail.workspaceName + " · " + event.detail.role;
     });
   </script>
-  <script type="module" src="../tasky-auth.js"></script>
+  <script type="module" src="../tasky-auth.js?v=20261120-profile-first-auth-1"></script>
 </body>
 </html>
