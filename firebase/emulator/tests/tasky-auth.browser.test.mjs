@@ -222,7 +222,8 @@ test("la cuenta infantil de Leah no entra mientras el acceso siga deshabilitado"
     await login(page, users.leah);
     await page.waitForFunction(() => document.querySelector("#tasky-auth-message")?.textContent.includes("Esta cuenta no tiene autorización para entrar a Tasky Leah."));
     assert.equal(await page.locator("html").getAttribute("data-tasky-workspace"), null);
-    assert.equal(await page.locator("#tasky-profile-picker:not([hidden])").count(), 0);
+    assert.equal(await page.locator("#tasky-login-form:not([hidden])").count(), 1);
+    assert.equal(await page.locator("#tasky-profile-select").inputValue(), "leah");
     assert.deepEqual(forbiddenProductionRequests, []);
   } finally {
     await context.close();
