@@ -58,7 +58,7 @@ before(async () => {
       createdAt: new Date(),
       status: "pending",
       title: "Read a chapter",
-      module: "Escolar"
+      module: "box_escolar"
     });
   });
 });
@@ -127,7 +127,7 @@ test("Leah can submit a new task and a completion request, but cannot approve or
     status: "pending",
     title: "Prepare science poster",
     description: "Bring the materials",
-    module: "Escolar",
+    module: "box_escolar",
     scheduledDate: "2026-11-20",
     deadlineDate: "2026-11-23",
     priority: "normal"
@@ -171,7 +171,7 @@ test("Leah cannot create malformed requests or impersonate another user", async 
     createdAt: new Date(),
     status: "pending",
     title: "Impersonated",
-    module: "Escolar"
+    module: "box_escolar"
   }));
 
   await assertFails(setDoc(doc(db, "workspaces/leah/task_requests/invalid-status"), {
@@ -180,7 +180,7 @@ test("Leah cannot create malformed requests or impersonate another user", async 
     createdAt: new Date(),
     status: "approved",
     title: "Skip adult review",
-    module: "Escolar"
+    module: "box_escolar"
   }));
 
   await assertFails(setDoc(doc(db, "workspaces/leah/task_requests/invalid-type"), {
