@@ -13299,6 +13299,16 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       workspaceName: String(detail.workspaceName || workspaceId),
       role: membership.role
     };
+
+    const welcomeTitle = document.getElementById("tasky-welcome-title");
+    const welcomeSubtitle = document.getElementById("tasky-welcome-subtitle");
+    const fallbackNames = { jose: "José Carranza", camila: "Camila", leah: "Leah" };
+    const greetingName = activeWorkspaceContext.displayName || fallbackNames[workspaceId] || "usuario";
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
+    if (welcomeTitle) welcomeTitle.textContent = "¡" + greeting + ", " + greetingName + "!";
+    if (welcomeSubtitle) welcomeSubtitle.textContent = "Te damos la bienvenida a tu espacio de Tasky.";
+
     activeStorageNamespace = "tasky:v2:" + workspaceId + (workspaceId === "leah" ? ":" + activeWorkspaceContext.uid : "");
     appState.activeWorkspace = { ...activeWorkspaceContext };
     appState.firebaseConfig.docPath = "workspaces/" + workspaceId + "/shared/main";
