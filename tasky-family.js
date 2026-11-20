@@ -184,6 +184,16 @@ function renderChildPanel() {
   grid.append(newTaskCard, completionCard);
   card.append(grid);
 
+  const assignedTasks = node("section", "tasky-family-inbox-card");
+  assignedTasks.append(
+    node("h3", "", "Tareas asignadas por José y Camila"),
+    node("p", "tasky-family-help", "Aquí puedes consultar las tareas que los adultos registraron para ti. Cuando termines una, avísales para que puedan revisarla.")
+  );
+  const assignedTaskList = node("div", "tasky-family-list");
+  assignedTaskList.id = "tasky-family-assigned-tasks-list";
+  assignedTasks.append(assignedTaskList);
+  card.append(assignedTasks);
+
   const ownTasks = node("section", "tasky-family-inbox-card");
   ownTasks.append(
     node("h3", "", "Tareas que he registrado"),
@@ -204,6 +214,7 @@ function renderChildPanel() {
   history.append(list);
   card.append(history);
   renderChildTaskList();
+  renderAdultAssignedTaskList();
   renderRequestList();
   updateCompletionTaskOptions();
 }
@@ -239,6 +250,88 @@ function renderGuardianPanel() {
   card.append(requestSection);
   renderChildTaskList();
   renderRequestList();
+}
+
+function renderAdultAssignedTaskList() {
+  if (!content || activeRole !== "child") return;
+  const list = content.querySelector("#tasky-family-assigned-tasks-list");
+  if (!list) return;
+  list.replaceChildren();
+
+  const eligibleTasks = boardTasks
+    .filter((task) => task && childModuleIds.has(String(task.boxId)))
+    .sort((a, b) => {
+      const aDue = String(a.dueDate || "");
+      const bDue = String(b.dueDate || "");
+      return aDue.localeCompare(bDue) || String(a.title || "").localeCompare(String(b.title || ""), "es");
+    });
+
+  if (!eligibleTasks.length) {
+    list.append(node("div", "tasky-family-empty", "Todavía no hay tareas asignadas por José o Camila."));
+    return;
+  }
+
+  const pendingRequests = new Set(
+    requests
+      .filter((request) => request.type === "completion" && request.status === "pending")
+      .map((request) => String(request.relatedTaskId || ""))
+  );
+
+  eligibleTasks.forEach((task) => {
+    const taskId = String(task.id);
+    const card = node("article", "tasky-family-request tasky-family-assigned-task");
+    const top = node("div", "tasky-family-request-top");
+    const title = node("h4", "tasky-family-request-title", task.title || "Tarea sin título");
+    if (task.done) title.classList.add("is-struck");
+    const status = task.done
+      ? node("span", "tasky-family-status is-approved", "Completada")
+      : node("span", "tasky-family-status " + (pendingRequests.has(taskId) ? "is-awaiting-review" : "is-pending"),
+          pendingRequests.has(taskId) ? "Por revisar" : "Pendiente");
+    top.append(title, status);
+    card.append(top);
+
+    const metadata = [moduleLabel(String(task.boxId))];
+    if (task.dueDate) metadata.push("Programada: " + formatDate(task.dueDate));
+    if (task.deadlineDate) metadata.push("Fecha límite: " + formatDate(task.deadlineDate));
+    card.append(node("p", "tasky-family-request-meta", metadata.join(" · ")));
+    if (task.description) card.append(node("p", "tasky-family-request-description", task.description));
+
+    if (!task.done && !pendingRequests.has(taskId)) {
+      const actions = node("div", "tasky-family-actions");
+      actions.append(makeButton("Ya terminé esta tarea", "tasky-family-primary", () => submitCompletionForTask(taskId)));
+      card.append(actions);
+    } else if (pendingRequests.has(taskId)) {
+      card.append(node("p", "tasky-family-help", "Tu aviso ya fue enviado. La tarea seguirá pendiente hasta que un adulto la confirme."));
+    }
+    list.append(card);
+  });
+}
+
+async function submitCompletionForTask(taskId) {
+  if (requestBusy || activeRole !== "child" || !activeUid) return;
+  const task = boardTasks.find((item) => String(item.id) === String(taskId));
+  const alreadyPending = requests.some((request) =>
+    request.type === "completion" &&
+    request.status === "pending" &&
+    String(request.relatedTaskId || "") === String(taskId)
+  );
+  if (!task || task.done || alreadyPending || !childModuleIds.has(String(task.boxId))) return;
+
+  setRequestBusy(true);
+  try {
+    await addDoc(collection(db, ...REQUESTS_PATH), {
+      type: "completion",
+      createdBy: activeUid,
+      createdAt: serverTimestamp(),
+      status: "pending",
+      relatedTaskId: String(taskId)
+    });
+  } catch (error) {
+    window.alert("No se pudo enviar el aviso de finalización. Comprueba tu conexión y los permisos.");
+  } finally {
+    setRequestBusy(false);
+    renderAdultAssignedTaskList();
+  }
 }
 
 function updateCompletionTaskOptions() {
@@ -852,6 +945,7 @@ function openWorkspace(detail) {
   unsubscribeRequests = onSnapshot(requestsQuery, (snapshot) => {
     requests = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     renderRequestList();
+    renderAdultAssignedTaskList();
     updateCompletionTaskOptions();
   }, (error) => {
     const list = content.querySelector("#tasky-family-requests-list");
@@ -890,9 +984,11 @@ function openWorkspace(detail) {
     unsubscribeBoard = onSnapshot(sharedRef, (snapshot) => {
       const payload = parseSharedPayload(snapshot);
       boardTasks = payload && Array.isArray(payload.tasks) ? payload.tasks : [];
+      renderAdultAssignedTaskList();
       updateCompletionTaskOptions();
     }, (error) => {
       boardTasks = [];
+      renderAdultAssignedTaskList();
       updateCompletionTaskOptions();
       window.console && window.console.error("Tasky family board listener failed:", error);
     });
