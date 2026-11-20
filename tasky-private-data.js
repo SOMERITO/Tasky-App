@@ -87,9 +87,7 @@ export function moduleDataFromWorkspace(sourceRaw, moduleId, knownTaskIds = [], 
     taskMemoryByBox: memory,
     memoryKeys,
     focusPlan,
-    dismissedTaskSuggestionsByBox: Object.prototype.hasOwnProperty.call(dismissed, moduleId)
-      ? { [moduleId]: clone(dismissed[moduleId]) }
-      : {},
+    dismissedTaskSuggestionsByBox: dismissed,
     completionLog,
     updatedAt: Number(source.updatedAt || 0)
   };
