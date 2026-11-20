@@ -58,7 +58,14 @@ export function moduleDataFromWorkspace(sourceRaw, moduleId, knownTaskIds = [], 
     .filter((item) => item && String(item.boxId) === moduleId)
     .map((item) => clone(item));
   const currentTaskIds = tasks.map((item) => String(item.id || "")).filter(Boolean);
-  const taskIds = uniqueStrings([...knownTaskIds, ...currentTaskIds]);
+  const sourceCompletionLog = asArray(source.completionLog);
+  const privateCompletionLog = sourceCompletionLog.filter((entry) => entry && (
+    String(entry.boxId || "") === moduleId ||
+    uniqueStrings(knownTaskIds).includes(String(entry.taskId || "")) ||
+    currentTaskIds.includes(String(entry.taskId || ""))
+  ));
+  const completionTaskIds = privateCompletionLog.map((entry) => String(entry.taskId || "")).filter(Boolean);
+  const taskIds = uniqueStrings([...knownTaskIds, ...currentTaskIds, ...completionTaskIds]);
   const deletedTaskIds = uniqueStrings(source.deletedTaskIds).filter((id) => taskIds.includes(id));
   const sourceMemory = { ...asObject(source.taskMemoryByBox), ...asObject(taskMemoryRaw) };
   const memoryKeys = privateModuleMemoryKeys(moduleId, box, knownMemoryKeys);
@@ -73,9 +80,7 @@ export function moduleDataFromWorkspace(sourceRaw, moduleId, knownTaskIds = [], 
       }
     : { date: String(sourceFocus.date || ""), updatedAt: Number(sourceFocus.updatedAt || 0), byBox: {} };
   const dismissed = selectMemoryEntries(asObject(source.dismissedTaskSuggestionsByBox), memoryKeys);
-  const completionLog = asArray(source.completionLog)
-    .filter((entry) => entry && taskIds.includes(String(entry.taskId || "")))
-    .map((entry) => clone(entry));
+  const completionLog = privateCompletionLog.map((entry) => clone(entry));
 
   return {
     moduleId,
@@ -340,7 +345,10 @@ export function buildSharedWorkspacePayload(sourceRaw, modulesRaw = []) {
   source.focusPlan = { ...focusPlan, byBox: focusByBox };
 
   source.completionLog = asArray(source.completionLog)
-    .filter((event) => event && !privateTaskIds.has(String(event.taskId || "")))
+    .filter((event) => event &&
+      !privateBoxIds.has(String(event.boxId || "")) &&
+      !privateTaskIds.has(String(event.taskId || ""))
+    )
     .map((event) => clone(event));
   // Action history may contain private task titles. Keep it in the adult's local account only.
   delete source.history;
