@@ -17,27 +17,15 @@ import {
 
 const emulatorRequested = window.__TASKY_USE_FIREBASE_EMULATORS__ === true;
 const localHosts = new Set(["localhost", "127.0.0.1"]);
-if (emulatorRequested && !localHosts.has(window.location.hostname)) {
+const firebaseEnvironment = window.TaskyFirebaseEnvironment;
+if (!firebaseEnvironment || !firebaseEnvironment.config) {
+  throw new Error("No se pudo determinar el entorno Firebase de Tasky.");
+}
+if (emulatorRequested && (!localHosts.has(window.location.hostname) || firebaseEnvironment.isEmulator !== true)) {
   throw new Error("Tasky Firebase Emulators solo se pueden usar desde localhost.");
 }
 
-const firebaseConfig = Object.freeze(emulatorRequested
-  ? {
-      apiKey: "tasky-emulator-api-key",
-      authDomain: "localhost",
-      projectId: "demo-tasky-auth",
-      storageBucket: "demo-tasky-auth.appspot.com",
-      messagingSenderId: "000000000000",
-      appId: "1:000000000000:web:tasky-auth-emulator"
-    }
-  : {
-      apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YhrvEcb8",
-      authDomain: "tasky-7a30c.firebaseapp.com",
-      projectId: "tasky-7a30c",
-      storageBucket: "tasky-7a30c.firebasestorage.app",
-      messagingSenderId: "505071526437",
-      appId: "1:505071526437:web:6c9eb46dbb4fef296655cc6"
-    });
+const firebaseConfig = Object.freeze({ ...firebaseEnvironment.config });
 
 const app = initializeApp(firebaseConfig, "tasky-multi-workspace");
 const auth = getAuth(app);
