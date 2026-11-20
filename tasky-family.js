@@ -681,11 +681,18 @@ function renderRequestList() {
     : requests;
   if (activeRole !== "child") {
     const count = content.querySelector("#tasky-family-pending-count");
-    if (count) count.textContent = String(visibleRequests.filter((request) => request.status === "pending").length);
+    if (count) {
+      count.textContent = String(
+        visibleRequests.filter((request) => request.status === "pending").length +
+        childTasks.filter((task) => task.status === "awaiting_review").length
+      );
+    }
   }
   if (!visibleRequests.length) {
     list.append(node("div", "tasky-family-empty",
-      activeRole === "child" ? "Todavía no has enviado solicitudes." : "No hay solicitudes pendientes. Cuando Leah envíe una, aparecerá aquí."
+      activeRole === "child"
+        ? "Todavía no has enviado avisos sobre tareas asignadas."
+        : "No hay avisos de finalización pendientes para revisar."
     ));
     return;
   }
