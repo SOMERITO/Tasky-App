@@ -28,6 +28,7 @@ jobs:
           node --check app.js
           node --check mobile-app.js
           node --check tasky-auth.js
+          node --check tasky-firebase-config.js
           node --input-type=module --check < tasky-family.js
           node --input-type=module --check < tasky-private-modules.js
           node --input-type=module --check < tasky-private-data.js
