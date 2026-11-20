@@ -113,8 +113,12 @@
 
   <div id="tasky-child-readonly-banner" class="tasky-child-readonly-banner" hidden>
     <span aria-hidden="true">♡</span>
-    <span><strong>Espacio de Leah</strong><small>Por ahora puedes consultar tus pendientes. El registro y la confirmación de tareas se habilitarán con la aprobación de un adulto.</small></span>
+    <span><strong>Espacio de Leah</strong><small>Consulta tus pendientes y envía solicitudes de nuevas tareas o de finalización. Un adulto revisará cada solicitud.</small></span>
   </div>
+
+  <section id="tasky-family-panel" class="tasky-family-panel" aria-label="Solicitudes familiares de Leah" hidden>
+    <div id="tasky-family-content"></div>
+  </section>
 
   <div class="app-shell">
     <!-- Hero Section -->
@@ -1334,8 +1338,9 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261119-multi-workspace-auth-foundation-2"></script>
+  <script src="app.js?v=20261120-family-requests-1"></script>
   <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
   <script type="module" src="tasky-auth.js?v=20261119-auth-2"></script>
+  <script type="module" src="tasky-family.js?v=20261120-family-requests-1"></script>
 </body>
 </html>
