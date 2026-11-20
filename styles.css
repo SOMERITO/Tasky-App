@@ -7999,6 +7999,9 @@ html[data-tasky-workspace="leah"] .brand-logo {
 }
 .tasky-family-status.is-pending { background: rgba(245, 158, 11, .12); color: #a16207; }
 .tasky-family-status.is-approved { background: rgba(22, 163, 74, .11); color: #15803d; }
+.tasky-family-status.is-awaiting-review { background: rgba(245, 158, 11, .14); color: #a16207; }
+.tasky-family-request-title.is-struck { text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: currentColor; opacity: .78; }
+.tasky-family-task-editor { width: 100%; }
 .tasky-family-status.is-rejected { background: rgba(220, 53, 69, .1); color: #b42335; }
 .tasky-family-actions {
   display: flex;
@@ -8058,7 +8061,8 @@ html[data-tasky-workspace="leah"] .brand-logo {
   box-shadow: 0 0 0 3px rgba(139, 92, 246, .13);
 }
 .tasky-profile-picker[hidden],
-.tasky-auth-form[hidden] {
+.tasky-auth-form[hidden],
+#tasky-login-credentials[hidden] {
   display: none !important;
 }
 .tasky-auth-form .tasky-auth-subtitle {
