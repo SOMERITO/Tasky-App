@@ -24,7 +24,7 @@ No se creará una segunda página web para Leah ni se reutilizará otra aplicaci
 - Módulos previstos de Leah: Escolar, Evaluaciones, Materiales, Actividades, Coordinación familiar, Salud y citas, Hábitos y rutinas y Gastos relacionados con Leah.
 - Los módulos Salud y Gastos se separan en documentos independientes `adult_private/health` y `adult_private/expenses`. La cuenta infantil continúa deshabilitada hasta completar migración, validar los documentos y pruebas.
 - Coordinación familiar: compartida con los tres.
-- Solicitudes familiares: el panel de José y Camila escucha en tiempo real la bandeja de solicitudes de Leah. Las notificaciones fuera de la aplicación o con Tasky cerrado siguen pendientes.
+- Sincronización familiar: el panel de José y Camila escucha en tiempo real las tareas propias de Leah (`child_tasks`) y las solicitudes de confirmación de tareas creadas por adultos (`task_requests`). Las notificaciones fuera de la aplicación o con Tasky cerrado siguen pendientes.
 - Leah: puede crear tareas propias directamente, sin aprobación; puede editar solo las tareas que ella creó mientras estén pendientes; no puede eliminarlas ni modificar las creadas por los adultos.
 - Leah puede indicar que terminó una tarea propia. El estado pasa a `awaiting_review`, se muestra tachada y permanece visible; no se marca como completada ni se retira de pendientes hasta que José o Camila aprueben.
 - José o Camila pueden aprobar (estado `completed`) o devolver la tarea a pendiente. Solo ellos pueden confirmar la finalización oficial.
@@ -39,22 +39,22 @@ No se creará una segunda página web para Leah ni se reutilizará otra aplicaci
 | Camila | camila | owner | Lectura y escritura completas |
 | José | leah | guardian | Lectura y escritura completas |
 | Camila | leah | guardian | Lectura y escritura completas |
-| Leah | leah | child | Lectura compartida; solicitudes de alta y finalización; sin borrado de tareas de adultos |
+| Leah | leah | child | Lectura compartida; crea y edita solo sus tareas pendientes; puede avisar que terminó; no borra ni edita tareas de adultos ni aprueba finalizaciones |
 
 Los UID y correos reales se asignarán cuando se creen las cuentas en Firebase Authentication. No se deben inventar ni guardar contraseñas en el repositorio.
 
-## Firebase: un único proyecto
+## Proyectos Firebase y entornos
 
-Se mantiene el proyecto Firebase existente `tasky-7a30c`, que actualmente tiene Firestore bloqueado con `allow read, write: if false`. No crear otro proyecto para Leah.
+Los tres espacios (José, Cams y Leah) pertenecen a una sola aplicación y al mismo proyecto Firebase de producción `tasky-7a30c`; no se crea un proyecto distinto por integrante. Para validar cambios sin tocar los datos reales, se creó el proyecto independiente de pruebas `tasky-staging-82acb`. La rama de desarrollo usa el alias `staging`; las reglas deben probarse e instalarse primero allí.
 
 Antes de reabrir Firestore, la aplicación debe:
-1. Mostrar la selección inicial de José, Cams o Leah.
+1. Mostrar primero el formulario de correo y contraseña.
 2. Autenticar al usuario con Firebase Authentication.
 3. Obtener y renovar el ID token de Firebase.
 4. Enviar el token como `Authorization: Bearer <ID_TOKEN>` en cada solicitud Firestore REST (o utilizar el SDK de Firebase).
-5. Leer las membresías del UID autenticado y comprobar que incluya el workspace elegido.
-6. Rechazar cualquier espacio sin una membresía activa.
-7. Nunca confiar en el nombre del perfil o el workspaceId enviado por el navegador como autorización.
+5. Leer las membresías del UID autenticado y mostrar únicamente los espacios activos asignados.
+6. Al seleccionar un espacio, comprobar de nuevo la membresía; rechazar cualquier espacio sin autorización.
+7. Nunca confiar en un nombre de perfil, una opción del navegador o un workspaceId enviado por el cliente como autorización.
 
 La API key del cliente identifica el proyecto, pero no reemplaza la autenticación ni las reglas. No incluir credenciales de cuentas de servicio, claves privadas ni tokens en el código.
 
@@ -109,7 +109,8 @@ Los datos privados de salud y gastos van en documentos separados: Firestore Rule
 - `workspaces/{workspaceId}/shared/{docId}`: lectura para miembros activos; escritura para owner/guardian.
 - `workspaces/{workspaceId}/adult_private/{docId}`: lectura y escritura solo para owner/guardian.
 - `workspaces/{workspaceId}/access_control/{controlId}`: lectura y escritura solo para owner/guardian; el marcador de migración debe existir antes de que una membresía child pueda leer datos compartidos.
-- `workspaces/{workspaceId}/task_requests/{requestId}`: lectura para todos los miembros; Leah puede crear solicitudes validadas; solo owner/guardian puede aprobar, rechazar, editar o eliminar solicitudes.
+- `workspaces/leah/child_tasks/{taskId}`: lectura para miembros activos de Leah; Leah puede crear registros propios y editar solo su contenido mientras estén pendientes; puede cambiarlos a `awaiting_review`; solo owner/guardian puede devolverlos a pendiente, completar oficialmente o eliminarlos.
+- `workspaces/{workspaceId}/task_requests/{requestId}`: lectura para miembros activos; Leah puede crear únicamente solicitudes de confirmación para tareas del tablero de adultos; solo owner/guardian puede aprobar, rechazar, editar o eliminar solicitudes.
 - `workspaces/{workspaceId}/notifications/{notificationId}`: lectura para todos los miembros; creación validada por la aplicación y las reglas; sin acceso de usuarios externos.
 - Denegar todo documento que no esté permitido explícitamente.
 
@@ -151,10 +152,10 @@ La primera versión implementará un centro de notificaciones dentro de Tasky, v
 ## Fases de implementación
 
 1. **Fundación de seguridad (esta rama):** modelo de datos, reglas propuestas y pruebas negativas.
-2. **Autenticación:** selector inicial José/Cams/Leah, formulario de correo y contraseña, persistencia segura de sesión, recuperación y cierre de sesión; sin auto-registro.
-3. **Membresías y autorización:** verificar en Firestore que el UID autenticado tenga una membresía activa para el perfil seleccionado; el selector no concede acceso por sí solo.
+2. **Autenticación:** correo y contraseña primero; recuperación y cierre de sesión; sin auto-registro.
+3. **Membresías y autorización:** después de autenticar, mostrar únicamente los espacios activos del UID; el selector no concede acceso por sí solo.
 4. **Aislamiento local/cloud:** prefijos por workspace, Firestore con ID token y carga/guardado de documentos separados.
-5. **Flujo infantil:** implementado en esta rama: solicitudes de nuevas tareas y finalización, bandeja de adultos y aprobación transaccional; pendiente de staging con una cuenta infantil habilitada.
+5. **Flujo infantil:** en actualización en esta rama: registro directo de tareas propias, edición limitada, aviso de finalización, revisión adulta y escucha en tiempo real; pendiente de ejecución de CI y validación funcional en staging.
 6. **Privacidad por módulo:** capa de aislamiento y migración transaccional implementadas en esta rama; pendientes pruebas integrales de aplicación y staging antes de habilitar a Leah.
 7. **Migración y despliegue:** importar copia de José, probar y solo después abrir reglas autenticadas.
 
@@ -165,7 +166,9 @@ La primera versión implementará un centro de notificaciones dentro de Tasky, v
 - Camila no puede leer documentos de José.
 - Los tres miembros autorizados pueden leer los datos compartidos de Leah.
 - Leah no puede leer ni escribir documentos `adult_private`.
-- Leah no puede modificar `shared/main`, borrar tareas adultas o marcar una tarea como completada sin solicitud.
+- Leah no puede modificar `shared/main`, editar o borrar tareas adultas, borrar tareas propias ni establecer directamente el estado `completed`.
+- Leah puede crear tareas propias sin aprobación y editarlas solo mientras estén pendientes.
+- Una tarea marcada por Leah queda en `awaiting_review` y permanece visible/tachada hasta que un adulto la aprueba o la devuelve a pendientes.
 - Un usuario externo no puede enumerar membresías ni consultar espacios.
 - Al cerrar sesión no quedan datos de otro espacio visibles en memoria o pantalla.
 - No se publicará ningún cambio en producción hasta pasar las pruebas anteriores y comprobar la sincronización real.
