@@ -5,7 +5,8 @@ import {
   buildSharedWorkspacePayload,
   mergePrivateModuleData,
   moduleDataFromWorkspace,
-  buildSharedTaskMemory
+  buildSharedTaskMemory,
+  preparePrivateModuleMigration
 } from "../tasky-private-data.js";
 
 const base = {
@@ -47,6 +48,22 @@ const base = {
   ],
   updatedAt: 10
 };
+
+test("private migration plan rejects a corrupt legacy shared board", () => {
+  assert.throws(
+    () => preparePrivateModuleMigration({
+      sharedPayload: { payloadJson: "{not valid JSON" },
+      existingModules: [],
+      localData: {},
+      taskMemory: {},
+      moduleSpecs: [
+        { id: "box_salud", name: "SALUD Y CITAS" },
+        { id: "box_gastos", name: "GASTOS RELACIONADOS CON LEAH" }
+      ]
+    }),
+    /no contiene una copia válida/
+  );
+});
 
 test("shared payload excludes private boxes, tasks, tombstones and related metadata", () => {
   const health = moduleDataFromWorkspace(base, "box_salud", ["health-deleted"]);
