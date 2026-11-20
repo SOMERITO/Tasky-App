@@ -14,7 +14,7 @@ import {
   mergePrivateModuleData,
   moduleDataFromWorkspace,
   preparePrivateModuleMigration
-} from "./tasky-private-data.js";
+} from "./tasky-private-data.js?v=20261120-private-data-2";
 
 const db = getFirestore(getApp("tasky-multi-workspace"));
 const MODULES = [
