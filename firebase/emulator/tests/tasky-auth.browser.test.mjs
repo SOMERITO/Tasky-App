@@ -16,7 +16,8 @@ const rules = await readFile(new URL("../../firestore.rules", import.meta.url), 
 const users = {
   jose: { email: "jose.tasky@example.test", password: "Jose-Tasky-Emulator-2026!" },
   cams: { email: "cams.tasky@example.test", password: "Cams-Tasky-Emulator-2026!" },
-  leah: { email: "leah.tasky@example.test", password: "Leah-Tasky-Emulator-2026!" }
+  leah: { email: "leah.tasky@example.test", password: "Leah-Tasky-Emulator-2026!" },
+  leahDisabled: { email: "leah-disabled.tasky@example.test", password: "Leah-Disabled-Emulator-2026!" }
 };
 
 let testEnvironment;
@@ -26,6 +27,7 @@ let baseUrl;
 let joseUid;
 let camsUid;
 let leahUid;
+let leahDisabledUid;
 
 async function createEmulatorUser({ email, password }) {
   const response = await fetch(
@@ -114,15 +116,17 @@ async function openLoginPage() {
   return { context, page, forbiddenProductionRequests };
 }
 
+async function login(page, user) {
+  await page.locator("#tasky-login-credentials:not([hidden])").waitFor({ state: "visible" });
+  await page.locator("#tasky-login-email").fill(user.email);
+  await page.locator("#tasky-login-password").fill(user.password);
+  await page.locator("#tasky-login-submit").click();
+  await page.locator("#tasky-profile-picker:not([hidden])").waitFor({ state: "visible" });
+}
+
 async function selectProfile(page, workspaceId) {
   await page.locator("#tasky-profile-select").selectOption(workspaceId);
   assert.equal(await page.locator("#tasky-profile-select").inputValue(), workspaceId);
-  await page.locator("#tasky-login-form:not([hidden])").waitFor({ state: "visible" });
-}
-
-async function login(page, user) {
-  await page.locator("#tasky-login-email").fill(user.email);
-  await page.locator("#tasky-login-password").fill(user.password);
   await page.locator("#tasky-login-submit").click();
 }
 
@@ -145,12 +149,19 @@ before(async () => {
   joseUid = await createEmulatorUser(users.jose);
   camsUid = await createEmulatorUser(users.cams);
   leahUid = await createEmulatorUser(users.leah);
+  leahDisabledUid = await createEmulatorUser(users.leahDisabled);
 
   await seedMembership(joseUid, "jose", "owner");
   await seedMembership(joseUid, "leah", "guardian");
   await seedMembership(camsUid, "camila", "owner");
-  // Leah's account exists, but child access deliberately remains disabled for this test.
-  await seedMembership(leahUid, "leah", "child", { childAccessEnabled: false });
+  await seedMembership(leahUid, "leah", "child", { childAccessEnabled: true });
+  await seedMembership(leahDisabledUid, "leah", "child", { childAccessEnabled: false });
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "workspaces/leah/access_control/private_modules"), {
+      ready: true,
+      schemaVersion: 1
+    });
+  });
 
   await startStaticServer();
   browser = await chromium.launch({ headless: true });
@@ -162,12 +173,11 @@ after(async () => {
   if (testEnvironment) await testEnvironment.cleanup();
 });
 
-test("el formulario único muestra el desplegable de perfiles y credenciales", async () => {
+test("la pantalla inicial solicita credenciales antes de mostrar espacios", async () => {
   const { context, page, forbiddenProductionRequests } = await openLoginPage();
   try {
-    await page.locator("#tasky-profile-picker:not([hidden])").waitFor({ state: "visible" });
-    await page.locator("#tasky-login-form:not([hidden])").waitFor({ state: "visible" });
-    assert.deepEqual(await page.locator("#tasky-profile-select option").evaluateAll((options) => options.map((option) => option.value)), ["", "jose", "camila", "leah"]);
+    await page.locator("#tasky-login-credentials:not([hidden])").waitFor({ state: "visible" });
+    assert.equal(await page.locator("#tasky-profile-picker").isVisible(), false);
     assert.equal(await page.locator("#tasky-login-email").isVisible(), true);
     assert.equal(await page.locator("#tasky-login-password").isVisible(), true);
     assert.deepEqual(forbiddenProductionRequests, []);
@@ -176,11 +186,16 @@ test("el formulario único muestra el desplegable de perfiles y credenciales", a
   }
 });
 
-test("José elige su perfil, inicia sesión y entra a Tasky José", async () => {
+test("José solo ve José y Leah después de autenticar su cuenta", async () => {
   const { context, page, forbiddenProductionRequests } = await openLoginPage();
   try {
-    await selectProfile(page, "jose");
     await login(page, users.jose);
+    assert.deepEqual(
+      await page.locator("#tasky-profile-select option").evaluateAll((options) => options.map((option) => option.value)),
+      ["", "jose", "leah"]
+    );
+    assert.equal(await page.locator("#tasky-login-email").isVisible(), false);
+    await selectProfile(page, "jose");
     await assertWorkspace(page, "jose", "owner", "Tasky José");
     assert.equal(await page.locator("#tasky-test-greeting").innerText(), "José Carranza");
     assert.deepEqual(forbiddenProductionRequests, []);
@@ -189,11 +204,15 @@ test("José elige su perfil, inicia sesión y entra a Tasky José", async () => 
   }
 });
 
-test("Cams elige su perfil, inicia sesión y entra a Tasky Cams", async () => {
+test("Camila solo ve Cams y Leah después de autenticar su cuenta", async () => {
   const { context, page, forbiddenProductionRequests } = await openLoginPage();
   try {
-    await selectProfile(page, "camila");
     await login(page, users.cams);
+    assert.deepEqual(
+      await page.locator("#tasky-profile-select option").evaluateAll((options) => options.map((option) => option.value)),
+      ["", "camila", "leah"]
+    );
+    await selectProfile(page, "camila");
     await assertWorkspace(page, "camila", "owner", "Tasky Cams");
     assert.equal(await page.locator("#tasky-test-greeting").innerText(), "Camila");
     assert.deepEqual(forbiddenProductionRequests, []);
@@ -202,11 +221,11 @@ test("Cams elige su perfil, inicia sesión y entra a Tasky Cams", async () => {
   }
 });
 
-test("José puede elegir Tasky Leah e ingresar como adulto responsable", async () => {
+test("José puede seleccionar Tasky Leah después de autenticar su cuenta", async () => {
   const { context, page, forbiddenProductionRequests } = await openLoginPage();
   try {
-    await selectProfile(page, "leah");
     await login(page, users.jose);
+    await selectProfile(page, "leah");
     await assertWorkspace(page, "leah", "guardian", "Tasky Leah");
     assert.equal(await page.locator("#tasky-test-greeting").innerText(), "Leah");
     assert.deepEqual(forbiddenProductionRequests, []);
@@ -215,27 +234,51 @@ test("José puede elegir Tasky Leah e ingresar como adulto responsable", async (
   }
 });
 
-test("la cuenta infantil de Leah no entra mientras el acceso siga deshabilitado", async () => {
+test("la cuenta de Leah solo muestra su espacio familiar", async () => {
   const { context, page, forbiddenProductionRequests } = await openLoginPage();
   try {
-    await selectProfile(page, "leah");
     await login(page, users.leah);
-    await page.waitForFunction(() => document.querySelector("#tasky-auth-message")?.textContent.includes("Esta cuenta no tiene autorización para entrar a Tasky Leah."));
-    assert.equal(await page.locator("html").getAttribute("data-tasky-workspace"), null);
-    assert.equal(await page.locator("#tasky-login-form:not([hidden])").count(), 1);
-    assert.equal(await page.locator("#tasky-profile-select").inputValue(), "leah");
+    assert.deepEqual(
+      await page.locator("#tasky-profile-select option").evaluateAll((options) => options.map((option) => option.value)),
+      ["", "leah"]
+    );
+    await selectProfile(page, "leah");
+    await assertWorkspace(page, "leah", "child", "Tasky Leah");
     assert.deepEqual(forbiddenProductionRequests, []);
   } finally {
     await context.close();
   }
 });
 
-test("una cuenta no puede entrar a un perfil que no tiene asignado", async () => {
+test("una membresía infantil deshabilitada no aparece como espacio disponible", async () => {
   const { context, page, forbiddenProductionRequests } = await openLoginPage();
   try {
-    await selectProfile(page, "jose");
+    await login(page, users.leahDisabled);
+    assert.deepEqual(
+      await page.locator("#tasky-profile-select option").evaluateAll((options) => options.map((option) => option.value)),
+      [""]
+    );
+    assert.equal(await page.locator("#tasky-login-submit").isDisabled(), true);
+    assert.match(await page.locator("#tasky-auth-message").innerText(), /todavía no tiene espacios autorizados/);
+    assert.deepEqual(forbiddenProductionRequests, []);
+  } finally {
+    await context.close();
+  }
+});
+
+test("una cuenta no puede forzar la selección de un espacio ajeno", async () => {
+  const { context, page, forbiddenProductionRequests } = await openLoginPage();
+  try {
     await login(page, users.cams);
-    await page.waitForFunction(() => document.querySelector("#tasky-auth-message")?.textContent.includes("Esta cuenta no tiene autorización para entrar a Tasky José."));
+    await page.locator("#tasky-profile-select").evaluate((select) => {
+      const option = document.createElement("option");
+      option.value = "jose";
+      option.textContent = "Tasky José";
+      select.append(option);
+      select.value = "jose";
+    });
+    await page.locator("#tasky-login-submit").click();
+    assert.match(await page.locator("#tasky-auth-message").innerText(), /espacios autorizados/);
     assert.equal(await page.locator("html").getAttribute("data-tasky-workspace"), null);
     assert.deepEqual(forbiddenProductionRequests, []);
   } finally {
