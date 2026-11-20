@@ -351,18 +351,18 @@ test("only an adult can create or change workspace membership records", async ()
 
 test("an enabled child membership is still blocked until private-module migration is complete", async () => {
   await env.withSecurityRulesDisabled(async (context) => {
-    await setDoc(doc(context.firestore(), "user_access/child-before-migration/workspaces/leah"), {
+    await setDoc(doc(context.firestore(), "user_access/child-before-migration/workspaces/leah-before-migration"), {
       active: true,
       role: "child",
-      workspaceId: "leah",
+      workspaceId: "leah-before-migration",
       childAccessEnabled: true,
       displayName: "Tasky Leah"
     });
   });
 
   const child = env.authenticatedContext("child-before-migration").firestore();
-  await assertFails(getDoc(doc(child, "workspaces/leah/shared/main")));
-  await assertFails(getDoc(doc(child, "workspaces/leah/task_requests/seed")));
+  await assertFails(getDoc(doc(child, "workspaces/leah-before-migration/shared/main")));
+  await assertFails(getDoc(doc(child, "workspaces/leah-before-migration/task_requests/seed")));
 });
 
 test("Leah's child workspace access stays disabled until private module data is separated", async () => {
