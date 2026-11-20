@@ -168,20 +168,7 @@ function renderChildPanel() {
   newTaskForm.addEventListener("submit", submitChildTask);
   newTaskCard.append(newTaskForm);
 
-  const completionCard = node("section", "tasky-family-form-card");
-  completionCard.append(
-    node("h3", "", "Informar que terminé"),
-    node("p", "tasky-family-help", "También puedes avisar que terminaste una tarea registrada por José o Camila. Un adulto revisará antes de completarla.")
-  );
-  const completionForm = node("form", "tasky-family-form");
-  completionForm.innerHTML = `
-    <label class="tasky-family-field"><span>Tarea asignada por un adulto</span><select name="taskId" required><option value="">Cargando tareas…</option></select></label>
-    <button type="submit" class="tasky-family-primary">Avisar que terminé</button>
-    <p class="tasky-family-message" data-family-message role="status" aria-live="polite"></p>
-  `;
-  completionForm.addEventListener("submit", submitCompletionRequest);
-  completionCard.append(completionForm);
-  grid.append(newTaskCard, completionCard);
+  grid.append(newTaskCard);
   card.append(grid);
 
   const assignedTasks = node("section", "tasky-family-inbox-card");
@@ -216,7 +203,6 @@ function renderChildPanel() {
   renderChildTaskList();
   renderAdultAssignedTaskList();
   renderRequestList();
-  updateCompletionTaskOptions();
 }
 
 function renderGuardianPanel() {
@@ -331,38 +317,6 @@ async function submitCompletionForTask(taskId) {
   } finally {
     setRequestBusy(false);
     renderAdultAssignedTaskList();
-  }
-}
-
-function updateCompletionTaskOptions() {
-  if (activeRole !== "child" || !content) return;
-  const select = content.querySelector('form [name="taskId"]');
-  if (!select) return;
-  const pendingRequests = new Set(
-    requests
-      .filter((request) => request.type === "completion" && request.status === "pending")
-      .map((request) => String(request.relatedTaskId || ""))
-  );
-  const previousValue = select.value;
-  select.replaceChildren();
-  const placeholder = document.createElement("option");
-  placeholder.value = "";
-  placeholder.textContent = boardTasks.length ? "Selecciona una tarea" : "No hay tareas pendientes disponibles";
-  select.append(placeholder);
-  const available = boardTasks
-    .filter((task) => task && !task.done && childModuleIds.has(String(task.boxId)) && !pendingRequests.has(String(task.id)))
-    .sort((a, b) => String(a.title || "").localeCompare(String(b.title || ""), "es"));
-  available.forEach((task) => {
-    const option = document.createElement("option");
-    option.value = String(task.id);
-    option.textContent = String(task.title || "Tarea sin título");
-    select.append(option);
-  });
-  select.disabled = available.length === 0 || requestBusy;
-  const submit = select.form && select.form.querySelector('button[type="submit"]');
-  if (submit) submit.disabled = available.length === 0 || requestBusy;
-  if (previousValue && available.some((task) => String(task.id) === previousValue)) {
-    select.value = previousValue;
   }
 }
 
@@ -688,36 +642,6 @@ async function removeChildTask(taskId) {
   }
 }
 
-async function submitCompletionRequest(event) {
-  event.preventDefault();
-  if (requestBusy || activeRole !== "child" || !activeUid) return;
-  const form = event.currentTarget;
-  const taskId = String(form.elements.taskId.value || "");
-  const task = boardTasks.find((item) => String(item.id) === taskId);
-  const message = form.querySelector("[data-family-message]");
-  if (!task || task.done || !childModuleIds.has(String(task.boxId))) {
-    setMessage(message, "Selecciona una tarea pendiente válida.", true);
-    return;
-  }
-  setRequestBusy(true);
-  setMessage(message, "Enviando solicitud…");
-  try {
-    await addDoc(collection(db, ...REQUESTS_PATH), {
-      type: "completion",
-      createdBy: activeUid,
-      createdAt: serverTimestamp(),
-      status: "pending",
-      relatedTaskId: taskId
-    });
-    form.reset();
-    setMessage(message, "Solicitud enviada. La tarea seguirá pendiente hasta que un adulto la verifique.");
-  } catch (error) {
-    setMessage(message, "No se pudo enviar la solicitud. Revisa tu conexión o los permisos de este espacio.", true);
-  } finally {
-    setRequestBusy(false);
-  }
-}
-
 function setRequestBusy(busy) {
   requestBusy = Boolean(busy);
   if (content) {
@@ -727,7 +651,7 @@ function setRequestBusy(busy) {
     });
   }
   renderChildTaskList();
-  updateCompletionTaskOptions();
+  renderAdultAssignedTaskList();
 }
 
 function createRequestCard(requestId, request) {
@@ -946,7 +870,6 @@ function openWorkspace(detail) {
     requests = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     renderRequestList();
     renderAdultAssignedTaskList();
-    updateCompletionTaskOptions();
   }, (error) => {
     const list = content.querySelector("#tasky-family-requests-list");
     if (list) list.replaceChildren(node("div", "tasky-family-empty",
@@ -985,11 +908,9 @@ function openWorkspace(detail) {
       const payload = parseSharedPayload(snapshot);
       boardTasks = payload && Array.isArray(payload.tasks) ? payload.tasks : [];
       renderAdultAssignedTaskList();
-      updateCompletionTaskOptions();
     }, (error) => {
       boardTasks = [];
       renderAdultAssignedTaskList();
-      updateCompletionTaskOptions();
       window.console && window.console.error("Tasky family board listener failed:", error);
     });
   }
