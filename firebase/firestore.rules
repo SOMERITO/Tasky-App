@@ -73,13 +73,36 @@ service cloud.firestore {
             && request.resource.data.title is string
             && request.resource.data.title.size() > 0
             && request.resource.data.title.size() <= 180
-            && request.resource.data.module is string
+            && request.resource.data.module in [
+              'box_escolar', 'box_evaluaciones', 'box_materiales',
+              'box_actividades', 'box_coordinacion', 'box_habitos'
+            ]
+            && (
+              !request.resource.data.keys().hasAny(['description'])
+              || (
+                request.resource.data.description is string
+                && request.resource.data.description.size() <= 500
+              )
+            )
+            && (
+              !request.resource.data.keys().hasAny(['priority'])
+              || request.resource.data.priority in ['low', 'normal', 'high']
+            )
+            && (
+              !request.resource.data.keys().hasAny(['scheduledDate'])
+              || request.resource.data.scheduledDate is string
+            )
+            && (
+              !request.resource.data.keys().hasAny(['deadlineDate'])
+              || request.resource.data.deadlineDate is string
+            )
           )
           ||
           (
             request.resource.data.type == 'completion'
             && request.resource.data.relatedTaskId is string
             && request.resource.data.relatedTaskId.size() > 0
+            && request.resource.data.relatedTaskId.size() <= 180
           )
         );
 
