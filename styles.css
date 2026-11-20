@@ -8024,92 +8024,39 @@ html[data-tasky-workspace="leah"] .brand-logo {
 
 
 
-/* TASKY PROFILE-FIRST SIGN-IN · SELECT SPACE BEFORE AUTHENTICATING */
-.tasky-profile-picker h2,
-.tasky-selected-profile h2 {
-  margin: 0;
+/* TASKY LOGIN · PROFILE DROPDOWN AND PERSONALIZED WELCOME */
+.tasky-profile-picker h2 {
+  margin: 0 0 14px;
   color: #17131D;
   font-size: clamp(20px, 3.5vw, 24px);
   line-height: 1.15;
   font-weight: 850;
 }
-.tasky-profile-options {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin: 20px 0 10px;
+.tasky-profile-picker label {
+  display: block;
+  margin: 0 0 7px;
+  color: #334155;
+  font-size: 0.83rem;
+  font-weight: 750;
 }
-.tasky-profile-option {
-  display: flex;
-  min-width: 0;
-  min-height: 142px;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 14px 7px;
-  border: 1px solid #e9dff0;
-  border-radius: 19px;
+.tasky-profile-select {
+  width: 100%;
+  min-height: 48px;
+  margin: 0 0 16px;
+  padding: 11px 42px 11px 14px;
+  border: 1px solid #d8d4e2;
+  border-radius: 13px;
   background: #fff;
   color: #17131D;
+  font: 600 0.94rem var(--font);
   cursor: pointer;
-  text-align: center;
-  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
-}
-.tasky-profile-option:hover,
-.tasky-profile-option:focus-visible {
-  transform: translateY(-2px);
-  border-color: #C084FC;
   outline: none;
-  box-shadow: 0 12px 26px rgba(126, 34, 206, .12);
+  transition: border-color .18s ease, box-shadow .18s ease;
 }
-.tasky-profile-option[data-workspace="leah"] {
-  border-color: #E9B4D2;
-  background: linear-gradient(155deg, #FFF8FC, #F8F1FF);
+.tasky-profile-select:focus {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, .13);
 }
-.tasky-profile-avatar {
-  display: grid;
-  width: 58px;
-  height: 58px;
-  place-items: center;
-  border-radius: 50%;
-  background: #E8EDF9;
-  color: #334C83;
-  font-size: 25px;
-  font-weight: 850;
-}
-.tasky-profile-avatar-camila {
-  background: #F9E9F0;
-  color: #A34C70;
-}
-.tasky-profile-avatar-leah {
-  background: #E9F4EB;
-  color: #477A52;
-}
-.tasky-profile-copy {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 4px;
-}
-.tasky-profile-name {
-  color: #17131D;
-  font-size: 14px;
-  font-weight: 850;
-}
-.tasky-profile-description {
-  color: #7a7081;
-  font-size: 10px;
-  line-height: 1.35;
-}
-.tasky-selected-profile {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-.tasky-selected-profile[hidden],
 .tasky-profile-picker[hidden],
 .tasky-auth-form[hidden] {
   display: none !important;
@@ -8120,26 +8067,19 @@ html[data-tasky-workspace="leah"] .brand-logo {
 #tasky-auth-signout[hidden] {
   display: none !important;
 }
-@media (max-width: 380px) {
-  .tasky-auth-panel {
-    padding: 22px 16px;
-  }
-  .tasky-profile-options {
-    gap: 7px;
-  }
-  .tasky-profile-option {
-    min-height: 126px;
-    padding-inline: 4px;
-  }
-  .tasky-profile-avatar {
-    width: 50px;
-    height: 50px;
-  }
-  .tasky-profile-name {
-    font-size: 13px;
-  }
-  .tasky-profile-description {
-    font-size: 9px;
-  }
+.tasky-welcome {
+  margin: 0 0 12px;
 }
-
+.tasky-welcome h2 {
+  color: var(--text);
+  font-size: clamp(1.05rem, 2.4vw, 1.45rem);
+  line-height: 1.2;
+  font-weight: 850;
+  letter-spacing: -0.035em;
+}
+.tasky-welcome p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 550;
+}
