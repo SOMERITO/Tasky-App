@@ -4062,7 +4062,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261119-multi-workspace-auth-foundation-2";
+  const TASKY_BUILD_ID = "20261120-family-requests-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -13197,6 +13197,12 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       accountButton.title = "Cambiar espacio o cerrar sesión";
     }
     boot();
+  });
+
+  window.addEventListener("tasky:family-board-updated", () => {
+    // A family approval updates the authenticated shared Firestore document transactionally.
+    // Pull it through the normal merge engine so the active guardian board stays consistent.
+    pullCloudSync(true, true);
   });
 
   window.addEventListener("tasky:open-workspace-picker", () => {
