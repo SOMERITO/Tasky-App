@@ -13,7 +13,8 @@ import {
   getDoc,
   getDocs,
   setDoc,
-  updateDoc
+  updateDoc,
+  runTransaction
 } from "firebase/firestore";
 
 const projectId = "demo-tasky-rules";
@@ -196,8 +197,27 @@ test("Leah cannot create malformed requests or impersonate another user", async 
     createdAt: new Date(),
     status: "pending",
     title: "Unexpected key",
-    module: "Escolar",
+    module: "box_escolar",
     ownerOverride: true
+  }));
+
+  await assertFails(setDoc(doc(db, "workspaces/leah/task_requests/private-module"), {
+    type: "new_task",
+    createdBy: "leah",
+    createdAt: new Date(),
+    status: "pending",
+    title: "Private information request",
+    module: "box_salud"
+  }));
+
+  await assertFails(setDoc(doc(db, "workspaces/leah/task_requests/long-description"), {
+    type: "new_task",
+    createdBy: "leah",
+    createdAt: new Date(),
+    status: "pending",
+    title: "Valid title",
+    description: "x".repeat(501),
+    module: "box_escolar"
   }));
 });
 
@@ -224,6 +244,81 @@ test("only adults can create shared notifications; all members can read them", a
     audience: "all",
     readBy: []
   }));
+});
+
+
+test("a guardian can atomically approve a task request and add the task to Leah's shared board", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "workspaces/leah/shared/main"), {
+      payloadJson: JSON.stringify({
+        boxes: [{ id: "box_escolar", name: "ESCOLAR" }],
+        tasks: [],
+        updatedAt: 1
+      }),
+      updatedAt: 1,
+      deviceId: "emulator-seed"
+    });
+  });
+
+  const child = env.authenticatedContext("leah").firestore();
+  const requestRef = doc(child, "workspaces/leah/task_requests/atomic-approval-test");
+  await assertSucceeds(setDoc(requestRef, {
+    type: "new_task",
+    createdBy: "leah",
+    createdAt: new Date(),
+    status: "pending",
+    title: "Preparar una maqueta",
+    description: "Llevar cartulina",
+    module: "box_escolar",
+    scheduledDate: "2026-11-21",
+    deadlineDate: "",
+    priority: "normal"
+  }));
+
+  const guardian = env.authenticatedContext("jose").firestore();
+  const sharedRef = doc(guardian, "workspaces/leah/shared/main");
+  await assertSucceeds(runTransaction(guardian, async (transaction) => {
+    const [requestSnapshot, sharedSnapshot] = await Promise.all([
+      transaction.get(doc(guardian, "workspaces/leah/task_requests/atomic-approval-test")),
+      transaction.get(sharedRef)
+    ]);
+    assert.equal(requestSnapshot.data().status, "pending");
+    const payload = JSON.parse(sharedSnapshot.data().payloadJson);
+    const taskId = "task_atomic_approval";
+    payload.tasks.push({
+      id: taskId,
+      boxId: "box_escolar",
+      title: requestSnapshot.data().title,
+      done: false,
+      createdAt: Date.now(),
+      dueDate: requestSnapshot.data().scheduledDate,
+      frequency: "once",
+      repeatDays: [],
+      order: 0
+    });
+    payload.updatedAt = 2;
+    payload.deviceId = "guardian-approval-test";
+    transaction.update(sharedRef, {
+      payloadJson: JSON.stringify(payload),
+      updatedAt: 2,
+      deviceId: "guardian-approval-test"
+    });
+    transaction.update(doc(guardian, "workspaces/leah/task_requests/atomic-approval-test"), {
+      status: "approved",
+      reviewedBy: "jose",
+      reviewedAt: new Date(),
+      reviewNote: "",
+      createdTaskId: taskId
+    });
+  }));
+
+  const approvedRequest = await assertSucceeds(getDoc(doc(guardian, "workspaces/leah/task_requests/atomic-approval-test")));
+  const updatedBoard = await assertSucceeds(getDoc(sharedRef));
+  assert.equal(approvedRequest.data().status, "approved");
+  assert.equal(approvedRequest.data().createdTaskId, "task_atomic_approval");
+  const payload = JSON.parse(updatedBoard.data().payloadJson);
+  assert.equal(payload.tasks.length, 1);
+  assert.equal(payload.tasks[0].title, "Preparar una maqueta");
 });
 
 test("only an adult can create or change workspace membership records", async () => {
