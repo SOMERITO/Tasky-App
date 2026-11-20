@@ -8,6 +8,7 @@ import {
 import {
   PRIVATE_MODULE_IDS,
   attachPrivateModulesToWorkspace,
+  buildSharedTaskMemory,
   buildSharedWorkspacePayload,
   collectPrivateTaskIds,
   mergePrivateModuleData,
@@ -126,9 +127,9 @@ function encodeModuleDocument(moduleData) {
   };
 }
 
-function buildLegacyPrivateModule(sharedPayload, module, knownTaskIds) {
+function buildLegacyPrivateModule(sharedPayload, module, knownTaskIds, knownMemoryKeys = []) {
   if (!sharedPayload) return makeDefaultModule(module);
-  const extracted = moduleDataFromWorkspace(sharedPayload, module.id, knownTaskIds);
+  const extracted = moduleDataFromWorkspace(sharedPayload, module.id, knownTaskIds, null, knownMemoryKeys);
   return withDefaultBox(extracted, module);
 }
 
@@ -173,8 +174,12 @@ async function initialize(initialData, taskMemory, context) {
     ];
 
     const mergedModules = MODULES.map((module, index) => {
-      const legacy = buildLegacyPrivateModule(legacyShared, module, existing[index].taskIds);
-      const local = moduleDataFromWorkspace(localData, module.id, existing[index].taskIds, localMemory);
+      const knownMemoryKeys = [
+        ...Object.keys(existing[index].taskMemoryByBox || {}),
+        ...Object.keys(existing[index].dismissedTaskSuggestionsByBox || {})
+      ];
+      const legacy = buildLegacyPrivateModule(legacyShared, module, existing[index].taskIds, knownMemoryKeys);
+      const local = moduleDataFromWorkspace(localData, module.id, existing[index].taskIds, localMemory, knownMemoryKeys);
       const merged = mergePrivateModuleData(existing[index], legacy, withDefaultBox(local, module));
       return withDefaultBox(merged, module);
     });
@@ -217,7 +222,11 @@ async function persistFromWorkspaceData(data, taskMemory, context) {
     const snapshots = await Promise.all(refs.map((ref) => transaction.get(ref)));
     const nextModules = MODULES.map((module, index) => {
       const existing = moduleDataFromDocOrDefault(snapshots[index], module);
-      const local = moduleDataFromWorkspace(data, module.id, existing.taskIds, memory);
+      const knownMemoryKeys = [
+        ...Object.keys(existing.taskMemoryByBox || {}),
+        ...Object.keys(existing.dismissedTaskSuggestionsByBox || {})
+      ];
+      const local = moduleDataFromWorkspace(data, module.id, existing.taskIds, memory, knownMemoryKeys);
       return withDefaultBox(mergePrivateModuleData(existing, local), module);
     });
     nextModules.forEach((moduleData, index) => {
@@ -236,6 +245,10 @@ function getPrivateTaskIds() {
 
 function buildSharedPayload(data) {
   return buildSharedWorkspacePayload(data, currentModules);
+}
+
+function buildSharedTaskMemoryPayload(memory) {
+  return buildSharedTaskMemory(memory, currentModules);
 }
 
 function mergeSnapshotModules(data, remoteModules) {
@@ -297,6 +310,7 @@ window.TaskyPrivateModules = {
   initialize,
   persistFromWorkspaceData,
   buildSharedPayload,
+  buildSharedTaskMemory: buildSharedTaskMemoryPayload,
   getPrivateTaskIds,
   mergeIntoWorkspace,
   startListeners,
