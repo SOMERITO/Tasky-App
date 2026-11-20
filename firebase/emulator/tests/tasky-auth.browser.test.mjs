@@ -185,7 +185,7 @@ test("la cuenta infantil de Leah no entra mientras el acceso siga deshabilitado"
   try {
     await login(page, users.leah);
     await page.locator("#tasky-workspace-picker:not([hidden])").waitFor({ state: "visible" });
-    await page.locator("#tasky-auth-message").getByText("Esta cuenta inició sesión, pero todavía no tiene espacios habilitados.", { exact: false }).waitFor({ state: "visible" });
+    await page.waitForFunction(() => document.querySelector("#tasky-auth-message")?.textContent.includes("Esta cuenta inició sesión, pero todavía no tiene espacios habilitados."));
     assert.equal(await page.locator('[data-workspace="leah"]').count(), 0);
     assert.equal(await page.locator("html").getAttribute("data-tasky-workspace"), null);
     assert.deepEqual(forbiddenProductionRequests, []);
