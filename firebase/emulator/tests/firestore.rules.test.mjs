@@ -11,7 +11,7 @@ import {
   buildSharedWorkspacePayload,
   mergePrivateModuleData,
   moduleDataFromWorkspace
-} from "../../tasky-private-data.js";
+} from "../../../tasky-private-data.js";
 import {
   collection,
   deleteDoc,
