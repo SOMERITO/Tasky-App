@@ -8,6 +8,8 @@ import {
   limit,
   onSnapshot,
   addDoc,
+  updateDoc,
+  deleteDoc,
   serverTimestamp,
   runTransaction,
   Timestamp
@@ -17,6 +19,7 @@ const db = getFirestore(getApp("tasky-multi-workspace"));
 const panel = document.getElementById("tasky-family-panel");
 const content = document.getElementById("tasky-family-content");
 const REQUESTS_PATH = ["workspaces", "leah", "task_requests"];
+const CHILD_TASKS_PATH = ["workspaces", "leah", "child_tasks"];
 const SHARED_PATH = ["workspaces", "leah", "shared", "main"];
 
 const childModules = [
@@ -33,9 +36,12 @@ let activeWorkspace = null;
 let activeRole = "";
 let activeUid = "";
 let requests = [];
+let childTasks = [];
 let boardTasks = [];
 let unsubscribeRequests = null;
+let unsubscribeChildTasks = null;
 let unsubscribeBoard = null;
+let editingChildTaskId = "";
 let requestBusy = false;
 
 function node(tag, className, text) {
@@ -117,53 +123,59 @@ function showPanelShell(eyebrow, title, subtitle) {
   return card;
 }
 
+function fillModuleSelect(select, selectedValue = "") {
+  if (!select) return;
+  select.replaceChildren();
+  childModules.forEach((item) => {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent = item.label;
+    select.append(option);
+  });
+  if (selectedValue && childModuleIds.has(selectedValue)) select.value = selectedValue;
+}
+
 function renderChildPanel() {
   const card = showPanelShell(
     "Tasky Leah · espacio familiar",
-    "Mis solicitudes",
-    "Puedes pedir que agreguen una tarea o solicitar que un adulto confirme una tarea que ya terminaste."
+    "Mis tareas",
+    "Registra tus tareas y organiza tus responsabilidades. José y Camila podrán ver los cambios al instante y confirmar cuando hayas terminado."
   );
 
   const grid = node("div", "tasky-family-grid");
   const newTaskCard = node("section", "tasky-family-form-card");
   newTaskCard.append(
-    node("h3", "", "Pedir una nueva tarea"),
-    node("p", "tasky-family-help", "La solicitud llegará a José y Camila para que puedan revisarla.")
+    node("h3", "", "Registrar una tarea"),
+    node("p", "tasky-family-help", "La tarea se guardará inmediatamente y aparecerá en el espacio familiar, sin esperar aprobación.")
   );
 
   const newTaskForm = node("form", "tasky-family-form");
   newTaskForm.innerHTML = `
-    <label class="tasky-family-field"><span>¿Qué tarea necesitas?</span><input name="title" maxlength="180" required placeholder="Ej. Leer el capítulo de Comunicación" /></label>
-    <label class="tasky-family-field"><span>Detalle (opcional)</span><textarea name="description" maxlength="500" placeholder="Puedes explicar qué necesitas o qué materiales debes llevar."></textarea></label>
+    <label class="tasky-family-field"><span>¿Qué tarea debes realizar?</span><input name="title" maxlength="180" required placeholder="Ej. Leer el capítulo de Comunicación" /></label>
+    <label class="tasky-family-field"><span>Detalle (opcional)</span><textarea name="description" maxlength="500" placeholder="Agrega instrucciones o materiales que necesitas."></textarea></label>
     <label class="tasky-family-field"><span>¿En qué módulo?</span><select name="module" required></select></label>
     <div class="tasky-family-two-fields">
       <label class="tasky-family-field"><span>Fecha programada</span><input name="scheduledDate" type="date" /></label>
       <label class="tasky-family-field"><span>Fecha límite (opcional)</span><input name="deadlineDate" type="date" /></label>
     </div>
     <label class="tasky-family-field"><span>Prioridad</span><select name="priority"><option value="normal">Normal</option><option value="high">Alta</option><option value="low">Baja</option></select></label>
-    <button type="submit" class="tasky-family-primary">Enviar solicitud</button>
+    <button type="submit" class="tasky-family-primary">Guardar tarea</button>
     <p class="tasky-family-message" data-family-message role="status" aria-live="polite"></p>
   `;
-  const moduleSelect = newTaskForm.elements.module;
-  childModules.forEach((item) => {
-    const option = document.createElement("option");
-    option.value = item.id;
-    option.textContent = item.label;
-    moduleSelect.append(option);
-  });
+  fillModuleSelect(newTaskForm.elements.module, "box_escolar");
   newTaskForm.elements.scheduledDate.value = localDateISO();
-  newTaskForm.addEventListener("submit", submitNewTaskRequest);
+  newTaskForm.addEventListener("submit", submitChildTask);
   newTaskCard.append(newTaskForm);
 
   const completionCard = node("section", "tasky-family-form-card");
   completionCard.append(
-    node("h3", "", "Ya terminé una tarea"),
-    node("p", "tasky-family-help", "Selecciona una tarea pendiente. Un adulto revisará tu solicitud antes de marcarla como completada.")
+    node("h3", "", "Informar que terminé"),
+    node("p", "tasky-family-help", "También puedes avisar que terminaste una tarea registrada por José o Camila. Un adulto revisará antes de completarla.")
   );
   const completionForm = node("form", "tasky-family-form");
   completionForm.innerHTML = `
-    <label class="tasky-family-field"><span>Tarea terminada</span><select name="taskId" required><option value="">Cargando tareas…</option></select></label>
-    <button type="submit" class="tasky-family-primary">Solicitar confirmación</button>
+    <label class="tasky-family-field"><span>Tarea asignada por un adulto</span><select name="taskId" required><option value="">Cargando tareas…</option></select></label>
+    <button type="submit" class="tasky-family-primary">Avisar que terminé</button>
     <p class="tasky-family-message" data-family-message role="status" aria-live="polite"></p>
   `;
   completionForm.addEventListener("submit", submitCompletionRequest);
@@ -171,15 +183,26 @@ function renderChildPanel() {
   grid.append(newTaskCard, completionCard);
   card.append(grid);
 
+  const ownTasks = node("section", "tasky-family-inbox-card");
+  ownTasks.append(
+    node("h3", "", "Tareas que he registrado"),
+    node("p", "tasky-family-help", "Puedes editar tus tareas mientras sigan pendientes. Cuando informes que terminaste, aparecerán tachadas hasta que un adulto las revise.")
+  );
+  const taskList = node("div", "tasky-family-list");
+  taskList.id = "tasky-family-child-tasks-list";
+  ownTasks.append(taskList);
+  card.append(ownTasks);
+
   const history = node("section", "tasky-family-inbox-card");
   history.append(
-    node("h3", "", "Estado de mis solicitudes"),
-    node("p", "tasky-family-help", "Aquí podrás comprobar si cada solicitud está pendiente, aprobada o necesita revisión.")
+    node("h3", "", "Solicitudes de tareas asignadas"),
+    node("p", "tasky-family-help", "Aquí puedes consultar el resultado de los avisos de finalización que enviaste.")
   );
   const list = node("div", "tasky-family-list");
   list.id = "tasky-family-requests-list";
   history.append(list);
   card.append(history);
+  renderChildTaskList();
   renderRequestList();
   updateCompletionTaskOptions();
 }
@@ -187,15 +210,33 @@ function renderChildPanel() {
 function renderGuardianPanel() {
   const card = showPanelShell(
     "Tasky Leah · coordinación familiar",
-    "Solicitudes de Leah",
-    "Revisa las tareas que Leah necesita incorporar y las solicitudes de confirmación. Las aprobaciones se guardan junto con el tablero compartido."
+    "Seguimiento de Leah",
+    "Consulta las tareas que Leah registra, revisa sus avisos de finalización y administra el espacio familiar."
   );
   const count = node("span", "tasky-family-count", "0");
   count.id = "tasky-family-pending-count";
   card.querySelector(".tasky-family-heading").append(count);
+
+  const childTaskSection = node("section", "tasky-family-inbox-card");
+  childTaskSection.append(
+    node("h3", "", "Tareas registradas por Leah"),
+    node("p", "tasky-family-help", "Los registros aparecen automáticamente. Las tareas marcadas por Leah como terminadas esperan la confirmación de un adulto.")
+  );
+  const childTaskList = node("div", "tasky-family-list");
+  childTaskList.id = "tasky-family-child-tasks-list";
+  childTaskSection.append(childTaskList);
+  card.append(childTaskSection);
+
+  const requestSection = node("section", "tasky-family-inbox-card");
+  requestSection.append(
+    node("h3", "", "Avisos de finalización de tareas asignadas"),
+    node("p", "tasky-family-help", "Revisa los avisos de Leah sobre tareas que José o Camila registraron directamente en el tablero.")
+  );
   const list = node("div", "tasky-family-list");
   list.id = "tasky-family-requests-list";
-  card.append(list);
+  requestSection.append(list);
+  card.append(requestSection);
+  renderChildTaskList();
   renderRequestList();
 }
 
@@ -231,7 +272,7 @@ function updateCompletionTaskOptions() {
   }
 }
 
-async function submitNewTaskRequest(event) {
+async function submitChildTask(event) {
   event.preventDefault();
   if (requestBusy || activeRole !== "child" || !activeUid) return;
   const form = event.currentTarget;
@@ -243,8 +284,8 @@ async function submitNewTaskRequest(event) {
   const priority = String(form.elements.priority.value || "normal");
   const message = form.querySelector("[data-family-message]");
 
-  if (!title || title.length > 180 || !childModuleIds.has(module)) {
-    setMessage(message, "Completa el título y selecciona un módulo permitido.", true);
+  if (!title || title.length > 180 || description.length > 500 || !childModuleIds.has(module)) {
+    setMessage(message, "Completa un título válido y selecciona un módulo permitido.", true);
     return;
   }
   if (deadlineDate && scheduledDate && deadlineDate < scheduledDate) {
@@ -253,27 +294,303 @@ async function submitNewTaskRequest(event) {
   }
 
   setRequestBusy(true);
-  setMessage(message, "Enviando solicitud…");
+  setMessage(message, "Guardando tarea…");
   try {
-    await addDoc(collection(db, ...REQUESTS_PATH), {
-      type: "new_task",
-      createdBy: activeUid,
-      createdAt: serverTimestamp(),
-      status: "pending",
+    await addDoc(collection(db, ...CHILD_TASKS_PATH), {
       title,
       description,
       module,
       scheduledDate: scheduledDate || localDateISO(),
       deadlineDate,
-      priority
+      priority,
+      createdBy: activeUid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      status: "pending"
     });
     form.reset();
+    fillModuleSelect(form.elements.module, "box_escolar");
     form.elements.scheduledDate.value = localDateISO();
-    setMessage(message, "Solicitud enviada. José y Camila podrán revisarla desde Tasky Leah.");
+    setMessage(message, "Tarea registrada. José y Camila ya pueden verla en Tasky Leah.");
   } catch (error) {
-    setMessage(message, "No se pudo enviar la solicitud. Revisa tu conexión o los permisos de este espacio.", true);
+    setMessage(message, "No se pudo registrar la tarea. Revisa tu conexión o los permisos de este espacio.", true);
   } finally {
     setRequestBusy(false);
+  }
+}
+
+function childTaskStatusLabel(status) {
+  if (status === "awaiting_review") return "Por revisar";
+  if (status === "completed") return "Completada";
+  return "Pendiente";
+}
+
+function childTaskStatusClass(status) {
+  if (status === "awaiting_review") return "is-awaiting-review";
+  if (status === "completed") return "is-approved";
+  return "is-pending";
+}
+
+function renderChildTaskEditor(task) {
+  const form = node("form", "tasky-family-form tasky-family-task-editor");
+  const makeField = (labelText, name, type, value, maxLength) => {
+    const label = node("label", "tasky-family-field");
+    label.append(node("span", "", labelText));
+    const field = document.createElement(type === "textarea" ? "textarea" : "input");
+    field.name = name;
+    if (type !== "textarea") field.type = type;
+    if (maxLength) field.maxLength = maxLength;
+    field.value = value || "";
+    label.append(field);
+    return label;
+  };
+
+  form.append(makeField("Título", "title", "text", task.title, 180));
+  form.append(makeField("Detalle", "description", "textarea", task.description, 500));
+
+  const moduleLabelElement = node("label", "tasky-family-field");
+  moduleLabelElement.append(node("span", "", "Módulo"));
+  const moduleSelect = document.createElement("select");
+  moduleSelect.name = "module";
+  fillModuleSelect(moduleSelect, String(task.module || "box_escolar"));
+  moduleLabelElement.append(moduleSelect);
+  form.append(moduleLabelElement);
+
+  const dates = node("div", "tasky-family-two-fields");
+  dates.append(makeField("Fecha programada", "scheduledDate", "date", task.scheduledDate || ""));
+  dates.append(makeField("Fecha límite", "deadlineDate", "date", task.deadlineDate || ""));
+  form.append(dates);
+
+  const priorityLabel = node("label", "tasky-family-field");
+  priorityLabel.append(node("span", "", "Prioridad"));
+  const prioritySelect = document.createElement("select");
+  prioritySelect.name = "priority";
+  [
+    ["normal", "Normal"],
+    ["high", "Alta"],
+    ["low", "Baja"]
+  ].forEach(([value, label]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    prioritySelect.append(option);
+  });
+  prioritySelect.value = task.priority || "normal";
+  priorityLabel.append(prioritySelect);
+  form.append(priorityLabel);
+
+  const actions = node("div", "tasky-family-actions");
+  const save = makeButton("Guardar cambios", "tasky-family-primary", () => {});
+  save.type = "submit";
+  const cancel = makeButton("Cancelar", "tasky-family-secondary", () => {
+    editingChildTaskId = "";
+    renderChildTaskList();
+  });
+  actions.append(save, cancel);
+  form.append(actions);
+  const message = node("p", "tasky-family-message");
+  message.dataset.familyMessage = "";
+  form.append(message);
+  form.addEventListener("submit", (event) => saveChildTaskEdits(event, task));
+  return form;
+}
+
+function createChildTaskCard(task) {
+  const card = node("article", "tasky-family-request tasky-family-child-task");
+  const top = node("div", "tasky-family-request-top");
+  const title = node("h4", "tasky-family-request-title", task.title || "Tarea sin título");
+  if (task.status === "awaiting_review" || task.status === "completed") {
+    title.classList.add("is-struck");
+  }
+  const status = node(
+    "span",
+    "tasky-family-status " + childTaskStatusClass(task.status),
+    childTaskStatusLabel(task.status)
+  );
+  top.append(title, status);
+  card.append(top);
+
+  const meta = [
+    moduleLabel(task.module),
+    task.scheduledDate ? "Programada: " + formatDate(task.scheduledDate) : "Sin fecha programada",
+    task.deadlineDate ? "Límite: " + formatDate(task.deadlineDate) : "Sin fecha límite",
+    "Prioridad: " + (task.priority === "high" ? "Alta" : task.priority === "low" ? "Baja" : "Normal")
+  ];
+  card.append(node("p", "tasky-family-request-meta", meta.join(" · ")));
+  if (task.description) card.append(node("p", "tasky-family-request-description", task.description));
+  if (task.status === "awaiting_review") {
+    card.append(node("p", "tasky-family-help", "Leah indicó que terminó. La tarea sigue visible y espera la revisión de José o Camila."));
+  } else if (task.status === "completed") {
+    card.append(node("p", "tasky-family-help", "Un adulto confirmó esta tarea" +
+      (task.reviewedBy ? " · revisión registrada" : "") + "."));
+  }
+
+  const actions = node("div", "tasky-family-actions");
+  if (activeRole === "child" && task.createdBy === activeUid && task.status === "pending") {
+    actions.append(
+      makeButton("Editar", "tasky-family-secondary", () => {
+        editingChildTaskId = String(task.id);
+        renderChildTaskList();
+      }),
+      makeButton("Ya terminé", "tasky-family-primary", () => markChildTaskForReview(task.id))
+    );
+  } else if (activeRole !== "child") {
+    if (task.status === "awaiting_review") {
+      actions.append(
+        makeButton("Aprobar y completar", "tasky-family-primary", () => reviewChildTask(task.id, "approved")),
+        makeButton("Devolver a pendientes", "tasky-family-secondary", () => reviewChildTask(task.id, "rejected"))
+      );
+    } else {
+      actions.append(
+        makeButton("Editar", "tasky-family-secondary", () => {
+          editingChildTaskId = String(task.id);
+          renderChildTaskList();
+        }),
+        makeButton("Eliminar", "tasky-family-danger", () => removeChildTask(task.id))
+      );
+    }
+  }
+  if (actions.childElementCount) card.append(actions);
+  return card;
+}
+
+function renderChildTaskList() {
+  if (!content) return;
+  const list = content.querySelector("#tasky-family-child-tasks-list");
+  if (!list) return;
+  list.replaceChildren();
+  const visibleTasks = activeRole === "child"
+    ? childTasks.filter((task) => task.createdBy === activeUid)
+    : childTasks;
+
+  if (!visibleTasks.length) {
+    list.append(node("div", "tasky-family-empty",
+      activeRole === "child"
+        ? "Todavía no has registrado tareas."
+        : "Leah todavía no ha registrado tareas."
+    ));
+    return;
+  }
+
+  visibleTasks.forEach((task) => {
+    if (editingChildTaskId === String(task.id) &&
+        (activeRole !== "child" || (task.createdBy === activeUid && task.status === "pending")) &&
+        (activeRole === "child" || task.status !== "awaiting_review")) {
+      const wrapper = node("article", "tasky-family-request tasky-family-child-task");
+      wrapper.append(renderChildTaskEditor(task));
+      list.append(wrapper);
+    } else {
+      list.append(createChildTaskCard(task));
+    }
+  });
+}
+
+async function saveChildTaskEdits(event, task) {
+  event.preventDefault();
+  if (requestBusy || !activeUid || !task) return;
+  if (activeRole === "child" &&
+      (task.createdBy !== activeUid || task.status !== "pending")) return;
+  if (activeRole !== "child" && !["owner", "guardian"].includes(activeRole)) return;
+
+  const form = event.currentTarget;
+  const title = String(form.elements.title.value || "").trim();
+  const description = String(form.elements.description.value || "").trim();
+  const module = String(form.elements.module.value || "");
+  const scheduledDate = String(form.elements.scheduledDate.value || "");
+  const deadlineDate = String(form.elements.deadlineDate.value || "");
+  const priority = String(form.elements.priority.value || "normal");
+  const message = form.querySelector("[data-family-message]");
+
+  if (!title || title.length > 180 || description.length > 500 || !childModuleIds.has(module)) {
+    setMessage(message, "Completa un título válido y selecciona un módulo permitido.", true);
+    return;
+  }
+  if (deadlineDate && scheduledDate && deadlineDate < scheduledDate) {
+    setMessage(message, "La fecha límite no puede ser anterior a la fecha programada.", true);
+    return;
+  }
+
+  setRequestBusy(true);
+  setMessage(message, "Guardando cambios…");
+  try {
+    await updateDoc(doc(db, ...CHILD_TASKS_PATH, String(task.id)), {
+      title,
+      description,
+      module,
+      scheduledDate,
+      deadlineDate,
+      priority,
+      updatedAt: serverTimestamp()
+    });
+    editingChildTaskId = "";
+    setMessage(message, "Cambios guardados.");
+  } catch (error) {
+    setMessage(message, "No se pudieron guardar los cambios. Comprueba los permisos y la conexión.", true);
+  } finally {
+    setRequestBusy(false);
+    renderChildTaskList();
+  }
+}
+
+async function markChildTaskForReview(taskId) {
+  if (requestBusy || activeRole !== "child" || !activeUid) return;
+  const task = childTasks.find((item) => String(item.id) === String(taskId));
+  if (!task || task.createdBy !== activeUid || task.status !== "pending") return;
+  setRequestBusy(true);
+  try {
+    await updateDoc(doc(db, ...CHILD_TASKS_PATH, String(taskId)), {
+      status: "awaiting_review",
+      childCompletedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    window.alert("No se pudo enviar el aviso de finalización. Comprueba tu conexión.");
+  } finally {
+    setRequestBusy(false);
+    renderChildTaskList();
+  }
+}
+
+async function reviewChildTask(taskId, decision) {
+  if (requestBusy || activeRole === "child" || !activeUid ||
+      !["approved", "rejected"].includes(decision)) return;
+  const task = childTasks.find((item) => String(item.id) === String(taskId));
+  if (!task || task.status !== "awaiting_review") return;
+  setRequestBusy(true);
+  try {
+    await updateDoc(doc(db, ...CHILD_TASKS_PATH, String(taskId)), {
+      status: decision === "approved" ? "completed" : "pending",
+      reviewedBy: activeUid,
+      reviewedAt: serverTimestamp(),
+      reviewNote: decision === "approved" ? "" : "Revisa la actividad y vuelve a marcarla cuando esté lista.",
+      completedAt: decision === "approved" ? Timestamp.now() : null,
+      updatedAt: serverTimestamp()
+    });
+    if (decision === "rejected") {
+      window.alert("La tarea volvió a pendientes. Leah podrá revisarla y editarla.");
+    }
+  } catch (error) {
+    window.alert("No se pudo registrar la revisión. Comprueba los permisos y la conexión.");
+  } finally {
+    setRequestBusy(false);
+    renderChildTaskList();
+  }
+}
+
+async function removeChildTask(taskId) {
+  if (requestBusy || activeRole === "child" || !activeUid) return;
+  const task = childTasks.find((item) => String(item.id) === String(taskId));
+  if (!task) return;
+  if (!window.confirm("¿Eliminar esta tarea registrada por Leah? Esta acción no se puede deshacer.")) return;
+  setRequestBusy(true);
+  try {
+    await deleteDoc(doc(db, ...CHILD_TASKS_PATH, String(taskId)));
+    if (editingChildTaskId === String(taskId)) editingChildTaskId = "";
+  } catch (error) {
+    window.alert("No se pudo eliminar la tarea. Comprueba los permisos y la conexión.");
+  } finally {
+    setRequestBusy(false);
+    renderChildTaskList();
   }
 }
 
@@ -315,7 +632,9 @@ function setRequestBusy(busy) {
       control.disabled = requestBusy;
     });
   }
+  renderChildTaskList();
   updateCompletionTaskOptions();
+  renderChildTaskList();
 }
 
 function createRequestCard(requestId, request) {
@@ -482,14 +801,18 @@ async function reviewRequest(requestId, decision) {
 
 function closeWorkspace() {
   if (unsubscribeRequests) unsubscribeRequests();
+  if (unsubscribeChildTasks) unsubscribeChildTasks();
   if (unsubscribeBoard) unsubscribeBoard();
   unsubscribeRequests = null;
+  unsubscribeChildTasks = null;
   unsubscribeBoard = null;
   activeWorkspace = null;
   activeRole = "";
   activeUid = "";
   requests = [];
+  childTasks = [];
   boardTasks = [];
+  editingChildTaskId = "";
   requestBusy = false;
   if (panel) panel.hidden = true;
   if (content) content.replaceChildren();
@@ -529,6 +852,30 @@ function openWorkspace(detail) {
       "No se pudieron cargar las solicitudes. Comprueba los permisos y la conexión."
     ));
     window.console && window.console.error("Tasky family requests listener failed:", error);
+  });
+
+  const childTasksQuery = query(
+    collection(db, ...CHILD_TASKS_PATH),
+    orderBy("createdAt", "desc"),
+    limit(100)
+  );
+  unsubscribeChildTasks = onSnapshot(childTasksQuery, (snapshot) => {
+    childTasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+    if (!childTasks.some((task) => String(task.id) === editingChildTaskId)) editingChildTaskId = "";
+    renderChildTaskList();
+    const count = content.querySelector("#tasky-family-pending-count");
+    if (count) {
+      count.textContent = String(
+        childTasks.filter((task) => task.status === "awaiting_review").length +
+        requests.filter((request) => request.status === "pending").length
+      );
+    }
+  }, (error) => {
+    const list = content.querySelector("#tasky-family-child-tasks-list");
+    if (list) list.replaceChildren(node("div", "tasky-family-empty",
+      "No se pudieron cargar las tareas registradas por Leah. Comprueba los permisos y la conexión."
+    ));
+    window.console && window.console.error("Tasky child task listener failed:", error);
   });
 
   if (activeRole === "child") {
