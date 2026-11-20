@@ -49,5 +49,6 @@ Fecha de actualización: 20 de noviembre de 2026.
 - El acceso infantil permanece deshabilitado hasta validar el aislamiento completo de Salud y Gastos en staging.
 
 ## Resultado CI más reciente
-- Firestore Emulator: **16 aprobadas, 0 fallidas** (última ejecución completada antes del ajuste final de la migración fail-closed; la nueva ejecución está en curso).
-- Comprobación de sintaxis JavaScript y ausencia de referencias `ntfy.sh`: aprobada.
+- Firestore Emulator: **16 aprobadas, 0 fallidas** en la ejecución del commit `c3f70ae` (incluye barrera de migración y permisos del marcador).
+- Comprobación de sintaxis JavaScript y ausencia de referencias `ntfy.sh`: aprobada sobre el mismo commit.
+- La integración visual y la migración de datos reales aún requieren validación en staging; no habilitar la cuenta infantil.
