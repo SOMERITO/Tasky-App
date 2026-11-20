@@ -410,10 +410,11 @@ test("a guardian migrates fictitious legacy health and expense data atomically b
     syncSchemaVersion: 1
   };
 
-  const sharedRef = doc(env.authenticatedContext("jose").firestore(), "workspaces/leah/shared/main");
-  const healthRef = doc(env.authenticatedContext("jose").firestore(), "workspaces/leah/adult_private/health");
-  const expensesRef = doc(env.authenticatedContext("jose").firestore(), "workspaces/leah/adult_private/expenses");
-  const markerRef = doc(env.authenticatedContext("jose").firestore(), "workspaces/leah/access_control/private_modules");
+  const guardian = env.authenticatedContext("jose").firestore();
+  const sharedRef = doc(guardian, "workspaces/leah/shared/main");
+  const healthRef = doc(guardian, "workspaces/leah/adult_private/health");
+  const expensesRef = doc(guardian, "workspaces/leah/adult_private/expenses");
+  const markerRef = doc(guardian, "workspaces/leah/access_control/private_modules");
 
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
@@ -456,7 +457,6 @@ test("a guardian migrates fictitious legacy health and expense data atomically b
   await assertFails(getDoc(doc(child, "workspaces/leah/shared/main")));
   await assertFails(getDoc(doc(child, "workspaces/leah/task_requests/seed")));
 
-  const guardian = env.authenticatedContext("jose").firestore();
   await assertSucceeds(runTransaction(guardian, async (transaction) => {
     const [sharedSnapshot, healthSnapshot, expensesSnapshot, markerSnapshot] = await Promise.all([
       transaction.get(sharedRef),
