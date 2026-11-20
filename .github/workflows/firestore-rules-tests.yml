@@ -40,6 +40,12 @@ jobs:
         with:
           node-version: "24.22.1"
 
+      - name: Set up Java for Firebase emulators
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
       - name: Install isolated test dependencies
         working-directory: firebase/emulator
         run: npm install --no-audit --no-fund
