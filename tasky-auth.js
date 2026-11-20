@@ -372,7 +372,7 @@ if (accountButton) {
 }
 
 window.addEventListener("tasky:show-workspace-picker", () => {
-  showLogin("Elige el espacio al que deseas cambiar.");
+  showWorkspacePicker("Elige uno de los espacios autorizados para tu cuenta.");
 });
 
 window.addEventListener("storage", (event) => {
