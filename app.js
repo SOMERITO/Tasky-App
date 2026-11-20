@@ -39,6 +39,17 @@
           const legacyVal = window.localStorage.getItem(key);
           if (legacyVal !== null) return legacyVal;
         }
+        // Preserve the previous shared Leah cache for adult guardians only.
+        // The child role never reads this namespace, so private data cannot bleed into it.
+        if (activeWorkspaceId === "leah" && activeWorkspaceContext &&
+            activeWorkspaceContext.role !== "child" && scopedKey !== key) {
+          const legacyAdultKey = "tasky:v2:leah:" + key;
+          const legacyAdultValue = window.localStorage.getItem(legacyAdultKey);
+          if (legacyAdultValue !== null) {
+            try { window.localStorage.setItem(scopedKey, legacyAdultValue); } catch (e) {}
+            return legacyAdultValue;
+          }
+        }
       } catch (e) {}
       if (memoryStorage.has(scopedKey)) return memoryStorage.get(scopedKey);
       if (activeWorkspaceId === "jose" && scopedKey !== key && memoryStorage.has(key)) return memoryStorage.get(key);
