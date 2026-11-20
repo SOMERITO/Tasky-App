@@ -105,14 +105,26 @@ test("Camila can access Camila and Leah, but not José", async () => {
   await assertFails(setDoc(doc(db, "workspaces/jose/shared/main"), { payloadJson: "forbidden" }));
 });
 
-test("Leah can read shared data but cannot access adult-only health or expense details", async () => {
-  const db = env.authenticatedContext("leah").firestore();
+test("adult guardians can read and write private health and expense documents; Leah cannot", async () => {
+  const guardian = env.authenticatedContext("jose").firestore();
+  const child = env.authenticatedContext("leah").firestore();
 
-  await assertSucceeds(getDoc(doc(db, "workspaces/leah/shared/main")));
-  await assertFails(getDoc(doc(db, "workspaces/leah/adult_private/health")));
-  await assertFails(getDoc(doc(db, "workspaces/leah/adult_private/expenses")));
-  await assertFails(setDoc(doc(db, "workspaces/leah/shared/main"), { payloadJson: "child overwrite" }));
-  await assertFails(deleteDoc(doc(db, "workspaces/leah/shared/main")));
+  await assertSucceeds(getDoc(doc(guardian, "workspaces/leah/adult_private/health")));
+  await assertSucceeds(getDoc(doc(guardian, "workspaces/leah/adult_private/expenses")));
+  await assertSucceeds(setDoc(doc(guardian, "workspaces/leah/adult_private/health"), {
+    payloadJson: JSON.stringify({ appointments: [] })
+  }));
+  await assertSucceeds(setDoc(doc(guardian, "workspaces/leah/adult_private/expenses"), {
+    payloadJson: JSON.stringify({ items: [] })
+  }));
+
+  await assertSucceeds(getDoc(doc(child, "workspaces/leah/shared/main")));
+  await assertFails(getDoc(doc(child, "workspaces/leah/adult_private/health")));
+  await assertFails(getDoc(doc(child, "workspaces/leah/adult_private/expenses")));
+  await assertFails(setDoc(doc(child, "workspaces/leah/adult_private/health"), { payloadJson: "child access denied" }));
+  await assertFails(setDoc(doc(child, "workspaces/leah/adult_private/expenses"), { payloadJson: "child access denied" }));
+  await assertFails(setDoc(doc(child, "workspaces/leah/shared/main"), { payloadJson: "child overwrite" }));
+  await assertFails(deleteDoc(doc(child, "workspaces/leah/shared/main")));
 });
 
 test("Leah can submit a new task and a completion request, but cannot approve or delete requests", async () => {
