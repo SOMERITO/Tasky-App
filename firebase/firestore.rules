@@ -109,15 +109,16 @@ service cloud.firestore {
     }
 
     match /workspaces/{workspaceId}/child_tasks/{taskId} {
-      allow read: if hasMembership(workspaceId);
+      allow read: if workspaceId == 'leah' && hasMembership(workspaceId);
 
-      allow create: if isChild(workspaceId)
+      allow create: if workspaceId == 'leah' && isChild(workspaceId)
         && validLeahChildTask(request.resource.data)
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.status == 'pending';
 
       allow update: if (
-        isChild(workspaceId)
+        workspaceId == 'leah'
+        && isChild(workspaceId)
         && resource.data.createdBy == request.auth.uid
         && resource.data.status == 'pending'
         && validLeahChildTask(request.resource.data)
@@ -140,7 +141,8 @@ service cloud.firestore {
           )
         )
       ) || (
-        isAdult(workspaceId)
+        workspaceId == 'leah'
+        && isAdult(workspaceId)
         && resource.data.createdBy == request.resource.data.createdBy
         && validLeahChildTask(request.resource.data)
         && (
@@ -177,7 +179,7 @@ service cloud.firestore {
         )
       );
 
-      allow delete: if isAdult(workspaceId);
+      allow delete: if workspaceId == 'leah' && isAdult(workspaceId);
     }
 
     match /workspaces/{workspaceId}/adult_private/{documentId} {
