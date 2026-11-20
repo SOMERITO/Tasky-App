@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { runInNewContext } from "node:vm";
 import { test } from "node:test";
 
-const source = await readFile(new URL("../../tasky-firebase-config.js", import.meta.url), "utf8");
+const source = await readFile(new URL("../../../tasky-firebase-config.js", import.meta.url), "utf8");
 
 function resolveEnvironment(hostname, useEmulators = false) {
   const window = {
