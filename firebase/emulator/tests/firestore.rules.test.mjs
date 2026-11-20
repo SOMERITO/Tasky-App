@@ -50,6 +50,10 @@ before(async () => {
     await setDoc(doc(db, "workspaces/jose/shared/main"), { payloadJson: "{}" });
     await setDoc(doc(db, "workspaces/camila/shared/main"), { payloadJson: "{}" });
     await setDoc(doc(db, "workspaces/leah/shared/main"), { payloadJson: "{}" });
+    await setDoc(doc(db, "workspaces/leah/access_control/private_modules"), {
+      ready: true,
+      schemaVersion: 1
+    });
     await setDoc(doc(db, "workspaces/leah/adult_private/health"), { notes: "private test data" });
     await setDoc(doc(db, "workspaces/leah/adult_private/expenses"), { total: 120 });
     await setDoc(doc(db, "workspaces/leah/task_requests/seed"), {
@@ -343,6 +347,22 @@ test("only an adult can create or change workspace membership records", async ()
   }));
 
   await assertFails(deleteDoc(doc(leah, "user_access/leah/workspaces/leah")));
+});
+
+test("an enabled child membership is still blocked until private-module migration is complete", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "user_access/child-before-migration/workspaces/leah"), {
+      active: true,
+      role: "child",
+      workspaceId: "leah",
+      childAccessEnabled: true,
+      displayName: "Tasky Leah"
+    });
+  });
+
+  const child = env.authenticatedContext("child-before-migration").firestore();
+  await assertFails(getDoc(doc(child, "workspaces/leah/shared/main")));
+  await assertFails(getDoc(doc(child, "workspaces/leah/task_requests/seed")));
 });
 
 test("Leah's child workspace access stays disabled until private module data is separated", async () => {
