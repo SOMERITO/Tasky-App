@@ -3049,6 +3049,10 @@
 
     // Fail closed if the private-module adapter has not loaded yet.
     const privateBoxIds = new Set(["box_salud", "box_gastos"]);
+    const privateMemoryKeys = new Set([
+      "box_mem_SALUD Y CITAS",
+      "box_mem_GASTOS RELACIONADOS CON LEAH"
+    ]);
     const privateTaskIds = new Set(
       (Array.isArray(source.tasks) ? source.tasks : [])
         .filter(task => task && privateBoxIds.has(String(task.boxId)))
@@ -3074,6 +3078,10 @@
       delete safe.taskMemoryByBox[id];
       delete safe.dismissedTaskSuggestionsByBox[id];
       delete safe.focusPlan.byBox[id];
+    });
+    privateMemoryKeys.forEach(key => {
+      delete safe.taskMemoryByBox[key];
+      delete safe.dismissedTaskSuggestionsByBox[key];
     });
     delete safe.history;
     return buildSyncPayload(safe);
@@ -4020,10 +4028,16 @@
         await privateManager.persistFromWorkspaceData(appState.data, appState.taskMemory, activeWorkspaceContext);
       }
       const sharedPayload = buildCloudSyncPayload(appState.data);
-      const sharedTaskMemory = { ...(appState.taskMemory || {}) };
+      const privateManager = window.TaskyPrivateModules;
+      const sharedTaskMemory = activeWorkspaceId === "leah" && privateManager &&
+        typeof privateManager.buildSharedTaskMemory === "function"
+        ? privateManager.buildSharedTaskMemory(appState.taskMemory)
+        : { ...(appState.taskMemory || {}) };
       if (activeWorkspaceId === "leah") {
         delete sharedTaskMemory.box_salud;
         delete sharedTaskMemory.box_gastos;
+        delete sharedTaskMemory["box_mem_SALUD Y CITAS"];
+        delete sharedTaskMemory["box_mem_GASTOS RELACIONADOS CON LEAH"];
       }
       const fullPayload = {
         ...sharedPayload,
@@ -4240,10 +4254,16 @@
         await privateManager.persistFromWorkspaceData(appState.data, appState.taskMemory, activeWorkspaceContext);
       }
       const sharedPayload = buildCloudSyncPayload(appState.data);
-      const sharedTaskMemory = { ...(appState.taskMemory || {}) };
+      const privateManager = window.TaskyPrivateModules;
+      const sharedTaskMemory = activeWorkspaceId === "leah" && privateManager &&
+        typeof privateManager.buildSharedTaskMemory === "function"
+        ? privateManager.buildSharedTaskMemory(appState.taskMemory)
+        : { ...(appState.taskMemory || {}) };
       if (activeWorkspaceId === "leah") {
         delete sharedTaskMemory.box_salud;
         delete sharedTaskMemory.box_gastos;
+        delete sharedTaskMemory["box_mem_SALUD Y CITAS"];
+        delete sharedTaskMemory["box_mem_GASTOS RELACIONADOS CON LEAH"];
       }
       const fullPayload = {
         ...sharedPayload,
