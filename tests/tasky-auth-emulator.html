@@ -10,26 +10,26 @@
     input, button { box-sizing: border-box; width: 100%; padding: .75rem; margin-top: .4rem; }
     button { cursor: pointer; }
     [hidden] { display: none !important; }
-    .tasky-profile-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
-    .tasky-profile-option { min-height: 6rem; border: 1px solid #bbb; border-radius: .6rem; }
-    .tasky-profile-avatar, .tasky-profile-name, .tasky-profile-description { display: block; }
+    select, input { font: inherit; }
+    select { width: 100%; padding: .75rem; margin-top: .4rem; }
+    .tasky-profile-picker { margin-bottom: 1rem; }
     #tasky-auth-message { min-height: 1.5rem; }
   </style>
 </head>
 <body>
   <main id="tasky-auth-gate" role="dialog" aria-modal="true">
     <h1 id="tasky-auth-title">Bienvenido a Tasky</h1>
-    <section id="tasky-profile-picker">
-      <h2>¿Quién va a ingresar?</h2>
-      <div id="tasky-profile-options">
-        <button class="tasky-profile-option" data-workspace="jose" type="button">José</button>
-        <button class="tasky-profile-option" data-workspace="camila" type="button">Cams</button>
-        <button class="tasky-profile-option" data-workspace="leah" type="button">Leah</button>
-      </div>
-    </section>
-    <form id="tasky-login-form" hidden>
-      <div id="tasky-selected-profile" hidden><h2 id="tasky-selected-profile-name"></h2></div>
-      <button id="tasky-change-profile" type="button">Cambiar perfil</button>
+    <form id="tasky-login-form">
+      <section id="tasky-profile-picker" class="tasky-profile-picker">
+        <h2>Ingresa a tu espacio</h2>
+        <label for="tasky-profile-select">¿Con qué perfil deseas ingresar?</label>
+        <select id="tasky-profile-select" required>
+          <option value="">Selecciona un perfil</option>
+          <option value="jose">José</option>
+          <option value="camila">Cams</option>
+          <option value="leah">Leah</option>
+        </select>
+      </section>
       <label for="tasky-login-email">Correo electrónico</label>
       <input id="tasky-login-email" name="email" type="email" autocomplete="username" required>
       <label for="tasky-login-password">Contraseña</label>
@@ -41,6 +41,7 @@
     <p id="tasky-auth-message" role="status" aria-live="polite"></p>
   </main>
   <output id="tasky-test-result" aria-live="polite"></output>
+  <output id="tasky-test-greeting" aria-live="polite"></output>
   <script>
     window.__TASKY_USE_FIREBASE_EMULATORS__ = true;
     window.addEventListener("tasky:workspace-ready", (event) => {
@@ -48,8 +49,9 @@
       document.documentElement.dataset.taskyRole = event.detail.role;
       document.getElementById("tasky-test-result").textContent =
         event.detail.workspaceName + " · " + event.detail.role;
+      document.getElementById("tasky-test-greeting").textContent = event.detail.displayName;
     });
   </script>
-  <script type="module" src="../tasky-auth.js?v=20261120-profile-first-auth-1"></script>
+  <script type="module" src="../tasky-auth.js?v=20261120-login-dropdown-greeting-2"></script>
 </body>
 </html>
