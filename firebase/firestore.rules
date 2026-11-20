@@ -10,13 +10,23 @@ service cloud.firestore {
       return /databases/$(database)/documents/user_access/$(request.auth.uid)/workspaces/$(workspaceId);
     }
 
+    function privateModuleMigrationReady(workspaceId) {
+      let statePath = /databases/$(database)/documents/workspaces/$(workspaceId)/access_control/private_modules;
+      return exists(statePath)
+        && get(statePath).data.ready == true
+        && get(statePath).data.schemaVersion == 1;
+    }
+
     function hasMembership(workspaceId) {
       return signedIn()
         && exists(accessPath(workspaceId))
         && get(accessPath(workspaceId)).data.active == true
         && (
           get(accessPath(workspaceId)).data.role != 'child'
-          || get(accessPath(workspaceId)).data.childAccessEnabled == true
+          || (
+            get(accessPath(workspaceId)).data.childAccessEnabled == true
+            && privateModuleMigrationReady(workspaceId)
+          )
         );
     }
 
@@ -48,6 +58,10 @@ service cloud.firestore {
     }
 
     match /workspaces/{workspaceId}/adult_private/{documentId} {
+      allow read, write: if isAdult(workspaceId);
+    }
+
+    match /workspaces/{workspaceId}/access_control/{controlId} {
       allow read, write: if isAdult(workspaceId);
     }
 
