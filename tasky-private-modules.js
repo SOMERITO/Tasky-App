@@ -12,7 +12,8 @@ import {
   buildSharedWorkspacePayload,
   collectPrivateTaskIds,
   mergePrivateModuleData,
-  moduleDataFromWorkspace
+  moduleDataFromWorkspace,
+  preparePrivateModuleMigration
 } from "./tasky-private-data.js";
 
 const db = getFirestore(getApp("tasky-multi-workspace"));
@@ -127,12 +128,6 @@ function encodeModuleDocument(moduleData) {
   };
 }
 
-function buildLegacyPrivateModule(sharedPayload, module, knownTaskIds, knownMemoryKeys = []) {
-  if (!sharedPayload) return makeDefaultModule(module);
-  const extracted = moduleDataFromWorkspace(sharedPayload, module.id, knownTaskIds, null, knownMemoryKeys);
-  return withDefaultBox(extracted, module);
-}
-
 function isGuardianContext(context) {
   return Boolean(
     context &&
@@ -178,19 +173,17 @@ async function initialize(initialData, taskMemory, context) {
       moduleDataFromDocOrDefault(expensesSnapshot, MODULES[1])
     ];
 
-    const mergedModules = MODULES.map((module, index) => {
-      const knownMemoryKeys = [
-        ...Object.keys(existing[index].taskMemoryByBox || {}),
-        ...Object.keys(existing[index].dismissedTaskSuggestionsByBox || {})
-      ];
-      const legacy = buildLegacyPrivateModule(legacyShared, module, existing[index].taskIds, knownMemoryKeys);
-      const local = moduleDataFromWorkspace(localData, module.id, existing[index].taskIds, localMemory, knownMemoryKeys);
-      const merged = mergePrivateModuleData(existing[index], legacy, withDefaultBox(local, module));
-      return withDefaultBox(merged, module);
+    const migrationPlan = preparePrivateModuleMigration({
+      sharedPayload: legacyShared,
+      existingModules: existing,
+      localData,
+      taskMemory: localMemory,
+      moduleSpecs: MODULES
     });
+    const mergedModules = migrationPlan.modules;
 
     if (boardSnapshot && boardSnapshot.exists() && legacyShared) {
-      const sanitized = buildSharedWorkspacePayload(legacyShared, mergedModules);
+      const sanitized = migrationPlan.sanitizedSharedPayload;
       const payloadJson = JSON.stringify(sanitized);
       const oldPayload = String(boardSnapshot.data()?.payloadJson || "");
       const oldCompact = String(boardSnapshot.data()?.compactEnvelope || "");
