@@ -84,7 +84,7 @@ workspaces/leah/notifications/{notificationId}
   eventType, title, createdAt, createdBy, audience
 ```
 
-Los datos privados de salud y gastos van en documentos separados: Firestore Rules autorizan documentos completos, no campos individuales de un mismo documento. No incluir detalles privados de adultos dentro de `shared/main`. El administrador de la aplicación extrae los datos antiguos de `shared/main` y los mueve en una transacción a `adult_private/health` y `adult_private/expenses`, dejando el tablero compartido sanitizado y un marcador `access_control/private_modules` con `ready: true`, `schemaVersion: 1`. Además, las reglas bloquean toda membresía infantil hasta que exista ese marcador, incluso si alguien activa accidentalmente `childAccessEnabled` antes de tiempo.
+Los datos privados de salud y gastos van en documentos separados: Firestore Rules autorizan documentos completos, no campos individuales de un mismo documento. No incluir detalles privados de adultos dentro de `shared/main`. El administrador de la aplicación extrae los datos antiguos de `shared/main` y los mueve en una transacción a `adult_private/health` y `adult_private/expenses`, dejando el tablero compartido sanitizado y un marcador `access_control/private_modules` con `ready: true`, `schemaVersion: 1`. Si el documento compartido existe pero su copia no se puede interpretar, la migración se detiene sin crear el marcador ni permitir el acceso infantil. Además, las reglas bloquean toda membresía infantil hasta que exista ese marcador, incluso si alguien activa accidentalmente `childAccessEnabled` antes de tiempo.
 
 ## Permisos de Firestore
 
