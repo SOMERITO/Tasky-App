@@ -157,14 +157,16 @@ async function initialize(initialData, taskMemory, context) {
   const healthRef = moduleRef(MODULES[0]);
   const expensesRef = moduleRef(MODULES[1]);
   const boardRef = sharedRef();
+  const migrationStateRef = doc(db, "workspaces", "leah", "access_control", "private_modules");
   const localData = initialData && typeof initialData === "object" ? initialData : {};
   const localMemory = taskMemory && typeof taskMemory === "object" ? taskMemory : {};
 
   const result = await runTransaction(db, async (transaction) => {
-    const [boardSnapshot, healthSnapshot, expensesSnapshot] = await Promise.all([
+    const [boardSnapshot, healthSnapshot, expensesSnapshot, migrationStateSnapshot] = await Promise.all([
       transaction.get(boardRef),
       transaction.get(healthRef),
-      transaction.get(expensesRef)
+      transaction.get(expensesRef),
+      transaction.get(migrationStateRef)
     ]);
 
     const legacyShared = parseSharedDocument(boardSnapshot);
@@ -202,6 +204,13 @@ async function initialize(initialData, taskMemory, context) {
 
     transaction.set(healthRef, encodeModuleDocument(mergedModules[0]));
     transaction.set(expensesRef, encodeModuleDocument(mergedModules[1]));
+    transaction.set(migrationStateRef, {
+      ready: true,
+      schemaVersion: 1,
+      updatedAt: Date.now(),
+      migratedBy: String(context.uid),
+      migrationVersion: "20261120-private-health-expenses-1"
+    });
     return mergedModules;
   });
 
