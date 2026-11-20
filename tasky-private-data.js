@@ -234,6 +234,76 @@ export function buildSharedTaskMemory(memoryRaw, modulesRaw = []) {
   return source;
 }
 
+export function preparePrivateModuleMigration({
+  sharedPayload,
+  existingModules = [],
+  localData = {},
+  taskMemory = {},
+  moduleSpecs = []
+} = {}) {
+  if (sharedPayload != null &&
+      (!Array.isArray(sharedPayload.boxes) || !Array.isArray(sharedPayload.tasks))) {
+    throw new Error("El tablero compartido antiguo no contiene una copia válida.");
+  }
+
+  const legacySource = sharedPayload || {};
+  const specs = Array.isArray(moduleSpecs) ? moduleSpecs : [];
+  const existingEntries = Array.isArray(existingModules) ? existingModules : [];
+  const modules = specs.map((spec, index) => {
+    if (!spec || !isPrivateModuleId(spec.id)) {
+      throw new Error("La migración contiene un módulo privado desconocido.");
+    }
+    const existing = existingEntries[index] || {
+      moduleId: spec.id,
+      box: null,
+      tasks: [],
+      taskIds: [],
+      deletedTaskIds: [],
+      deletedBoxIds: [],
+      taskMemoryByBox: {},
+      dismissedTaskSuggestionsByBox: {},
+      focusPlan: { date: "", updatedAt: 0, byBox: {} },
+      completionLog: [],
+      updatedAt: 0
+    };
+    const knownMemoryKeys = [
+      ...Object.keys(asObject(existing.taskMemoryByBox)),
+      ...Object.keys(asObject(existing.dismissedTaskSuggestionsByBox))
+    ];
+    const legacy = moduleDataFromWorkspace(
+      legacySource,
+      spec.id,
+      existing.taskIds,
+      null,
+      knownMemoryKeys
+    );
+    const local = moduleDataFromWorkspace(
+      localData,
+      spec.id,
+      existing.taskIds,
+      taskMemory,
+      knownMemoryKeys
+    );
+    const merged = mergePrivateModuleData(existing, legacy, local);
+    if (!merged.box) {
+      merged.box = {
+        id: spec.id,
+        name: String(spec.name || spec.id),
+        color: String(spec.color || "#A855F7"),
+        emoji: String(spec.emoji || ""),
+        order: Number(spec.order || 0),
+        collapsed: false
+      };
+    }
+    return merged;
+  });
+
+  return {
+    modules,
+    sanitizedSharedPayload: sharedPayload ? buildSharedWorkspacePayload(sharedPayload, modules) : null
+  };
+}
+
 export function buildSharedWorkspacePayload(sourceRaw, modulesRaw = []) {
   const source = clone(asObject(sourceRaw)) || {};
   const privateModules = Array.isArray(modulesRaw) ? modulesRaw : Object.values(asObject(modulesRaw));
