@@ -8,9 +8,7 @@ import {
 } from "@firebase/rules-unit-testing";
 import {
   attachPrivateModulesToWorkspace,
-  buildSharedWorkspacePayload,
-  mergePrivateModuleData,
-  moduleDataFromWorkspace
+  preparePrivateModuleMigration
 } from "../../../tasky-private-data.js";
 import {
   collection,
@@ -475,35 +473,15 @@ test("a guardian migrates fictitious legacy health and expense data atomically b
       return parsed;
     });
 
-    const mergedModules = privateModules.map((module, index) => {
-      const current = existing[index];
-      const knownMemoryKeys = [
-        ...Object.keys(current.taskMemoryByBox || {}),
-        ...Object.keys(current.dismissedTaskSuggestionsByBox || {})
-      ];
-      const legacy = moduleDataFromWorkspace(sharedLegacy, module.id, current.taskIds, null, knownMemoryKeys);
-      const local = moduleDataFromWorkspace(
-        sharedLegacy,
-        module.id,
-        current.taskIds,
-        sharedLegacy.taskMemoryByBox || {},
-        knownMemoryKeys
-      );
-      const merged = mergePrivateModuleData(current, legacy, local);
-      if (!merged.box) {
-        merged.box = {
-          id: module.id,
-          name: module.name,
-          color: module.color,
-          emoji: module.emoji,
-          order: module.order,
-          collapsed: false
-        };
-      }
-      return merged;
+    const migrationPlan = preparePrivateModuleMigration({
+      sharedPayload: sharedLegacy,
+      existingModules: existing,
+      localData: sharedLegacy,
+      taskMemory: sharedLegacy.taskMemoryByBox || {},
+      moduleSpecs: privateModules
     });
-
-    const sanitized = buildSharedWorkspacePayload(sharedLegacy, mergedModules);
+    const mergedModules = migrationPlan.modules;
+    const sanitized = migrationPlan.sanitizedSharedPayload;
     const nextPayloadJson = JSON.stringify(sanitized);
     transaction.update(sharedRef, {
       payloadJson: nextPayloadJson,
