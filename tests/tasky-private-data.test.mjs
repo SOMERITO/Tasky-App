@@ -4,7 +4,8 @@ import {
   attachPrivateModulesToWorkspace,
   buildSharedWorkspacePayload,
   mergePrivateModuleData,
-  moduleDataFromWorkspace
+  moduleDataFromWorkspace,
+  buildSharedTaskMemory
 } from "../tasky-private-data.js";
 
 const base = {
@@ -22,12 +23,12 @@ const base = {
   deletedBoxIds: [],
   taskMemoryByBox: {
     box_escolar: ["Leer"],
-    box_salud: ["Pediatría"],
-    box_gastos: ["Recibo"]
+    "box_mem_SALUD Y CITAS": ["Pediatría"],
+    "box_mem_GASTOS RELACIONADOS CON LEAH": ["Recibo"]
   },
   dismissedTaskSuggestionsByBox: {
-    box_salud: ["Control médico"],
-    box_gastos: ["Pago mensual"]
+    "box_mem_SALUD Y CITAS": ["Control médico"],
+    "box_mem_GASTOS RELACIONADOS CON LEAH": ["Pago mensual"]
   },
   focusPlan: {
     date: "2026-11-20",
@@ -57,6 +58,8 @@ test("shared payload excludes private boxes, tasks, tombstones and related metad
   assert.deepEqual(shared.deletedBoxIds, []);
   assert.deepEqual(Object.keys(shared.taskMemoryByBox), ["box_escolar"]);
   assert.deepEqual(Object.keys(shared.dismissedTaskSuggestionsByBox), []);
+  assert.deepEqual(Object.keys(shared.taskMemoryByBox).filter((key) => key.includes("SALUD") || key.includes("GASTOS")), []);
+  assert.deepEqual(Object.keys(buildSharedTaskMemory(base.taskMemoryByBox, [health, expenses])), []);
   assert.deepEqual(Object.keys(shared.focusPlan.byBox), ["box_escolar"]);
   assert.deepEqual(shared.completionLog.map((entry) => entry.taskId), ["school-1"]);
   assert.equal(Object.hasOwn(shared, "history"), false);
@@ -87,4 +90,8 @@ test("attaching private modules restores adult-only modules without mixing them 
   assert.equal(hydrated.tasks.length, 3);
   assert.equal(hydrated.tasks.some((task) => task.title === "Pago de terapia"), true);
   assert.equal(hydrated.deletedTaskIds.includes("health-deleted"), true);
+  assert.deepEqual(hydrated.taskMemoryByBox["box_mem_SALUD Y CITAS"], ["Pediatría"]);
+  assert.deepEqual(hydrated.taskMemoryByBox["box_mem_GASTOS RELACIONADOS CON LEAH"], ["Recibo"]);
+  assert.deepEqual(hydrated.dismissedTaskSuggestionsByBox["box_mem_SALUD Y CITAS"], ["Control médico"]);
+  assert.deepEqual(hydrated.dismissedTaskSuggestionsByBox["box_mem_GASTOS RELACIONADOS CON LEAH"], ["Pago mensual"]);
 });
