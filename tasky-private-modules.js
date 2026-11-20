@@ -263,7 +263,11 @@ function buildSharedTaskMemoryPayload(memory) {
 function mergeSnapshotModules(data, remoteModules) {
   const localModules = MODULES.map((module) => {
     const known = currentModules.find((entry) => entry.moduleId === module.id);
-    return moduleDataFromWorkspace(data, module.id, known ? known.taskIds : []);
+    const knownMemoryKeys = [
+      ...Object.keys((known && known.taskMemoryByBox) || {}),
+      ...Object.keys((known && known.dismissedTaskSuggestionsByBox) || {})
+    ];
+    return moduleDataFromWorkspace(data, module.id, known ? known.taskIds : [], null, knownMemoryKeys);
   });
   return MODULES.map((module, index) =>
     withDefaultBox(mergePrivateModuleData(localModules[index], remoteModules[index]), module)
