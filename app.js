@@ -16,20 +16,50 @@
     VIEW_STATE: "tasky_view_state_v1"
   };
 
+  let activeWorkspaceId = "";
+  let activeWorkspaceContext = null;
+  let activeStorageNamespace = "";
+  const GLOBAL_STORAGE_KEYS = new Set([STORAGE_KEYS.FIREBASE_CONFIG]);
   const memoryStorage = new Map();
+
+  function getScopedStorageKey(key) {
+    return !activeStorageNamespace || GLOBAL_STORAGE_KEYS.has(key)
+      ? key
+      : activeStorageNamespace + ":" + key;
+  }
 
   const safeStorage = {
     getItem(key) {
+      const scopedKey = getScopedStorageKey(key);
       try {
-        const val = window.localStorage.getItem(key);
+        const val = window.localStorage.getItem(scopedKey);
         if (val !== null) return val;
+        // Legacy Tasky keys belong only to José. Never use them for Camila or Leah.
+        if (activeWorkspaceId === "jose" && scopedKey !== key) {
+          const legacyVal = window.localStorage.getItem(key);
+          if (legacyVal !== null) return legacyVal;
+        }
+        // Preserve the previous shared Leah cache for adult guardians only.
+        // The child role never reads this namespace, so private data cannot bleed into it.
+        if (activeWorkspaceId === "leah" && activeWorkspaceContext &&
+            activeWorkspaceContext.role !== "child" && scopedKey !== key) {
+          const legacyAdultKey = "tasky:v2:leah:" + key;
+          const legacyAdultValue = window.localStorage.getItem(legacyAdultKey);
+          if (legacyAdultValue !== null) {
+            try { window.localStorage.setItem(scopedKey, legacyAdultValue); } catch (e) {}
+            return legacyAdultValue;
+          }
+        }
       } catch (e) {}
-      return memoryStorage.has(key) ? memoryStorage.get(key) : null;
+      if (memoryStorage.has(scopedKey)) return memoryStorage.get(scopedKey);
+      if (activeWorkspaceId === "jose" && scopedKey !== key && memoryStorage.has(key)) return memoryStorage.get(key);
+      return null;
     },
     setItem(key, value) {
-      memoryStorage.set(key, value);
+      const scopedKey = getScopedStorageKey(key);
+      memoryStorage.set(scopedKey, value);
       try {
-        window.localStorage.setItem(key, value);
+        window.localStorage.setItem(scopedKey, value);
         return true;
       } catch (e) {
         return false;
@@ -2304,6 +2334,44 @@
     };
   }
 
+  function buildEmptyWorkspaceDataset(workspaceId) {
+    const leahModules = [
+      ["box_escolar", "ESCOLAR", "#F4A7C8", "📚"],
+      ["box_evaluaciones", "EVALUACIONES", "#A855F7", "📝"],
+      ["box_materiales", "MATERIALES", "#F4A7C8", "🎒"],
+      ["box_actividades", "ACTIVIDADES", "#A855F7", "🎨"],
+      ["box_coordinacion", "COORDINACIÓN FAMILIAR", "#F4A7C8", "👨‍👩‍👧"],
+      ["box_salud", "SALUD Y CITAS", "#A855F7", "💗"],
+      ["box_habitos", "HÁBITOS Y RUTINAS", "#F4A7C8", "🌷"],
+      ["box_gastos", "GASTOS RELACIONADOS CON LEAH", "#A855F7", "💜"]
+    ];
+    const modules = workspaceId === "leah"
+      ? (activeWorkspaceContext && activeWorkspaceContext.role === "child"
+        ? leahModules.filter(([id]) => id !== "box_salud" && id !== "box_gastos")
+        : leahModules)
+      : [["box_pendientes", "PENDIENTES", "#A855F7", "✓"]];
+    const boxes = modules.map(([id, name, color, emoji], order) => ({
+      id, name, color, emoji, order, collapsed: false
+    }));
+    return {
+      boxes,
+      tasks: [],
+      monthlyCompletedBase: 0,
+      completedBoxCollapsed: false,
+      learningGoals: { daily: {}, weekly: {} },
+      focusPlan: { date: "", byBox: {}, updatedAt: 0 },
+      completionLog: [],
+      dismissedTaskSuggestionsByBox: {},
+      taskMemoryByBox: {},
+      birthdays: [],
+      deletedTaskIds: [],
+      deletedBoxIds: [],
+      syncSchemaVersion: 2,
+      bootstrapSeedData: false,
+      updatedAt: Date.now()
+    };
+  }
+
   const appState = {
     data: {
       boxes: [],
@@ -2328,18 +2396,23 @@
     redoStack: [],
     cloudChannel: "tasky_somerito_jose_sync_v1",
     cloudEventSource: null,
+    activeWorkspace: null,
     deviceId: `dev_${Math.random().toString(36).slice(2, 10)}`,
     hasBootRendered: false,
     selectedRescheduledIds: new Set(),
     selectedOverdueIds: new Set(),
     selectedTaskIds: new Set(),
     firebaseConfig: {
-      apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YhrvEcb8",
-      authDomain: "tasky-7a30c.firebaseapp.com",
-      projectId: "tasky-7a30c",
-      storageBucket: "tasky-7a30c.firebasestorage.app",
-      messagingSenderId: "505071526437",
-      appId: "1:505071526437:web:6c9eb46dbb4fef296655cc",
+      ...(window.TaskyFirebaseEnvironment && window.TaskyFirebaseEnvironment.config
+        ? window.TaskyFirebaseEnvironment.config
+        : {
+            apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YhrvEcb8",
+            authDomain: "tasky-7a30c.firebaseapp.com",
+            projectId: "tasky-7a30c",
+            storageBucket: "tasky-7a30c.firebasestorage.app",
+            messagingSenderId: "505071526437",
+            appId: "1:505071526437:web:6c9eb46dbb4fef296655cc6"
+          }),
       databaseURL: "",
       docPath: "tasky_sync/somerito_main"
     },
@@ -2963,6 +3036,80 @@
     };
   }
 
+  function isLeahAdultWorkspace() {
+    return activeWorkspaceId === "leah" &&
+      activeWorkspaceContext &&
+      ["guardian", "owner"].includes(activeWorkspaceContext.role);
+  }
+
+  function buildCloudSyncPayload(rawData) {
+    const source = rawData && typeof rawData === "object" ? rawData : {};
+    if (activeWorkspaceId !== "leah") return buildSyncPayload(source);
+
+    const manager = window.TaskyPrivateModules;
+    if (manager && typeof manager.buildSharedPayload === "function") {
+      return buildSyncPayload(manager.buildSharedPayload(source));
+    }
+
+    // Fail closed if the private-module adapter has not loaded yet.
+    const privateBoxIds = new Set(["box_salud", "box_gastos"]);
+    const privateMemoryKeys = new Set([
+      "box_mem_SALUD Y CITAS",
+      "box_mem_GASTOS RELACIONADOS CON LEAH"
+    ]);
+    const privateTaskIds = new Set(
+      (Array.isArray(source.tasks) ? source.tasks : [])
+        .filter(task => task && privateBoxIds.has(String(task.boxId)))
+        .map(task => String(task.id))
+    );
+    const safe = {
+      ...source,
+      boxes: (Array.isArray(source.boxes) ? source.boxes : []).filter(box => box && !privateBoxIds.has(String(box.id))),
+      tasks: (Array.isArray(source.tasks) ? source.tasks : []).filter(task =>
+        task && !privateBoxIds.has(String(task.boxId)) && !privateTaskIds.has(String(task.id))
+      ),
+      deletedTaskIds: (Array.isArray(source.deletedTaskIds) ? source.deletedTaskIds : [])
+        .filter(id => !privateTaskIds.has(String(id))),
+      deletedBoxIds: (Array.isArray(source.deletedBoxIds) ? source.deletedBoxIds : [])
+        .filter(id => !privateBoxIds.has(String(id))),
+      taskMemoryByBox: { ...(source.taskMemoryByBox || {}) },
+      dismissedTaskSuggestionsByBox: { ...(source.dismissedTaskSuggestionsByBox || {}) },
+      focusPlan: { ...(source.focusPlan || {}), byBox: { ...((source.focusPlan && source.focusPlan.byBox) || {}) } },
+      completionLog: (Array.isArray(source.completionLog) ? source.completionLog : [])
+        .filter(entry => entry && !privateTaskIds.has(String(entry.taskId || "")))
+    };
+    privateBoxIds.forEach(id => {
+      delete safe.taskMemoryByBox[id];
+      delete safe.dismissedTaskSuggestionsByBox[id];
+      delete safe.focusPlan.byBox[id];
+    });
+    privateMemoryKeys.forEach(key => {
+      delete safe.taskMemoryByBox[key];
+      delete safe.dismissedTaskSuggestionsByBox[key];
+    });
+    delete safe.history;
+    return buildSyncPayload(safe);
+  }
+
+  function cloudSyncFingerprint(rawData) {
+    return syncFingerprint(buildCloudSyncPayload(rawData));
+  }
+
+  function waitForPrivateModulesApi() {
+    if (window.TaskyPrivateModules) return Promise.resolve(window.TaskyPrivateModules);
+    return new Promise((resolve, reject) => {
+      const timeout = window.setTimeout(() => {
+        window.removeEventListener("tasky:private-modules-loaded", handleReady);
+        reject(new Error("No se pudo cargar el administrador de módulos privados."));
+      }, 10000);
+      function handleReady() {
+        window.clearTimeout(timeout);
+        resolve(window.TaskyPrivateModules);
+      }
+      window.addEventListener("tasky:private-modules-loaded", handleReady, { once: true });
+    });
+  }
+
   function normalizeBirthdayRecord(raw, index = 0) {
     if (!raw || typeof raw !== "object") return null;
     const id = String(raw.id || `birthday_${Date.now()}_${index}`).trim();
@@ -3306,6 +3453,7 @@
   // ==========================================================================
   let cloudSyncReady = false;
   let cloudSyncReadyConfig = "";
+  let privateModulesReady = false;
   let cloudPullInFlight = false;
   let cloudBootstrapInFlight = false;
   let syncRecoveryIntervalId = null;
@@ -3319,19 +3467,24 @@
     const details = document.getElementById("sync-realtime-status-details");
     if (details) details.textContent = `Canal en tiempo real: ${realtimeSyncStatus}`;
   }
-  try {
-    if (typeof window.BroadcastChannel !== "undefined") {
-      syncBroadcastChannel = new window.BroadcastChannel("tasky_firebase_realtime_bus");
+  function initializeWorkspaceBroadcastChannel() {
+    try {
+      if (syncBroadcastChannel) syncBroadcastChannel.close();
+      syncBroadcastChannel = null;
+      if (!activeWorkspaceId || typeof window.BroadcastChannel === "undefined") return;
+      syncBroadcastChannel = new window.BroadcastChannel("tasky_firebase_realtime_bus_" + activeWorkspaceId);
       syncBroadcastChannel.onmessage = (ev) => {
         if (ev.data && ev.data.payload && ev.data.deviceId !== appState.deviceId) {
           applyIncomingSyncPayload(ev.data.payload, false);
         }
       };
+    } catch (e) {
+      syncBroadcastChannel = null;
     }
-  } catch (e) {}
+  }
 
   window.addEventListener("storage", (ev) => {
-    if (ev.key === STORAGE_KEYS.DATA && ev.newValue) {
+    if (ev.key === getScopedStorageKey(STORAGE_KEYS.DATA) && ev.newValue) {
       try {
         const parsed = JSON.parse(ev.newValue);
         applyIncomingSyncPayload(parsed, false);
@@ -3339,8 +3492,23 @@
     }
   });
 
+  async function getFirestoreAuthHeaders() {
+    const authApi = window.TaskyAuth;
+    if (!authApi || !authApi.currentUser || typeof authApi.getIdToken !== "function") {
+      throw new Error("Se requiere una sesión autenticada para acceder a Firestore.");
+    }
+    const token = await authApi.getIdToken();
+    if (!token) throw new Error("Firebase Authentication no entregó un token válido.");
+    return {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    };
+  }
+
   function isCloudNetworkAllowed() {
     return (
+      Boolean(window.TaskyAuth && window.TaskyAuth.currentUser && activeWorkspaceId) &&
+      (!isLeahAdultWorkspace() || privateModulesReady) &&
       typeof window.fetch === "function" &&
       (window.location.protocol === "https:" || window.location.protocol === "http:") &&
       navigator.onLine !== false
@@ -3357,58 +3525,52 @@
   }
 
   function loadSavedFirebaseConfig() {
-    try {
-      const raw = safeStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === "object" && parsed.projectId) {
-          const parsedProjectId = String(parsed.projectId).trim();
-          if (parsedProjectId === "esbas-2026" || parsedProjectId === "tasky-7a30c") {
-            // Migrate stale devices to the verified Tasky web config. Keep the chosen Firestore path.
-            // Preserve a Realtime Database URL only when the saved config is already Tasky's project.
-            const migrated = {
-              ...appState.firebaseConfig,
-              docPath: String(parsed.docPath || appState.firebaseConfig.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, ""),
-              databaseURL: parsedProjectId === "tasky-7a30c" ? String(parsed.databaseURL || "") : ""
-            };
-            appState.firebaseConfig = migrated;
-            safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(migrated));
-          } else {
-            appState.firebaseConfig = {
-              ...appState.firebaseConfig,
-              ...parsed
-            };
-          }
-        }
-      }
-      ["jsonbin_config", "tasky_jsonbin", "cfo_v101_final"].forEach((legacyKey) => {
-        try {
-          if (legacyKey.includes("jsonbin")) window.localStorage.removeItem(legacyKey);
-        } catch (e) {}
-      });
-    } catch (e) {}
+    // The active host selects the Firebase project. Ignore cached/manual project overrides
+    // so a staging tab can never silently redirect to production (or vice versa).
+    const environmentConfig = window.TaskyFirebaseEnvironment && window.TaskyFirebaseEnvironment.config;
+    if (!environmentConfig || !environmentConfig.projectId) {
+      throw new Error("No se pudo determinar el proyecto Firebase de Tasky.");
+    }
+    appState.firebaseConfig = {
+      ...environmentConfig,
+      databaseURL: "",
+      docPath: activeWorkspaceId
+        ? "workspaces/" + activeWorkspaceId + "/shared/main"
+        : "tasky_sync/somerito_main"
+    };
+    safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(appState.firebaseConfig));
+
+    ["jsonbin_config", "tasky_jsonbin", "cfo_v101_final"].forEach((legacyKey) => {
+      try {
+        if (legacyKey.includes("jsonbin")) window.localStorage.removeItem(legacyKey);
+      } catch (e) {}
+    });
+  }
+
+  function getFirebaseFirestoreApiBase() {
+    const configuredBase = window.TaskyFirebaseEnvironment && window.TaskyFirebaseEnvironment.firestoreApiBase;
+    let base = String(configuredBase || "https://firestore.googleapis.com/v1");
+    while (base.endsWith("/")) base = base.slice(0, -1);
+    return base;
   }
 
   function getFirebaseFirestoreUrl() {
     const cfg = appState.firebaseConfig || {};
-    const proj = String(cfg.projectId || "tasky-7a30c").trim();
-    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, "");
+    const environmentProjectId = window.TaskyFirebaseEnvironment && window.TaskyFirebaseEnvironment.projectId;
+    const proj = String(cfg.projectId || environmentProjectId || "tasky-7a30c").trim();
+    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").split("/").filter(Boolean).join("/");
     const keyParam = cfg.apiKey ? `?key=${encodeURIComponent(cfg.apiKey)}` : "";
-    return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(proj)}/databases/(default)/documents/${docPath}${keyParam}`;
+    return `${getFirebaseFirestoreApiBase()}/projects/${encodeURIComponent(proj)}/databases/(default)/documents/${docPath}${keyParam}`;
   }
 
+
   function getFirebaseRtdbUrl() {
-    const cfg = appState.firebaseConfig || {};
-    // Only query Realtime Database when its exact URL is configured.
-    // Tasky's registered Firebase Web SDK config does not contain databaseURL, so do not guess a host.
-    const base = String(cfg.databaseURL || "").trim().replace(/\/+$/, "");
-    if (!base) return "";
-    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, "");
-    return `${base}/${docPath}.json`;
+    // Multi-workspace Tasky uses authenticated Firestore only. No alternate RTDB path.
+    return "";
   }
 
   function packCompactEnvelope() {
-    const d = appState.data;
+    const d = buildCloudSyncPayload(appState.data);
     return JSON.stringify({
       v: 2,
       d: appState.deviceId,
@@ -3790,7 +3952,7 @@
         appState.data.syncSchemaVersion = 1;
         safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
       }
-      if (syncFingerprint(merged) !== syncFingerprint(norm)) pushCloudSync(false);
+      if (cloudSyncFingerprint(merged) !== cloudSyncFingerprint(norm)) pushCloudSync(false);
       return false;
     }
 
@@ -3804,7 +3966,7 @@
     if (todayBirthdayPopupSchedulerReady) checkTodayBirthdayPopup();
     const birthdayModal = document.getElementById("modal-birthdays");
     if (birthdayModal && birthdayModal.classList.contains("open")) renderBirthdayCalendar();
-    const mergedMatchesIncoming = syncFingerprint(merged) === syncFingerprint(norm);
+    const mergedMatchesIncoming = cloudSyncFingerprint(merged) === cloudSyncFingerprint(norm);
     const syncText = document.getElementById("sync-status-text");
     if (syncText) syncText.textContent = mergedMatchesIncoming ? "Sincronizado" : "Conciliando…";
     if (!mergedMatchesIncoming) pushCloudSync(false);
@@ -3839,7 +4001,7 @@
       try {
         syncBroadcastChannel.postMessage({
           deviceId: appState.deviceId,
-          payload: buildSyncPayload(appState.data)
+          payload: buildCloudSyncPayload(appState.data)
         });
       } catch (e) {}
     }
@@ -3861,13 +4023,32 @@
       }
       cloudPushInFlight = true;
       try {
+      if (isLeahAdultWorkspace()) {
+        const privateManager = window.TaskyPrivateModules;
+        if (!privateModulesReady || !privateManager || !privateManager.ready) {
+          throw new Error("Los módulos privados de Leah no están verificados; se bloqueó la escritura compartida.");
+        }
+        await privateManager.persistFromWorkspaceData(appState.data, appState.taskMemory, activeWorkspaceContext);
+      }
+      const sharedPayload = buildCloudSyncPayload(appState.data);
+      const privateManager = window.TaskyPrivateModules;
+      const sharedTaskMemory = activeWorkspaceId === "leah" && privateManager &&
+        typeof privateManager.buildSharedTaskMemory === "function"
+        ? privateManager.buildSharedTaskMemory(appState.taskMemory)
+        : { ...(appState.taskMemory || {}) };
+      if (activeWorkspaceId === "leah") {
+        delete sharedTaskMemory.box_salud;
+        delete sharedTaskMemory.box_gastos;
+        delete sharedTaskMemory["box_mem_SALUD Y CITAS"];
+        delete sharedTaskMemory["box_mem_GASTOS RELACIONADOS CON LEAH"];
+      }
       const fullPayload = {
-        ...buildSyncPayload(appState.data),
+        ...sharedPayload,
         syncSchemaVersion: 1,
-        deletedTaskIds: Array.isArray(appState.data.deletedTaskIds) ? appState.data.deletedTaskIds : [],
-        deletedBoxIds: Array.isArray(appState.data.deletedBoxIds) ? appState.data.deletedBoxIds : [],
-        taskMemoryByBox: appState.taskMemory,
-        history: appState.history,
+        deletedTaskIds: Array.isArray(sharedPayload.deletedTaskIds) ? sharedPayload.deletedTaskIds : [],
+        deletedBoxIds: Array.isArray(sharedPayload.deletedBoxIds) ? sharedPayload.deletedBoxIds : [],
+        taskMemoryByBox: sharedTaskMemory,
+        history: activeWorkspaceId === "leah" ? {} : appState.history,
         settings: appState.settings,
         deviceId: appState.deviceId,
         updatedAt: Number(appState.data.updatedAt || Date.now())
@@ -3911,9 +4092,10 @@
       // 1. Push to Firestore. Do not set keepalive: true for large sync payloads:
       // Fetch keepalive bodies are limited to 64 KiB and can throw before reaching Firebase.
       try {
+        const authHeaders = await getFirestoreAuthHeaders();
         const res = await window.fetch(firestoreBytes.url, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders,
           body: firestoreBytes.body
         });
         if (res && res.ok) {
@@ -3991,7 +4173,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261119-no-public-ntfy-1";
+  const TASKY_BUILD_ID = "20261120-firebase-environment-split-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -4029,6 +4211,11 @@
 
   async function autoBootstrapFirestoreDocument(localRaw, sourceStatus) {
     if (cloudBootstrapInFlight) return "busy";
+    if (activeWorkspaceContext && activeWorkspaceContext.role === "child") {
+      sourceStatus.firestore = "Un adulto debe inicializar este espacio antes del primer uso.";
+      renderSyncDiagnostics(sourceStatus);
+      return "blocked-child-bootstrap";
+    }
     cloudBootstrapInFlight = true;
     try {
       const cfg = appState.firebaseConfig || {};
@@ -4062,10 +4249,29 @@
       safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
       rebuildTaskMemoryFromTasks();
 
+      if (isLeahAdultWorkspace()) {
+        const privateManager = window.TaskyPrivateModules;
+        if (!privateModulesReady || !privateManager || !privateManager.ready) {
+          throw new Error("Los módulos privados de Leah no están verificados; se bloqueó la inicialización compartida.");
+        }
+        await privateManager.persistFromWorkspaceData(appState.data, appState.taskMemory, activeWorkspaceContext);
+      }
+      const sharedPayload = buildCloudSyncPayload(appState.data);
+      const privateManager = window.TaskyPrivateModules;
+      const sharedTaskMemory = activeWorkspaceId === "leah" && privateManager &&
+        typeof privateManager.buildSharedTaskMemory === "function"
+        ? privateManager.buildSharedTaskMemory(appState.taskMemory)
+        : { ...(appState.taskMemory || {}) };
+      if (activeWorkspaceId === "leah") {
+        delete sharedTaskMemory.box_salud;
+        delete sharedTaskMemory.box_gastos;
+        delete sharedTaskMemory["box_mem_SALUD Y CITAS"];
+        delete sharedTaskMemory["box_mem_GASTOS RELACIONADOS CON LEAH"];
+      }
       const fullPayload = {
-        ...buildSyncPayload(appState.data),
-        taskMemoryByBox: appState.taskMemory,
-        history: appState.history,
+        ...sharedPayload,
+        taskMemoryByBox: sharedTaskMemory,
+        history: activeWorkspaceId === "leah" ? {} : appState.history,
         settings: appState.settings,
         deviceId: appState.deviceId,
         updatedAt: Number(appState.data.updatedAt)
@@ -4074,7 +4280,7 @@
       const documentId = parts[parts.length - 1];
       const collectionPath = parts.slice(0, -1).map(encodeURIComponent).join("/");
       const keyParam = cfg.apiKey ? "&key=" + encodeURIComponent(cfg.apiKey) : "";
-      const createUrl = "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(projectId) +
+      const createUrl = getFirebaseFirestoreApiBase() + "/projects/" + encodeURIComponent(projectId) +
         "/databases/(default)/documents/" + collectionPath + "?documentId=" + encodeURIComponent(documentId) + keyParam;
       const body = {
         fields: {
@@ -4085,9 +4291,10 @@
         }
       };
 
+      const authHeaders = await getFirestoreAuthHeaders();
       const response = await window.fetch(createUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders,
         body: JSON.stringify(body)
       });
       const responseText = await response.text();
@@ -4178,7 +4385,8 @@
 
       try {
         const fsUrl = getFirebaseFirestoreUrl();
-        const res = await window.fetch(fsUrl, { cache: "no-store" });
+        const authHeaders = await getFirestoreAuthHeaders();
+        const res = await window.fetch(fsUrl, { headers: authHeaders, cache: "no-store" });
         if (!res.ok) {
           sourceStatus.firestore = `HTTP ${res.status} ${res.statusText || ""}`.trim();
         } else {
@@ -4255,7 +4463,7 @@
       for (let i = 1; i < candidates.length; i++) {
         cloudCandidate = mergeSyncDatasets(cloudCandidate, candidates[i]);
       }
-      const cloudNeedsRepair = candidates.some(candidate => syncFingerprint(candidate) !== syncFingerprint(cloudCandidate));
+      const cloudNeedsRepair = candidates.some(candidate => cloudSyncFingerprint(candidate) !== cloudSyncFingerprint(cloudCandidate));
 
       cloudSyncReady = true;
       cloudSyncReadyConfig = getCloudSyncConfigKey();
@@ -4270,8 +4478,7 @@
       const localNow = normalizeDataPayload(appState.data);
       if (
         cloudNeedsRepair ||
-        syncFingerprint(localNow) !== syncFingerprint(cloudCandidate) ||
-        Number(localNow.updatedAt || 0) > Number(cloudCandidate.updatedAt || 0)
+        cloudSyncFingerprint(localNow) !== cloudSyncFingerprint(cloudCandidate)
       ) {
         pushCloudSync(false);
       } else {
@@ -4401,10 +4608,12 @@
 
     const alreadyRestoredV143 = safeStorage.getItem("tasky_restored_v143_full");
     if (!loaded || (!loaded.boxes.length && !loaded.tasks.length)) {
-      loaded = buildRestoredUserDataset();
+      loaded = activeWorkspaceId === "jose"
+        ? buildRestoredUserDataset()
+        : buildEmptyWorkspaceDataset(activeWorkspaceId);
       safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(loaded));
-      safeStorage.setItem("tasky_restored_v143_full", "true");
-    } else if (!alreadyRestoredV143) {
+      if (activeWorkspaceId === "jose") safeStorage.setItem("tasky_restored_v143_full", "true");
+    } else if (activeWorkspaceId === "jose" && !alreadyRestoredV143) {
       const baseline = buildRestoredUserDataset();
       baseline.boxes.forEach((baseBox) => {
         // Match the original stable ID first so a renamed casilla is never recreated under its old label.
@@ -5276,8 +5485,8 @@
 
   function saveQuoteDeckState() {
     try {
-      if (typeof localStorage !== "undefined" && quoteDeckState) {
-        localStorage.setItem(QUOTE_DECK_STORAGE_KEY, JSON.stringify(quoteDeckState));
+      if (quoteDeckState) {
+        safeStorage.setItem(QUOTE_DECK_STORAGE_KEY, JSON.stringify(quoteDeckState));
       }
     } catch (_) {
       // Continue with the in-memory deck if storage is unavailable.
@@ -5291,9 +5500,7 @@
 
     let saved = null;
     try {
-      if (typeof localStorage !== "undefined") {
-        saved = JSON.parse(localStorage.getItem(QUOTE_DECK_STORAGE_KEY) || "null");
-      }
+      saved = JSON.parse(safeStorage.getItem(QUOTE_DECK_STORAGE_KEY) || "null");
     } catch (_) {
       saved = null;
     }
@@ -13011,9 +13218,32 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     renderDeadlineReminderSettings();
   }
 
-  function boot() {
+  let taskyWorkspaceBooted = false;
+
+  async function boot() {
+    if (taskyWorkspaceBooted || !activeWorkspaceId) return;
+    taskyWorkspaceBooted = true;
     initMobileAppNavigation();
     loadRegisteredData();
+
+    if (isLeahAdultWorkspace()) {
+      try {
+        const privateManager = await waitForPrivateModulesApi();
+        const hydratedData = await privateManager.initialize(appState.data, appState.taskMemory, activeWorkspaceContext);
+        appState.data = applyLocalViewStateToData(hydratedData, appState.data, true);
+        safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
+        rebuildTaskMemoryFromTasks();
+        privateModulesReady = true;
+      } catch (error) {
+        privateModulesReady = false;
+        showToast("No se pudieron verificar Salud y Gastos privados. La sincronización quedó bloqueada para proteger esos datos.", true);
+        setRealtimeSyncStatus("Módulos privados no verificados; sincronización bloqueada");
+      }
+    }
+
+    appState.firebaseConfig.docPath = "workspaces/" + activeWorkspaceId + "/shared/main";
+    appState.firebaseConfig.databaseURL = "";
+    appState.cloudChannel = "tasky_workspace_" + activeWorkspaceId;
     cleanupCompletedTasksFromPreviousDays();
     // The midnight timeout and focus/visibility handlers cover date rollover.
     // Do not poll cleanup every 5 seconds: it can trigger repeated board renders.
@@ -13032,18 +13262,141 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     renderBirthdayUpcomingList();
     document.documentElement.classList.remove("tasky-booting");
 
+    // Listen to private module documents only for authenticated adults in Leah's workspace.
+    if (isLeahAdultWorkspace() && privateModulesReady && window.TaskyPrivateModules) {
+      window.TaskyPrivateModules.startListeners(activeWorkspaceContext);
+    }
+
     // Initial sync, real-time updates, and a quiet recovery poll for mobile WebViews.
-    // Incoming payloads are fingerprinted before rendering, so unchanged data won't redraw the board.
-    pullCloudSync(false).finally(() => {
+    // Incoming shared snapshots never contain the two adult-only modules.
+    if (!isLeahAdultWorkspace() || privateModulesReady) {
+      pullCloudSync(false).finally(() => {
+        startTodayBirthdayPopupScheduler();
+      });
+      startCloudSyncStream();
+      startCloudSyncRecovery();
+    } else {
+      const syncText = document.getElementById("sync-status-text");
+      if (syncText) syncText.textContent = "Sincronización bloqueada";
       startTodayBirthdayPopupScheduler();
-    });
-    startCloudSyncStream();
-    startCloudSyncRecovery();
+    }
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot);
-  } else {
+  window.addEventListener("tasky:workspace-ready", (event) => {
+    const detail = event && event.detail ? event.detail : {};
+    const authApi = window.TaskyAuth;
+    const workspaceId = String(detail.workspaceId || "");
+    if (!authApi || !authApi.currentUser || authApi.currentUser.uid !== detail.uid) return;
+    if (!["jose", "camila", "leah"].includes(workspaceId)) return;
+    const membership = typeof authApi.getMembership === "function"
+      ? authApi.getMembership(workspaceId)
+      : null;
+    if (!membership || membership.active !== true || membership.role !== detail.role) return;
+
+    activeWorkspaceId = workspaceId;
+    activeWorkspaceContext = {
+      uid: authApi.currentUser.uid,
+      email: authApi.currentUser.email || "",
+      displayName: String(detail.displayName || ""),
+      workspaceId,
+      workspaceName: String(detail.workspaceName || workspaceId),
+      role: membership.role
+    };
+
+    const welcomeTitle = document.getElementById("tasky-welcome-title");
+    const welcomeSubtitle = document.getElementById("tasky-welcome-subtitle");
+    const fallbackNames = { jose: "José Carranza", camila: "Camila", leah: "Leah" };
+    const greetingName = activeWorkspaceContext.displayName || fallbackNames[workspaceId] || "usuario";
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
+    if (welcomeTitle) welcomeTitle.textContent = "¡" + greeting + ", " + greetingName + "!";
+    if (welcomeSubtitle) welcomeSubtitle.textContent = "Te damos la bienvenida a tu espacio de Tasky.";
+
+    activeStorageNamespace = "tasky:v2:" + workspaceId + (workspaceId === "leah" ? ":" + activeWorkspaceContext.uid : "");
+    appState.activeWorkspace = { ...activeWorkspaceContext };
+    appState.firebaseConfig.docPath = "workspaces/" + workspaceId + "/shared/main";
+    appState.firebaseConfig.databaseURL = "";
+    appState.cloudChannel = "tasky_workspace_" + workspaceId;
+    initializeWorkspaceBroadcastChannel();
+
+    document.documentElement.classList.remove("tasky-auth-required");
+    document.documentElement.classList.add("tasky-workspace-active");
+    document.documentElement.dataset.taskyWorkspace = workspaceId;
+    document.documentElement.dataset.taskyRole = membership.role;
+    const workspaceShell = document.querySelector(".app-shell");
+    const childBanner = document.getElementById("tasky-child-readonly-banner");
+    const backupOptionsButton = document.getElementById("btn-more-options");
+    const projectIdInput = document.getElementById("input-firebase-project-id");
+    const rtdbUrlInput = document.getElementById("input-firebase-db-url");
+    const workspacePathInput = document.getElementById("input-cloud-sync-channel");
+    const rawConfigInput = document.getElementById("input-firebase-raw-paste");
+    const rescueButton = document.getElementById("btn-firebase-rescue-migrate");
+    if (projectIdInput) {
+      projectIdInput.value = appState.firebaseConfig.projectId || "tasky-7a30c";
+      projectIdInput.readOnly = true;
+    }
+    if (rtdbUrlInput) {
+      rtdbUrlInput.value = "Desactivada; Tasky usa Firestore autenticado";
+      rtdbUrlInput.disabled = true;
+    }
+    if (workspacePathInput) {
+      workspacePathInput.value = "workspaces/" + workspaceId + "/shared/main";
+      workspacePathInput.readOnly = true;
+    }
+    if (rawConfigInput) rawConfigInput.hidden = true;
+    if (rescueButton) rescueButton.hidden = true;
+    if (membership.role === "child") {
+      if (workspaceShell) workspaceShell.setAttribute("inert", "");
+      if (childBanner) childBanner.hidden = false;
+      if (backupOptionsButton) backupOptionsButton.hidden = true;
+    } else {
+      if (workspaceShell) workspaceShell.removeAttribute("inert");
+      if (childBanner) childBanner.hidden = true;
+      if (backupOptionsButton) backupOptionsButton.hidden = false;
+    }
+    const authGate = document.getElementById("tasky-auth-gate");
+    if (authGate) authGate.hidden = true;
+    const accountButton = document.getElementById("btn-tasky-account");
+    if (accountButton) {
+      accountButton.textContent = activeWorkspaceContext.workspaceName;
+      accountButton.setAttribute("aria-label", "Cambiar espacio o cerrar sesión");
+      accountButton.title = "Cambiar espacio o cerrar sesión";
+    }
     boot();
-  }
+  });
+
+  window.addEventListener("tasky:private-modules-updated", (event) => {
+    const detail = event && event.detail ? event.detail : {};
+    if (!isLeahAdultWorkspace() || !privateModulesReady ||
+        String(detail.uid || "") !== String(activeWorkspaceContext.uid || "") ||
+        !window.TaskyPrivateModules || !Array.isArray(detail.modules)) return;
+    try {
+      appState.data = window.TaskyPrivateModules.mergeIntoWorkspace(appState.data, detail.modules);
+      safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
+      rebuildTaskMemoryFromTasks();
+      renderBoard();
+      renderLearningGoalsPanel();
+    } catch (error) {
+      setRealtimeSyncStatus("No se pudieron actualizar los módulos privados en este dispositivo.");
+    }
+  });
+
+  window.addEventListener("tasky:open-workspace-picker", () => {
+    if (window.TaskyPrivateModules) window.TaskyPrivateModules.close(activeWorkspaceContext);
+    privateModulesReady = false;
+  });
+
+  window.addEventListener("tasky:family-board-updated", () => {
+    // A family approval updates the authenticated shared Firestore document transactionally.
+    // Pull it through the normal merge engine so the active guardian board stays consistent.
+    pullCloudSync(true, true);
+  });
+
+  window.addEventListener("tasky:open-workspace-picker", () => {
+    document.documentElement.classList.add("tasky-auth-required");
+    document.documentElement.classList.remove("tasky-workspace-active");
+    const authGate = document.getElementById("tasky-auth-gate");
+    if (authGate) authGate.hidden = false;
+    window.dispatchEvent(new CustomEvent("tasky:show-workspace-picker"));
+  });
 })();

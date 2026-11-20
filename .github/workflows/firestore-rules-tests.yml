@@ -1,0 +1,66 @@
+name: Firestore and authentication integration tests
+
+on:
+  push:
+    branches:
+      - feature/tasky-multi-workspace-foundation
+    paths:
+      - "firebase/**"
+      - "tests/**"
+      - "app.js"
+      - "tasky-auth.js"
+      - "tasky-family.js"
+      - "index.html"
+      - "styles.css"
+      - "tasky-family.js"
+      - "index.html"
+      - "styles.css"
+      - "tasky-firebase-config.js"
+      - "tasky-private-data.js"
+      - "tasky-private-modules.js"
+      - ".github/workflows/firestore-rules-tests.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "firebase/**"
+      - "tests/**"
+      - "app.js"
+      - "tasky-auth.js"
+      - "tasky-private-data.js"
+      - "tasky-private-modules.js"
+      - ".github/workflows/firestore-rules-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  emulator-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.22.1"
+
+      - name: Set up Java for Firebase emulators
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install isolated test dependencies
+        working-directory: firebase/emulator
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium for browser integration tests
+        working-directory: firebase/emulator
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Firestore rules and authentication browser tests
+        working-directory: firebase/emulator
+        run: npm test

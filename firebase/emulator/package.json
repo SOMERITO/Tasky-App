@@ -1,0 +1,16 @@
+{
+  "name": "tasky-firestore-rules-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "firebase emulators:exec --only auth,firestore --project demo-tasky-auth --config firebase.json \"node --test tests/firestore.rules.test.mjs tests/tasky-auth.browser.test.mjs tests/tasky-firebase-config.test.mjs ../../tests/tasky-private-data.test.mjs\"",
+    "test:auth": "firebase emulators:exec --only auth,firestore --project demo-tasky-auth --config firebase.json \"node --test tests/tasky-auth.browser.test.mjs\"",
+    "pretest": "node -e \"require('node:fs').copyFileSync('../firestore.rules', 'firestore.rules')\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "6.0.0",
+    "firebase": "13.4.0",
+    "firebase-tools": "15.37.0",
+    "playwright": "1.56.1"
+  }
+}
