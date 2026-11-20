@@ -1,7 +1,7 @@
 # Tasky — arquitectura multi-espacio (v1)
 
-Fecha: 19 de noviembre de 2026  
-Estado: propuesta de implementación en rama; no desplegada.
+Fecha: 20 de noviembre de 2026  
+Estado: implementación parcial en la rama de desarrollo; no desplegada.
 
 ## Objetivo
 
@@ -19,9 +19,10 @@ No se creará una segunda página web para Leah ni se reutilizará otra aplicaci
   - `camila`: solo Camila; privado.
   - `leah`: José (guardian), Camila (guardian), Leah (child); compartido.
 - Colores de Tasky Leah: rosado, morado y negro.
-- Módulos de Leah: Escolar, Evaluaciones, Materiales, Actividades, Coordinación familiar, Salud y citas, Hábitos y rutinas y Gastos relacionados con Leah.
+- Módulos previstos de Leah: Escolar, Evaluaciones, Materiales, Actividades, Coordinación familiar, Salud y citas, Hábitos y rutinas y Gastos relacionados con Leah.
+- Los módulos Salud y Gastos son privados para los adultos. Su separación efectiva en documentos `adult_private` sigue pendiente; por eso el acceso de Leah continúa deshabilitado.
 - Coordinación familiar: compartida con los tres.
-- Notificaciones: todos los miembros del espacio deben recibir avisos dentro de la aplicación.
+- Solicitudes familiares: el panel de José y Camila escucha en tiempo real la bandeja de solicitudes de Leah. Las notificaciones fuera de la aplicación o con Tasky cerrado siguen pendientes.
 - Leah: puede registrar pendientes y solicitar que se marquen como completados; no puede eliminar pendientes de los adultos. La finalización requiere verificación de un adulto.
 - Los adultos pueden administrar los datos compartidos de Leah.
 
@@ -98,12 +99,14 @@ Los datos privados de salud y gastos van en documentos separados: Firestore Rule
 ### Flujo de Leah para tareas
 
 1. Leah registra un pendiente: se guarda como solicitud `new_task` con estado `pending`.
-2. José y Camila reciben el aviso dentro del espacio compartido y revisan la solicitud.
-3. Un adulto la aprueba y la incorpora al tablero compartido (o la rechaza con una explicación).
+2. El panel de José y Camila escucha la bandeja de solicitudes en tiempo real mientras el espacio está abierto.
+3. Un adulto aprueba o rechaza la solicitud. La aprobación incorpora la tarea al tablero compartido y actualiza la solicitud en una sola transacción de Firestore.
 4. Cuando Leah termina una tarea, crea una solicitud `completion`.
-5. El adulto verifica y actualiza el estado final en el tablero. Leah no modifica directamente el documento principal ni puede borrar una tarea adulta.
+5. El adulto verifica y marca la tarea como completada en la misma transacción que aprueba la solicitud. Leah no modifica directamente el documento principal ni puede borrar una tarea adulta.
 
-Así se conserva el motor actual, que serializa el tablero completo en un documento, sin conceder a la cuenta infantil permiso para sobrescribir o eliminar cualquier tarea de ese documento.
+El flujo de solicitudes y la bandeja de revisión están implementados en esta rama. El acceso infantil sigue deshabilitado hasta separar los módulos privados de Salud y Gastos y completar pruebas de staging. Las reglas limitan las solicitudes a módulos permitidos (Escolar, Evaluaciones, Materiales, Actividades, Coordinación familiar y Hábitos), evitando que Leah solicite tareas dentro de Salud o Gastos.
+
+Así se conserva el motor actual, que serializa el tablero compartido en un documento, sin conceder a la cuenta infantil permiso para sobrescribir o eliminar cualquier tarea de ese documento.
 
 ## Aislamiento en el navegador
 
@@ -135,8 +138,8 @@ La primera versión implementará un centro de notificaciones dentro de Tasky, v
 2. **Autenticación:** pantalla de inicio de sesión, persistencia segura de sesión, recuperación de contraseña y cierre de sesión; sin auto-registro.
 3. **Membresías y selector:** cargar los espacios permitidos por UID y mostrar el selector.
 4. **Aislamiento local/cloud:** prefijos por workspace, Firestore con ID token y carga/guardado de documentos separados.
-5. **Flujo infantil:** solicitudes de nuevas tareas y finalización con aprobación de adulto.
-6. **Privacidad por módulo:** documentos separados para salud y gastos de adultos.
+5. **Flujo infantil:** implementado en esta rama: solicitudes de nuevas tareas y finalización, bandeja de adultos y aprobación transaccional; pendiente de staging con una cuenta infantil habilitada.
+6. **Privacidad por módulo:** pendiente; separar salud y gastos en documentos independientes y verificar que el tablero compartido no conserve datos privados.
 7. **Migración y despliegue:** importar copia de José, probar y solo después abrir reglas autenticadas.
 
 ## Criterios mínimos de aceptación
@@ -153,4 +156,4 @@ La primera versión implementará un centro de notificaciones dentro de Tasky, v
 
 ## Límites de esta fase
 
-Este documento no habilita Firebase Authentication, no crea cuentas ni modifica reglas en Firebase. El archivo de reglas de esta rama es una propuesta versionada para revisión y pruebas; no se debe publicar desde la consola hasta terminar la integración y ejecutar pruebas en el emulador.
+Este documento no habilita Firebase Authentication en producción, no crea cuentas ni publica reglas en Firebase. El archivo de reglas de esta rama es una propuesta versionada para revisión y pruebas; no se debe publicar desde la consola hasta terminar la separación de datos privados, el staging y la validación integral.
