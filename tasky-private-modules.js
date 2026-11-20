@@ -170,6 +170,9 @@ async function initialize(initialData, taskMemory, context) {
     ]);
 
     const legacyShared = parseSharedDocument(boardSnapshot);
+    if (boardSnapshot && boardSnapshot.exists() && !legacyShared) {
+      throw new Error("El documento shared/main existente no contiene una copia válida; la migración privada se detuvo sin habilitar el acceso infantil.");
+    }
     const existing = [
       moduleDataFromDocOrDefault(healthSnapshot, MODULES[0]),
       moduleDataFromDocOrDefault(expensesSnapshot, MODULES[1])
