@@ -2335,7 +2335,9 @@
       ["box_gastos", "GASTOS RELACIONADOS CON LEAH", "#A855F7", "💜"]
     ];
     const modules = workspaceId === "leah"
-      ? leahModules
+      ? (activeWorkspaceContext && activeWorkspaceContext.role === "child"
+        ? leahModules.filter(([id]) => id !== "box_salud" && id !== "box_gastos")
+        : leahModules)
       : [["box_pendientes", "PENDIENTES", "#A855F7", "✓"]];
     const boxes = modules.map(([id, name, color, emoji], order) => ({
       id, name, color, emoji, order, collapsed: false
@@ -3019,6 +3021,72 @@
     };
   }
 
+  function isLeahAdultWorkspace() {
+    return activeWorkspaceId === "leah" &&
+      activeWorkspaceContext &&
+      ["guardian", "owner"].includes(activeWorkspaceContext.role);
+  }
+
+  function buildCloudSyncPayload(rawData) {
+    const source = rawData && typeof rawData === "object" ? rawData : {};
+    if (activeWorkspaceId !== "leah") return buildSyncPayload(source);
+
+    const manager = window.TaskyPrivateModules;
+    if (manager && typeof manager.buildSharedPayload === "function") {
+      return buildSyncPayload(manager.buildSharedPayload(source));
+    }
+
+    // Fail closed if the private-module adapter has not loaded yet.
+    const privateBoxIds = new Set(["box_salud", "box_gastos"]);
+    const privateTaskIds = new Set(
+      (Array.isArray(source.tasks) ? source.tasks : [])
+        .filter(task => task && privateBoxIds.has(String(task.boxId)))
+        .map(task => String(task.id))
+    );
+    const safe = {
+      ...source,
+      boxes: (Array.isArray(source.boxes) ? source.boxes : []).filter(box => box && !privateBoxIds.has(String(box.id))),
+      tasks: (Array.isArray(source.tasks) ? source.tasks : []).filter(task =>
+        task && !privateBoxIds.has(String(task.boxId)) && !privateTaskIds.has(String(task.id))
+      ),
+      deletedTaskIds: (Array.isArray(source.deletedTaskIds) ? source.deletedTaskIds : [])
+        .filter(id => !privateTaskIds.has(String(id))),
+      deletedBoxIds: (Array.isArray(source.deletedBoxIds) ? source.deletedBoxIds : [])
+        .filter(id => !privateBoxIds.has(String(id))),
+      taskMemoryByBox: { ...(source.taskMemoryByBox || {}) },
+      dismissedTaskSuggestionsByBox: { ...(source.dismissedTaskSuggestionsByBox || {}) },
+      focusPlan: { ...(source.focusPlan || {}), byBox: { ...((source.focusPlan && source.focusPlan.byBox) || {}) } },
+      completionLog: (Array.isArray(source.completionLog) ? source.completionLog : [])
+        .filter(entry => entry && !privateTaskIds.has(String(entry.taskId || "")))
+    };
+    privateBoxIds.forEach(id => {
+      delete safe.taskMemoryByBox[id];
+      delete safe.dismissedTaskSuggestionsByBox[id];
+      delete safe.focusPlan.byBox[id];
+    });
+    delete safe.history;
+    return buildSyncPayload(safe);
+  }
+
+  function cloudSyncFingerprint(rawData) {
+    return syncFingerprint(buildCloudSyncPayload(rawData));
+  }
+
+  function waitForPrivateModulesApi() {
+    if (window.TaskyPrivateModules) return Promise.resolve(window.TaskyPrivateModules);
+    return new Promise((resolve, reject) => {
+      const timeout = window.setTimeout(() => {
+        window.removeEventListener("tasky:private-modules-loaded", handleReady);
+        reject(new Error("No se pudo cargar el administrador de módulos privados."));
+      }, 10000);
+      function handleReady() {
+        window.clearTimeout(timeout);
+        resolve(window.TaskyPrivateModules);
+      }
+      window.addEventListener("tasky:private-modules-loaded", handleReady, { once: true });
+    });
+  }
+
   function normalizeBirthdayRecord(raw, index = 0) {
     if (!raw || typeof raw !== "object") return null;
     const id = String(raw.id || `birthday_${Date.now()}_${index}`).trim();
@@ -3362,6 +3430,7 @@
   // ==========================================================================
   let cloudSyncReady = false;
   let cloudSyncReadyConfig = "";
+  let privateModulesReady = false;
   let cloudPullInFlight = false;
   let cloudBootstrapInFlight = false;
   let syncRecoveryIntervalId = null;
@@ -3416,6 +3485,7 @@
   function isCloudNetworkAllowed() {
     return (
       Boolean(window.TaskyAuth && window.TaskyAuth.currentUser && activeWorkspaceId) &&
+      (!isLeahAdultWorkspace() || privateModulesReady) &&
       typeof window.fetch === "function" &&
       (window.location.protocol === "https:" || window.location.protocol === "http:") &&
       navigator.onLine !== false
@@ -3478,7 +3548,7 @@
   }
 
   function packCompactEnvelope() {
-    const d = appState.data;
+    const d = buildCloudSyncPayload(appState.data);
     return JSON.stringify({
       v: 2,
       d: appState.deviceId,
@@ -3860,7 +3930,7 @@
         appState.data.syncSchemaVersion = 1;
         safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
       }
-      if (syncFingerprint(merged) !== syncFingerprint(norm)) pushCloudSync(false);
+      if (cloudSyncFingerprint(merged) !== cloudSyncFingerprint(norm)) pushCloudSync(false);
       return false;
     }
 
@@ -3874,7 +3944,7 @@
     if (todayBirthdayPopupSchedulerReady) checkTodayBirthdayPopup();
     const birthdayModal = document.getElementById("modal-birthdays");
     if (birthdayModal && birthdayModal.classList.contains("open")) renderBirthdayCalendar();
-    const mergedMatchesIncoming = syncFingerprint(merged) === syncFingerprint(norm);
+    const mergedMatchesIncoming = cloudSyncFingerprint(merged) === cloudSyncFingerprint(norm);
     const syncText = document.getElementById("sync-status-text");
     if (syncText) syncText.textContent = mergedMatchesIncoming ? "Sincronizado" : "Conciliando…";
     if (!mergedMatchesIncoming) pushCloudSync(false);
@@ -3909,7 +3979,7 @@
       try {
         syncBroadcastChannel.postMessage({
           deviceId: appState.deviceId,
-          payload: buildSyncPayload(appState.data)
+          payload: buildCloudSyncPayload(appState.data)
         });
       } catch (e) {}
     }
@@ -3931,13 +4001,26 @@
       }
       cloudPushInFlight = true;
       try {
+      if (isLeahAdultWorkspace()) {
+        const privateManager = window.TaskyPrivateModules;
+        if (!privateModulesReady || !privateManager || !privateManager.ready) {
+          throw new Error("Los módulos privados de Leah no están verificados; se bloqueó la escritura compartida.");
+        }
+        await privateManager.persistFromWorkspaceData(appState.data, appState.taskMemory, activeWorkspaceContext);
+      }
+      const sharedPayload = buildCloudSyncPayload(appState.data);
+      const sharedTaskMemory = { ...(appState.taskMemory || {}) };
+      if (activeWorkspaceId === "leah") {
+        delete sharedTaskMemory.box_salud;
+        delete sharedTaskMemory.box_gastos;
+      }
       const fullPayload = {
-        ...buildSyncPayload(appState.data),
+        ...sharedPayload,
         syncSchemaVersion: 1,
-        deletedTaskIds: Array.isArray(appState.data.deletedTaskIds) ? appState.data.deletedTaskIds : [],
-        deletedBoxIds: Array.isArray(appState.data.deletedBoxIds) ? appState.data.deletedBoxIds : [],
-        taskMemoryByBox: appState.taskMemory,
-        history: appState.history,
+        deletedTaskIds: Array.isArray(sharedPayload.deletedTaskIds) ? sharedPayload.deletedTaskIds : [],
+        deletedBoxIds: Array.isArray(sharedPayload.deletedBoxIds) ? sharedPayload.deletedBoxIds : [],
+        taskMemoryByBox: sharedTaskMemory,
+        history: activeWorkspaceId === "leah" ? {} : appState.history,
         settings: appState.settings,
         deviceId: appState.deviceId,
         updatedAt: Number(appState.data.updatedAt || Date.now())
@@ -4062,7 +4145,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261120-family-requests-1";
+  const TASKY_BUILD_ID = "20261120-private-health-expenses-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -4138,10 +4221,23 @@
       safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
       rebuildTaskMemoryFromTasks();
 
+      if (isLeahAdultWorkspace()) {
+        const privateManager = window.TaskyPrivateModules;
+        if (!privateModulesReady || !privateManager || !privateManager.ready) {
+          throw new Error("Los módulos privados de Leah no están verificados; se bloqueó la inicialización compartida.");
+        }
+        await privateManager.persistFromWorkspaceData(appState.data, appState.taskMemory, activeWorkspaceContext);
+      }
+      const sharedPayload = buildCloudSyncPayload(appState.data);
+      const sharedTaskMemory = { ...(appState.taskMemory || {}) };
+      if (activeWorkspaceId === "leah") {
+        delete sharedTaskMemory.box_salud;
+        delete sharedTaskMemory.box_gastos;
+      }
       const fullPayload = {
-        ...buildSyncPayload(appState.data),
-        taskMemoryByBox: appState.taskMemory,
-        history: appState.history,
+        ...sharedPayload,
+        taskMemoryByBox: sharedTaskMemory,
+        history: activeWorkspaceId === "leah" ? {} : appState.history,
         settings: appState.settings,
         deviceId: appState.deviceId,
         updatedAt: Number(appState.data.updatedAt)
@@ -4333,7 +4429,7 @@
       for (let i = 1; i < candidates.length; i++) {
         cloudCandidate = mergeSyncDatasets(cloudCandidate, candidates[i]);
       }
-      const cloudNeedsRepair = candidates.some(candidate => syncFingerprint(candidate) !== syncFingerprint(cloudCandidate));
+      const cloudNeedsRepair = candidates.some(candidate => cloudSyncFingerprint(candidate) !== cloudSyncFingerprint(cloudCandidate));
 
       cloudSyncReady = true;
       cloudSyncReadyConfig = getCloudSyncConfigKey();
@@ -4348,8 +4444,7 @@
       const localNow = normalizeDataPayload(appState.data);
       if (
         cloudNeedsRepair ||
-        syncFingerprint(localNow) !== syncFingerprint(cloudCandidate) ||
-        Number(localNow.updatedAt || 0) > Number(cloudCandidate.updatedAt || 0)
+        cloudSyncFingerprint(localNow) !== cloudSyncFingerprint(cloudCandidate)
       ) {
         pushCloudSync(false);
       } else {
@@ -13091,11 +13186,27 @@ function createTaskRowElement(task, box, showOriginBox = false) {
 
   let taskyWorkspaceBooted = false;
 
-  function boot() {
+  async function boot() {
     if (taskyWorkspaceBooted || !activeWorkspaceId) return;
     taskyWorkspaceBooted = true;
     initMobileAppNavigation();
     loadRegisteredData();
+
+    if (isLeahAdultWorkspace()) {
+      try {
+        const privateManager = await waitForPrivateModulesApi();
+        const hydratedData = await privateManager.initialize(appState.data, appState.taskMemory, activeWorkspaceContext);
+        appState.data = applyLocalViewStateToData(hydratedData, appState.data, true);
+        safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
+        rebuildTaskMemoryFromTasks();
+        privateModulesReady = true;
+      } catch (error) {
+        privateModulesReady = false;
+        showToast("No se pudieron verificar Salud y Gastos privados. La sincronización quedó bloqueada para proteger esos datos.", true);
+        setRealtimeSyncStatus("Módulos privados no verificados; sincronización bloqueada");
+      }
+    }
+
     appState.firebaseConfig.docPath = "workspaces/" + activeWorkspaceId + "/shared/main";
     appState.firebaseConfig.databaseURL = "";
     appState.cloudChannel = "tasky_workspace_" + activeWorkspaceId;
@@ -13117,13 +13228,24 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     renderBirthdayUpcomingList();
     document.documentElement.classList.remove("tasky-booting");
 
+    // Listen to private module documents only for authenticated adults in Leah's workspace.
+    if (isLeahAdultWorkspace() && privateModulesReady && window.TaskyPrivateModules) {
+      window.TaskyPrivateModules.startListeners(activeWorkspaceContext);
+    }
+
     // Initial sync, real-time updates, and a quiet recovery poll for mobile WebViews.
-    // Incoming payloads are fingerprinted before rendering, so unchanged data won't redraw the board.
-    pullCloudSync(false).finally(() => {
+    // Incoming shared snapshots never contain the two adult-only modules.
+    if (!isLeahAdultWorkspace() || privateModulesReady) {
+      pullCloudSync(false).finally(() => {
+        startTodayBirthdayPopupScheduler();
+      });
+      startCloudSyncStream();
+      startCloudSyncRecovery();
+    } else {
+      const syncText = document.getElementById("sync-status-text");
+      if (syncText) syncText.textContent = "Sincronización bloqueada";
       startTodayBirthdayPopupScheduler();
-    });
-    startCloudSyncStream();
-    startCloudSyncRecovery();
+    }
   }
 
   window.addEventListener("tasky:workspace-ready", (event) => {
@@ -13146,7 +13268,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       workspaceName: String(detail.workspaceName || workspaceId),
       role: membership.role
     };
-    activeStorageNamespace = "tasky:v2:" + workspaceId;
+    activeStorageNamespace = "tasky:v2:" + workspaceId + (workspaceId === "leah" ? ":" + activeWorkspaceContext.uid : "");
     appState.activeWorkspace = { ...activeWorkspaceContext };
     appState.firebaseConfig.docPath = "workspaces/" + workspaceId + "/shared/main";
     appState.firebaseConfig.databaseURL = "";
@@ -13197,6 +13319,27 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       accountButton.title = "Cambiar espacio o cerrar sesión";
     }
     boot();
+  });
+
+  window.addEventListener("tasky:private-modules-updated", (event) => {
+    const detail = event && event.detail ? event.detail : {};
+    if (!isLeahAdultWorkspace() || !privateModulesReady ||
+        String(detail.uid || "") !== String(activeWorkspaceContext.uid || "") ||
+        !window.TaskyPrivateModules || !Array.isArray(detail.modules)) return;
+    try {
+      appState.data = window.TaskyPrivateModules.mergeIntoWorkspace(appState.data, detail.modules);
+      safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
+      rebuildTaskMemoryFromTasks();
+      renderBoard();
+      renderLearningGoalsPanel();
+    } catch (error) {
+      setRealtimeSyncStatus("No se pudieron actualizar los módulos privados en este dispositivo.");
+    }
+  });
+
+  window.addEventListener("tasky:open-workspace-picker", () => {
+    if (window.TaskyPrivateModules) window.TaskyPrivateModules.close(activeWorkspaceContext);
+    privateModulesReady = false;
   });
 
   window.addEventListener("tasky:family-board-updated", () => {
