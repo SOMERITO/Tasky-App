@@ -61,11 +61,7 @@ export function moduleDataFromWorkspace(sourceRaw, moduleId, knownTaskIds = [], 
   const taskIds = uniqueStrings([...knownTaskIds, ...currentTaskIds]);
   const deletedTaskIds = uniqueStrings(source.deletedTaskIds).filter((id) => taskIds.includes(id));
   const sourceMemory = { ...asObject(source.taskMemoryByBox), ...asObject(taskMemoryRaw) };
-  const memoryKeys = privateModuleMemoryKeys(moduleId, box, [
-    ...knownMemoryKeys,
-    ...Object.keys(asObject(source.taskMemoryByBox)).filter((key) => key.startsWith("box_mem_")),
-    ...Object.keys(asObject(taskMemoryRaw)).filter((key) => key.startsWith("box_mem_"))
-  ]);
+  const memoryKeys = privateModuleMemoryKeys(moduleId, box, knownMemoryKeys);
   const memory = selectMemoryEntries(sourceMemory, memoryKeys);
   const sourceFocus = asObject(source.focusPlan);
   const focusByBox = asObject(sourceFocus.byBox);
