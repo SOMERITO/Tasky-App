@@ -5,7 +5,7 @@ import {
   buildSharedWorkspacePayload,
   mergePrivateModuleData,
   moduleDataFromWorkspace
-} from "../../tasky-private-data.js";
+} from "../tasky-private-data.js";
 
 const base = {
   boxes: [
@@ -19,7 +19,7 @@ const base = {
     { id: "expense-1", boxId: "box_gastos", title: "Pago de terapia", updatedAt: 4 }
   ],
   deletedTaskIds: ["health-deleted", "school-deleted"],
-  deletedBoxIds: ["box_salud"],
+  deletedBoxIds: [],
   taskMemoryByBox: {
     box_escolar: ["Leer"],
     box_salud: ["Pediatría"],
