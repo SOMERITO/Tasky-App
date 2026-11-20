@@ -20,7 +20,7 @@ No se creará una segunda página web para Leah ni se reutilizará otra aplicaci
   - `leah`: José (guardian), Camila (guardian), Leah (child); compartido.
 - Colores de Tasky Leah: rosado, morado y negro.
 - Módulos previstos de Leah: Escolar, Evaluaciones, Materiales, Actividades, Coordinación familiar, Salud y citas, Hábitos y rutinas y Gastos relacionados con Leah.
-- Los módulos Salud y Gastos son privados para los adultos. Su separación efectiva en documentos `adult_private` sigue pendiente; por eso el acceso de Leah continúa deshabilitado.
+- Los módulos Salud y Gastos se separan en documentos independientes `adult_private/health` y `adult_private/expenses`. La cuenta infantil continúa deshabilitada hasta completar migración, validar los documentos y pruebas.
 - Coordinación familiar: compartida con los tres.
 - Solicitudes familiares: el panel de José y Camila escucha en tiempo real la bandeja de solicitudes de Leah. Las notificaciones fuera de la aplicación o con Tasky cerrado siguen pendientes.
 - Leah: puede registrar pendientes y solicitar que se marquen como completados; no puede eliminar pendientes de los adultos. La finalización requiere verificación de un adulto.
@@ -84,7 +84,7 @@ workspaces/leah/notifications/{notificationId}
   eventType, title, createdAt, createdBy, audience
 ```
 
-Los datos privados de salud y gastos van en documentos separados: Firestore Rules autorizan documentos completos, no campos individuales de un mismo documento. No incluir detalles privados de adultos dentro de `shared/main`. La membresía infantil debe llevar `childAccessEnabled: false` y solo podrá activarse después de implementar y probar la separación de datos privados del tablero compartido.
+Los datos privados de salud y gastos van en documentos separados: Firestore Rules autorizan documentos completos, no campos individuales de un mismo documento. No incluir detalles privados de adultos dentro de `shared/main`. El administrador de la aplicación extrae los datos antiguos de `shared/main` y los mueve en una transacción a `adult_private/health` y `adult_private/expenses`, dejando el tablero compartido sanitizado y un marcador `access_control/private_modules` con `ready: true`, `schemaVersion: 1`. Además, las reglas bloquean toda membresía infantil hasta que exista ese marcador, incluso si alguien activa accidentalmente `childAccessEnabled` antes de tiempo.
 
 ## Permisos de Firestore
 
@@ -139,7 +139,7 @@ La primera versión implementará un centro de notificaciones dentro de Tasky, v
 3. **Membresías y selector:** cargar los espacios permitidos por UID y mostrar el selector.
 4. **Aislamiento local/cloud:** prefijos por workspace, Firestore con ID token y carga/guardado de documentos separados.
 5. **Flujo infantil:** implementado en esta rama: solicitudes de nuevas tareas y finalización, bandeja de adultos y aprobación transaccional; pendiente de staging con una cuenta infantil habilitada.
-6. **Privacidad por módulo:** pendiente; separar salud y gastos en documentos independientes y verificar que el tablero compartido no conserve datos privados.
+6. **Privacidad por módulo:** capa de aislamiento y migración transaccional implementadas en esta rama; pendientes pruebas integrales de aplicación y staging antes de habilitar a Leah.
 7. **Migración y despliegue:** importar copia de José, probar y solo después abrir reglas autenticadas.
 
 ## Criterios mínimos de aceptación
