@@ -6,12 +6,16 @@ on:
       - feature/tasky-multi-workspace-foundation
     paths:
       - "firebase/**"
+      - "tests/**"
+      - "tasky-private-data.js"
       - ".github/workflows/firestore-rules-tests.yml"
   pull_request:
     branches:
       - main
     paths:
       - "firebase/**"
+      - "tests/**"
+      - "tasky-private-data.js"
       - ".github/workflows/firestore-rules-tests.yml"
 
 permissions:
