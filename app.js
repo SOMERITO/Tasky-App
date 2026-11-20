@@ -2403,12 +2403,16 @@
     selectedOverdueIds: new Set(),
     selectedTaskIds: new Set(),
     firebaseConfig: {
-      apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YhrvEcb8",
-      authDomain: "tasky-7a30c.firebaseapp.com",
-      projectId: "tasky-7a30c",
-      storageBucket: "tasky-7a30c.firebasestorage.app",
-      messagingSenderId: "505071526437",
-      appId: "1:505071526437:web:6c9eb46dbb4fef296655cc",
+      ...(window.TaskyFirebaseEnvironment && window.TaskyFirebaseEnvironment.config
+        ? window.TaskyFirebaseEnvironment.config
+        : {
+            apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YhrvEcb8",
+            authDomain: "tasky-7a30c.firebaseapp.com",
+            projectId: "tasky-7a30c",
+            storageBucket: "tasky-7a30c.firebasestorage.app",
+            messagingSenderId: "505071526437",
+            appId: "1:505071526437:web:6c9eb46dbb4fef296655cc6"
+          }),
       databaseURL: "",
       docPath: "tasky_sync/somerito_main"
     },
@@ -3521,44 +3525,40 @@
   }
 
   function loadSavedFirebaseConfig() {
-    try {
-      const raw = safeStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === "object" && parsed.projectId) {
-          const parsedProjectId = String(parsed.projectId).trim();
-          if (parsedProjectId === "esbas-2026" || parsedProjectId === "tasky-7a30c") {
-            // Multi-workspace Tasky is pinned to the verified project and authenticated Firestore.
-            const migrated = {
-              ...appState.firebaseConfig,
-              docPath: activeWorkspaceId
-                ? "workspaces/" + activeWorkspaceId + "/shared/main"
-                : "tasky_sync/somerito_main",
-              databaseURL: ""
-            };
-            appState.firebaseConfig = migrated;
-            safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(migrated));
-          } else {
-            // Ignore saved custom project configurations. All workspaces share the verified Tasky project.
-            appState.firebaseConfig = { ...appState.firebaseConfig };
-            safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(appState.firebaseConfig));
-          }
-        }
-      }
-      ["jsonbin_config", "tasky_jsonbin", "cfo_v101_final"].forEach((legacyKey) => {
-        try {
-          if (legacyKey.includes("jsonbin")) window.localStorage.removeItem(legacyKey);
-        } catch (e) {}
-      });
-    } catch (e) {}
+    // The active host selects the Firebase project. Ignore cached/manual project overrides
+    // so a staging tab can never silently redirect to production (or vice versa).
+    const environmentConfig = window.TaskyFirebaseEnvironment && window.TaskyFirebaseEnvironment.config;
+    if (!environmentConfig || !environmentConfig.projectId) {
+      throw new Error("No se pudo determinar el proyecto Firebase de Tasky.");
+    }
+    appState.firebaseConfig = {
+      ...environmentConfig,
+      databaseURL: "",
+      docPath: activeWorkspaceId
+        ? "workspaces/" + activeWorkspaceId + "/shared/main"
+        : "tasky_sync/somerito_main"
+    };
+    safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(appState.firebaseConfig));
+
+    ["jsonbin_config", "tasky_jsonbin", "cfo_v101_final"].forEach((legacyKey) => {
+      try {
+        if (legacyKey.includes("jsonbin")) window.localStorage.removeItem(legacyKey);
+      } catch (e) {}
+    });
+  }
+
+  function getFirebaseFirestoreApiBase() {
+    const configuredBase = window.TaskyFirebaseEnvironment && window.TaskyFirebaseEnvironment.firestoreApiBase;
+    return String(configuredBase || "https://firestore.googleapis.com/v1").replace(/\\/+$/, "");
   }
 
   function getFirebaseFirestoreUrl() {
     const cfg = appState.firebaseConfig || {};
-    const proj = String(cfg.projectId || "tasky-7a30c").trim();
-    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, "");
+    const environmentProjectId = window.TaskyFirebaseEnvironment && window.TaskyFirebaseEnvironment.projectId;
+    const proj = String(cfg.projectId || environmentProjectId || "tasky-7a30c").trim();
+    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\\/+|\\/+$/g, "");
     const keyParam = cfg.apiKey ? `?key=${encodeURIComponent(cfg.apiKey)}` : "";
-    return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(proj)}/databases/(default)/documents/${docPath}${keyParam}`;
+    return `${getFirebaseFirestoreApiBase()}/projects/${encodeURIComponent(proj)}/databases/(default)/documents/${docPath}${keyParam}`;
   }
 
   function getFirebaseRtdbUrl() {
@@ -4170,7 +4170,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261120-private-health-expenses-1";
+  const TASKY_BUILD_ID = "20261120-firebase-environment-split-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -4277,7 +4277,7 @@
       const documentId = parts[parts.length - 1];
       const collectionPath = parts.slice(0, -1).map(encodeURIComponent).join("/");
       const keyParam = cfg.apiKey ? "&key=" + encodeURIComponent(cfg.apiKey) : "";
-      const createUrl = "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(projectId) +
+      const createUrl = getFirebaseFirestoreApiBase() + "/projects/" + encodeURIComponent(projectId) +
         "/databases/(default)/documents/" + collectionPath + "?documentId=" + encodeURIComponent(documentId) + keyParam;
       const body = {
         fields: {
@@ -13329,7 +13329,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     const rawConfigInput = document.getElementById("input-firebase-raw-paste");
     const rescueButton = document.getElementById("btn-firebase-rescue-migrate");
     if (projectIdInput) {
-      projectIdInput.value = "tasky-7a30c";
+      projectIdInput.value = appState.firebaseConfig.projectId || "tasky-7a30c";
       projectIdInput.readOnly = true;
     }
     if (rtdbUrlInput) {
