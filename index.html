@@ -52,24 +52,26 @@
       </div>
 
       <form id="tasky-login-form" class="tasky-auth-form" novalidate>
-        <section id="tasky-profile-picker" class="tasky-profile-picker">
+        <section id="tasky-login-credentials">
           <p class="tasky-auth-eyebrow">INICIO DE SESIÓN</p>
-          <h2>Ingresa a tu espacio</h2>
-          <label for="tasky-profile-select">¿Con qué perfil deseas ingresar?</label>
+          <h2>Ingresa a Tasky</h2>
+          <p class="tasky-auth-subtitle">Primero identifica tu cuenta. Después verás únicamente los espacios a los que tienes acceso.</p>
+          <label for="tasky-login-email">Correo electrónico</label>
+          <input id="tasky-login-email" name="email" type="email" autocomplete="username" required placeholder="tu@correo.com" />
+          <label for="tasky-login-password">Contraseña</label>
+          <input id="tasky-login-password" name="password" type="password" autocomplete="current-password" required placeholder="Tu contraseña" />
+          <button id="tasky-password-reset" class="tasky-auth-link" type="button">Olvidé mi contraseña</button>
+        </section>
+        <section id="tasky-profile-picker" class="tasky-profile-picker" hidden>
+          <p class="tasky-auth-eyebrow">CUENTA VERIFICADA</p>
+          <h2>Elige tu espacio</h2>
+          <p class="tasky-auth-subtitle">Solo aparecen los espacios autorizados para tu cuenta.</p>
+          <label for="tasky-profile-select">Espacios disponibles</label>
           <select id="tasky-profile-select" name="workspace" class="tasky-profile-select" required>
-            <option value="">Selecciona un perfil</option>
-            <option value="jose">José · Espacio personal</option>
-            <option value="camila">Cams · Espacio personal</option>
-            <option value="leah">Leah · Espacio familiar y escolar</option>
+            <option value="">Selecciona un espacio</option>
           </select>
         </section>
-        <p class="tasky-auth-subtitle">Usa el correo y la contraseña de tu cuenta registrada en Firebase Authentication.</p>
-        <label for="tasky-login-email">Correo electrónico</label>
-        <input id="tasky-login-email" name="email" type="email" autocomplete="username" required placeholder="tu@correo.com" />
-        <label for="tasky-login-password">Contraseña</label>
-        <input id="tasky-login-password" name="password" type="password" autocomplete="current-password" required placeholder="Tu contraseña" />
-        <button id="tasky-login-submit" class="tasky-auth-primary" type="submit">Entrar a Tasky</button>
-        <button id="tasky-password-reset" class="tasky-auth-link" type="button">Olvidé mi contraseña</button>
+        <button id="tasky-login-submit" class="tasky-auth-primary" type="submit">Iniciar sesión</button>
       </form>
 
       <button id="tasky-auth-signout" class="tasky-auth-link" type="button" hidden>Cerrar sesión</button>
@@ -1350,7 +1352,7 @@
   <script src="tasky-firebase-config.js?v=20261120-firebase-env-1"></script>
   <script src="app.js?v=20261120-firebase-env-1"></script>
   <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
-  <script type="module" src="tasky-auth.js?v=20261120-firebase-env-1"></script>
+  <script type="module" src="tasky-auth.js?v=20261120-auth-first-1"></script>
   <script type="module" src="tasky-private-modules.js?v=20261120-private-modules-2"></script>
   <script type="module" src="tasky-family.js?v=20261120-family-requests-1"></script>
 </body>
