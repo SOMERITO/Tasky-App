@@ -50,11 +50,8 @@ if (emulatorRequested) {
 
 const gate = document.getElementById("tasky-auth-gate");
 const profilePicker = document.getElementById("tasky-profile-picker");
-const profileOptions = document.getElementById("tasky-profile-options");
+const profileSelect = document.getElementById("tasky-profile-select");
 const loginForm = document.getElementById("tasky-login-form");
-const selectedProfile = document.getElementById("tasky-selected-profile");
-const selectedProfileName = document.getElementById("tasky-selected-profile-name");
-const changeProfileButton = document.getElementById("tasky-change-profile");
 const message = document.getElementById("tasky-auth-message");
 const submitButton = document.getElementById("tasky-login-submit");
 const emailInput = document.getElementById("tasky-login-email");
@@ -68,6 +65,7 @@ const workspaceMetadata = {
   jose: {
     name: "Tasky José",
     shortName: "José",
+    greetingName: "José Carranza",
     description: "Tu espacio personal",
     icon: "J",
     roleLabels: { owner: "Propietario" }
@@ -75,6 +73,7 @@ const workspaceMetadata = {
   camila: {
     name: "Tasky Cams",
     shortName: "Cams",
+    greetingName: "Camila",
     description: "Su espacio personal",
     icon: "C",
     roleLabels: { owner: "Propietaria" }
@@ -82,6 +81,7 @@ const workspaceMetadata = {
   leah: {
     name: "Tasky Leah",
     shortName: "Leah",
+    greetingName: "Leah",
     description: "Espacio familiar y escolar",
     icon: "L",
     roleLabels: { guardian: "Adulto responsable", child: "Cuenta de Leah" }
@@ -133,74 +133,45 @@ function setGateVisible(visible) {
   }
 }
 
-function showProfilePicker(text = "") {
+function showLogin(text = "", isError = false) {
   if (profilePicker) profilePicker.hidden = false;
-  if (loginForm) loginForm.hidden = true;
-  if (selectedProfile) selectedProfile.hidden = true;
-  if (signoutButton) signoutButton.hidden = !currentUser;
-  setGateVisible(true);
-  setMessage(text);
-  renderProfileOptions();
-}
-
-function showLogin(text = "") {
-  if (!selectedWorkspaceId || !workspaceMetadata[selectedWorkspaceId]) {
-    showProfilePicker(text);
-    return;
-  }
-  if (profilePicker) profilePicker.hidden = true;
   if (loginForm) loginForm.hidden = false;
-  if (selectedProfile) selectedProfile.hidden = false;
-  if (selectedProfileName) {
-    selectedProfileName.textContent = workspaceMetadata[selectedWorkspaceId].name;
-  }
+  if (profileSelect) profileSelect.value = selectedWorkspaceId;
   if (signoutButton) signoutButton.hidden = !currentUser;
+  if (submitButton) {
+    submitButton.textContent = "Entrar a " + (workspaceMetadata[selectedWorkspaceId]?.shortName || "Tasky");
+  }
   setGateVisible(true);
-  setMessage(text);
+  setMessage(text, isError);
   if (passwordInput) passwordInput.value = "";
 }
 
-function renderProfileOptions() {
-  if (!profileOptions) return;
-  profileOptions.replaceChildren();
-
-  Object.entries(workspaceMetadata).forEach(([workspaceId, meta]) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "tasky-profile-option";
-    button.dataset.workspace = workspaceId;
-    button.setAttribute("aria-label", "Entrar a " + meta.name);
-    button.innerHTML = `
-      <span class="tasky-profile-avatar tasky-profile-avatar-${workspaceId}" aria-hidden="true">${meta.icon}</span>
-      <span class="tasky-profile-copy">
-        <span class="tasky-profile-name">${meta.shortName}</span>
-        <span class="tasky-profile-description">${meta.description}</span>
-      </span>
-    `;
-    button.addEventListener("click", () => selectWorkspace(workspaceId));
-    profileOptions.append(button);
-  });
-}
-
 function selectWorkspace(workspaceId) {
+  if (!workspaceId) {
+    clearSelectedWorkspace();
+    if (currentUser) window.location.reload();
+    return;
+  }
   const meta = workspaceMetadata[workspaceId];
   if (!meta) {
     setMessage("Selecciona un perfil válido.", true);
     return;
   }
   if (!persistSelectedWorkspace(workspaceId)) return;
-
   if (passwordInput) passwordInput.value = "";
-  if (emailInput && !currentUser) emailInput.value = "";
-
-  // A reload is intentional when switching an already-authenticated session:
-  // it clears the previous workspace's in-memory data before the new one boots.
   if (currentUser) {
+    // Clear the previous workspace's in-memory data before switching.
     window.location.reload();
     return;
   }
+  if (submitButton) submitButton.textContent = "Entrar a " + meta.shortName;
+  setMessage("Has seleccionado " + meta.name + ". Ingresa con tu correo y contraseña.");
+}
 
-  showLogin("Ingresa con el correo y la contraseña de una cuenta autorizada para " + meta.shortName + ".");
+if (profileSelect) {
+  profileSelect.addEventListener("change", () => {
+    selectWorkspace(String(profileSelect.value || ""));
+  });
 }
 
 async function loadMemberships(user) {
@@ -225,7 +196,12 @@ async function loadMemberships(user) {
           active: true,
           role: value.role,
           workspaceId,
-          displayName: String(value.displayName || workspaceMetadata[workspaceId].name)
+          displayName: (() => {
+            const storedName = String(value.displayName || user.displayName || "").trim();
+            return storedName && !storedName.startsWith("Tasky ")
+              ? storedName
+              : workspaceMetadata[workspaceId].greetingName;
+          })()
         });
       }
     });
@@ -237,7 +213,7 @@ async function loadMemberships(user) {
     selectedWorkspaceId = selected;
 
     if (!selected) {
-      showProfilePicker("Selecciona primero el espacio al que deseas ingresar.");
+      showLogin("Selecciona primero el espacio al que deseas ingresar.");
       return;
     }
 
@@ -291,7 +267,7 @@ if (loginForm) {
     const password = String(passwordInput && passwordInput.value || "");
 
     if (!selectedWorkspaceId) {
-      showProfilePicker("Selecciona primero José, Cams o Leah.");
+      showLogin("Selecciona primero José, Cams o Leah.");
       return;
     }
     if (!email || !password) {
@@ -338,12 +314,6 @@ if (resetButton) {
   });
 }
 
-if (changeProfileButton) {
-  changeProfileButton.addEventListener("click", () => {
-    showProfilePicker("Elige el espacio al que deseas ingresar.");
-  });
-}
-
 if (signoutButton) {
   signoutButton.addEventListener("click", async () => {
     try {
@@ -351,7 +321,7 @@ if (signoutButton) {
       memberships = new Map();
       await signOut(auth);
       currentUser = null;
-      showProfilePicker("Has cerrado sesión. Elige un perfil para continuar.");
+      showLogin("Has cerrado sesión. Elige un perfil para continuar.");
     } catch (error) {
       setMessage("No se pudo cerrar la sesión. Inténtalo nuevamente.", true);
     }
@@ -361,12 +331,12 @@ if (signoutButton) {
 if (accountButton) {
   accountButton.addEventListener("click", () => {
     window.dispatchEvent(new CustomEvent("tasky:open-workspace-picker"));
-    showProfilePicker("Elige el espacio al que deseas cambiar.");
+    showLogin("Elige el espacio al que deseas cambiar.");
   });
 }
 
 window.addEventListener("tasky:show-workspace-picker", () => {
-  showProfilePicker("Elige el espacio al que deseas cambiar.");
+  showLogin("Elige el espacio al que deseas cambiar.");
 });
 
 window.addEventListener("storage", (event) => {
@@ -393,7 +363,7 @@ window.TaskyAuth = {
   }
 };
 
-showProfilePicker();
+showLogin();
 onAuthStateChanged(auth, async (user) => {
   currentUser = user || null;
   memberships = new Map();
@@ -401,18 +371,10 @@ onAuthStateChanged(auth, async (user) => {
   membershipLoadInFlight = false;
 
   if (!user) {
-    if (!selectedWorkspaceId) {
-      showProfilePicker();
-    } else {
-      showLogin();
-    }
+    showLogin();
     return;
   }
 
-  if (!selectedWorkspaceId) {
-    showProfilePicker();
-  } else {
-    showLogin();
-  }
+  showLogin();
   await loadMemberships(user);
 });
