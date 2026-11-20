@@ -64,7 +64,6 @@ test("shared payload excludes private boxes, tasks, tombstones and related metad
   assert.deepEqual(Object.keys(shared.focusPlan.byBox), ["box_escolar"]);
   assert.deepEqual(shared.completionLog.map((entry) => entry.taskId), ["school-1"]);
   assert.equal(Object.hasOwn(shared, "history"), false);
-  const health = moduleDataFromWorkspace(base, "box_salud", ["health-deleted"]);
   assert.equal(health.taskIds.includes("health-deleted"), true);
   assert.equal(health.completionLog.some((entry) => entry.id === "health-deleted-event"), true);
 });
