@@ -122,6 +122,20 @@ async function login(page, user) {
   await page.locator("#tasky-login-password").fill(user.password);
   await page.locator("#tasky-login-submit").click();
   await page.locator("#tasky-profile-picker:not([hidden])").waitFor({ state: "visible" });
+
+  // The auth observer exposes the picker while memberships are still loading.
+  // Wait until the membership query has produced authorized options or a final
+  // no-access/error message, so assertions do not race the Firestore read.
+  await page.waitForFunction(() => {
+    const select = document.getElementById("tasky-profile-select");
+    const message = document.getElementById("tasky-auth-message")?.textContent || "";
+    return Boolean(select && (
+      select.options.length > 1 ||
+      message.includes("todavía no tiene espacios autorizados") ||
+      message.includes("No se pudieron verificar tus permisos") ||
+      message.includes("No se pudieron cargar tus espacios")
+    ));
+  }, null, { timeout: 15000 });
 }
 
 async function selectProfile(page, workspaceId) {
