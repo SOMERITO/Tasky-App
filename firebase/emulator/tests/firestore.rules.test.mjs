@@ -7,6 +7,12 @@ import {
   initializeTestEnvironment
 } from "@firebase/rules-unit-testing";
 import {
+  attachPrivateModulesToWorkspace,
+  buildSharedWorkspacePayload,
+  mergePrivateModuleData,
+  moduleDataFromWorkspace
+} from "../../tasky-private-data.js";
+import {
   collection,
   deleteDoc,
   doc,
@@ -347,6 +353,217 @@ test("only an adult can create or change workspace membership records", async ()
   }));
 
   await assertFails(deleteDoc(doc(leah, "user_access/leah/workspaces/leah")));
+});
+
+test("a guardian migrates fictitious legacy health and expense data atomically before Leah can read the shared board", async () => {
+  const privateModules = [
+    {
+      id: "box_salud",
+      name: "SALUD Y CITAS",
+      documentId: "health",
+      color: "#A855F7",
+      emoji: "💗",
+      order: 5
+    },
+    {
+      id: "box_gastos",
+      name: "GASTOS RELACIONADOS CON LEAH",
+      documentId: "expenses",
+      color: "#A855F7",
+      emoji: "💜",
+      order: 7
+    }
+  ];
+  const legacyPayload = {
+    boxes: [
+      { id: "box_escolar", name: "ESCOLAR", order: 0 },
+      { id: "box_salud", name: "SALUD Y CITAS", order: 5, updatedAt: 20 },
+      { id: "box_gastos", name: "GASTOS RELACIONADOS CON LEAH", order: 7, updatedAt: 20 }
+    ],
+    tasks: [
+      { id: "migration-school-1", boxId: "box_escolar", title: "Leer capítulo", description: "Libro de ciencias", updatedAt: 20 },
+      { id: "migration-health-1", boxId: "box_salud", title: "Control pediátrico ficticio", description: "Dato clínico ficticio; no corresponde a ninguna persona real.", updatedAt: 20 },
+      { id: "migration-expense-1", boxId: "box_gastos", title: "Reembolso ficticio", description: "S/ 123.45 · comprobante ficticio", updatedAt: 20 }
+    ],
+    deletedTaskIds: ["migration-health-deleted"],
+    deletedBoxIds: [],
+    taskMemoryByBox: {
+      "box_mem_SALUD Y CITAS": ["Recordatorio clínico ficticio"],
+      "box_mem_GASTOS RELACIONADOS CON LEAH": ["Pago ficticio del mes"]
+    },
+    dismissedTaskSuggestionsByBox: {
+      "box_mem_SALUD Y CITAS": ["Sugerencia médica ficticia"],
+      "box_mem_GASTOS RELACIONADOS CON LEAH": ["Sugerencia de gasto ficticia"]
+    },
+    focusPlan: {
+      date: "2026-11-20",
+      updatedAt: 20,
+      byBox: {
+        box_salud: { priorities: [["migration-health-1"], [], []] },
+        box_gastos: { priorities: [["migration-expense-1"], [], []] }
+      }
+    },
+    completionLog: [
+      { id: "migration-health-event", taskId: "migration-health-1", title: "Control pediátrico ficticio", boxId: "box_salud", boxName: "SALUD Y CITAS", completedDate: "2026-11-19", completedAt: 1, updatedAt: 1 },
+      { id: "migration-expense-event", taskId: "migration-expense-1", title: "Reembolso ficticio", boxId: "box_gastos", boxName: "GASTOS RELACIONADOS CON LEAH", completedDate: "2026-11-19", completedAt: 1, updatedAt: 1 }
+    ],
+    history: { lastAction: "Control pediátrico ficticio · Reembolso ficticio" },
+    updatedAt: 20,
+    syncSchemaVersion: 1
+  };
+
+  const sharedRef = doc(env.authenticatedContext("jose").firestore(), "workspaces/leah/shared/main");
+  const healthRef = doc(env.authenticatedContext("jose").firestore(), "workspaces/leah/adult_private/health");
+  const expensesRef = doc(env.authenticatedContext("jose").firestore(), "workspaces/leah/adult_private/expenses");
+  const markerRef = doc(env.authenticatedContext("jose").firestore(), "workspaces/leah/access_control/private_modules");
+
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "workspaces/leah/shared/main"), {
+      payloadJson: JSON.stringify(legacyPayload),
+      compactEnvelope: "legacy-compact-private-data",
+      updatedAt: 20,
+      deviceId: "legacy-fixture"
+    });
+    await setDoc(doc(db, "workspaces/leah/adult_private/health"), {
+      payloadJson: JSON.stringify({
+        moduleId: "box_salud",
+        tasks: [],
+        taskIds: ["migration-health-deleted"],
+        deletedTaskIds: [],
+        taskMemoryByBox: {},
+        dismissedTaskSuggestionsByBox: {},
+        focusPlan: { byBox: {} },
+        completionLog: [],
+        updatedAt: 0
+      })
+    });
+    await setDoc(doc(db, "workspaces/leah/adult_private/expenses"), {
+      payloadJson: JSON.stringify({
+        moduleId: "box_gastos",
+        tasks: [],
+        taskIds: [],
+        deletedTaskIds: [],
+        taskMemoryByBox: {},
+        dismissedTaskSuggestionsByBox: {},
+        focusPlan: { byBox: {} },
+        completionLog: [],
+        updatedAt: 0
+      })
+    });
+    await deleteDoc(doc(db, "workspaces/leah/access_control/private_modules"));
+  });
+
+  const child = env.authenticatedContext("leah").firestore();
+  await assertFails(getDoc(doc(child, "workspaces/leah/shared/main")));
+  await assertFails(getDoc(doc(child, "workspaces/leah/task_requests/seed")));
+
+  const guardian = env.authenticatedContext("jose").firestore();
+  await assertSucceeds(runTransaction(guardian, async (transaction) => {
+    const [sharedSnapshot, healthSnapshot, expensesSnapshot, markerSnapshot] = await Promise.all([
+      transaction.get(sharedRef),
+      transaction.get(healthRef),
+      transaction.get(expensesRef),
+      transaction.get(markerRef)
+    ]);
+    assert.equal(markerSnapshot.exists(), false);
+    assert.equal(sharedSnapshot.exists(), true);
+    const sharedLegacy = JSON.parse(sharedSnapshot.data().payloadJson);
+    const existing = [healthSnapshot, expensesSnapshot].map((snapshot) => {
+      const parsed = JSON.parse(snapshot.data().payloadJson);
+      assert.ok(parsed.moduleId);
+      return parsed;
+    });
+
+    const mergedModules = privateModules.map((module, index) => {
+      const current = existing[index];
+      const knownMemoryKeys = [
+        ...Object.keys(current.taskMemoryByBox || {}),
+        ...Object.keys(current.dismissedTaskSuggestionsByBox || {})
+      ];
+      const legacy = moduleDataFromWorkspace(sharedLegacy, module.id, current.taskIds, null, knownMemoryKeys);
+      const local = moduleDataFromWorkspace(
+        sharedLegacy,
+        module.id,
+        current.taskIds,
+        sharedLegacy.taskMemoryByBox || {},
+        knownMemoryKeys
+      );
+      const merged = mergePrivateModuleData(current, legacy, local);
+      if (!merged.box) {
+        merged.box = {
+          id: module.id,
+          name: module.name,
+          color: module.color,
+          emoji: module.emoji,
+          order: module.order,
+          collapsed: false
+        };
+      }
+      return merged;
+    });
+
+    const sanitized = buildSharedWorkspacePayload(sharedLegacy, mergedModules);
+    const nextPayloadJson = JSON.stringify(sanitized);
+    transaction.update(sharedRef, {
+      payloadJson: nextPayloadJson,
+      compactEnvelope: "",
+      updatedAt: 21,
+      deviceId: "emulator-private-migration"
+    });
+    mergedModules.forEach((moduleData, index) => {
+      const ref = index === 0 ? healthRef : expensesRef;
+      transaction.set(ref, {
+        moduleId: moduleData.moduleId,
+        schemaVersion: 1,
+        payloadJson: JSON.stringify(moduleData),
+        updatedAt: moduleData.updatedAt || 21,
+        deviceId: "emulator-private-migration"
+      });
+    });
+    transaction.set(markerRef, {
+      ready: true,
+      schemaVersion: 1,
+      updatedAt: 21,
+      migratedBy: "jose",
+      migrationVersion: "20261120-private-health-expenses-1"
+    });
+  }));
+
+  const [sharedSnapshot, healthSnapshot, expensesSnapshot, markerSnapshot] = await Promise.all([
+    assertSucceeds(getDoc(sharedRef)),
+    assertSucceeds(getDoc(healthRef)),
+    assertSucceeds(getDoc(expensesRef)),
+    assertSucceeds(getDoc(markerRef))
+  ]);
+  const sanitizedText = sharedSnapshot.data().payloadJson;
+  const sanitized = JSON.parse(sanitizedText);
+  const health = JSON.parse(healthSnapshot.data().payloadJson);
+  const expenses = JSON.parse(expensesSnapshot.data().payloadJson);
+
+  assert.equal(sharedSnapshot.data().compactEnvelope, "");
+  assert.equal(sanitized.boxes.some((box) => box.id === "box_salud" || box.id === "box_gastos"), false);
+  assert.equal(sanitized.tasks.some((task) => /migration-(health|expense)/.test(task.id)), false);
+  assert.equal(sanitizedText.includes("Control pediátrico ficticio"), false);
+  assert.equal(sanitizedText.includes("Reembolso ficticio"), false);
+  assert.equal(sanitizedText.includes("Recordatorio clínico ficticio"), false);
+  assert.equal(sanitizedText.includes("Pago ficticio del mes"), false);
+  assert.equal(sanitizedText.includes("migration-health-event"), false);
+  assert.equal(sanitizedText.includes("lastAction"), false);
+
+  assert.equal(health.tasks.some((task) => task.id === "migration-health-1"), true);
+  assert.equal(health.deletedTaskIds.includes("migration-health-deleted"), true);
+  assert.equal(health.taskMemoryByBox["box_mem_SALUD Y CITAS"][0], "Recordatorio clínico ficticio");
+  assert.equal(health.dismissedTaskSuggestionsByBox["box_mem_SALUD Y CITAS"][0], "Sugerencia médica ficticia");
+  assert.equal(expenses.tasks.some((task) => task.id === "migration-expense-1"), true);
+  assert.equal(expenses.taskMemoryByBox["box_mem_GASTOS RELACIONADOS CON LEAH"][0], "Pago ficticio del mes");
+  assert.equal(markerSnapshot.data().ready, true);
+  assert.equal(markerSnapshot.data().schemaVersion, 1);
+
+  // The marker is the final access gate: Leah can now read the sanitized board, but not private docs.
+  await assertSucceeds(getDoc(doc(child, "workspaces/leah/shared/main")));
+  await assertFails(getDoc(doc(child, "workspaces/leah/adult_private/health")));
+  await assertFails(getDoc(doc(child, "workspaces/leah/adult_private/expenses")));
 });
 
 test("only adults can inspect or change the private-module migration gate", async () => {
