@@ -15,10 +15,14 @@ Fecha de actualización: 20 de noviembre de 2026.
 - Camila lee y escribe `workspaces/camila/shared/main`.
 - José y Camila leen y escriben `workspaces/leah/shared/main`.
 - Leah lee `workspaces/leah/shared/main` únicamente cuando existe `access_control/private_modules` con `ready: true` y `schemaVersion: 1`.
-- Leah crea una solicitud `new_task` válida en `workspaces/leah/task_requests`.
-- Leah crea una solicitud `completion` válida.
+- Leah crea una tarea propia válida directamente en `workspaces/leah/child_tasks`, sin aprobación previa.
+- Leah edita los campos permitidos de una tarea propia mientras su estado sea `pending`.
+- Leah cambia una tarea propia de `pending` a `awaiting_review`; los adultos pueden leer la nueva tarea y el cambio en tiempo real.
+- José o Camila aprueban una tarea `awaiting_review` y la cambian a `completed`, o la devuelven a `pending`.
+- Leah crea una solicitud `completion` únicamente para avisar que terminó una tarea creada por los adultos.
 - Un adulto revisa una solicitud pendiente y actualiza únicamente los campos de revisión.
-- Un adulto aprueba una solicitud `new_task` mediante una transacción que incorpora la tarea en `shared/main` y marca la solicitud como aprobada.
+- Leah no puede editar una tarea creada por José o Camila ni una tarea propia que esté en `awaiting_review` o `completed`.
+- Leah no puede establecer el estado `completed`, cambiar los metadatos de revisión ni eliminar tareas propias.
 - Todos los miembros leen notificaciones del espacio Leah.
 - José o Camila (guardian) pueden crear notificaciones compartidas válidas.
 
@@ -30,6 +34,7 @@ Fecha de actualización: 20 de noviembre de 2026.
 - Leah o un visitante lee o modifica `workspaces/leah/access_control/private_modules`.
 - Una membresía child habilitada lee `shared/main` o `task_requests` antes de completar la migración privada.
 - Leah crea, actualiza o elimina `workspaces/leah/shared/main`.
+- Leah edita una tarea de otro usuario, borra una tarea o salta el estado `awaiting_review` para establecer `completed`.
 - Leah actualiza o elimina cualquier solicitud después de crearla.
 - Leah crea una solicitud con `createdBy` de otro UID, estado distinto de `pending`, campos no permitidos o tipo desconocido.
 - Leah solicita un módulo privado (Salud o Gastos), un campo de descripción mayor a 500 caracteres o una prioridad fuera de la lista permitida.
@@ -49,11 +54,10 @@ Fecha de actualización: 20 de noviembre de 2026.
 - El acceso infantil permanece deshabilitado hasta validar el aislamiento completo de Salud y Gastos en staging.
 
 ## Pruebas de navegador del acceso
-- La pantalla inicial muestra José, Cams y Leah antes de mostrar el formulario de credenciales.
-- La selección del perfil no otorga permisos: la cuenta autenticada debe tener una membresía activa para ese espacio.
-- José puede elegir José y entrar como owner.
-- Cams puede elegir Cams y entrar como owner.
-- José puede elegir Leah y entrar como guardian.
+- La pantalla inicial muestra primero el formulario de correo y contraseña.
+- Después de autenticar, el selector contiene únicamente las membresías activas del UID.
+- José ve solo José y Leah; Camila ve solo Cams y Leah; Leah ve solo Leah.
+- Una cuenta sin membresías no puede seleccionar ningún espacio.
 - La cuenta infantil de Leah no entra mientras `childAccessEnabled` siga deshabilitado.
 - Una cuenta sin membresía para el perfil elegido recibe acceso denegado.
 - El fixture de navegador bloquea las llamadas a endpoints reales de Firebase y no carga el motor de sincronización de producción.
