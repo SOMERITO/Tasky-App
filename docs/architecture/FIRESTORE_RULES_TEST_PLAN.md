@@ -1,5 +1,7 @@
 # Plan de pruebas — reglas multi-espacio
 
+Fecha de actualización: 20 de noviembre de 2026.
+
 > Ejecutar con Firebase Emulator Suite antes de publicar las reglas. No usar datos reales.
 
 ## Identidades de prueba
@@ -15,6 +17,8 @@
 - Leah lee `workspaces/leah/shared/main`.
 - Leah crea una solicitud `new_task` válida en `workspaces/leah/task_requests`.
 - Leah crea una solicitud `completion` válida.
+- Un adulto revisa una solicitud pendiente y actualiza únicamente los campos de revisión.
+- Un adulto aprueba una solicitud `new_task` mediante una transacción que incorpora la tarea en `shared/main` y marca la solicitud como aprobada.
 - Todos los miembros leen notificaciones del espacio Leah.
 - José o Camila (guardian) pueden crear notificaciones compartidas válidas.
 
@@ -26,6 +30,9 @@
 - Leah crea, actualiza o elimina `workspaces/leah/shared/main`.
 - Leah actualiza o elimina cualquier solicitud después de crearla.
 - Leah crea una solicitud con `createdBy` de otro UID, estado distinto de `pending`, campos no permitidos o tipo desconocido.
+- Leah solicita un módulo privado (Salud o Gastos), un campo de descripción mayor a 500 caracteres o una prioridad fuera de la lista permitida.
+- Un adulto modifica el contenido original de una solicitud; los cambios se limitan al estado y metadatos de revisión.
+- Leah o un visitante intenta aprobar una solicitud o alterar su estado.
 - Usuario miembro de un workspace consulta uno donde no tiene membresía.
 - Leah crea una notificación compartida (solo los adultos pueden generarlas).
 
@@ -34,3 +41,9 @@
 - Cambiar de espacio descarga el estado del siguiente workspace antes de renderizar.
 - El token de Firebase Authentication acompaña todas las solicitudes a Firestore.
 - No existe publicación, lectura o SSE en ntfy.sh.
+- La aprobación de una solicitud actualiza el tablero y el estado de la solicitud en una sola transacción.
+- El acceso infantil permanece deshabilitado hasta validar el aislamiento de Salud y Gastos en staging.
+
+## Resultado CI más reciente
+- Firestore Emulator: **11 aprobadas, 0 fallidas**.
+- Comprobación de sintaxis JavaScript y ausencia de referencias `ntfy.sh`: aprobada.
