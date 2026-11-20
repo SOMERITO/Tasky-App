@@ -168,6 +168,7 @@ before(async () => {
   await seedMembership(joseUid, "jose", "owner");
   await seedMembership(joseUid, "leah", "guardian");
   await seedMembership(camsUid, "camila", "owner");
+  await seedMembership(camsUid, "leah", "guardian");
   await seedMembership(leahUid, "leah", "child", { childAccessEnabled: true });
   await seedMembership(leahDisabledUid, "leah", "child", { childAccessEnabled: false });
   await testEnvironment.withSecurityRulesDisabled(async (context) => {
@@ -229,6 +230,19 @@ test("Camila solo ve Cams y Leah después de autenticar su cuenta", async () => 
     await selectProfile(page, "camila");
     await assertWorkspace(page, "camila", "owner", "Tasky Cams");
     assert.equal(await page.locator("#tasky-test-greeting").innerText(), "Camila");
+    assert.deepEqual(forbiddenProductionRequests, []);
+  } finally {
+    await context.close();
+  }
+});
+
+test("Camila también puede seleccionar Tasky Leah como adulta responsable", async () => {
+  const { context, page, forbiddenProductionRequests } = await openLoginPage();
+  try {
+    await login(page, users.cams);
+    await selectProfile(page, "leah");
+    await assertWorkspace(page, "leah", "guardian", "Tasky Leah");
+    assert.equal(await page.locator("#tasky-test-greeting").innerText(), "Leah");
     assert.deepEqual(forbiddenProductionRequests, []);
   } finally {
     await context.close();
