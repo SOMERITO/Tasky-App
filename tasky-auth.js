@@ -31,7 +31,7 @@ const app = initializeApp(firebaseConfig, "tasky-multi-workspace");
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-if (emulatorRequested) {
+if (firebaseEnvironment.isEmulator) {
   connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
   connectFirestoreEmulator(db, "127.0.0.1", 8080);
 }
