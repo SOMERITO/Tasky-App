@@ -110,7 +110,7 @@ Los datos privados de salud y gastos van en documentos separados: Firestore Rule
 4. Cuando Leah termina una tarea, crea una solicitud `completion`.
 5. El adulto verifica y marca la tarea como completada en la misma transacción que aprueba la solicitud. Leah no modifica directamente el documento principal ni puede borrar una tarea adulta.
 
-El flujo de solicitudes y la bandeja de revisión están implementados en esta rama. La separación transaccional de los módulos Salud y Gastos también está implementada; el acceso infantil continúa deshabilitado en la membresía y no debe habilitarse hasta completar pruebas integrales de staging. Las reglas limitan las solicitudes a módulos permitidos (Escolar, Evaluaciones, Materiales, Actividades, Coordinación familiar y Hábitos), evitando que Leah solicite tareas dentro de Salud o Gastos.
+El flujo de solicitudes y la bandeja de revisión están implementados en esta rama. La separación transaccional de Salud y Gastos tiene además una prueba de migración con datos ficticios en Firestore Emulator (18 pruebas aprobadas en total). El acceso infantil continúa deshabilitado en la membresía y no debe habilitarse hasta completar pruebas integrales en una instancia de staging. Las reglas limitan las solicitudes a módulos permitidos (Escolar, Evaluaciones, Materiales, Actividades, Coordinación familiar y Hábitos), evitando que Leah solicite tareas dentro de Salud o Gastos.
 
 Así se conserva el motor actual, que serializa el tablero compartido en un documento, sin conceder a la cuenta infantil permiso para sobrescribir o eliminar cualquier tarea de ese documento.
 
