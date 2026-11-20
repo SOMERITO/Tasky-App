@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261119-auth-foundation-2" />
+  <link rel="stylesheet" href="styles.css?v=20261120-profile-first-1" />
   <link rel="stylesheet" href="mobile-app.css?v=20261030-mobile-pull-refresh-1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -47,29 +47,59 @@
         <div>
           <p class="tasky-auth-eyebrow">ORGANIZACIÓN PERSONAL Y FAMILIAR</p>
           <h1 id="tasky-auth-title">Bienvenido a Tasky</h1>
-          <p class="tasky-auth-subtitle">Inicia sesión para entrar a tus espacios.</p>
+          <p class="tasky-auth-subtitle">Un solo Tasky, tres espacios independientes.</p>
         </div>
       </div>
 
-      <form id="tasky-login-form" class="tasky-auth-form" novalidate>
+      <section id="tasky-profile-picker" class="tasky-profile-picker">
+        <p class="tasky-auth-eyebrow">ELIGE TU ESPACIO</p>
+        <h2>¿Quién va a ingresar?</h2>
+        <p class="tasky-auth-subtitle">Selecciona José, Cams o Leah para continuar.</p>
+        <div id="tasky-profile-options" class="tasky-profile-options">
+          <button class="tasky-profile-option" data-workspace="jose" type="button" aria-label="Entrar a Tasky José">
+            <span class="tasky-profile-avatar tasky-profile-avatar-jose" aria-hidden="true">J</span>
+            <span class="tasky-profile-copy">
+              <span class="tasky-profile-name">José</span>
+              <span class="tasky-profile-description">Tu espacio personal</span>
+            </span>
+          </button>
+          <button class="tasky-profile-option" data-workspace="camila" type="button" aria-label="Entrar a Tasky Cams">
+            <span class="tasky-profile-avatar tasky-profile-avatar-camila" aria-hidden="true">C</span>
+            <span class="tasky-profile-copy">
+              <span class="tasky-profile-name">Cams</span>
+              <span class="tasky-profile-description">Su espacio personal</span>
+            </span>
+          </button>
+          <button class="tasky-profile-option" data-workspace="leah" type="button" aria-label="Entrar a Tasky Leah">
+            <span class="tasky-profile-avatar tasky-profile-avatar-leah" aria-hidden="true">L</span>
+            <span class="tasky-profile-copy">
+              <span class="tasky-profile-name">Leah</span>
+              <span class="tasky-profile-description">Espacio familiar y escolar</span>
+            </span>
+          </button>
+        </div>
+      </section>
+
+      <form id="tasky-login-form" class="tasky-auth-form" novalidate hidden>
+        <div id="tasky-selected-profile" class="tasky-selected-profile" hidden>
+          <div>
+            <p class="tasky-auth-eyebrow">ESPACIO SELECCIONADO</p>
+            <h2 id="tasky-selected-profile-name">Tasky José</h2>
+          </div>
+          <button id="tasky-change-profile" class="tasky-auth-link" type="button">Cambiar</button>
+        </div>
+        <p class="tasky-auth-subtitle">Ingresa con el correo y la contraseña de una cuenta autorizada para este espacio.</p>
         <label for="tasky-login-email">Correo electrónico</label>
         <input id="tasky-login-email" name="email" type="email" autocomplete="username" required placeholder="tu@correo.com" />
         <label for="tasky-login-password">Contraseña</label>
         <input id="tasky-login-password" name="password" type="password" autocomplete="current-password" required placeholder="Tu contraseña" />
-        <button id="tasky-login-submit" class="tasky-auth-primary" type="submit">Iniciar sesión</button>
+        <button id="tasky-login-submit" class="tasky-auth-primary" type="submit">Entrar a Tasky</button>
         <button id="tasky-password-reset" class="tasky-auth-link" type="button">Olvidé mi contraseña</button>
       </form>
 
-      <section id="tasky-workspace-picker" class="tasky-workspace-picker" hidden>
-        <p class="tasky-auth-eyebrow">TU CUENTA</p>
-        <h2>Elige tu espacio</h2>
-        <p id="tasky-auth-user-label" class="tasky-auth-subtitle"></p>
-        <div id="tasky-workspace-options" class="tasky-workspace-options"></div>
-        <button id="tasky-auth-signout" class="tasky-auth-link" type="button">Cerrar sesión</button>
-      </section>
-
+      <button id="tasky-auth-signout" class="tasky-auth-link" type="button" hidden>Cerrar sesión</button>
       <p id="tasky-auth-message" class="tasky-auth-message" role="status" aria-live="polite"></p>
-      <p class="tasky-auth-footer">Acceso privado para integrantes autorizados de Tasky.</p>
+      <p class="tasky-auth-footer">La selección no concede permisos: cada cuenta debe estar autorizada.</p>
     </div>
   </div>
 
@@ -1340,7 +1370,7 @@
 
   <script src="app.js?v=20261120-private-health-expenses-1"></script>
   <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
-  <script type="module" src="tasky-auth.js?v=20261119-auth-2"></script>
+  <script type="module" src="tasky-auth.js?v=20261120-profile-first-auth-1"></script>
   <script type="module" src="tasky-private-modules.js?v=20261120-private-modules-2"></script>
   <script type="module" src="tasky-family.js?v=20261120-family-requests-1"></script>
 </body>
