@@ -20,22 +20,21 @@
   <main id="tasky-auth-gate" role="dialog" aria-modal="true">
     <h1 id="tasky-auth-title">Bienvenido a Tasky</h1>
     <form id="tasky-login-form">
-      <section id="tasky-profile-picker" class="tasky-profile-picker">
-        <h2>Ingresa a tu espacio</h2>
-        <label for="tasky-profile-select">¿Con qué perfil deseas ingresar?</label>
+      <section id="tasky-login-credentials">
+        <h2>Ingresa a Tasky</h2>
+        <label for="tasky-login-email">Correo electrónico</label>
+        <input id="tasky-login-email" name="email" type="email" autocomplete="username" required>
+        <label for="tasky-login-password">Contraseña</label>
+        <input id="tasky-login-password" name="password" type="password" autocomplete="current-password" required>
+        <button id="tasky-password-reset" type="button">Olvidé mi contraseña</button>
+      </section>
+      <section id="tasky-profile-picker" class="tasky-profile-picker" hidden>
+        <h2>Elige tu espacio</h2>
         <select id="tasky-profile-select" required>
-          <option value="">Selecciona un perfil</option>
-          <option value="jose">José</option>
-          <option value="camila">Cams</option>
-          <option value="leah">Leah</option>
+          <option value="">Selecciona un espacio</option>
         </select>
       </section>
-      <label for="tasky-login-email">Correo electrónico</label>
-      <input id="tasky-login-email" name="email" type="email" autocomplete="username" required>
-      <label for="tasky-login-password">Contraseña</label>
-      <input id="tasky-login-password" name="password" type="password" autocomplete="current-password" required>
-      <button id="tasky-login-submit" type="submit">Entrar a Tasky</button>
-      <button id="tasky-password-reset" type="button">Olvidé mi contraseña</button>
+      <button id="tasky-login-submit" type="submit">Iniciar sesión</button>
     </form>
     <button id="tasky-auth-signout" type="button" hidden>Cerrar sesión</button>
     <p id="tasky-auth-message" role="status" aria-live="polite"></p>
@@ -53,6 +52,6 @@
     });
   </script>
   <script src="../tasky-firebase-config.js?v=20261120-firebase-env-1"></script>
-  <script type="module" src="../tasky-auth.js?v=20261120-firebase-env-1"></script>
+  <script type="module" src="../tasky-auth.js?v=20261120-auth-first-1"></script>
 </body>
 </html>
