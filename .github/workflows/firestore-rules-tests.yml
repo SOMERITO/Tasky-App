@@ -9,6 +9,7 @@ on:
       - "tests/**"
       - "app.js"
       - "tasky-auth.js"
+      - "tasky-firebase-config.js"
       - "tasky-private-data.js"
       - "tasky-private-modules.js"
       - ".github/workflows/firestore-rules-tests.yml"
