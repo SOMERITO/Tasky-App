@@ -49,12 +49,13 @@ if (emulatorRequested) {
 }
 
 const gate = document.getElementById("tasky-auth-gate");
+const profilePicker = document.getElementById("tasky-profile-picker");
+const profileOptions = document.getElementById("tasky-profile-options");
 const loginForm = document.getElementById("tasky-login-form");
-const loginPanel = loginForm;
-const picker = document.getElementById("tasky-workspace-picker");
-const options = document.getElementById("tasky-workspace-options");
+const selectedProfile = document.getElementById("tasky-selected-profile");
+const selectedProfileName = document.getElementById("tasky-selected-profile-name");
+const changeProfileButton = document.getElementById("tasky-change-profile");
 const message = document.getElementById("tasky-auth-message");
-const userLabel = document.getElementById("tasky-auth-user-label");
 const submitButton = document.getElementById("tasky-login-submit");
 const emailInput = document.getElementById("tasky-login-email");
 const passwordInput = document.getElementById("tasky-login-password");
@@ -66,20 +67,23 @@ const SELECTED_WORKSPACE_KEY = "tasky:selected-workspace:v1";
 const workspaceMetadata = {
   jose: {
     name: "Tasky José",
-    description: "Tu espacio personal y privado.",
-    icon: "✦",
+    shortName: "José",
+    description: "Tu espacio personal",
+    icon: "J",
     roleLabels: { owner: "Propietario" }
   },
   camila: {
-    name: "Tasky Camila",
-    description: "El espacio personal de Camila.",
-    icon: "✿",
+    name: "Tasky Cams",
+    shortName: "Cams",
+    description: "Su espacio personal",
+    icon: "C",
     roleLabels: { owner: "Propietaria" }
   },
   leah: {
     name: "Tasky Leah",
-    description: "Organización escolar y familiar compartida.",
-    icon: "♡",
+    shortName: "Leah",
+    description: "Espacio familiar y escolar",
+    icon: "L",
     roleLabels: { guardian: "Adulto responsable", child: "Cuenta de Leah" }
   }
 };
@@ -87,8 +91,33 @@ const workspaceMetadata = {
 let currentUser = null;
 let memberships = new Map();
 let authResolved = false;
-let pickerOpen = false;
 let membershipLoadInFlight = false;
+let selectedWorkspaceId = readSelectedWorkspace();
+
+function readSelectedWorkspace() {
+  try {
+    const value = sessionStorage.getItem(SELECTED_WORKSPACE_KEY) || "";
+    return Object.prototype.hasOwnProperty.call(workspaceMetadata, value) ? value : "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function persistSelectedWorkspace(workspaceId) {
+  try {
+    sessionStorage.setItem(SELECTED_WORKSPACE_KEY, workspaceId);
+    selectedWorkspaceId = workspaceId;
+    return true;
+  } catch (error) {
+    setMessage("No se pudo guardar temporalmente el perfil seleccionado. Habilita el almacenamiento de sesión e inténtalo de nuevo.", true);
+    return false;
+  }
+}
+
+function clearSelectedWorkspace() {
+  selectedWorkspaceId = "";
+  try { sessionStorage.removeItem(SELECTED_WORKSPACE_KEY); } catch (error) {}
+}
 
 function setMessage(text, isError = false) {
   if (!message) return;
@@ -96,78 +125,82 @@ function setMessage(text, isError = false) {
   message.classList.toggle("is-error", Boolean(isError));
 }
 
-function showLogin(text = "") {
-  document.documentElement.removeAttribute("data-tasky-workspace");
-  document.documentElement.removeAttribute("data-tasky-role");
-  if (loginPanel) loginPanel.hidden = false;
-  if (picker) picker.hidden = true;
-  pickerOpen = false;
+function setGateVisible(visible) {
+  if (gate) gate.hidden = !visible;
+  if (visible) {
+    document.documentElement.classList.add("tasky-auth-required");
+    document.documentElement.classList.remove("tasky-workspace-active");
+  }
+}
+
+function showProfilePicker(text = "") {
+  if (profilePicker) profilePicker.hidden = false;
+  if (loginForm) loginForm.hidden = true;
+  if (selectedProfile) selectedProfile.hidden = true;
+  if (signoutButton) signoutButton.hidden = !currentUser;
+  setGateVisible(true);
   setMessage(text);
-  document.documentElement.classList.add("tasky-auth-required");
-  document.documentElement.classList.remove("tasky-workspace-active");
-  if (gate) gate.hidden = false;
+  renderProfileOptions();
 }
 
-function showPicker() {
-  if (!currentUser || !authResolved) return;
-  if (loginPanel) loginPanel.hidden = true;
-  if (picker) picker.hidden = false;
-  pickerOpen = true;
-  document.documentElement.classList.add("tasky-auth-required");
-  document.documentElement.classList.remove("tasky-workspace-active");
-  if (gate) gate.hidden = false;
-  if (userLabel) userLabel.textContent = currentUser.email || "Cuenta autenticada";
-  renderWorkspaceOptions();
-}
-
-function renderWorkspaceOptions() {
-  if (!options) return;
-  options.replaceChildren();
-  const allowed = [...memberships.entries()]
-    .filter(([, membership]) => membership && membership.active === true)
-    .sort(([a], [b]) => (a === "leah" ? 1 : b === "leah" ? -1 : a.localeCompare(b)));
-
-  if (!allowed.length) {
-    setMessage("Esta cuenta inició sesión, pero todavía no tiene espacios habilitados. Solicita al administrador que complete la configuración de acceso.", true);
+function showLogin(text = "") {
+  if (!selectedWorkspaceId || !workspaceMetadata[selectedWorkspaceId]) {
+    showProfilePicker(text);
     return;
   }
+  if (profilePicker) profilePicker.hidden = true;
+  if (loginForm) loginForm.hidden = false;
+  if (selectedProfile) selectedProfile.hidden = false;
+  if (selectedProfileName) {
+    selectedProfileName.textContent = workspaceMetadata[selectedWorkspaceId].name;
+  }
+  if (signoutButton) signoutButton.hidden = !currentUser;
+  setGateVisible(true);
+  setMessage(text);
+  if (passwordInput) passwordInput.value = "";
+}
 
-  allowed.forEach(([workspaceId, membership]) => {
-    const meta = workspaceMetadata[workspaceId];
-    if (!meta) return;
+function renderProfileOptions() {
+  if (!profileOptions) return;
+  profileOptions.replaceChildren();
+
+  Object.entries(workspaceMetadata).forEach(([workspaceId, meta]) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "tasky-workspace-option";
+    button.className = "tasky-profile-option";
     button.dataset.workspace = workspaceId;
+    button.setAttribute("aria-label", "Entrar a " + meta.name);
     button.innerHTML = `
-      <span class="tasky-workspace-option-icon" aria-hidden="true">${meta.icon}</span>
-      <span class="tasky-workspace-option-copy">
-        <span class="tasky-workspace-option-title">${meta.name}</span>
-        <span class="tasky-workspace-option-description">${meta.description}</span>
+      <span class="tasky-profile-avatar tasky-profile-avatar-${workspaceId}" aria-hidden="true">${meta.icon}</span>
+      <span class="tasky-profile-copy">
+        <span class="tasky-profile-name">${meta.shortName}</span>
+        <span class="tasky-profile-description">${meta.description}</span>
       </span>
-      <span class="tasky-workspace-option-role">${meta.roleLabels[membership.role] || "Integrante"}</span>
     `;
     button.addEventListener("click", () => selectWorkspace(workspaceId));
-    options.append(button);
+    profileOptions.append(button);
   });
-  setMessage("Selecciona uno de los espacios autorizados para tu cuenta.");
 }
 
 function selectWorkspace(workspaceId) {
-  const membership = memberships.get(workspaceId);
   const meta = workspaceMetadata[workspaceId];
-  if (!currentUser || !membership || membership.active !== true || !meta) {
-    setMessage("No tienes permiso para entrar a ese espacio.", true);
+  if (!meta) {
+    setMessage("Selecciona un perfil válido.", true);
     return;
   }
-  try {
-    sessionStorage.setItem(SELECTED_WORKSPACE_KEY, workspaceId);
-  } catch (error) {
-    setMessage("No se pudo guardar temporalmente el espacio seleccionado. Habilita el almacenamiento de sesión e inténtalo de nuevo.", true);
+  if (!persistSelectedWorkspace(workspaceId)) return;
+
+  if (passwordInput) passwordInput.value = "";
+  if (emailInput && !currentUser) emailInput.value = "";
+
+  // A reload is intentional when switching an already-authenticated session:
+  // it clears the previous workspace's in-memory data before the new one boots.
+  if (currentUser) {
+    window.location.reload();
     return;
   }
-  // Reloading discards the previous workspace's in-memory application state before loading another.
-  window.location.reload();
+
+  showLogin("Ingresa con el correo y la contraseña de una cuenta autorizada para " + meta.shortName + ".");
 }
 
 async function loadMemberships(user) {
@@ -177,6 +210,7 @@ async function loadMemberships(user) {
     const membershipCollection = collection(db, "user_access", user.uid, "workspaces");
     const snapshot = await getDocs(membershipCollection);
     const next = new Map();
+
     snapshot.forEach((entry) => {
       const value = entry.data() || {};
       const workspaceId = String(entry.id || "");
@@ -195,42 +229,34 @@ async function loadMemberships(user) {
         });
       }
     });
+
     memberships = next;
     authResolved = true;
 
-    if (!memberships.size) {
-      showPicker();
+    const selected = readSelectedWorkspace();
+    selectedWorkspaceId = selected;
+
+    if (!selected) {
+      showProfilePicker("Selecciona primero el espacio al que deseas ingresar.");
       return;
     }
 
-    let selected = "";
-    try {
-      selected = sessionStorage.getItem(SELECTED_WORKSPACE_KEY) || "";
-    } catch (error) {}
-
-    if (selected && memberships.has(selected)) {
+    if (memberships.has(selected)) {
       dispatchWorkspaceReady(selected);
       return;
     }
 
-    if (selected) {
-      try { sessionStorage.removeItem(SELECTED_WORKSPACE_KEY); } catch (error) {}
-    }
-
-    if (memberships.size === 1) {
-      const onlyWorkspace = memberships.keys().next().value;
-      selectWorkspace(onlyWorkspace);
-      return;
-    }
-
-    showPicker();
+    const meta = workspaceMetadata[selected];
+    showLogin(
+      "Esta cuenta no tiene autorización para entrar a " + meta.name + ". Verifica que estés usando la cuenta correcta o selecciona otro perfil.",
+      true
+    );
   } catch (error) {
     authResolved = true;
-    showPicker();
-    setMessage(
+    showLogin(
       error && error.code === "permission-denied"
-        ? "No se pudieron leer los espacios autorizados. Verifica las reglas y la membresía de esta cuenta."
-        : "No se pudieron cargar tus espacios. Comprueba tu conexión e inténtalo nuevamente.",
+        ? "No se pudieron verificar tus permisos. Comprueba las reglas y la membresía de esta cuenta."
+        : "No se pudieron cargar tus permisos. Comprueba tu conexión e inténtalo nuevamente.",
       true
     );
   } finally {
@@ -242,10 +268,10 @@ function dispatchWorkspaceReady(workspaceId) {
   const membership = memberships.get(workspaceId);
   const meta = workspaceMetadata[workspaceId];
   if (!membership || !meta || !currentUser) return;
+
   setMessage("");
-  if (gate) gate.hidden = true;
-  document.documentElement.classList.remove("tasky-auth-required");
-  document.documentElement.classList.add("tasky-workspace-active");
+  setGateVisible(false);
+  document.documentElement.removeAttribute("data-tasky-workspace");
   document.documentElement.dataset.taskyRole = membership.role;
   window.dispatchEvent(new CustomEvent("tasky:workspace-ready", {
     detail: {
@@ -263,12 +289,18 @@ if (loginForm) {
     event.preventDefault();
     const email = String(emailInput && emailInput.value || "").trim();
     const password = String(passwordInput && passwordInput.value || "");
-    if (!email || !password) {
-      setMessage("Escribe tu correo y contraseña.", true);
+
+    if (!selectedWorkspaceId) {
+      showProfilePicker("Selecciona primero José, Cams o Leah.");
       return;
     }
+    if (!email || !password) {
+      setMessage("Escribe el correo y la contraseña de la cuenta autorizada.", true);
+      return;
+    }
+
     submitButton.disabled = true;
-    submitButton.textContent = "Ingresando…";
+    submitButton.textContent = "Verificando…";
     setMessage("");
     try {
       await signInWithEmailAndPassword(auth, email, password);
@@ -284,7 +316,7 @@ if (loginForm) {
       );
     } finally {
       submitButton.disabled = false;
-      submitButton.textContent = "Iniciar sesión";
+      submitButton.textContent = "Entrar a " + (workspaceMetadata[selectedWorkspaceId]?.shortName || "Tasky");
     }
   });
 }
@@ -299,20 +331,27 @@ if (resetButton) {
     }
     try {
       await sendPasswordResetEmail(auth, email);
-      setMessage("Si la cuenta existe, recibirás un correo con los pasos para restablecer la contraseña.");
+      setMessage("Si la cuenta existe, recibirás un correo con los pasos para restablecer tu contraseña.");
     } catch (error) {
       setMessage("No se pudo enviar el correo de recuperación. Comprueba la dirección e inténtalo de nuevo.", true);
     }
   });
 }
 
+if (changeProfileButton) {
+  changeProfileButton.addEventListener("click", () => {
+    showProfilePicker("Elige el espacio al que deseas ingresar.");
+  });
+}
+
 if (signoutButton) {
   signoutButton.addEventListener("click", async () => {
     try {
-      try { sessionStorage.removeItem(SELECTED_WORKSPACE_KEY); } catch (error) {}
-      await signOut(auth);
+      clearSelectedWorkspace();
       memberships = new Map();
-      showLogin("Has cerrado sesión.");
+      await signOut(auth);
+      currentUser = null;
+      showProfilePicker("Has cerrado sesión. Elige un perfil para continuar.");
     } catch (error) {
       setMessage("No se pudo cerrar la sesión. Inténtalo nuevamente.", true);
     }
@@ -322,14 +361,17 @@ if (signoutButton) {
 if (accountButton) {
   accountButton.addEventListener("click", () => {
     window.dispatchEvent(new CustomEvent("tasky:open-workspace-picker"));
-    showPicker();
+    showProfilePicker("Elige el espacio al que deseas cambiar.");
   });
 }
 
-window.addEventListener("tasky:show-workspace-picker", showPicker);
+window.addEventListener("tasky:show-workspace-picker", () => {
+  showProfilePicker("Elige el espacio al que deseas cambiar.");
+});
+
 window.addEventListener("storage", (event) => {
   if (event.key === "firebase:authUser:" + auth.app.options.apiKey + ":[DEFAULT]" && !event.newValue) {
-    try { sessionStorage.removeItem(SELECTED_WORKSPACE_KEY); } catch (error) {}
+    clearSelectedWorkspace();
     window.location.reload();
   }
 });
@@ -345,22 +387,32 @@ window.TaskyAuth = {
     return [...memberships.entries()].map(([workspaceId, membership]) => ({ workspaceId, ...membership }));
   },
   signOut: async () => {
-    try { sessionStorage.removeItem(SELECTED_WORKSPACE_KEY); } catch (error) {}
+    clearSelectedWorkspace();
+    memberships = new Map();
     await signOut(auth);
   }
 };
 
-showLogin();
+showProfilePicker();
 onAuthStateChanged(auth, async (user) => {
   currentUser = user || null;
   memberships = new Map();
   authResolved = false;
   membershipLoadInFlight = false;
+
   if (!user) {
-    try { sessionStorage.removeItem(SELECTED_WORKSPACE_KEY); } catch (error) {}
-    showLogin();
+    if (!selectedWorkspaceId) {
+      showProfilePicker();
+    } else {
+      showLogin();
+    }
     return;
   }
-  showPicker();
+
+  if (!selectedWorkspaceId) {
+    showProfilePicker();
+  } else {
+    showLogin();
+  }
   await loadMemberships(user);
 });
