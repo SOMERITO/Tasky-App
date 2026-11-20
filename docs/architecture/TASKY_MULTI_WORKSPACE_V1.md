@@ -5,15 +5,15 @@ Estado: implementación parcial en la rama de desarrollo; no desplegada.
 
 ## Objetivo
 
-Mantener una sola aplicación web y una sola URL de Tasky. La pantalla inicial muestra tres opciones: José, Cams y Leah. Después de elegir un perfil, el usuario se autentica con su correo y contraseña; Firebase y Firestore verifican que su UID tenga una membresía activa para el espacio elegido. La selección visual nunca concede permisos por sí sola. Los datos, permisos, preferencias y cachés de cada espacio deben estar aislados.
+Mantener una sola aplicación web y una sola URL de Tasky. La pantalla inicial solicita primero correo y contraseña. Después de autenticar la identidad, Tasky consulta las membresías de ese UID y muestra exclusivamente los espacios autorizados. La selección posterior nunca concede permisos por sí sola. Los datos, permisos, preferencias y cachés de cada espacio deben estar aislados.
 
 No se creará una segunda página web para Leah ni se reutilizará otra aplicación móvil. Tasky Leah será un espacio compartido dentro de la aplicación actual.
 
 ## Decisiones confirmadas
 
 - Aplicación única y URL actual de Tasky José.
-- Pantalla inicial de selección de perfil: José, Cams o Leah.
-- Inicio de sesión individual con Firebase Authentication (correo y contraseña) después de elegir el perfil.
+- Pantalla inicial única de autenticación: correo y contraseña.
+- Después de autenticar, selector dinámico que muestra únicamente las membresías activas del UID; no ofrece perfiles ajenos.
 - La cuenta autenticada debe tener una membresía activa en el workspace seleccionado; el nombre visible no es una credencial ni una autorización.
 - Sin registro público: las tres cuentas se provisionarán por el administrador; no habrá botón de auto-registro.
 - Espacios:
@@ -25,7 +25,10 @@ No se creará una segunda página web para Leah ni se reutilizará otra aplicaci
 - Los módulos Salud y Gastos se separan en documentos independientes `adult_private/health` y `adult_private/expenses`. La cuenta infantil continúa deshabilitada hasta completar migración, validar los documentos y pruebas.
 - Coordinación familiar: compartida con los tres.
 - Solicitudes familiares: el panel de José y Camila escucha en tiempo real la bandeja de solicitudes de Leah. Las notificaciones fuera de la aplicación o con Tasky cerrado siguen pendientes.
-- Leah: puede registrar pendientes y solicitar que se marquen como completados; no puede eliminar pendientes de los adultos. La finalización requiere verificación de un adulto.
+- Leah: puede crear tareas propias directamente, sin aprobación; puede editar solo las tareas que ella creó mientras estén pendientes; no puede eliminarlas ni modificar las creadas por los adultos.
+- Leah puede indicar que terminó una tarea propia. El estado pasa a `awaiting_review`, se muestra tachada y permanece visible; no se marca como completada ni se retira de pendientes hasta que José o Camila aprueben.
+- José o Camila pueden aprobar (estado `completed`) o devolver la tarea a pendiente. Solo ellos pueden confirmar la finalización oficial.
+- Para tareas que José o Camila crean en el tablero compartido, Leah puede enviar una solicitud de confirmación; el tablero solo se actualiza cuando un adulto aprueba.
 - Los adultos pueden administrar los datos compartidos de Leah.
 
 ## Roles y espacios
@@ -84,9 +87,14 @@ workspaces/leah/access_control/private_modules
   migrationVersion: "20261120-private-health-expenses-1"
 
 workspaces/leah/task_requests/{requestId}
-  type: "new_task" | "completion"
+  type: "completion"
   createdBy, createdAt, status: "pending"
-  title/module/dates/priority OR relatedTaskId
+  relatedTaskId
+
+workspaces/leah/child_tasks/{taskId}
+  Tareas creadas directamente por Leah; se reflejan en tiempo real a los adultos.
+  La cuenta infantil edita solo sus propios registros en estado pending y puede pasarlos a awaiting_review.
+  La aprobación adulta cambia el estado a completed; el rechazo lo devuelve a pending.
 
 workspaces/leah/notifications/{notificationId}
   eventType, title, createdAt, createdBy, audience
@@ -107,16 +115,15 @@ Los datos privados de salud y gastos van en documentos separados: Firestore Rule
 
 ### Flujo de Leah para tareas
 
-1. Leah registra un pendiente: se guarda como solicitud `new_task` con estado `pending`.
-2. El panel de José y Camila escucha la bandeja de solicitudes en tiempo real mientras el espacio está abierto.
-3. Un adulto aprueba o rechaza la solicitud. La aprobación incorpora la tarea al tablero compartido y actualiza la solicitud en una sola transacción de Firestore.
-4. Cuando Leah termina una tarea, crea una solicitud `completion`.
-5. El adulto verifica y marca la tarea como completada en la misma transacción que aprueba la solicitud. Leah no modifica directamente el documento principal ni puede borrar una tarea adulta.
+1. Leah registra una tarea propia: se guarda directamente en `workspaces/leah/child_tasks` en estado `pending`, sin aprobación previa.
+2. José y Camila escuchan esa colección con Firestore `onSnapshot`; el nuevo registro o una edición aparece en tiempo real en su panel familiar.
+3. Leah puede editar únicamente sus propias tareas mientras estén en estado `pending`. No puede borrar tareas ni modificar las creadas por los adultos.
+4. Cuando Leah pulsa «Ya terminé», el documento pasa a `awaiting_review`. La tarea permanece visible y se presenta tachada, pero no se registra como completada en el tablero ni en las estadísticas oficiales.
+5. José o Camila revisan la tarea. «Aprobar y completar» cambia el estado a `completed` y registra quién y cuándo confirmó; «Devolver a pendientes» vuelve a `pending` para que Leah pueda editarla o terminarla de nuevo.
+6. Para tareas creadas por los adultos en el tablero principal, Leah puede enviar una solicitud `completion`; solo la aprobación adulta cambia el campo `done` del tablero compartido.
+7. Los permisos se aplican en Firestore Rules, no solo mediante controles visuales. La cuenta infantil nunca escribe el documento completo `shared/main`.
 
-El flujo de solicitudes y la bandeja de revisión están implementados en esta rama. La separación transaccional de Salud y Gastos tiene además pruebas de migración con datos ficticios en Firestore Emulator. La integración Auth + Firestore + Chromium más reciente aprobó 25 pruebas en total, incluidas seis pruebas de navegador de la selección inicial José/Cams/Leah. El acceso infantil continúa deshabilitado en la membresía y no debe habilitarse hasta completar pruebas integrales en una instancia de staging. Las reglas limitan las solicitudes a módulos permitidos (Escolar, Evaluaciones, Materiales, Actividades, Coordinación familiar y Hábitos), evitando que Leah solicite tareas dentro de Salud o Gastos.
-
-Así se conserva el motor actual, que serializa el tablero compartido en un documento, sin conceder a la cuenta infantil permiso para sobrescribir o eliminar cualquier tarea de ese documento.
-
+Las tareas propias de Leah se mantienen en una colección separada para evitar que la cuenta infantil reemplace o altere el documento JSON completo del tablero compartido. El panel familiar muestra esos registros y los adultos los reciben mediante suscripción en tiempo real.
 ## Aislamiento en el navegador
 
 El código actual utiliza claves locales globales como `tasky_data`, `tasky_settings`, `tasky_backups`, `tasky_history`, `tasky_task_memory` y otras. Antes de habilitar multi-espacio deben migrarse a claves versionadas y separadas, por ejemplo:
