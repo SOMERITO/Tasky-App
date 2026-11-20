@@ -317,7 +317,7 @@ if (loginForm) {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       if (passwordInput) passwordInput.value = "";
-      setMessage("Cuenta verificada. Estamos cargando tus espacios autorizados.");
+      // onAuthStateChanged loads memberships and owns the next-screen message.
     } catch (error) {
       setMessage(
         error && ["auth/invalid-credential", "auth/user-not-found", "auth/wrong-password"].includes(error.code)
