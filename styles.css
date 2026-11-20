@@ -7790,3 +7790,234 @@ html[data-tasky-workspace="leah"] .brand-logo {
   filter: drop-shadow(0 3px 14px rgba(217, 70, 239, 0.16));
 }
 #btn-more-options[hidden] { display: none !important; }
+
+
+/* ==========================================================================
+   TASKY FAMILY REQUESTS · LEAH WORKSPACE
+   ========================================================================== */
+.tasky-family-panel {
+  width: min(1180px, calc(100% - 40px));
+  margin: 22px auto 18px;
+  color: var(--text);
+}
+.tasky-family-panel[hidden] { display: none !important; }
+.tasky-family-card {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface, var(--card));
+  box-shadow: 0 12px 34px rgba(28, 16, 44, 0.06);
+  padding: clamp(16px, 2.5vw, 26px);
+}
+.tasky-family-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.tasky-family-eyebrow {
+  margin: 0 0 6px;
+  color: var(--primary);
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.tasky-family-title {
+  margin: 0;
+  font-size: clamp(1.15rem, 2vw, 1.55rem);
+  line-height: 1.2;
+  font-weight: 850;
+}
+.tasky-family-subtitle {
+  margin: 7px 0 0;
+  color: var(--text-secondary);
+  font-size: .88rem;
+  line-height: 1.55;
+  max-width: 720px;
+}
+.tasky-family-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--primary-soft, rgba(168,85,247,.12));
+  color: var(--primary);
+  font-weight: 850;
+}
+.tasky-family-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.tasky-family-form-card,
+.tasky-family-inbox-card {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  padding: 16px;
+  background: var(--surface-hover, rgba(148, 117, 170, .035));
+}
+.tasky-family-form-card h3,
+.tasky-family-inbox-card h3 {
+  margin: 0 0 6px;
+  font-size: .98rem;
+  font-weight: 800;
+}
+.tasky-family-help {
+  margin: 0 0 14px;
+  color: var(--text-secondary);
+  font-size: .82rem;
+  line-height: 1.5;
+}
+.tasky-family-field {
+  display: grid;
+  gap: 6px;
+  margin: 11px 0;
+}
+.tasky-family-field span,
+.tasky-family-field label {
+  color: var(--text-secondary);
+  font-size: .77rem;
+  font-weight: 750;
+}
+.tasky-family-field input,
+.tasky-family-field select,
+.tasky-family-field textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 11px;
+  color: var(--text);
+  background: var(--card);
+  font: inherit;
+  font-size: .88rem;
+}
+.tasky-family-field textarea {
+  min-height: 78px;
+  resize: vertical;
+}
+.tasky-family-two-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.tasky-family-primary,
+.tasky-family-secondary,
+.tasky-family-danger {
+  min-height: 39px;
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 13px;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform .16s ease, opacity .16s ease;
+}
+.tasky-family-primary {
+  color: #fff;
+  background: linear-gradient(135deg, #a855f7, #c026d3);
+}
+.tasky-family-secondary {
+  color: var(--text);
+  background: var(--surface-hover, rgba(148,117,170,.12));
+  border: 1px solid var(--border);
+}
+.tasky-family-danger {
+  color: #b42335;
+  background: rgba(220, 53, 69, .09);
+  border: 1px solid rgba(220, 53, 69, .18);
+}
+.tasky-family-primary:hover,
+.tasky-family-secondary:hover,
+.tasky-family-danger:hover { transform: translateY(-1px); }
+.tasky-family-primary:disabled,
+.tasky-family-secondary:disabled,
+.tasky-family-danger:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+.tasky-family-message {
+  min-height: 20px;
+  margin: 12px 0 0;
+  color: var(--text-secondary);
+  font-size: .8rem;
+  line-height: 1.45;
+}
+.tasky-family-message.is-error { color: #c53b4b; }
+.tasky-family-list {
+  display: grid;
+  gap: 10px;
+}
+.tasky-family-request {
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 13px;
+  background: var(--card);
+}
+.tasky-family-request-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.tasky-family-request-title {
+  margin: 0;
+  font-size: .91rem;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.tasky-family-request-meta {
+  margin: 5px 0 0;
+  color: var(--text-secondary);
+  font-size: .74rem;
+  line-height: 1.45;
+}
+.tasky-family-request-description {
+  margin: 9px 0 0;
+  color: var(--text);
+  font-size: .83rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.tasky-family-status {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: var(--surface-hover, rgba(148,117,170,.12));
+  color: var(--text-secondary);
+  font-size: .68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.tasky-family-status.is-pending { background: rgba(245, 158, 11, .12); color: #a16207; }
+.tasky-family-status.is-approved { background: rgba(22, 163, 74, .11); color: #15803d; }
+.tasky-family-status.is-rejected { background: rgba(220, 53, 69, .1); color: #b42335; }
+.tasky-family-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.tasky-family-empty {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  color: var(--text-secondary);
+  text-align: center;
+  font-size: .82rem;
+  line-height: 1.5;
+}
+@media (max-width: 720px) {
+  .tasky-family-panel { width: calc(100% - 24px); margin: 14px auto; }
+  .tasky-family-grid { grid-template-columns: 1fr; }
+  .tasky-family-two-fields { grid-template-columns: 1fr; }
+  .tasky-family-card { border-radius: 16px; }
+}
