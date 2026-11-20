@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es" class="tasky-auth-required">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tasky · Prueba aislada de acceso</title>
+  <style>
+    body { font: 16px system-ui, sans-serif; max-width: 36rem; margin: 3rem auto; padding: 0 1rem; }
+    label { display: block; margin-top: 1rem; }
+    input, button { box-sizing: border-box; width: 100%; padding: .75rem; margin-top: .4rem; }
+    .tasky-workspace-options { display: grid; gap: .75rem; }
+    .tasky-workspace-option { text-align: left; cursor: pointer; border: 1px solid #bbb; border-radius: .6rem; }
+    .tasky-workspace-option-title, .tasky-workspace-option-description, .tasky-workspace-option-role { display: block; }
+    .tasky-workspace-option-title { font-weight: 700; }
+    #tasky-auth-message { min-height: 1.5rem; }
+  </style>
+</head>
+<body>
+  <main id="tasky-auth-gate" role="dialog" aria-modal="true">
+    <h1 id="tasky-auth-title">Bienvenido a Tasky</h1>
+    <form id="tasky-login-form">
+      <label for="tasky-login-email">Correo electrónico</label>
+      <input id="tasky-login-email" name="email" type="email" autocomplete="username" required>
+      <label for="tasky-login-password">Contraseña</label>
+      <input id="tasky-login-password" name="password" type="password" autocomplete="current-password" required>
+      <button id="tasky-login-submit" type="submit">Iniciar sesión</button>
+      <button id="tasky-password-reset" type="button">Olvidé mi contraseña</button>
+    </form>
+    <section id="tasky-workspace-picker" hidden>
+      <p id="tasky-auth-user-label"></p>
+      <div id="tasky-workspace-options" class="tasky-workspace-options"></div>
+      <button id="tasky-auth-signout" type="button">Cerrar sesión</button>
+    </section>
+    <p id="tasky-auth-message" role="status" aria-live="polite"></p>
+  </main>
+  <output id="tasky-test-result" aria-live="polite"></output>
+  <script>
+    // This fixture is served only from localhost in CI. It never loads app.js or production sync.
+    window.__TASKY_USE_FIREBASE_EMULATORS__ = true;
+    window.addEventListener("tasky:workspace-ready", (event) => {
+      document.documentElement.dataset.taskyWorkspace = event.detail.workspaceId;
+      document.documentElement.dataset.taskyRole = event.detail.role;
+      document.getElementById("tasky-test-result").textContent =
+        event.detail.workspaceName + " · " + event.detail.role;
+    });
+  </script>
+  <script type="module" src="../tasky-auth.js"></script>
+</body>
+</html>
