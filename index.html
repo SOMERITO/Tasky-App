@@ -51,44 +51,19 @@
         </div>
       </div>
 
-      <section id="tasky-profile-picker" class="tasky-profile-picker">
-        <p class="tasky-auth-eyebrow">ELIGE TU ESPACIO</p>
-        <h2>¿Quién va a ingresar?</h2>
-        <p class="tasky-auth-subtitle">Selecciona José, Cams o Leah para continuar.</p>
-        <div id="tasky-profile-options" class="tasky-profile-options">
-          <button class="tasky-profile-option" data-workspace="jose" type="button" aria-label="Entrar a Tasky José">
-            <span class="tasky-profile-avatar tasky-profile-avatar-jose" aria-hidden="true">J</span>
-            <span class="tasky-profile-copy">
-              <span class="tasky-profile-name">José</span>
-              <span class="tasky-profile-description">Tu espacio personal</span>
-            </span>
-          </button>
-          <button class="tasky-profile-option" data-workspace="camila" type="button" aria-label="Entrar a Tasky Cams">
-            <span class="tasky-profile-avatar tasky-profile-avatar-camila" aria-hidden="true">C</span>
-            <span class="tasky-profile-copy">
-              <span class="tasky-profile-name">Cams</span>
-              <span class="tasky-profile-description">Su espacio personal</span>
-            </span>
-          </button>
-          <button class="tasky-profile-option" data-workspace="leah" type="button" aria-label="Entrar a Tasky Leah">
-            <span class="tasky-profile-avatar tasky-profile-avatar-leah" aria-hidden="true">L</span>
-            <span class="tasky-profile-copy">
-              <span class="tasky-profile-name">Leah</span>
-              <span class="tasky-profile-description">Espacio familiar y escolar</span>
-            </span>
-          </button>
-        </div>
-      </section>
-
-      <form id="tasky-login-form" class="tasky-auth-form" novalidate hidden>
-        <div id="tasky-selected-profile" class="tasky-selected-profile" hidden>
-          <div>
-            <p class="tasky-auth-eyebrow">ESPACIO SELECCIONADO</p>
-            <h2 id="tasky-selected-profile-name">Tasky José</h2>
-          </div>
-          <button id="tasky-change-profile" class="tasky-auth-link" type="button">Cambiar</button>
-        </div>
-        <p class="tasky-auth-subtitle">Ingresa con el correo y la contraseña de una cuenta autorizada para este espacio.</p>
+      <form id="tasky-login-form" class="tasky-auth-form" novalidate>
+        <section id="tasky-profile-picker" class="tasky-profile-picker">
+          <p class="tasky-auth-eyebrow">INICIO DE SESIÓN</p>
+          <h2>Ingresa a tu espacio</h2>
+          <label for="tasky-profile-select">¿Con qué perfil deseas ingresar?</label>
+          <select id="tasky-profile-select" name="workspace" class="tasky-profile-select" required>
+            <option value="">Selecciona un perfil</option>
+            <option value="jose">José · Espacio personal</option>
+            <option value="camila">Cams · Espacio personal</option>
+            <option value="leah">Leah · Espacio familiar y escolar</option>
+          </select>
+        </section>
+        <p class="tasky-auth-subtitle">Usa el correo y la contraseña de tu cuenta registrada en Firebase Authentication.</p>
         <label for="tasky-login-email">Correo electrónico</label>
         <input id="tasky-login-email" name="email" type="email" autocomplete="username" required placeholder="tu@correo.com" />
         <label for="tasky-login-password">Contraseña</label>
@@ -154,6 +129,10 @@
     <!-- Hero Section -->
     <section class="hero-header">
       <div class="hero-left">
+        <div class="tasky-welcome" aria-live="polite">
+          <h2 id="tasky-welcome-title">¡Te damos la bienvenida!</h2>
+          <p id="tasky-welcome-subtitle">Tu espacio de organización personal y familiar.</p>
+        </div>
         <h1 class="hero-title">Tu día, tu orden.</h1>
         <div id="quote-container" class="quote-inline-box" role="button" tabindex="0" aria-label="Un clic copia la frase y el autor; doble clic muestra la siguiente frase" data-tip-title="📋 Copiar · ⏭️ Siguiente" data-tip-desc="Un clic copia la frase y su autor. Dos clics seguidos muestran la siguiente frase. También cambia automáticamente cada 75 segundos.">
           <p id="quote-text" class="quote-text">La dicha del hombre consiste en observar las reglas y condiciones por las cuales se consigue el bien de todos los hombres.</p>
@@ -1370,7 +1349,7 @@
 
   <script src="app.js?v=20261120-private-health-expenses-1"></script>
   <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
-  <script type="module" src="tasky-auth.js?v=20261120-profile-first-auth-1"></script>
+  <script type="module" src="tasky-auth.js?v=20261120-login-dropdown-greeting-2"></script>
   <script type="module" src="tasky-private-modules.js?v=20261120-private-modules-2"></script>
   <script type="module" src="tasky-family.js?v=20261120-family-requests-1"></script>
 </body>
