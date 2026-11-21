@@ -45,10 +45,30 @@ const message = document.getElementById("tasky-auth-message");
 const submitButton = document.getElementById("tasky-login-submit");
 const emailInput = document.getElementById("tasky-login-email");
 const passwordInput = document.getElementById("tasky-login-password");
+const passwordToggle = document.getElementById("tasky-password-toggle");
 const resetButton = document.getElementById("tasky-password-reset");
 const signoutButton = document.getElementById("tasky-auth-signout");
 const accountButton = document.getElementById("btn-tasky-account");
 const SELECTED_WORKSPACE_KEY = "tasky:selected-workspace:v1";
+
+function setPasswordVisibility(visible) {
+  if (!passwordInput) return;
+  passwordInput.type = visible ? "text" : "password";
+  if (passwordToggle) {
+    const label = visible ? "Ocultar contraseña" : "Mostrar contraseña";
+    passwordToggle.textContent = visible ? "🙈" : "👁️";
+    passwordToggle.setAttribute("aria-label", label);
+    passwordToggle.setAttribute("title", label);
+    passwordToggle.setAttribute("aria-pressed", String(visible));
+  }
+}
+
+if (passwordToggle && passwordInput) {
+  passwordToggle.addEventListener("click", () => {
+    setPasswordVisibility(passwordInput.type === "password");
+    passwordInput.focus();
+  });
+}
 
 const workspaceMetadata = {
   jose: {
@@ -181,6 +201,7 @@ function showWorkspacePicker(text = "", isError = false) {
   setGateVisible(true);
   setMessage(text, isError);
   if (passwordInput) passwordInput.value = "";
+  setPasswordVisibility(false);
 }
 
 function selectWorkspace(workspaceId) {
@@ -317,6 +338,7 @@ if (loginForm) {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       if (passwordInput) passwordInput.value = "";
+      setPasswordVisibility(false);
       // onAuthStateChanged loads memberships and owns the next-screen message.
     } catch (error) {
       const authErrorCode = error && typeof error.code === "string" ? error.code : "auth/unknown";
