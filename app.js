@@ -3575,7 +3575,7 @@
       v: 2,
       d: appState.deviceId,
       u: Number(d.updatedAt || Date.now()),
-      m: Number(d.monthlyCompletedBase || 66),
+      m: Number(d.monthlyCompletedBase ?? 66),
       cc: 0,
       sv: 1,
       dt: Array.isArray(d.deletedTaskIds) ? d.deletedTaskIds : [],
@@ -3652,7 +3652,7 @@
       return normalizeDataPayload({
         boxes,
         tasks,
-        monthlyCompletedBase: Number(parsed.m || 66),
+        monthlyCompletedBase: Number(parsed.m ?? 66),
         completedBoxCollapsed: false,
         deletedTaskIds: Array.isArray(parsed.dt) ? parsed.dt : [],
         deletedBoxIds: Array.isArray(parsed.db) ? parsed.db : [],
@@ -4889,7 +4889,7 @@
       // recreate every scheduled-but-uncompleted day after it, then create today's or the next valid occurrence.
       if (completedOnPastDay) {
         changed = true;
-        appState.data.monthlyCompletedBase = (appState.data.monthlyCompletedBase || 66) + 1;
+        appState.data.monthlyCompletedBase = (appState.data.monthlyCompletedBase ?? 66) + 1;
         if (taskHasRecurringSchedule) {
           const completedDateCandidate = String(task.completedDate || task.dueDate || addDaysISO(today, -1)).slice(0, 10);
           const lastCompletedDate = /^\d{4}-\d{2}-\d{2}$/.test(completedDateCandidate) &&
@@ -5798,7 +5798,7 @@
     document.getElementById("metric-pending-count").textContent = String(pendingToday);
 
     const totalDoneNow = tasks.filter(t => t.done).length;
-    const monthlyTotal = (appState.data.monthlyCompletedBase || 66) + totalDoneNow;
+    const monthlyTotal = (appState.data.monthlyCompletedBase ?? 66) + totalDoneNow;
     document.getElementById("metric-completed-count").textContent = String(monthlyTotal);
 
     const reschedTasks = tasks.filter(t => isTaskRescheduledFuture(t));
@@ -11689,7 +11689,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     const reschedCount = tasks.filter(t => isTaskRescheduledFuture(t)).length;
     const recurringCount = tasks.filter(t => t.frequency !== "once" || (t.repeatDays && t.repeatDays.length > 0)).length;
     const focusScore = tasks.length > 0 ? Math.round(((tasks.length - reschedCount) / tasks.length) * 100) : 100;
-    const monthlyTotal = (appState.data.monthlyCompletedBase || 66) + tasks.filter(t => t.done).length;
+    const monthlyTotal = (appState.data.monthlyCompletedBase ?? 66) + tasks.filter(t => t.done).length;
     const weekStart = getLearningWeekStartISO(todayIso);
     const weekEnd = addDaysISO(weekStart, 6);
     const completedThisWeek = normalizeCompletionLog(appState.data.completionLog)
