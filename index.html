@@ -40,7 +40,7 @@
   <!-- Point 4: Fast, Minimal Notification Pill Positioned Below Top Navbar -->
   <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
 
-  <div id="tasky-auth-gate" class="tasky-auth-gate" role="dialog" aria-modal="true" aria-labelledby="tasky-auth-title">
+  <div id="tasky-auth-gate" class="tasky-auth-gate" role="dialog" aria-modal="true" aria-labelledby="tasky-auth-title" hidden>
     <div class="tasky-auth-panel">
       <div class="tasky-auth-brand">
         <div class="tasky-auth-mark" aria-hidden="true">T</div>
@@ -123,10 +123,6 @@
     <span aria-hidden="true">♡</span>
     <span><strong>Espacio de Leah</strong><small>Consulta tus pendientes y envía solicitudes de nuevas tareas o de finalización. Un adulto revisará cada solicitud.</small></span>
   </div>
-
-  <section id="tasky-family-panel" class="tasky-family-panel" aria-label="Solicitudes familiares de Leah" hidden>
-    <div id="tasky-family-content"></div>
-  </section>
 
   <div class="app-shell">
     <!-- Hero Section -->
@@ -410,6 +406,10 @@
     <!-- Dynamic Boxes & Tasks Container -->
     <main id="boxes-container" class="boxes-container"></main>
   </div>
+
+  <section id="tasky-family-panel" class="tasky-family-panel" aria-label="Solicitudes familiares de Leah" hidden>
+    <div id="tasky-family-content"></div>
+  </section>
 
   <nav id="mobile-app-nav" class="mobile-app-nav" aria-label="Navegación de Tasky">
     <button type="button" class="mobile-app-nav-item is-active" id="mobile-nav-today" aria-label="Ir a hoy">
@@ -1353,7 +1353,7 @@
   <script src="tasky-firebase-config.js?v=20261120-firebase-env-1"></script>
   <script src="app.js?v=20261120-firebase-env-1"></script>
   <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
-  <script type="module" src="tasky-auth.js?v=20261121-auth-diagnostic-1"></script>
+  <script type="module" src="tasky-auth.js?v=20261121-auth-local-persistence-2"></script>
   <script type="module" src="tasky-private-modules.js?v=20261120-private-modules-2"></script>
   <script type="module" src="tasky-family.js?v=20261120-family-requests-1"></script>
 </body>
