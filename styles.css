@@ -7553,6 +7553,40 @@ body.focus-mode-open #boxes-container {
   border-color: #A855F7;
   box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.12);
 }
+.tasky-password-field {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+.tasky-password-field input {
+  padding-right: 54px;
+}
+.tasky-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+}
+.tasky-password-toggle:hover {
+  background: rgba(168, 85, 247, 0.09);
+}
+.tasky-password-toggle:focus-visible {
+  outline: 2px solid #A855F7;
+  outline-offset: 2px;
+}
 .tasky-auth-primary {
   width: 100%;
   min-height: 49px;
