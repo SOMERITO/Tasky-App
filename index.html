@@ -57,7 +57,10 @@
           <label for="tasky-login-email">Correo electrónico</label>
           <input id="tasky-login-email" name="email" type="email" autocomplete="username" required placeholder="tu@correo.com" />
           <label for="tasky-login-password">Contraseña</label>
-          <input id="tasky-login-password" name="password" type="password" autocomplete="current-password" required placeholder="Tu contraseña" />
+          <div class="tasky-password-field">
+             <input id="tasky-login-password" name="password" type="password" autocomplete="current-password" required placeholder="Tu contraseña" aria-describedby="tasky-password-toggle" />
+             <button id="tasky-password-toggle" class="tasky-password-toggle" type="button" aria-label="Mostrar contraseña" aria-pressed="false" title="Mostrar contraseña">👁️</button>
+           </div>
           <button id="tasky-password-reset" class="tasky-auth-link" type="button">Olvidé mi contraseña</button>
         </section>
         <section id="tasky-profile-picker" class="tasky-profile-picker" hidden>
