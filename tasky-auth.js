@@ -2,6 +2,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebas
 import {
   getAuth,
   onAuthStateChanged,
+  browserLocalPersistence,
+  setPersistence,
   signInWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
@@ -34,6 +36,17 @@ const db = getFirestore(app);
 if (firebaseEnvironment.isEmulator) {
   connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
   connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+// Use persistent browser storage so a refresh does not require signing in again.
+try {
+  await setPersistence(auth, browserLocalPersistence);
+} catch (error) {
+  if (firebaseEnvironment.isStaging) {
+    console.error("[Tasky Staging] Could not enable local Firebase Auth persistence", {
+      code: error && error.code ? String(error.code) : "auth/unknown"
+    });
+  }
 }
 
 const gate = document.getElementById("tasky-auth-gate");
@@ -430,7 +443,7 @@ window.TaskyAuth = {
   }
 };
 
-showLogin();
+// Show the credentials form only after Firebase confirms there is no saved user.
 onAuthStateChanged(auth, async (user) => {
   currentUser = user || null;
   memberships = new Map();
@@ -442,6 +455,14 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  showWorkspacePicker("Verificando los espacios autorizados de tu cuenta…");
+  // If a workspace was already selected, keep the gate closed while Firebase
+  // restores membership. app.js removes the boot lock when it receives
+  // tasky:workspace-ready. If the saved workspace is invalid, loadMemberships
+  // will clear it and show the authorized workspace picker.
+  if (readSelectedWorkspace()) {
+    setGateVisible(false);
+  } else {
+    showWorkspacePicker("Verificando los espacios autorizados de tu cuenta…");
+  }
   await loadMemberships(user);
 });
