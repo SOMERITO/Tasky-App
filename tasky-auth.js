@@ -319,12 +319,21 @@ if (loginForm) {
       if (passwordInput) passwordInput.value = "";
       // onAuthStateChanged loads memberships and owns the next-screen message.
     } catch (error) {
+      const authErrorCode = error && typeof error.code === "string" ? error.code : "auth/unknown";
+      if (firebaseEnvironment.isStaging) {
+        console.error("[Tasky Staging] Firebase Authentication sign-in failed", {
+          code: authErrorCode,
+          message: error && error.message ? String(error.message) : ""
+        });
+      }
       setMessage(
         error && ["auth/invalid-credential", "auth/user-not-found", "auth/wrong-password"].includes(error.code)
           ? "El correo o la contraseña no son correctos."
           : error && error.code === "auth/too-many-requests"
             ? "Se han realizado demasiados intentos. Espera un momento y vuelve a intentarlo."
-            : "No se pudo iniciar sesión. Comprueba la conexión y los datos ingresados.",
+            : firebaseEnvironment.isStaging
+              ? `No se pudo iniciar sesión en Staging (${authErrorCode}).`
+              : "No se pudo iniciar sesión. Comprueba la conexión y los datos ingresados.",
         true
       );
       submitButton.disabled = false;
