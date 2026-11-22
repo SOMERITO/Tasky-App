@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" class="tasky-auth-required">
+<html lang="es" class="tasky-booting tasky-auth-required">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -10,6 +10,8 @@
     input, button { box-sizing: border-box; width: 100%; padding: .75rem; margin-top: .4rem; }
     button { cursor: pointer; }
     [hidden] { display: none !important; }
+    #tasky-boot-screen { display: none; }
+    html.tasky-booting #tasky-boot-screen { display: block; }
     select, input { font: inherit; }
     select { width: 100%; padding: .75rem; margin-top: .4rem; }
     .tasky-profile-picker { margin-bottom: 1rem; }
@@ -17,6 +19,8 @@
   </style>
 </head>
 <body>
+  <div id="tasky-boot-screen" role="status">Cargando tu espacio…</div>
+  <button id="btn-tasky-account" type="button" hidden>Tasky</button>
   <main id="tasky-auth-gate" role="dialog" aria-modal="true">
     <h1 id="tasky-auth-title">Bienvenido a Tasky</h1>
     <form id="tasky-login-form" novalidate>
@@ -29,7 +33,8 @@
         <button id="tasky-password-reset" type="button">Olvidé mi contraseña</button>
       </section>
       <section id="tasky-profile-picker" class="tasky-profile-picker" hidden>
-        <h2>Elige tu espacio</h2>
+        <h2 id="tasky-profile-picker-title">Elige tu espacio</h2>
+        <label id="tasky-profile-select-label" for="tasky-profile-select">Espacio</label>
         <select id="tasky-profile-select" required>
           <option value="">Selecciona un espacio</option>
         </select>
@@ -49,6 +54,9 @@
       document.getElementById("tasky-test-result").textContent =
         event.detail.workspaceName + " · " + event.detail.role;
       document.getElementById("tasky-test-greeting").textContent = event.detail.displayName;
+      const accountButton = document.getElementById("btn-tasky-account");
+      accountButton.hidden = false;
+      accountButton.textContent = event.detail.workspaceName;
     });
   </script>
   <script src="../tasky-firebase-config.js?v=20261120-firebase-env-1"></script>
