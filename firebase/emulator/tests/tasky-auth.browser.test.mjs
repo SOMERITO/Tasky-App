@@ -277,6 +277,28 @@ test("Leah entra automáticamente a su único espacio familiar", async () => {
   }
 });
 
+test("Leah ve solo Entrar y Cerrar sesión al abrir su único espacio", async () => {
+  const { context, page, forbiddenProductionRequests } = await openLoginPage();
+  try {
+    await login(page, users.leah);
+    await assertWorkspace(page, "leah", "child", "Tasky Leah");
+
+    await page.locator("#btn-tasky-account").click();
+    assert.equal(await page.locator("#tasky-profile-picker").isVisible(), true);
+    assert.equal(await page.locator("#tasky-profile-select").isVisible(), false);
+    assert.equal(await page.locator("#tasky-profile-select-label").isVisible(), false);
+    assert.equal(await page.locator("#tasky-login-submit").innerText(), "Entrar");
+    assert.equal(await page.locator("#tasky-login-submit").isEnabled(), true);
+    assert.equal(await page.locator("#tasky-auth-signout").isVisible(), true);
+
+    await page.locator("#tasky-login-submit").click();
+    await assertWorkspace(page, "leah", "child", "Tasky Leah");
+    assert.deepEqual(forbiddenProductionRequests, []);
+  } finally {
+    await context.close();
+  }
+});
+
 test("una membresía infantil deshabilitada no aparece como espacio disponible", async () => {
   const { context, page, forbiddenProductionRequests } = await openLoginPage();
   try {
