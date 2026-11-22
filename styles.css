@@ -8061,6 +8061,20 @@ html[data-tasky-workspace="leah"] .brand-logo {
 
 
 
+
+/* LEAH WORKSPACE · avoid viewport-height filler after the final module.
+   The aurora background is fixed to the viewport, so the document itself
+   can end shortly after the content. Keep mobile navigation spacing intact. */
+@media (min-width: 701px) {
+  html[data-tasky-workspace="leah"] body {
+    min-height: 0;
+    padding-bottom: 40px;
+  }
+  html[data-tasky-workspace="leah"] .app-shell {
+    padding-bottom: 40px;
+  }
+}
+
 /* TASKY LOGIN · PROFILE DROPDOWN AND PERSONALIZED WELCOME */
 .tasky-profile-picker h2 {
   margin: 0 0 14px;
