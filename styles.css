@@ -8674,3 +8674,35 @@ html[data-tasky-workspace="leah"] .gemini-aurora-bg {
   border-radius: 50%;
   animation: taskyBootSpin .8s linear infinite;
 }
+
+
+/* TASKY LEAH · place the family task workflow before the read-only board
+   and let the document end close to the final visible section. */
+html[data-tasky-workspace="leah"] body.tasky-leah-workspace {
+  min-height: 0 !important;
+  height: auto !important;
+  padding-bottom: 0 !important;
+}
+html[data-tasky-workspace="leah"] body.tasky-leah-workspace .app-shell {
+  min-height: 0 !important;
+  height: auto !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+html[data-tasky-workspace="leah"] body.tasky-leah-workspace #boxes-container {
+  min-height: 0 !important;
+  height: auto !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+html[data-tasky-workspace="leah"] .tasky-family-panel {
+  margin: 8px auto 14px !important;
+}
+@media (max-width: 700px) {
+  html[data-tasky-workspace="leah"] body.tasky-leah-workspace {
+    padding-bottom: calc(var(--mobile-nav-height, 66px) + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  html[data-tasky-workspace="leah"] .tasky-family-panel {
+    margin-top: 8px !important;
+  }
+}
