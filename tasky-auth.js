@@ -208,7 +208,7 @@ function showWorkspacePicker(text = "", isError = false) {
 
   if (submitButton) {
     const selected = String(profileSelect && profileSelect.value || "");
-    submitButton.disabled = memberships.size === 0 || !selected;
+    submitButton.disabled = memberships.size === 0;
     setSubmitLabel(selected && workspaceMetadata[selected]
       ? "Entrar"
       : "Selecciona un espacio");
@@ -236,7 +236,6 @@ if (profileSelect) {
     setSubmitLabel(workspaceId && workspaceMetadata[workspaceId]
       ? "Entrar"
       : "Selecciona un espacio");
-    if (submitButton) submitButton.disabled = !workspaceId || !memberships.has(workspaceId);
     setMessage("");
   });
 }
@@ -286,7 +285,7 @@ async function loadMemberships(user) {
 
     if (!memberships.size) {
       document.documentElement.classList.remove("tasky-booting");
-      showWorkspacePicker("Esta cuenta todavía no tiene espacios habilitados.", true);
+      showWorkspacePicker("Tu cuenta todavía no tiene espacios autorizados.", true);
       return;
     }
 
