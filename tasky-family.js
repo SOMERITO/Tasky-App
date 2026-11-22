@@ -959,6 +959,10 @@ function closeWorkspace() {
   activeWorkspace = null;
   activeRole = "";
   activeUid = "";
+  childModules.splice(0, childModules.length, ...defaultChildModules.map((item) => ({ ...item })));
+  childModuleIds.clear();
+  defaultChildModules.forEach((item) => childModuleIds.add(item.id));
+  boardModuleIds = new Set();
   requests = [];
   childTasks = [];
   boardTasks = [];
