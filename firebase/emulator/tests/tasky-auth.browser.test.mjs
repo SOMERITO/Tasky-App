@@ -401,7 +401,9 @@ test("los adultos pueden revisar tareas de Leah en módulos personalizados", asy
       .locator("#tasky-family-child-tasks-list article")
       .filter({ hasText: "Practicar vocabulario de francés" });
     await frenchTask.waitFor({ state: "visible" });
-    await frenchTask.getByText("FRANCÉS").waitFor({ state: "visible" });
+    const frenchModuleMeta = frenchTask.locator(".tasky-family-request-meta");
+    await frenchModuleMeta.waitFor({ state: "visible" });
+    assert.match(await frenchModuleMeta.innerText(), /FRANCÉS/);
     await frenchTask.getByRole("button", { name: "Aprobar y completar" }).click();
     await frenchTask.getByText("Completada").waitFor({ state: "visible" });
     assert.deepEqual(forbiddenProductionRequests, []);
