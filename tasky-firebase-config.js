@@ -16,7 +16,7 @@
   });
 
   const stagingConfig = Object.freeze({
-    apiKey: "AIzaSyDnx3xBJkp8E1h05XMGn_l8awK9OvOtLRo",
+    apiKey: "AIzaSyDnx3xBJkp8E1hO5XMGn_l8awK9OvOtLRo",
     authDomain: "tasky-staging-82acb.firebaseapp.com",
     projectId: "tasky-staging-82acb",
     storageBucket: "tasky-staging-82acb.firebasestorage.app",
