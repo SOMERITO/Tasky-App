@@ -321,12 +321,30 @@ test("Leah ve solo Entrar y Cerrar sesión al abrir su único espacio", async ()
   }
 });
 
+test("the Leah action panel stays outside the inert shared dashboard", async () => {
+  const indexHtml = await readFile(resolve(rootDir, "index.html"), "utf8");
+  const appSource = await readFile(resolve(rootDir, "app.js"), "utf8");
+  const panelPosition = indexHtml.indexOf('id="tasky-family-panel"');
+  const bannerPosition = indexHtml.indexOf('id="tasky-child-readonly-banner"');
+  const boardPosition = indexHtml.indexOf('<div class="app-shell">');
+
+  assert.ok(bannerPosition >= 0 && bannerPosition < boardPosition,
+    "The Leah entry banner must be before the shared dashboard.");
+  assert.ok(panelPosition >= 0 && panelPosition < boardPosition,
+    "The editable family task panel must be before the shared dashboard.");
+  assert.match(appSource, /insertBefore\(childBanner, workspaceShell\)/);
+  assert.match(appSource, /insertBefore\(familyPanel, workspaceShell\)/);
+  assert.match(appSource, /familyPanel\.inert = false/);
+});
+
 test("Leah puede crear, editar, eliminar y enviar a revisión sus propias tareas", async () => {
   const { context, page, forbiddenProductionRequests } = await openLoginPage();
   try {
     await login(page, users.leah);
     await assertWorkspace(page, "leah", "child", "Tasky Leah");
+    await page.locator("#tasky-child-readonly-banner:not([hidden])").waitFor({ state: "visible" });
     await page.locator("#tasky-family-panel:not([hidden])").waitFor({ state: "visible" });
+    await page.locator("#tasky-child-tasks-shortcut").waitFor({ state: "visible" });
     await page.locator("#tasky-child-tasks-shortcut").click();
 
     const form = page.locator("#tasky-child-task-create-form");
