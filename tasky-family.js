@@ -122,6 +122,21 @@ function moduleLabel(moduleId) {
   return match ? match.label : "Módulo no disponible";
 }
 
+function publishChildBoardSnapshot() {
+  if (activeRole !== "child" || !activeUid) return;
+  const pendingCompletionTaskIds = requests
+    .filter((request) => request.type === "completion" && request.status === "pending")
+    .map((request) => String(request.relatedTaskId || ""))
+    .filter(Boolean);
+  window.dispatchEvent(new CustomEvent("tasky:child-tasks-updated", {
+    detail: {
+      uid: activeUid,
+      tasks: childTasks.map((task) => ({ ...task })),
+      pendingCompletionTaskIds
+    }
+  }));
+}
+
 function showPanelShell(eyebrow, title, subtitle) {
   panel.hidden = false;
   content.replaceChildren();
@@ -385,6 +400,95 @@ async function submitCompletionForTask(taskId) {
   }
 }
 
+async function createChildTaskFromBoard(input = {}) {
+  if (requestBusy || activeRole !== "child" || !activeUid) {
+    throw new Error("La sesión infantil no está activa.");
+  }
+  const title = String(input.title || "").trim().slice(0, 180);
+  const description = String(input.description || "").trim().slice(0, 500);
+  const module = String(input.module || "");
+  const scheduledDate = String(input.scheduledDate || localDateISO());
+  const deadlineDate = String(input.deadlineDate || "");
+  const priority = ["low", "normal", "high"].includes(input.priority) ? input.priority : "normal";
+
+  if (!title || !childModuleIds.has(module) || !isLeahChildVisibleModuleId(module) ||
+      !boardModuleIds.has(module)) {
+    throw new Error("Elige una casilla visible y escribe un nombre de tarea válido.");
+  }
+  if (deadlineDate && scheduledDate && deadlineDate < scheduledDate) {
+    throw new Error("La fecha límite no puede ser anterior a la fecha programada.");
+  }
+
+  setRequestBusy(true);
+  try {
+    const created = await addDoc(collection(db, ...CHILD_TASKS_PATH), {
+      title,
+      description,
+      module,
+      scheduledDate,
+      deadlineDate,
+      priority,
+      createdBy: activeUid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      status: "pending"
+    });
+    return created.id;
+  } finally {
+    setRequestBusy(false);
+  }
+}
+
+async function updateChildTaskFromBoard(taskId, input = {}) {
+  if (requestBusy || activeRole !== "child" || !activeUid) {
+    throw new Error("La sesión infantil no está activa.");
+  }
+  const task = childTasks.find((item) => String(item.id) === String(taskId));
+  if (!task || task.createdBy !== activeUid || task.status !== "pending") {
+    throw new Error("Solo puedes editar tus propias tareas pendientes.");
+  }
+  const title = String(input.title || "").trim().slice(0, 180);
+  const description = String(input.description || "").trim().slice(0, 500);
+  const module = String(input.module || "");
+  const scheduledDate = String(input.scheduledDate || "");
+  const deadlineDate = String(input.deadlineDate || "");
+  const priority = ["low", "normal", "high"].includes(input.priority) ? input.priority : "normal";
+  if (!title || !childModuleIds.has(module) || !isLeahChildVisibleModuleId(module) ||
+      !boardModuleIds.has(module)) {
+    throw new Error("Elige una casilla visible y escribe un nombre de tarea válido.");
+  }
+  if (deadlineDate && scheduledDate && deadlineDate < scheduledDate) {
+    throw new Error("La fecha límite no puede ser anterior a la fecha programada.");
+  }
+  setRequestBusy(true);
+  try {
+    await updateDoc(doc(db, ...CHILD_TASKS_PATH, String(taskId)), {
+      title, description, module, scheduledDate, deadlineDate, priority,
+      updatedAt: serverTimestamp()
+    });
+    return true;
+  } finally {
+    setRequestBusy(false);
+  }
+}
+
+async function deleteChildTaskFromBoard(taskId) {
+  if (requestBusy || activeRole !== "child" || !activeUid) {
+    throw new Error("La sesión infantil no está activa.");
+  }
+  const task = childTasks.find((item) => String(item.id) === String(taskId));
+  if (!task || task.createdBy !== activeUid || task.status !== "pending") {
+    throw new Error("Solo puedes eliminar tus propias tareas pendientes.");
+  }
+  setRequestBusy(true);
+  try {
+    await deleteDoc(doc(db, ...CHILD_TASKS_PATH, String(taskId)));
+    return true;
+  } finally {
+    setRequestBusy(false);
+  }
+}
+
 async function submitChildTask(event) {
   event.preventDefault();
   if (requestBusy || activeRole !== "child" || !activeUid) return;
@@ -410,25 +514,14 @@ async function submitChildTask(event) {
   setRequestBusy(true);
   setMessage(message, "Guardando tarea…");
   try {
-    await addDoc(collection(db, ...CHILD_TASKS_PATH), {
-      title,
-      description,
-      module,
-      scheduledDate: scheduledDate || localDateISO(),
-      deadlineDate,
-      priority,
-      createdBy: activeUid,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      status: "pending"
-    });
+    await createChildTaskFromBoard({ title, description, module, scheduledDate, deadlineDate, priority });
     form.reset();
     fillModuleSelect(form.elements.module, "box_escolar");
     form.elements.scheduledDate.value = localDateISO();
-    setMessage(message, "Tarea guardada como pendiente. Puedes editarla o eliminarla antes de enviarla a revisión.");
+    setMessage(message, "Tarea guardada en tu tablero. Puedes editarla o eliminarla antes de enviarla a revisión.");
   } catch (error) {
     const code = String(error && error.code || "unknown");
-    setMessage(message, "No se pudo registrar la tarea (" + code + "). Comprueba la conexión y los permisos.", true);
+    setMessage(message, "No se pudo registrar la tarea (" + code + "): " + String(error && error.message || ""), true);
     window.console && window.console.error("[Tasky Leah] Create task failed:", error);
   } finally {
     setRequestBusy(false);
@@ -657,9 +750,9 @@ async function saveChildTaskEdits(event, task) {
 }
 
 async function markChildTaskForReview(taskId) {
-  if (requestBusy || activeRole !== "child" || !activeUid) return;
+  if (requestBusy || activeRole !== "child" || !activeUid) return false;
   const task = childTasks.find((item) => String(item.id) === String(taskId));
-  if (!task || task.createdBy !== activeUid || task.status !== "pending") return;
+  if (!task || task.createdBy !== activeUid || task.status !== "pending") return false;
   setRequestBusy(true);
   try {
     await updateDoc(doc(db, ...CHILD_TASKS_PATH, String(taskId)), {
@@ -667,10 +760,11 @@ async function markChildTaskForReview(taskId) {
       childCompletedAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
+    return true;
   } catch (error) {
     const code = String(error && error.code || "unknown");
-    window.alert("No se pudo enviar el aviso de finalización (" + code + ").");
     window.console && window.console.error("[Tasky Leah] Submit completion failed:", error);
+    throw new Error("No se pudo enviar la tarea a revisión (" + code + ").");
   } finally {
     setRequestBusy(false);
     renderChildTaskList();
@@ -1056,6 +1150,7 @@ function openWorkspace(detail) {
     requestsLoaded = true;
     requestsLoadFailed = false;
     requests = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+    publishChildBoardSnapshot();
     renderRequestList();
     renderAdultAssignedTaskList();
     updatePanelVisibility();
@@ -1080,6 +1175,7 @@ function openWorkspace(detail) {
     childTasksLoadFailed = false;
     childTasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     if (!childTasks.some((task) => String(task.id) === editingChildTaskId)) editingChildTaskId = "";
+    publishChildBoardSnapshot();
     renderChildTaskList();
     updatePanelVisibility();
     const count = content.querySelector("#tasky-family-pending-count");
@@ -1123,6 +1219,14 @@ function openWorkspace(detail) {
     window.console && window.console.error("[Tasky Leah] Shared board listener failed:", error);
   });
 }
+
+window.TaskyFamilyTasks = {
+  create: createChildTaskFromBoard,
+  update: updateChildTaskFromBoard,
+  remove: deleteChildTaskFromBoard,
+  submitForReview: markChildTaskForReview,
+  requestAssignedCompletion: submitCompletionForTask
+};
 
 window.addEventListener("tasky:workspace-ready", (event) => openWorkspace(event && event.detail));
 window.addEventListener("tasky:open-workspace-picker", closeWorkspace);
