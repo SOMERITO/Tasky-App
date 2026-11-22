@@ -8187,10 +8187,10 @@ html[data-tasky-workspace="leah"] .brand-logo {
 .tasky-welcome.hero-workspace-welcome p {
   margin-top: 3px;
 }
-html[data-tasky-workspace="leah"].tasky-greeting-scrolled .tasky-welcome.brand-workspace-welcome {
+html.tasky-greeting-scrolled .tasky-welcome.brand-workspace-welcome {
   display: block;
 }
-html[data-tasky-workspace="leah"].tasky-greeting-scrolled .tasky-welcome.hero-workspace-welcome {
+html.tasky-greeting-scrolled .tasky-welcome.hero-workspace-welcome {
   display: none !important;
 }
 
@@ -8217,16 +8217,26 @@ html[data-tasky-workspace="leah"].tasky-greeting-scrolled .tasky-welcome.hero-wo
 
 /* On small screens the body alone reserves room for the fixed bottom nav. */
 @media (max-width: 700px) {
-  html[data-tasky-workspace="leah"]:not(.tasky-greeting-scrolled) .hero-left {
+  html:not(.tasky-greeting-scrolled) .hero-left {
     display: block !important;
   }
-  html[data-tasky-workspace="leah"]:not(.tasky-greeting-scrolled) .hero-header::before {
+  html:not(.tasky-greeting-scrolled) .hero-header::before {
     display: none !important;
     content: none !important;
   }
-  html[data-tasky-workspace="leah"]:not(.tasky-greeting-scrolled) .hero-header {
-    align-items: flex-start;
+  html:not(.tasky-greeting-scrolled) .hero-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
     min-height: 0;
+  }
+  html:not(.tasky-greeting-scrolled) .hero-date-stack {
+    width: 100%;
+    max-width: none;
+    align-items: flex-start;
+  }
+  html:not(.tasky-greeting-scrolled) .hero-date-stack .date-card {
+    text-align: left;
   }
   html[data-tasky-workspace="leah"] body {
     min-height: 0 !important;
