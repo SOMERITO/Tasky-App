@@ -57,6 +57,7 @@ let childTasksLoadFailed = false;
 let requestsLoaded = false;
 let childTasksLoaded = false;
 let boardTasksLoaded = false;
+let childPanelOpen = false;
 
 function node(tag, className, text) {
   const element = document.createElement(tag);
@@ -132,7 +133,20 @@ function showPanelShell(eyebrow, title, subtitle) {
     node("h2", "tasky-family-title", title),
     node("p", "tasky-family-subtitle", subtitle)
   );
-  heading.append(copy);
+  if (activeRole === "child") {
+    const closeButton = node("button", "tasky-family-close", "Cerrar");
+    closeButton.type = "button";
+    closeButton.setAttribute("aria-label", "Cerrar Mis tareas");
+    closeButton.addEventListener("click", () => setChildPanelOpen(false));
+    heading.append(copy, closeButton);
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "true");
+    panel.setAttribute("aria-label", "Mis tareas de Leah");
+  } else {
+    heading.append(copy);
+    panel.removeAttribute("role");
+    panel.removeAttribute("aria-modal");
+  }
   card.append(heading);
   content.append(card);
   return card;
@@ -920,32 +934,56 @@ async function reviewRequest(requestId, decision) {
   }
 }
 
-if (childTasksShortcut) {
-  childTasksShortcut.addEventListener("click", () => {
-    if (activeRole !== "child" || !panel) return;
-    panel.hidden = false;
-    panel.setAttribute("aria-hidden", "false");
-    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+function setChildPanelOpen(open) {
+  childPanelOpen = Boolean(open && activeRole === "child");
+  updatePanelVisibility();
+
+  if (childPanelOpen) {
     window.setTimeout(() => {
       const title = content && content.querySelector("#tasky-child-task-create-form input[name='title']");
       if (title) title.focus({ preventScroll: true });
-    }, 320);
+    }, 80);
+  }
+}
+
+if (childTasksShortcut) {
+  childTasksShortcut.addEventListener("click", () => {
+    if (activeRole !== "child" || !panel) return;
+    setChildPanelOpen(!childPanelOpen);
   });
 }
+
+if (panel) {
+  panel.addEventListener("click", (event) => {
+    if (activeRole === "child" && event.target === panel) setChildPanelOpen(false);
+  });
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && activeRole === "child" && childPanelOpen) {
+    setChildPanelOpen(false);
+  }
+});
 
 function updatePanelVisibility() {
   if (!panel) return;
 
-  // Leah always has her own task workspace, even before the first snapshot returns.
   const hasFamilyActivity = requests.length > 0 || childTasks.length > 0;
   const hasLoadIssue = requestsLoadFailed || childTasksLoadFailed;
   const childMode = activeRole === "child";
+  const shouldShow = childMode ? childPanelOpen : (hasFamilyActivity || hasLoadIssue);
+
   panel.dataset.taskyRole = activeRole;
-  panel.hidden = !(childMode || hasFamilyActivity || hasLoadIssue);
-  panel.setAttribute("aria-hidden", String(panel.hidden));
+  panel.classList.toggle("is-child-dialog", childMode);
+  panel.classList.toggle("is-open", childMode && childPanelOpen);
+  panel.hidden = !shouldShow;
+  panel.inert = !shouldShow;
+  panel.setAttribute("aria-hidden", String(!shouldShow));
+  document.documentElement.classList.toggle("tasky-family-dialog-open", childMode && childPanelOpen);
+
   if (childTasksShortcut) {
     childTasksShortcut.hidden = !childMode;
-    childTasksShortcut.setAttribute("aria-expanded", String(childMode && !panel.hidden));
+    childTasksShortcut.setAttribute("aria-expanded", String(childMode && childPanelOpen));
   }
 }
 
@@ -959,6 +997,8 @@ function closeWorkspace() {
   activeWorkspace = null;
   activeRole = "";
   activeUid = "";
+  childPanelOpen = false;
+  document.documentElement.classList.remove("tasky-family-dialog-open");
   childModules.splice(0, childModules.length, ...defaultChildModules.map((item) => ({ ...item })));
   childModuleIds.clear();
   defaultChildModules.forEach((item) => childModuleIds.add(item.id));
