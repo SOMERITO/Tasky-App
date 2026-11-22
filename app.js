@@ -3991,6 +3991,18 @@
     }, 450);
   }
   function pushCloudSync(forceImmediateToast = false) {
+    // Leah's shared board is read-only. Her own task operations are written
+    // through the family task workflow, never through shared/main.
+    if (activeWorkspaceId === "leah" && activeWorkspaceContext &&
+        activeWorkspaceContext.role === "child") {
+      const childSyncText = document.getElementById("sync-status-text");
+      if (childSyncText) childSyncText.textContent = "Tablero de consulta";
+      setRealtimeSyncStatus("Tablero familiar protegido; las tareas de Leah se guardan por separado.");
+      const diagnostic = document.getElementById("sync-write-diagnostic-details");
+      if (diagnostic) diagnostic.textContent = "Leah registra y actualiza sus tareas en Mis tareas. El tablero compartido requiere revisión adulta.";
+      if (forceImmediateToast) showToast("Para agregar o editar tus pendientes, utiliza Mis tareas.");
+      return;
+    }
     if (!cloudSyncReady || cloudSyncReadyConfig !== getCloudSyncConfigKey()) {
       if (forceImmediateToast) showToast("Sincronización bloqueada por seguridad: primero hay que verificar la nube o usar «Rescatar y Subir Todo a Firebase».");
       const blockedSyncText = document.getElementById("sync-status-text");
@@ -9227,6 +9239,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
   }
 
   function checkTodayBirthdayPopup() {
+    // Birthday tools are intentionally hidden in Leah's child workspace.
+    if (activeWorkspaceId === "leah") return false;
     if (!todayBirthdayPopupSchedulerReady || document.visibilityState === "hidden") return false;
     const today = getTodayISO();
     if (safeStorage.getItem(TASKY_BIRTHDAY_POPUP_ACKNOWLEDGED_KEY) === today) return false;
