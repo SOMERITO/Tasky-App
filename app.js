@@ -19,6 +19,13 @@
   let activeWorkspaceId = "";
   let activeWorkspaceContext = null;
   let activeStorageNamespace = "";
+  let leahChildTaskRecords = [];
+  let leahChildPendingCompletionIds = new Set();
+
+  function isLeahChildAccount() {
+    return activeWorkspaceId === "leah" &&
+      Boolean(activeWorkspaceContext && activeWorkspaceContext.role === "child");
+  }
   const GLOBAL_STORAGE_KEYS = new Set([STORAGE_KEYS.FIREBASE_CONFIG]);
   const memoryStorage = new Map();
 
@@ -2440,6 +2447,80 @@
       balance: null
     }
   };
+
+  function applyLeahChildTaskProjection() {
+    if (!appState || !appState.data) return;
+    const currentTasks = Array.isArray(appState.data.tasks) ? appState.data.tasks : [];
+    const sharedTasks = currentTasks.filter((task) => !task || task.__leahChildTask !== true);
+
+    sharedTasks.forEach((task) => {
+      if (task) delete task.leahCompletionPending;
+    });
+
+    if (!isLeahChildAccount()) {
+      appState.data.tasks = sharedTasks;
+      return;
+    }
+
+    sharedTasks.forEach((task) => {
+      if (task && leahChildPendingCompletionIds.has(String(task.id))) {
+        task.leahCompletionPending = true;
+      }
+    });
+
+    const availableBoxIds = new Set((appState.data.boxes || []).map((box) => String(box.id)));
+    const ownTasks = leahChildTaskRecords
+      .filter((task) => task && String(task.createdBy || "") === String(activeWorkspaceContext.uid))
+      .filter((task) => availableBoxIds.has(String(task.module)))
+      .map((task) => {
+        const createdAt = task.createdAt && typeof task.createdAt.toMillis === "function"
+          ? task.createdAt.toMillis()
+          : Number(task.createdAt || Date.now());
+        const completedAt = task.completedAt && typeof task.completedAt.toMillis === "function"
+          ? task.completedAt.toMillis()
+          : Number(task.completedAt || 0);
+        const status = ["pending", "awaiting_review", "completed"].includes(task.status)
+          ? task.status
+          : "pending";
+        return {
+          id: "leah_child_" + String(task.id),
+          childTaskDocId: String(task.id),
+          __leahChildTask: true,
+          leahChildTaskStatus: status,
+          boxId: String(task.module),
+          title: String(task.title || "Tarea sin título"),
+          description: String(task.description || ""),
+          createdBy: String(task.createdBy || ""),
+          createdAt,
+          updatedAt: Date.now(),
+          dueDate: String(task.scheduledDate || getTodayISO()),
+          deadlineDate: String(task.deadlineDate || ""),
+          noDeadline: !String(task.deadlineDate || ""),
+          priority: String(task.priority || "normal"),
+          done: status === "completed",
+          completedDate: status === "completed" ? getTodayISO() : null,
+          completedAt,
+          frequency: "once",
+          repeatDays: [],
+          rescheduledCount: 0,
+          isRescheduled: false,
+          order: createdAt
+        };
+      });
+
+    appState.data.tasks = sharedTasks.concat(ownTasks);
+  }
+
+  window.addEventListener("tasky:child-tasks-updated", (event) => {
+    const detail = event && event.detail ? event.detail : {};
+    if (!isLeahChildAccount() || String(detail.uid || "") !== String(activeWorkspaceContext.uid || "")) return;
+    leahChildTaskRecords = Array.isArray(detail.tasks) ? detail.tasks : [];
+    leahChildPendingCompletionIds = new Set(
+      (Array.isArray(detail.pendingCompletionTaskIds) ? detail.pendingCompletionTaskIds : []).map(String)
+    );
+    applyLeahChildTaskProjection();
+    if (typeof taskyWorkspaceBooted !== "undefined" && taskyWorkspaceBooted) renderBoard();
+  });
 
   function escapeHtml(str) {
     return String(str || "")
@@ -6751,6 +6832,7 @@
   }
 
   function renderBoard() {
+    applyLeahChildTaskProjection();
     expandLegacyNoDeadlineBoxesOnce();
     // Save the viewport before rebuilding cards; detached controls can otherwise make mobile browsers jump.
     const viewportScrollX = Number.isFinite(window.scrollX) ? window.scrollX : (window.pageXOffset || 0);
