@@ -181,14 +181,7 @@ service cloud.firestore {
         )
       );
 
-      allow delete: if workspaceId == 'leah' && (
-        isAdult(workspaceId)
-        || (
-          isChild(workspaceId)
-          && resource.data.createdBy == request.auth.uid
-          && resource.data.status == 'pending'
-        )
-      );
+      allow delete: if workspaceId == 'leah' && isAdult(workspaceId);
     }
 
     match /workspaces/{workspaceId}/adult_private/{documentId} {

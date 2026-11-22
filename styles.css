@@ -8837,8 +8837,7 @@ html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child
 html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-board-row .task-right-actions > button {
   display: none !important;
 }
-html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-owned-row .task-right-actions > [data-task-action="edit"],
-html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-owned-row .task-right-actions > [data-task-action="delete"] {
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-owned-row .task-right-actions > [data-task-action="edit"] {
   display: inline-flex !important;
 }
 html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-readonly-row .task-title {
@@ -8880,8 +8879,8 @@ html[data-tasky-workspace="leah"][data-tasky-role="child"] .inline-add-form :is(
 
 
 /* TASKY LEAH · interactive child-owned tasks on the main board.
-   Only add, edit, delete and send-to-review actions for Leah's own pending
-   records remain active. Adult-created shared tasks stay read-only. */
+   Only add, edit and send-to-review actions for Leah's own pending records
+   remain active. Adult-created shared tasks stay read-only. */
 html[data-tasky-workspace="leah"][data-tasky-role="child"] .box-left-move-btns,
 html[data-tasky-workspace="leah"][data-tasky-role="child"] .box-header-actions > button:not([data-box-action="collapse"]),
 html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-drag-handle,
@@ -8898,8 +8897,7 @@ html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child
 html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-board-row .task-right-actions > button {
   display: none !important;
 }
-html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-owned-row .task-right-actions > [data-task-action="edit"],
-html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-owned-row .task-right-actions > [data-task-action="delete"] {
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-owned-row .task-right-actions > [data-task-action="edit"] {
   display: inline-flex !important;
 }
 html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-readonly-row .task-title {

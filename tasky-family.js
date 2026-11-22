@@ -473,23 +473,6 @@ async function updateChildTaskFromBoard(taskId, input = {}) {
   }
 }
 
-async function deleteChildTaskFromBoard(taskId) {
-  if (requestBusy || activeRole !== "child" || !activeUid) {
-    throw new Error("La sesión infantil no está activa.");
-  }
-  const task = childTasks.find((item) => String(item.id) === String(taskId));
-  if (!task || task.createdBy !== activeUid || task.status !== "pending") {
-    throw new Error("Solo puedes eliminar tus propias tareas pendientes.");
-  }
-  setRequestBusy(true);
-  try {
-    await deleteDoc(doc(db, ...CHILD_TASKS_PATH, String(taskId)));
-    return true;
-  } finally {
-    setRequestBusy(false);
-  }
-}
-
 async function submitChildTask(event) {
   event.preventDefault();
   if (requestBusy || activeRole !== "child" || !activeUid) return;
@@ -641,8 +624,7 @@ function createChildTaskCard(task) {
         editingChildTaskId = String(task.id);
         renderChildTaskList();
       }),
-      makeButton("Ya terminé", "tasky-family-primary", () => markChildTaskForReview(task.id)),
-      makeButton("Eliminar", "tasky-family-danger", () => removeChildTask(task.id))
+      makeButton("Ya terminé", "tasky-family-primary", () => markChildTaskForReview(task.id))
     );
   } else if (activeRole !== "child") {
     if (task.status === "awaiting_review") {
@@ -812,12 +794,7 @@ async function removeChildTask(taskId) {
   const task = childTasks.find((item) => String(item.id) === String(taskId));
   if (!task) return;
 
-  // Leah may delete only her own pending task, before sending it to review.
-  if (activeRole === "child") {
-    if (task.createdBy !== activeUid || task.status !== "pending") return;
-  } else if (!["owner", "guardian"].includes(activeRole)) {
-    return;
-  }
+  if (!["owner", "guardian"].includes(activeRole)) return;
 
   if (!window.confirm("¿Eliminar esta tarea pendiente? Esta acción no se puede deshacer.")) return;
   setRequestBusy(true);
@@ -1223,7 +1200,6 @@ function openWorkspace(detail) {
 window.TaskyFamilyTasks = {
   create: createChildTaskFromBoard,
   update: updateChildTaskFromBoard,
-  remove: deleteChildTaskFromBoard,
   submitForReview: markChildTaskForReview,
   requestAssignedCompletion: submitCompletionForTask
 };

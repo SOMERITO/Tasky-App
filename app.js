@@ -41,7 +41,7 @@
     if (!task || task.__leahChildTask !== true || task.leahChildTaskStatus !== "pending") return false;
 
     if (target.closest(".task-title")) return true;
-    const taskAction = target.closest('.task-right-actions [data-task-action="edit"], .task-right-actions [data-task-action="delete"]');
+    const taskAction = target.closest('.task-right-actions [data-task-action="edit"]');
     return Boolean(taskAction);
   }
 
@@ -9095,9 +9095,9 @@ function createTaskRowElement(task, box, showOriginBox = false) {
         <button type="button" class="task-act-btn ${hasRepeat ? "repeat-active" : ""}" data-task-action="toggle-daily" data-tip-title="🔁 Configurar Repetición" data-tip-desc="Elige si deseas repetir la tarea todos los días, algunos días o un día específico.">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
         </button>
-        <button type="button" class="task-act-btn del-btn" data-task-action="delete" data-tip-title="✕ Eliminar Tarea" data-tip-desc="Retira esta tarea permanentemente de la casilla actual.">
+        ${isLeahChild ? "" : `<button type="button" class="task-act-btn del-btn" data-task-action="delete" data-tip-title="✕ Eliminar Tarea" data-tip-desc="Retira esta tarea permanentemente de la casilla actual.">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+        </button>`}
         <button type="button" class="task-act-btn task-mobile-more" aria-label="Más opciones de tarea" data-task-action="mobile-more">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
         </button>
@@ -9209,7 +9209,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       openRepeatPickerModal(task.id);
     });
 
-    item.querySelector('[data-task-action="delete"]').addEventListener("click", () => {
+    const deleteButton = item.querySelector('[data-task-action="delete"]');
+    if (deleteButton) deleteButton.addEventListener("click", () => {
       playUiSound("tap");
       deleteTask(task.id);
     });
@@ -10594,22 +10595,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
 
   function deleteTask(taskId) {
     if (isLeahChildAccount()) {
-      const task = appState.data.tasks.find((item) => String(item.id) === String(taskId));
-      if (!task || !task.__leahChildTask || task.leahChildTaskStatus !== "pending") {
-        showToast("Solo puedes eliminar tus propias tareas pendientes.", true);
-        return;
-      }
-      const childApi = window.TaskyFamilyTasks;
-      if (!childApi || typeof childApi.remove !== "function") {
-        showToast("No se pudo conectar el registro de tareas. Recarga Tasky e inténtalo nuevamente.", true);
-        return;
-      }
-      if (!window.confirm("¿Eliminar esta tarea pendiente? Esta acción no se puede deshacer.")) return;
-      childApi.remove(task.childTaskDocId).then(() => {
-        showToast("Tarea eliminada de tus pendientes.");
-      }).catch((error) => {
-        showToast(String(error && error.message || "No se pudo eliminar la tarea."), true);
-      });
+      showToast("Leah no puede eliminar tareas. Pide a un adulto que te ayude.", true);
       return;
     }
     const id = String(taskId);
