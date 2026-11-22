@@ -8253,3 +8253,85 @@ html.tasky-greeting-scrolled .tasky-welcome.hero-workspace-welcome {
     margin-bottom: 0 !important;
   }
 }
+
+
+/* LEAH WORKSPACE · smooth greeting handoff without changing document flow.
+   The hero copy remains in layout while fading; the brand copy expands in
+   the sticky bar. This prevents scroll-height jumps and threshold flicker. */
+.tasky-welcome.hero-workspace-welcome {
+  display: block !important;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition:
+    opacity 180ms ease,
+    transform 260ms cubic-bezier(.22, 1, .36, 1),
+    visibility 0s linear 0s;
+}
+html.tasky-greeting-scrolled .tasky-welcome.hero-workspace-welcome {
+  display: block !important;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-7px);
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    transform 260ms cubic-bezier(.22, 1, .36, 1),
+    visibility 0s linear 180ms;
+}
+
+.tasky-welcome.brand-workspace-welcome {
+  display: block !important;
+  flex: 0 1 0px;
+  width: 0;
+  min-width: 0;
+  max-width: 0;
+  margin: 0;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-9px);
+  pointer-events: none;
+  transition:
+    flex-basis 280ms cubic-bezier(.22, 1, .36, 1),
+    max-width 280ms cubic-bezier(.22, 1, .36, 1),
+    opacity 180ms ease,
+    transform 280ms cubic-bezier(.22, 1, .36, 1),
+    visibility 0s linear 180ms;
+}
+html.tasky-greeting-scrolled .tasky-welcome.brand-workspace-welcome {
+  display: block !important;
+  flex: 0 1 340px;
+  width: auto;
+  max-width: min(340px, 30vw);
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+@media (max-width: 700px) {
+  .tasky-welcome.brand-workspace-welcome {
+    flex: 0 1 0px;
+    width: 0;
+    max-width: 0;
+  }
+  html.tasky-greeting-scrolled .tasky-welcome.brand-workspace-welcome {
+    flex-basis: min(260px, calc(100vw - 100px));
+    max-width: min(260px, calc(100vw - 100px));
+  }
+  .tasky-welcome.brand-workspace-welcome h2 {
+    font-size: 0.84rem;
+  }
+  .tasky-welcome.brand-workspace-welcome p {
+    font-size: 0.66rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tasky-welcome.hero-workspace-welcome,
+  .tasky-welcome.brand-workspace-welcome {
+    transition: none !important;
+  }
+}
