@@ -13393,14 +13393,18 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     }
     if (rawConfigInput) rawConfigInput.hidden = true;
     if (rescueButton) rescueButton.hidden = true;
+    if (workspaceId === "leah" && workspaceShell && workspaceShell.parentNode) {
+      // Keep all family task actions outside the inert dashboard for every
+      // family member, including adults reviewing Leah's work.
+      if (childBanner) workspaceShell.parentNode.insertBefore(childBanner, workspaceShell);
+      if (familyPanel) workspaceShell.parentNode.insertBefore(familyPanel, workspaceShell);
+    }
+
     if (membership.role === "child") {
       // Keep the shared dashboard read-only, but always mount Leah's editable
       // task workspace as a visible, interactive sibling before that dashboard.
       // This also repairs older HTML deployments where the family panel was
       // appended after the long dashboard and pushed below the visible page.
-      if (workspaceShell && familyPanel && workspaceShell.parentNode) {
-        workspaceShell.parentNode.insertBefore(familyPanel, workspaceShell);
-      }
       if (familyPanel) {
         familyPanel.hidden = false;
         familyPanel.inert = false;
@@ -13413,9 +13417,11 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     } else {
       if (workspaceShell) workspaceShell.removeAttribute("inert");
       if (familyPanel) {
-        familyPanel.hidden = true;
-        familyPanel.inert = true;
-        familyPanel.setAttribute("aria-hidden", "true");
+        familyPanel.inert = false;
+        if (workspaceId !== "leah") {
+          familyPanel.hidden = true;
+          familyPanel.setAttribute("aria-hidden", "true");
+        }
       }
       if (childBanner) childBanner.hidden = true;
       if (familyShortcut) familyShortcut.hidden = true;
