@@ -57,6 +57,9 @@
   <script>
     window.__TASKY_USE_FIREBASE_EMULATORS__ = true;
     window.addEventListener("tasky:workspace-ready", (event) => {
+      // Mirror the real app shell: once Firebase validates a workspace, leave
+      // the boot/auth-hidden state before checking the rendered page.
+      document.documentElement.classList.remove("tasky-booting", "tasky-auth-required");
       document.documentElement.dataset.taskyWorkspace = event.detail.workspaceId;
       document.documentElement.dataset.taskyRole = event.detail.role;
       document.getElementById("tasky-test-result").textContent =
