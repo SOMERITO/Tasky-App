@@ -13285,7 +13285,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
   // Move the personalized greeting into the sticky brand bar once the hero has scrolled away.
   function updateTaskyGreetingPlacement() {
     const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-    document.documentElement.classList.toggle("tasky-greeting-scrolled", scrollTop > 110);
+    const threshold = window.innerWidth <= 700 ? 145 : 110;
+    document.documentElement.classList.toggle("tasky-greeting-scrolled", scrollTop > threshold);
   }
   window.addEventListener("scroll", updateTaskyGreetingPlacement, { passive: true });
   window.addEventListener("resize", updateTaskyGreetingPlacement);
