@@ -121,20 +121,23 @@ async function login(page, user) {
   await page.locator("#tasky-login-email").fill(user.email);
   await page.locator("#tasky-login-password").fill(user.password);
   await page.locator("#tasky-login-submit").click();
-  await page.locator("#tasky-profile-picker:not([hidden])").waitFor({ state: "visible" });
 
-  // The auth observer exposes the picker while memberships are still loading.
-  // Wait until the membership query has produced authorized options or a final
-  // no-access/error message, so assertions do not race the Firestore read.
+  // A single authorized workspace enters directly. Multi-workspace accounts
+  // see the picker; accounts with no access see the final authorization message.
   await page.waitForFunction(() => {
+    const workspaceId = document.documentElement.dataset.taskyWorkspace || "";
+    const picker = document.getElementById("tasky-profile-picker");
     const select = document.getElementById("tasky-profile-select");
     const message = document.getElementById("tasky-auth-message")?.textContent || "";
-    return Boolean(select && (
-      select.options.length > 1 ||
-      message.includes("todavía no tiene espacios autorizados") ||
-      message.includes("No se pudieron verificar tus permisos") ||
-      message.includes("No se pudieron cargar tus espacios")
-    ));
+    return Boolean(
+      workspaceId ||
+      (picker && !picker.hidden && select && (
+        select.options.length > 1 ||
+        message.includes("todavía no tiene espacios autorizados") ||
+        message.includes("No se pudieron verificar tus permisos") ||
+        message.includes("No se pudieron cargar tus espacios")
+      ))
+    );
   }, null, { timeout: 15000 });
 }
 
@@ -262,16 +265,12 @@ test("José puede seleccionar Tasky Leah después de autenticar su cuenta", asyn
   }
 });
 
-test("la cuenta de Leah solo muestra su espacio familiar", async () => {
+test("Leah entra automáticamente a su único espacio familiar", async () => {
   const { context, page, forbiddenProductionRequests } = await openLoginPage();
   try {
     await login(page, users.leah);
-    assert.deepEqual(
-      await page.locator("#tasky-profile-select option").evaluateAll((options) => options.map((option) => option.value)),
-      ["", "leah"]
-    );
-    await selectProfile(page, "leah");
     await assertWorkspace(page, "leah", "child", "Tasky Leah");
+    assert.equal(await page.locator("#tasky-profile-picker").isVisible(), false);
     assert.deepEqual(forbiddenProductionRequests, []);
   } finally {
     await context.close();
@@ -305,7 +304,9 @@ test("una cuenta no puede forzar la selección de un espacio ajeno", async () =>
       select.append(option);
       select.value = "jose";
     });
-    await page.locator("#tasky-login-submit").click();
+    await page.locator("#tasky-login-form").evaluate((form) => {
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
     assert.match(await page.locator("#tasky-auth-message").innerText(), /espacios autorizados/);
     assert.equal(await page.locator("html").getAttribute("data-tasky-workspace"), null);
     assert.deepEqual(forbiddenProductionRequests, []);
