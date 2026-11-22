@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261120-login-dropdown-greeting-2" />
-  <link rel="stylesheet" href="mobile-app.css?v=20261030-mobile-pull-refresh-1" />
+  <link rel="stylesheet" href="styles.css?v=20261122-staging-loader-layout-1" />
+  <link rel="stylesheet" href="mobile-app.css?v=20261122-staging-loader-layout-1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -26,6 +26,19 @@
     <div class="aurora-orb orb-2"></div>
     <div class="aurora-orb orb-3"></div>
     <div class="aurora-orb orb-4"></div>
+  </div>
+
+  <!-- Branded boot screen shown while Firebase restores the session and Tasky builds the active workspace. -->
+  <div id="tasky-boot-screen" class="tasky-boot-screen" role="status" aria-live="polite" aria-label="Cargando Tasky">
+    <div class="tasky-boot-card">
+      <div class="tasky-boot-mark" aria-hidden="true"><span>T</span><i></i></div>
+      <div class="tasky-boot-spinner" aria-hidden="true"></div>
+      <div class="tasky-boot-copy">
+        <strong>Preparando tu espacio</strong>
+        <span>Estamos cargando tus casillas y sincronizando Tasky.</span>
+      </div>
+      <div class="tasky-boot-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+    </div>
   </div>
 
   <!-- Point 10: Custom Floating Glassmorphic Pro Tooltip -->
@@ -1355,9 +1368,9 @@
   </div>
 
   <script src="tasky-firebase-config.js?v=20261120-firebase-env-1"></script>
-  <script src="app.js?v=20261120-firebase-env-1"></script>
+  <script src="app.js?v=20261122-staging-loader-layout-1"></script>
   <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
-  <script type="module" src="tasky-auth.js?v=20261121-auth-local-persistence-2"></script>
+  <script type="module" src="tasky-auth.js?v=20261122-staging-loader-layout-1"></script>
   <script type="module" src="tasky-private-modules.js?v=20261120-private-modules-2"></script>
   <script type="module" src="tasky-family.js?v=20261120-family-requests-1"></script>
 </body>
