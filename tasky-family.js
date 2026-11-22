@@ -18,6 +18,7 @@ import {
 const db = getFirestore(getApp("tasky-multi-workspace"));
 const panel = document.getElementById("tasky-family-panel");
 const content = document.getElementById("tasky-family-content");
+const childTasksShortcut = document.getElementById("tasky-child-tasks-shortcut");
 const REQUESTS_PATH = ["workspaces", "leah", "task_requests"];
 const CHILD_TASKS_PATH = ["workspaces", "leah", "child_tasks"];
 const SHARED_PATH = ["workspaces", "leah", "shared", "main"];
@@ -140,16 +141,16 @@ function fillModuleSelect(select, selectedValue = "") {
 
 function renderChildPanel() {
   const card = showPanelShell(
-    "Tasky Leah · espacio familiar",
+    "Tasky Leah",
     "Mis tareas",
-    "Registra tus tareas y organiza tus responsabilidades. José y Camila podrán ver los cambios al instante y confirmar cuando hayas terminado."
+    "Agrega tus pendientes, edita los tuyos y avisa cuando termines. José o Camila revisará cada tarea."
   );
 
   const grid = node("div", "tasky-family-grid");
   const newTaskCard = node("section", "tasky-family-form-card");
   newTaskCard.append(
-    node("h3", "", "Registrar una tarea"),
-    node("p", "tasky-family-help", "La tarea se guardará inmediatamente y aparecerá en el espacio familiar, sin esperar aprobación.")
+    node("h3", "", "Agregar una tarea"),
+    node("p", "tasky-family-help", "Quedará pendiente. Puedes editarla o eliminarla hasta enviarla a revisión.")
   );
 
   const newTaskForm = node("form", "tasky-family-form");
@@ -175,8 +176,8 @@ function renderChildPanel() {
 
   const assignedTasks = node("section", "tasky-family-inbox-card");
   assignedTasks.append(
-    node("h3", "", "Tareas asignadas por José y Camila"),
-    node("p", "tasky-family-help", "Aquí puedes consultar las tareas que los adultos registraron para ti. Cuando termines una, avísales para que puedan revisarla.")
+    node("h3", "", "Tareas asignadas"),
+    node("p", "tasky-family-help", "Las tareas que registraron José o Camila son de consulta. Cuando termines, envíalas a revisión.")
   );
   const assignedTaskList = node("div", "tasky-family-list");
   assignedTaskList.id = "tasky-family-assigned-tasks-list";
@@ -185,8 +186,8 @@ function renderChildPanel() {
 
   const ownTasks = node("section", "tasky-family-inbox-card");
   ownTasks.append(
-    node("h3", "", "Tareas que he registrado"),
-    node("p", "tasky-family-help", "Puedes editar tus tareas mientras sigan pendientes. Cuando informes que terminaste, aparecerán tachadas hasta que un adulto las revise.")
+    node("h3", "", "Tus pendientes"),
+    node("p", "tasky-family-help", "Edita o elimina tus pendientes antes de enviarlos a revisión.")
   );
   const taskList = node("div", "tasky-family-list");
   taskList.id = "tasky-family-child-tasks-list";
@@ -195,8 +196,8 @@ function renderChildPanel() {
 
   const history = node("section", "tasky-family-inbox-card");
   history.append(
-    node("h3", "", "Solicitudes de tareas asignadas"),
-    node("p", "tasky-family-help", "Aquí puedes consultar el resultado de los avisos de finalización que enviaste.")
+    node("h3", "", "Enviadas a revisión"),
+    node("p", "tasky-family-help", "Aquí puedes consultar el resultado de las tareas que avisaste como terminadas.")
   );
   const list = node("div", "tasky-family-list");
   list.id = "tasky-family-requests-list";
@@ -361,7 +362,7 @@ async function submitChildTask(event) {
     form.reset();
     fillModuleSelect(form.elements.module, "box_escolar");
     form.elements.scheduledDate.value = localDateISO();
-    setMessage(message, "Tarea registrada. José y Camila ya pueden verla en Tasky Leah.");
+    setMessage(message, "Tarea guardada como pendiente. Puedes editarla o eliminarla antes de enviarla a revisión.");
   } catch (error) {
     setMessage(message, "No se pudo registrar la tarea. Revisa tu conexión o los permisos de este espacio.", true);
   } finally {
@@ -482,7 +483,8 @@ function createChildTaskCard(task) {
         editingChildTaskId = String(task.id);
         renderChildTaskList();
       }),
-      makeButton("Ya terminé", "tasky-family-primary", () => markChildTaskForReview(task.id))
+      makeButton("Ya terminé", "tasky-family-primary", () => markChildTaskForReview(task.id)),
+      makeButton("Eliminar", "tasky-family-danger", () => removeChildTask(task.id))
     );
   } else if (activeRole !== "child") {
     if (task.status === "awaiting_review") {
@@ -636,10 +638,18 @@ async function reviewChildTask(taskId, decision) {
 }
 
 async function removeChildTask(taskId) {
-  if (requestBusy || activeRole === "child" || !activeUid) return;
+  if (requestBusy || !activeUid) return;
   const task = childTasks.find((item) => String(item.id) === String(taskId));
   if (!task) return;
-  if (!window.confirm("¿Eliminar esta tarea registrada por Leah? Esta acción no se puede deshacer.")) return;
+
+  // Leah may delete only her own pending task, before sending it to review.
+  if (activeRole === "child") {
+    if (task.createdBy !== activeUid || task.status !== "pending") return;
+  } else if (!["owner", "guardian"].includes(activeRole)) {
+    return;
+  }
+
+  if (!window.confirm("¿Eliminar esta tarea pendiente? Esta acción no se puede deshacer.")) return;
   setRequestBusy(true);
   try {
     await deleteDoc(doc(db, ...CHILD_TASKS_PATH, String(taskId)));
@@ -833,15 +843,24 @@ async function reviewRequest(requestId, decision) {
   }
 }
 
+if (childTasksShortcut) {
+  childTasksShortcut.addEventListener("click", () => {
+    if (panel && !panel.hidden) {
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+}
+
 function updatePanelVisibility() {
   if (!panel) return;
 
-  // Child users need the task-entry form even when their lists are empty.
-  // Guardians only need this panel when family activity exists, or when
-  // a listener error needs to be displayed.
+  // Leah keeps access to her own task workflow even when both lists are empty.
+  // Guardians only need the panel when there is family activity or a load issue.
   const hasFamilyActivity = requests.length > 0 || childTasks.length > 0;
   const hasLoadIssue = requestsLoadFailed || childTasksLoadFailed;
-  panel.hidden = !(activeRole === "child" || hasFamilyActivity || hasLoadIssue);
+  const childMode = activeRole === "child";
+  panel.hidden = !(childMode || hasFamilyActivity || hasLoadIssue);
+  if (childTasksShortcut) childTasksShortcut.hidden = !childMode;
 }
 
 function closeWorkspace() {
@@ -862,6 +881,7 @@ function closeWorkspace() {
   requestsLoadFailed = false;
   childTasksLoadFailed = false;
   if (panel) panel.hidden = true;
+  if (childTasksShortcut) childTasksShortcut.hidden = true;
   if (content) content.replaceChildren();
 }
 
