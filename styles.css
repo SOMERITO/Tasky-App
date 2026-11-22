@@ -7795,7 +7795,7 @@ html.tasky-auth-required .app-shell {
   font-size: 11px;
   line-height: 1.45;
 }
-html.tasky-auth-required body > *:not(#tasky-auth-gate):not(.gemini-aurora-bg) {
+html.tasky-auth-required body > *:not(#tasky-auth-gate):not(.gemini-aurora-bg):not(#tasky-boot-screen) {
   visibility: hidden !important;
   pointer-events: none !important;
 }
@@ -8333,5 +8333,142 @@ html.tasky-greeting-scrolled .tasky-welcome.brand-workspace-welcome {
   .tasky-welcome.hero-workspace-welcome,
   .tasky-welcome.brand-workspace-welcome {
     transition: none !important;
+  }
+}
+
+
+/* TASKY BOOT EXPERIENCE · branded, accessible loading state during Auth + workspace hydration. */
+.tasky-boot-screen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(250, 247, 253, .74);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  backdrop-filter: blur(18px) saturate(145%);
+}
+html.tasky-booting #tasky-boot-screen {
+  display: flex;
+}
+.tasky-boot-card {
+  width: min(360px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 17px;
+  padding: 30px 27px 25px;
+  border: 1px solid rgba(168, 85, 247, .15);
+  border-radius: 25px;
+  background: rgba(255, 255, 255, .84);
+  box-shadow: 0 22px 70px rgba(91, 54, 120, .13), 0 3px 12px rgba(91, 54, 120, .06);
+  text-align: center;
+}
+.tasky-boot-mark {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 17px;
+  background: linear-gradient(145deg, #181827, #3a3151);
+  color: #fff;
+  box-shadow: 0 9px 22px rgba(53, 42, 82, .2);
+}
+.tasky-boot-mark span {
+  font-size: 29px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -.06em;
+}
+.tasky-boot-mark i {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #262239;
+  border-radius: 50%;
+  background: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, .18);
+}
+.tasky-boot-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(168, 85, 247, .17);
+  border-top-color: #a855f7;
+  border-right-color: #ec77bd;
+  border-radius: 50%;
+  animation: taskyBootSpin .82s linear infinite;
+}
+.tasky-boot-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tasky-boot-copy strong {
+  color: #241b30;
+  font-size: 1rem;
+  font-weight: 850;
+  letter-spacing: -.02em;
+}
+.tasky-boot-copy span {
+  color: #796b83;
+  font-size: .8rem;
+  line-height: 1.5;
+}
+.tasky-boot-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tasky-boot-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #b46be8;
+  animation: taskyBootDot 1.05s ease-in-out infinite;
+}
+.tasky-boot-dots i:nth-child(2) { animation-delay: .14s; }
+.tasky-boot-dots i:nth-child(3) { animation-delay: .28s; }
+@keyframes taskyBootSpin { to { transform: rotate(360deg); } }
+@keyframes taskyBootDot {
+  0%, 60%, 100% { opacity: .32; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tasky-boot-spinner, .tasky-boot-dots i { animation: none !important; }
+}
+
+/* The workspace marker is added only after Firebase validates membership.
+   For Leah's compact board, let the aurora follow the document rather than
+   staying fixed to a taller desktop viewport. */
+@media (min-width: 701px) {
+  body.tasky-leah-workspace {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-bottom: 16px !important;
+  }
+  body.tasky-leah-workspace .app-shell {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-bottom: 16px !important;
+    margin-bottom: 0 !important;
+  }
+  body.tasky-leah-workspace #boxes-container {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+  body.tasky-leah-workspace .gemini-aurora-bg {
+    position: absolute !important;
+    inset: 0 !important;
+    height: auto !important;
+  }
+  html.tasky-leah-workspace {
+    background-color: #fbf6fc;
   }
 }
