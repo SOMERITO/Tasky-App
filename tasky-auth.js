@@ -293,7 +293,7 @@ async function loadMemberships(user) {
     }
 
     document.documentElement.classList.remove("tasky-booting");
-    showWorkspacePicker("Identidad verificada. Selecciona el espacio al que deseas ingresar.");
+    showWorkspacePicker();
   } catch (error) {
     authResolved = true;
     document.documentElement.classList.remove("tasky-booting");
@@ -416,12 +416,12 @@ if (signoutButton) {
 if (accountButton) {
   accountButton.addEventListener("click", () => {
     window.dispatchEvent(new CustomEvent("tasky:open-workspace-picker"));
-    showWorkspacePicker("Elige uno de los espacios autorizados para tu cuenta.");
+    showWorkspacePicker();
   });
 }
 
 window.addEventListener("tasky:show-workspace-picker", () => {
-  showWorkspacePicker("Elige uno de los espacios autorizados para tu cuenta.");
+  showWorkspacePicker();
 });
 
 window.addEventListener("storage", (event) => {
