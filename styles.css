@@ -7616,21 +7616,50 @@ body.focus-mode-open #boxes-container {
   font-weight: 750;
   cursor: pointer;
 }
+.tasky-auth-signout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 43px;
+  margin-top: 10px;
+  padding: 10px 15px;
+  border: 1px solid #e8e1ed;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, .82);
+  color: #675b70;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.tasky-auth-signout:hover {
+  transform: translateY(-1px);
+  border-color: #d9c7e7;
+  background: #faf6fd;
+  color: #7E22CE;
+  box-shadow: 0 5px 14px rgba(126, 34, 206, .08);
+}
+.tasky-auth-signout:focus-visible {
+  outline: 3px solid rgba(168, 85, 247, .25);
+  outline-offset: 2px;
+}
+.tasky-auth-signout svg {
+  flex: 0 0 auto;
+}
 .tasky-auth-message {
-  min-height: 18px;
-  margin: 13px 0 0;
+  margin: 12px 0 0;
   color: #7E22CE;
   font-size: 12px;
   line-height: 1.45;
 }
+.tasky-auth-message:empty {
+  display: none;
+}
 .tasky-auth-message.is-error {
   color: #BE123C;
-}
-.tasky-auth-footer {
-  margin: 14px 0 0;
-  color: #918998;
-  font-size: 10px;
-  text-align: center;
 }
 .tasky-workspace-picker h2 {
   font-size: 23px;
