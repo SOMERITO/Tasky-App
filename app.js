@@ -13282,6 +13282,16 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     }
   }
 
+  // Move the personalized greeting into the sticky brand bar once the hero has scrolled away.
+  function updateTaskyGreetingPlacement() {
+    const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    document.documentElement.classList.toggle("tasky-greeting-scrolled", scrollTop > 110);
+  }
+  window.addEventListener("scroll", updateTaskyGreetingPlacement, { passive: true });
+  window.addEventListener("resize", updateTaskyGreetingPlacement);
+  window.addEventListener("pageshow", updateTaskyGreetingPlacement);
+  updateTaskyGreetingPlacement();
+
   window.addEventListener("tasky:workspace-ready", (event) => {
     const detail = event && event.detail ? event.detail : {};
     const authApi = window.TaskyAuth;
@@ -13303,14 +13313,18 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       role: membership.role
     };
 
-    const welcomeTitle = document.getElementById("tasky-welcome-title");
-    const welcomeSubtitle = document.getElementById("tasky-welcome-subtitle");
+    const welcomeTitles = document.querySelectorAll("#tasky-welcome-title, [data-tasky-welcome-title]");
+    const welcomeSubtitles = document.querySelectorAll("#tasky-welcome-subtitle, [data-tasky-welcome-subtitle]");
     const fallbackNames = { jose: "José Carranza", camila: "Camila", leah: "Leah" };
     const greetingName = activeWorkspaceContext.displayName || fallbackNames[workspaceId] || "usuario";
     const hour = new Date().getHours();
     const greeting = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
-    if (welcomeTitle) welcomeTitle.textContent = "¡" + greeting + ", " + greetingName + "!";
-    if (welcomeSubtitle) welcomeSubtitle.textContent = "Te damos la bienvenida a tu espacio de Tasky.";
+    welcomeTitles.forEach(element => {
+      element.textContent = "¡" + greeting + ", " + greetingName + "!";
+    });
+    welcomeSubtitles.forEach(element => {
+      element.textContent = "Te damos la bienvenida a tu espacio de Tasky.";
+    });
 
     activeStorageNamespace = "tasky:v2:" + workspaceId + (workspaceId === "leah" ? ":" + activeWorkspaceContext.uid : "");
     appState.activeWorkspace = { ...activeWorkspaceContext };
