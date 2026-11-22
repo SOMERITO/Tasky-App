@@ -8949,8 +8949,13 @@
 
 function createTaskRowElement(task, box, showOriginBox = false) {
     const item = document.createElement("div");
+    const isLeahChild = isLeahChildAccount();
+    const isLeahOwnedTask = isLeahChild && task.__leahChildTask === true;
+    const canLeahEditTask = isLeahOwnedTask && task.leahChildTaskStatus === "pending";
+    const isLeahAwaitingReview = isLeahChild &&
+      (task.leahChildTaskStatus === "awaiting_review" || task.leahCompletionPending);
     const focusPriority = getFocusPriorityLevel(task.id);
-    item.className = `task-item ${task.done ? "done" : ""} ${appState.selectedTaskIds && appState.selectedTaskIds.has(String(task.id)) ? "multi-selected" : ""} ${focusPriority ? `focus-priority-task focus-priority-${focusPriority}` : ""}`;
+    item.className = `task-item ${task.done ? "done" : ""} ${appState.selectedTaskIds && appState.selectedTaskIds.has(String(task.id)) ? "multi-selected" : ""} ${focusPriority ? `focus-priority-task focus-priority-${focusPriority}` : ""} ${isLeahChild ? (canLeahEditTask ? "leah-child-board-row leah-child-owned-row" : "leah-child-board-row leah-child-readonly-row") : ""}`;
     item.dataset.taskId = task.id;
     if (focusPriority) item.dataset.focusPriority = `P${focusPriority}`;
 
@@ -8972,6 +8977,11 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     }
     if (hasRepeat) {
       subBadges += `<span class="task-daily-pill">${escapeHtml(repeatLabel)}</span>`;
+    }
+    if (isLeahChild && task.__leahChildTask && task.leahChildTaskStatus === "awaiting_review") {
+      subBadges += '<span class="task-leah-review-tag">📨 Lista para revisar</span>';
+    } else if (isLeahChild && !task.__leahChildTask && task.leahCompletionPending) {
+      subBadges += '<span class="task-leah-review-tag">📨 Aviso enviado · espera a un adulto</span>';
     }
     if (task.noDeadline) {
       subBadges += `<span class="task-no-deadline-tag" title="Esta tarea no tiene fecha límite y no se marcará como atrasada.">∞ Sin fecha límite</span>`;
@@ -9001,7 +9011,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       <div class="hold-charge-bar"><div class="hold-charge-fill"></div></div>
       <div class="task-left">
         <span class="drag-handle task-drag-handle" data-tip-title="⋮⋮ Mantén presionado para mover" data-tip-desc="Sostén el clic unos instantes hasta cargar la barra superior y arrastra la tarea.">⋮⋮</span>
-        <button type="button" class="task-check-circle" ${isUpcomingRepeat ? "disabled" : ""} aria-label="${isUpcomingRepeat ? `Disponible el ${escapeHtml(formatSpanishDateLong(task.dueDate))}` : "Completar tarea"}" data-tip-title="✓ Marcar como completada" data-tip-desc="${isUpcomingRepeat ? `Estará disponible el ${escapeHtml(formatSpanishDateLong(task.dueDate))}.` : "Registra el cumplimiento de esta tarea y actualiza tu progreso diario."}">
+        <button type="button" class="task-check-circle" ${(isUpcomingRepeat || (isLeahChild && (task.done || isLeahAwaitingReview))) ? "disabled" : ""} aria-label="${isUpcomingRepeat ? `Disponible el ${escapeHtml(formatSpanishDateLong(task.dueDate))}` : (isLeahChild ? (isLeahAwaitingReview ? "Tarea enviada a revisión" : (isLeahOwnedTask ? "Enviar mi tarea a revisión" : "Avisar que terminé esta tarea")) : "Completar tarea")}" data-tip-title="${isLeahChild ? "Enviar a revisión" : "✓ Marcar como completada"}" data-tip-desc="${isUpcomingRepeat ? `Estará disponible el ${escapeHtml(formatSpanishDateLong(task.dueDate))}.` : (isLeahChild ? "Leah avisa que terminó. José o Camila confirma la finalización." : "Registra el cumplimiento de esta tarea y actualiza tu progreso diario.")}">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </button>
         <div class="task-text-wrap">
@@ -9052,12 +9062,17 @@ function createTaskRowElement(task, box, showOriginBox = false) {
 
     // Point 8: Hold-to-Drag works on any blank space of the task or even holding on the row
     item.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0 || e.ctrlKey || e.metaKey || e.target.closest("button") || e.target.closest("input")) return;
+      if (isLeahChild || e.button !== 0 || e.ctrlKey || e.metaKey || e.target.closest("button") || e.target.closest("input")) return;
       if (item.closest(".smart-filter-results")) return;
       beginHoldDrag("task", task.id, item, e.clientX, e.clientY);
     });
 
     item.addEventListener("contextmenu", event => {
+      if (isLeahChild) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
       openTaskContextMenu(task.id, event.clientX, event.clientY);
@@ -9085,6 +9100,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     }
     item.querySelector(".task-title").addEventListener("click", () => {
       if (dragEngine.justDragged) return;
+      if (isLeahChild && !canLeahEditTask) return;
       playUiSound("modalOpen");
       openEditTaskTitleModal(task.id);
     });
