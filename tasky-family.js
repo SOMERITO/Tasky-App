@@ -1056,25 +1056,28 @@ function openWorkspace(detail) {
     window.console && window.console.error("[Tasky Leah] Child tasks listener failed:", error);
   });
 
-  if (activeRole === "child") {
-    const sharedRef = doc(db, ...SHARED_PATH);
-    unsubscribeBoard = onSnapshot(sharedRef, (snapshot) => {
-      boardTasksLoaded = true;
-      const payload = parseSharedPayload(snapshot);
-      syncChildModules(payload && payload.boxes);
-      boardTasks = payload && Array.isArray(payload.tasks) ? payload.tasks : [];
-      renderAdultAssignedTaskList();
-    }, (error) => {
-      boardTasksLoaded = true;
-      boardTasks = [];
-      renderAdultAssignedTaskList();
-      const list = content.querySelector("#tasky-family-assigned-tasks-list");
-      if (list) list.replaceChildren(node("div", "tasky-family-empty",
-        "No se pudieron cargar las tareas asignadas (" + String(error && error.code || "error") + ")."
-      ));
-      window.console && window.console.error("[Tasky Leah] Shared board listener failed:", error);
-    });
-  }
+  // Both Leah and her guardians need the board's module catalogue: Leah
+  // uses it to submit completion notices and adults use it to review or edit
+  // tasks created in custom visible modules such as French.
+  const sharedRef = doc(db, ...SHARED_PATH);
+  unsubscribeBoard = onSnapshot(sharedRef, (snapshot) => {
+    boardTasksLoaded = true;
+    const payload = parseSharedPayload(snapshot);
+    syncChildModules(payload && payload.boxes);
+    boardTasks = payload && Array.isArray(payload.tasks) ? payload.tasks : [];
+    renderChildTaskList();
+    renderAdultAssignedTaskList();
+    renderRequestList();
+  }, (error) => {
+    boardTasksLoaded = true;
+    boardTasks = [];
+    renderAdultAssignedTaskList();
+    const list = content.querySelector("#tasky-family-assigned-tasks-list");
+    if (list) list.replaceChildren(node("div", "tasky-family-empty",
+      "No se pudieron cargar las tareas asignadas (" + String(error && error.code || "error") + ")."
+    ));
+    window.console && window.console.error("[Tasky Leah] Shared board listener failed:", error);
+  });
 }
 
 window.addEventListener("tasky:workspace-ready", (event) => openWorkspace(event && event.detail));
