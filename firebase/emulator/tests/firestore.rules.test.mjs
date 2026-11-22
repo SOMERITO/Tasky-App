@@ -135,7 +135,7 @@ test("adult guardians can read and write private health and expense documents; L
   await assertFails(deleteDoc(doc(child, "workspaces/leah/shared/main")));
 });
 
-test("Leah can create and edit her own tasks, request review, but cannot complete or delete them", async () => {
+test("Leah can create, edit and delete her own pending tasks, but cannot approve or delete after review submission", async () => {
   const db = env.authenticatedContext("leah").firestore();
   const taskRef = doc(db, "workspaces/leah/child_tasks/leah-owned-task");
 
@@ -157,6 +157,21 @@ test("Leah can create and edit her own tasks, request review, but cannot complet
     updatedAt: new Date()
   }));
 
+  const pendingDeleteRef = doc(db, "workspaces/leah/child_tasks/leah-pending-delete");
+  await assertSucceeds(setDoc(pendingDeleteRef, {
+    title: "Draft a reading summary",
+    description: "",
+    module: "box_escolar",
+    scheduledDate: "2026-11-20",
+    deadlineDate: "",
+    priority: "normal",
+    createdBy: "leah",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    status: "pending"
+  }));
+  await assertSucceeds(deleteDoc(pendingDeleteRef));
+
   await assertSucceeds(updateDoc(taskRef, {
     status: "awaiting_review",
     childCompletedAt: new Date(),
@@ -175,7 +190,7 @@ test("Leah can create and edit her own tasks, request review, but cannot complet
     title: "Try to edit after marking it finished",
     updatedAt: new Date()
   }));
-  await assertFails(deleteDoc(taskRef));
+  await assertFails(deleteDoc(taskRef)); // Once submitted for review, Leah can no longer delete it.
 
   const guardian = env.authenticatedContext("jose").firestore();
   const guardianTaskRef = doc(guardian, "workspaces/leah/child_tasks/leah-owned-task");
