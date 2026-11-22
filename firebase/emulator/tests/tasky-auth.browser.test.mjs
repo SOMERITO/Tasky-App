@@ -299,6 +299,52 @@ test("Leah ve solo Entrar y Cerrar sesión al abrir su único espacio", async ()
   }
 });
 
+test("Leah puede crear, editar, eliminar y enviar a revisión sus propias tareas", async () => {
+  const { context, page, forbiddenProductionRequests } = await openLoginPage();
+  try {
+    await login(page, users.leah);
+    await assertWorkspace(page, "leah", "child", "Tasky Leah");
+    await page.locator("#tasky-family-panel:not([hidden])").waitFor({ state: "visible" });
+    await page.locator("#tasky-child-tasks-shortcut").click();
+
+    const form = page.locator("#tasky-child-task-create-form");
+    await form.waitFor({ state: "visible" });
+
+    await form.locator('input[name="title"]').fill("Preparar maqueta de ciencias");
+    await form.locator('textarea[name="description"]').fill("Reunir cartulina y colores");
+    await form.locator('select[name="module"]').selectOption("box_escolar");
+    await form.locator('select[name="priority"]').selectOption("high");
+    await form.locator('button[type="submit"]').click();
+
+    const firstTask = page.locator("#tasky-family-child-tasks-list article").filter({ hasText: "Preparar maqueta de ciencias" });
+    await firstTask.waitFor({ state: "visible" });
+
+    await firstTask.getByRole("button", { name: "Editar" }).click();
+    const editor = page.locator(".tasky-family-task-editor");
+    await editor.waitFor({ state: "visible" });
+    await editor.locator('input[name="title"]').fill("Preparar maqueta de ciencias y tecnología");
+    await editor.getByRole("button", { name: "Guardar cambios" }).click();
+    const editedTask = page.locator("#tasky-family-child-tasks-list article").filter({ hasText: "Preparar maqueta de ciencias y tecnología" });
+    await editedTask.waitFor({ state: "visible" });
+
+    await editedTask.getByRole("button", { name: "Ya terminé" }).click();
+    await editedTask.getByText("Lista para revisar").waitFor({ state: "visible" });
+
+    await form.locator('input[name="title"]').fill("Leer diez páginas");
+    await form.locator('select[name="module"]').selectOption("box_escolar");
+    await form.locator('button[type="submit"]').click();
+    const secondTask = page.locator("#tasky-family-child-tasks-list article").filter({ hasText: "Leer diez páginas" });
+    await secondTask.waitFor({ state: "visible" });
+    page.once("dialog", (dialog) => dialog.accept());
+    await secondTask.getByRole("button", { name: "Eliminar" }).click();
+    await secondTask.waitFor({ state: "detached" });
+
+    assert.deepEqual(forbiddenProductionRequests, []);
+  } finally {
+    await context.close();
+  }
+});
+
 test("una membresía infantil deshabilitada no aparece como espacio disponible", async () => {
   const { context, page, forbiddenProductionRequests } = await openLoginPage();
   try {
