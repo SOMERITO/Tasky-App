@@ -352,7 +352,7 @@ test("Leah can use her main casilla board without writing to the shared board", 
   assert.match(appSource, /childApi\.requestAssignedCompletion\(/,
     "A task assigned by an adult must create a review request, not edit the shared task.");
   assert.match(appSource, /childApi\.update\(/);
-  assert.match(appSource, /childApi\.remove\(/);
+  assert.doesNotMatch(appSource, /childApi\.remove\(/);
   assert.match(appSource, /tasky:child-tasks-updated/);
   assert.match(familySource, /window\.TaskyFamilyTasks\s*=\s*\{/);
   assert.match(familySource, /collection\(db, \.\.\.CHILD_TASKS_PATH\)/);
@@ -363,7 +363,7 @@ test("Leah can use her main casilla board without writing to the shared board", 
     "Child task writes must not fall through to shared/main.");
 });
 
-test("Leah puede crear, editar, eliminar y enviar a revisión sus propias tareas", async () => {
+test("Leah puede crear, editar y enviar a revisión sus propias tareas sin poder eliminarlas", async () => {
   const { context, page, forbiddenProductionRequests } = await openLoginPage();
   try {
     await login(page, users.leah);
@@ -433,9 +433,7 @@ test("Leah puede crear, editar, eliminar y enviar a revisión sus propias tareas
     await form.locator('button[type="submit"]').click();
     const secondTask = page.locator("#tasky-family-child-tasks-list article").filter({ hasText: "Leer diez páginas" });
     await secondTask.waitFor({ state: "visible" });
-    page.once("dialog", (dialog) => dialog.accept());
-    await secondTask.getByRole("button", { name: "Eliminar" }).click();
-    await secondTask.waitFor({ state: "detached" });
+    assert.equal(await secondTask.getByRole("button", { name: "Eliminar" }).count(), 0);
 
     assert.deepEqual(forbiddenProductionRequests, []);
   } finally {
