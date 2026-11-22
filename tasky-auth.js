@@ -160,6 +160,8 @@ function setSubmitLabel(label) {
 }
 
 function showLogin(text = "", isError = false) {
+  // No saved Firebase user: reveal the normal sign-in screen instead of the boot overlay.
+  document.documentElement.classList.remove("tasky-booting");
   if (credentialsPanel) credentialsPanel.hidden = false;
   if (profilePicker) profilePicker.hidden = true;
   if (loginForm) loginForm.hidden = false;
@@ -282,6 +284,7 @@ async function loadMemberships(user) {
     if (selected) clearSelectedWorkspace();
 
     if (!memberships.size) {
+      document.documentElement.classList.remove("tasky-booting");
       showWorkspacePicker(
         "Tu cuenta fue identificada, pero todavía no tiene espacios autorizados. Solicita a un administrador que configure tu acceso.",
         true
@@ -289,9 +292,11 @@ async function loadMemberships(user) {
       return;
     }
 
+    document.documentElement.classList.remove("tasky-booting");
     showWorkspacePicker("Identidad verificada. Selecciona el espacio al que deseas ingresar.");
   } catch (error) {
     authResolved = true;
+    document.documentElement.classList.remove("tasky-booting");
     showWorkspacePicker(
       error && error.code === "permission-denied"
         ? "No se pudieron verificar tus permisos. Comprueba las reglas y la membresía de esta cuenta."
