@@ -321,20 +321,21 @@ test("Leah ve solo Entrar y Cerrar sesión al abrir su único espacio", async ()
   }
 });
 
-test("the Leah action panel stays outside the inert shared dashboard", async () => {
+test("the Leah task dialog does not reserve vertical space above the board", async () => {
   const indexHtml = await readFile(resolve(rootDir, "index.html"), "utf8");
   const appSource = await readFile(resolve(rootDir, "app.js"), "utf8");
+  const familySource = await readFile(resolve(rootDir, "tasky-family.js"), "utf8");
+  const cssSource = await readFile(resolve(rootDir, "styles.css"), "utf8");
   const panelPosition = indexHtml.indexOf('id="tasky-family-panel"');
-  const bannerPosition = indexHtml.indexOf('id="tasky-child-readonly-banner"');
   const boardPosition = indexHtml.indexOf('<div class="app-shell">');
 
-  assert.ok(bannerPosition >= 0 && bannerPosition < boardPosition,
-    "The Leah entry banner must be before the shared dashboard.");
   assert.ok(panelPosition >= 0 && panelPosition < boardPosition,
-    "The editable family task panel must be before the shared dashboard.");
-  assert.match(appSource, /insertBefore\(childBanner, workspaceShell\)/);
-  assert.match(appSource, /insertBefore\(familyPanel, workspaceShell\)/);
-  assert.match(appSource, /familyPanel\.inert = false/);
+    "The family dialog placeholder must remain available before the board.");
+  assert.match(appSource, /topActions\.insertBefore\(familyShortcut, topActions\.firstChild\)/);
+  assert.match(appSource, /familyPanel\.hidden = true/);
+  assert.match(familySource, /panel\.classList\.toggle\("is-open", childMode && childPanelOpen\)/);
+  assert.match(cssSource, /\.tasky-family-panel\.is-child-dialog\.is-open\s*\{[\s\S]{0,500}position:\s*fixed/);
+  assert.match(cssSource, /html\[data-tasky-workspace="leah"\] body\.tasky-leah-workspace \.app-shell\s*\{[\s\S]{0,220}padding-top:\s*18px\s*!important/);
 });
 
 test("Leah puede crear, editar, eliminar y enviar a revisión sus propias tareas", async () => {
@@ -342,10 +343,27 @@ test("Leah puede crear, editar, eliminar y enviar a revisión sus propias tareas
   try {
     await login(page, users.leah);
     await assertWorkspace(page, "leah", "child", "Tasky Leah");
-    await page.locator("#tasky-child-readonly-banner:not([hidden])").waitFor({ state: "visible" });
-    await page.locator("#tasky-family-panel:not([hidden])").waitFor({ state: "visible" });
-    await page.locator("#tasky-child-tasks-shortcut").waitFor({ state: "visible" });
-    await page.locator("#tasky-child-tasks-shortcut").click();
+    const shortcut = page.locator("#tasky-child-tasks-shortcut");
+    await shortcut.waitFor({ state: "visible" });
+    assert.equal(
+      await shortcut.evaluate((element) => element.parentElement.classList.contains("top-actions")),
+      true,
+      "Desktop Leah task shortcut must live in the top navigation."
+    );
+    await page.locator("#tasky-family-panel").waitFor({ state: "hidden" });
+
+    const topGap = await page.evaluate(() => {
+      const nav = document.querySelector(".top-navbar").getBoundingClientRect();
+      const hero = document.querySelector(".hero-header").getBoundingClientRect();
+      return Math.round(hero.top - nav.bottom);
+    });
+    assert.ok(topGap >= 0 && topGap < 60, "Leah's dashboard should begin close to the top navigation.");
+
+    await shortcut.click();
+    const familyPanel = page.locator("#tasky-family-panel");
+    await familyPanel.waitFor({ state: "visible" });
+    assert.equal(await familyPanel.evaluate((element) => getComputedStyle(element).position), "fixed",
+      "The task dialog must overlay the page instead of pushing the dashboard down.");
 
     const form = page.locator("#tasky-child-task-create-form");
     await form.waitFor({ state: "visible" });
