@@ -13660,9 +13660,9 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     }
 
     if (membership.role === "child") {
-      // Keep the board inert, but do not reserve a tall, invisible task panel
-      // above it. Desktop users open the task dialog from the top navigation;
-      // touch layouts keep the same action in the compact child banner.
+      // Keep the shared task data protected, but leave permitted child task
+      // actions active on the main board. The task dialog remains a separate
+      // optional workflow, not the only place where Leah can register tasks.
       if (familyPanel) {
         familyPanel.hidden = true;
         familyPanel.inert = true;
