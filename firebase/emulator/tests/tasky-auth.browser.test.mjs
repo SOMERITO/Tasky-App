@@ -175,9 +175,31 @@ before(async () => {
   await seedMembership(leahUid, "leah", "child", { childAccessEnabled: true });
   await seedMembership(leahDisabledUid, "leah", "child", { childAccessEnabled: false });
   await testEnvironment.withSecurityRulesDisabled(async (context) => {
-    await setDoc(doc(context.firestore(), "workspaces/leah/access_control/private_modules"), {
+    const db = context.firestore();
+    await setDoc(doc(db, "workspaces/leah/access_control/private_modules"), {
       ready: true,
       schemaVersion: 1
+    });
+    await setDoc(doc(db, "workspaces/leah/shared/main"), {
+      payloadJson: JSON.stringify({
+        boxes: [
+          { id: "box_escolar", name: "ESCOLAR" },
+          { id: "box_custom_frances", name: "FRANCÉS" }
+        ],
+        tasks: [
+          {
+            id: "french-task-f2",
+            boxId: "box_custom_frances",
+            title: "Completar F2",
+            description: "",
+            done: false,
+            dueDate: "2026-11-22",
+            deadlineDate: "",
+            createdAt: Date.now()
+          }
+        ]
+      }),
+      updatedAt: Date.now()
     });
   });
 
@@ -309,6 +331,28 @@ test("Leah puede crear, editar, eliminar y enviar a revisión sus propias tareas
 
     const form = page.locator("#tasky-child-task-create-form");
     await form.waitFor({ state: "visible" });
+
+    // The live board may contain custom child-visible modules such as French.
+    await form.locator('option[value="box_custom_frances"]').waitFor({ state: "attached" });
+    const assignedFrenchTask = page
+      .locator("#tasky-family-assigned-tasks-list article")
+      .filter({ hasText: "Completar F2" });
+    await assignedFrenchTask.waitFor({ state: "visible" });
+    await assignedFrenchTask.getByRole("button", { name: "Ya terminé esta tarea" }).click();
+    await page
+      .locator("#tasky-family-requests-list article")
+      .filter({ hasText: "Confirmar: Completar F2" })
+      .waitFor({ state: "visible" });
+
+    await form.locator('input[name="title"]').fill("Practicar vocabulario de francés");
+    await form.locator('select[name="module"]').selectOption("box_custom_frances");
+    await form.locator('button[type="submit"]').click();
+    const ownFrenchTask = page
+      .locator("#tasky-family-child-tasks-list article")
+      .filter({ hasText: "Practicar vocabulario de francés" });
+    await ownFrenchTask.waitFor({ state: "visible" });
+    await ownFrenchTask.getByRole("button", { name: "Ya terminé" }).click();
+    await ownFrenchTask.getByText("Lista para revisar").waitFor({ state: "visible" });
 
     await form.locator('input[name="title"]').fill("Preparar maqueta de ciencias");
     await form.locator('textarea[name="description"]').fill("Reunir cartulina y colores");
