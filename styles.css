@@ -8172,3 +8172,74 @@ html[data-tasky-workspace="leah"] .brand-logo {
     font-size: 0.66rem;
   }
 }
+
+
+/* LEAH WORKSPACE · greeting appears in the hero at the top and moves to the
+   sticky brand bar after the user scrolls down. */
+.tasky-welcome.brand-workspace-welcome { display: none; }
+.tasky-welcome.hero-workspace-welcome {
+  display: block;
+  margin: 0 0 8px;
+}
+.tasky-welcome.hero-workspace-welcome h2 {
+  font-size: clamp(1.05rem, 2.1vw, 1.4rem);
+}
+.tasky-welcome.hero-workspace-welcome p {
+  margin-top: 3px;
+}
+html[data-tasky-workspace="leah"].tasky-greeting-scrolled .tasky-welcome.brand-workspace-welcome {
+  display: block;
+}
+html[data-tasky-workspace="leah"].tasky-greeting-scrolled .tasky-welcome.hero-workspace-welcome {
+  display: none !important;
+}
+
+/* Leah desktop: finish the document shortly after the final box. */
+@media (min-width: 701px) {
+  html[data-tasky-workspace="leah"] body {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-bottom: 12px !important;
+  }
+  html[data-tasky-workspace="leah"] .app-shell {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 0 !important;
+  }
+  html[data-tasky-workspace="leah"] #boxes-container {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+}
+
+/* On small screens the body alone reserves room for the fixed bottom nav. */
+@media (max-width: 700px) {
+  html[data-tasky-workspace="leah"]:not(.tasky-greeting-scrolled) .hero-left {
+    display: block !important;
+  }
+  html[data-tasky-workspace="leah"]:not(.tasky-greeting-scrolled) .hero-header::before {
+    display: none !important;
+    content: none !important;
+  }
+  html[data-tasky-workspace="leah"]:not(.tasky-greeting-scrolled) .hero-header {
+    align-items: flex-start;
+    min-height: 0;
+  }
+  html[data-tasky-workspace="leah"] body {
+    min-height: 0 !important;
+    padding-bottom: calc(var(--mobile-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 12px) !important;
+  }
+  html[data-tasky-workspace="leah"] .app-shell {
+    min-height: 0 !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 0 !important;
+  }
+  html[data-tasky-workspace="leah"] #boxes-container {
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+}
