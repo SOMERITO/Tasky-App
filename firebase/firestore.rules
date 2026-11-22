@@ -59,7 +59,7 @@ service cloud.firestore {
         // Leah may use standard or custom child-visible boxes. Adult-private
         // health and expenses modules remain excluded from the child workspace.
         && data.module is string
-        && data.module.matches('^box_[A-Za-z0-9_-]{1,64}        && data.scheduledDate is string
+        && data.module.matches('box_[A-Za-z0-9_-]{1,64}')
         && data.deadlineDate is string
         && data.priority in ['low', 'normal', 'high']
         && data.createdBy is string
