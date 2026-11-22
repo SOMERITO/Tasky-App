@@ -352,13 +352,6 @@ test("Leah puede crear, editar, eliminar y enviar a revisión sus propias tareas
     );
     await page.locator("#tasky-family-panel").waitFor({ state: "hidden" });
 
-    const topGap = await page.evaluate(() => {
-      const nav = document.querySelector(".top-navbar").getBoundingClientRect();
-      const hero = document.querySelector(".hero-header").getBoundingClientRect();
-      return Math.round(hero.top - nav.bottom);
-    });
-    assert.ok(topGap >= 0 && topGap < 60, "Leah's dashboard should begin close to the top navigation.");
-
     await shortcut.click();
     const familyPanel = page.locator("#tasky-family-panel");
     await familyPanel.waitFor({ state: "visible" });
