@@ -8877,3 +8877,56 @@ html[data-tasky-workspace="leah"][data-tasky-role="child"] .inline-add-form :is(
     display: inline-flex !important;
   }
 }
+
+
+/* TASKY LEAH · interactive child-owned tasks on the main board.
+   Only add, edit, delete and send-to-review actions for Leah's own pending
+   records remain active. Adult-created shared tasks stay read-only. */
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .box-left-move-btns,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .box-header-actions > button:not([data-box-action="collapse"]),
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-drag-handle,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-duplicate-marker {
+  display: none !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .box-name {
+  cursor: default !important;
+  pointer-events: none !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-board-row {
+  cursor: default;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-board-row .task-right-actions > button {
+  display: none !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-owned-row .task-right-actions > [data-task-action="edit"],
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-owned-row .task-right-actions > [data-task-action="delete"] {
+  display: inline-flex !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-readonly-row .task-title {
+  cursor: default !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-owned-row .task-title {
+  cursor: pointer !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-leah-review-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 3px 5px 0 0;
+  padding: 3px 7px;
+  border: 1px solid rgba(124, 58, 237, .2);
+  border-radius: 999px;
+  background: rgba(237, 233, 254, .82);
+  color: #6d28d9;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-readonly-row .task-check-circle:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .inline-add-form,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .inline-add-form :is(textarea, input, button) {
+  pointer-events: auto;
+}
