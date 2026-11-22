@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261122-auth-picker-clean-1" />
+  <link rel="stylesheet" href="styles.css?v=20261122-auth-picker-single-space-2" />
   <link rel="stylesheet" href="mobile-app.css?v=20261122-staging-loader-layout-1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -64,9 +64,7 @@
 
       <form id="tasky-login-form" class="tasky-auth-form" novalidate>
         <section id="tasky-login-credentials">
-          <p class="tasky-auth-eyebrow">INICIO DE SESIÓN</p>
-          <h2>Ingresa a Tasky</h2>
-          <p class="tasky-auth-subtitle">Primero identifica tu cuenta. Después verás únicamente los espacios a los que tienes acceso.</p>
+          <h2>Iniciar sesión</h2>
           <label for="tasky-login-email">Correo electrónico</label>
           <input id="tasky-login-email" name="email" type="email" autocomplete="username" required placeholder="tu@correo.com" />
           <label for="tasky-login-password">Contraseña</label>
@@ -78,8 +76,7 @@
         </section>
         <section id="tasky-profile-picker" class="tasky-profile-picker" hidden>
           <h2>Elige tu espacio</h2>
-          <p class="tasky-auth-subtitle">Solo aparecen los espacios autorizados para tu cuenta.</p>
-          <label for="tasky-profile-select">Espacios disponibles</label>
+          <label for="tasky-profile-select">Espacio</label>
           <select id="tasky-profile-select" name="workspace" class="tasky-profile-select" required>
             <option value="">Selecciona un espacio</option>
           </select>
@@ -1375,7 +1372,7 @@
   <script src="tasky-firebase-config.js?v=20261120-firebase-env-1"></script>
   <script src="app.js?v=20261122-staging-loader-layout-1"></script>
   <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
-  <script type="module" src="tasky-auth.js?v=20261122-auth-picker-clean-1"></script>
+  <script type="module" src="tasky-auth.js?v=20261122-auth-picker-single-space-2"></script>
   <script type="module" src="tasky-private-modules.js?v=20261120-private-modules-2"></script>
   <script type="module" src="tasky-family.js?v=20261122-family-panel-empty-hide-1"></script>
 </body>
