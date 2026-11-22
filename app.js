@@ -13371,6 +13371,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     document.documentElement.dataset.taskyRole = membership.role;
     const workspaceShell = document.querySelector(".app-shell");
     const childBanner = document.getElementById("tasky-child-readonly-banner");
+    const familyPanel = document.getElementById("tasky-family-panel");
+    const familyShortcut = document.getElementById("tasky-child-tasks-shortcut");
     const backupOptionsButton = document.getElementById("btn-more-options");
     const projectIdInput = document.getElementById("input-firebase-project-id");
     const rtdbUrlInput = document.getElementById("input-firebase-db-url");
@@ -13392,12 +13394,31 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     if (rawConfigInput) rawConfigInput.hidden = true;
     if (rescueButton) rescueButton.hidden = true;
     if (membership.role === "child") {
-      if (workspaceShell) workspaceShell.setAttribute("inert", "");
+      // Keep the shared dashboard read-only, but always mount Leah's editable
+      // task workspace as a visible, interactive sibling before that dashboard.
+      // This also repairs older HTML deployments where the family panel was
+      // appended after the long dashboard and pushed below the visible page.
+      if (workspaceShell && familyPanel && workspaceShell.parentNode) {
+        workspaceShell.parentNode.insertBefore(familyPanel, workspaceShell);
+      }
+      if (familyPanel) {
+        familyPanel.hidden = false;
+        familyPanel.inert = false;
+        familyPanel.setAttribute("aria-hidden", "false");
+      }
       if (childBanner) childBanner.hidden = false;
+      if (familyShortcut) familyShortcut.hidden = false;
+      if (workspaceShell) workspaceShell.setAttribute("inert", "");
       if (backupOptionsButton) backupOptionsButton.hidden = true;
     } else {
       if (workspaceShell) workspaceShell.removeAttribute("inert");
+      if (familyPanel) {
+        familyPanel.hidden = true;
+        familyPanel.inert = true;
+        familyPanel.setAttribute("aria-hidden", "true");
+      }
       if (childBanner) childBanner.hidden = true;
+      if (familyShortcut) familyShortcut.hidden = true;
       if (backupOptionsButton) backupOptionsButton.hidden = false;
     }
     const authGate = document.getElementById("tasky-auth-gate");
