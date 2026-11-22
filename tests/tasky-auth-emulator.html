@@ -46,6 +46,12 @@
   </main>
   <output id="tasky-test-result" aria-live="polite"></output>
   <output id="tasky-test-greeting" aria-live="polite"></output>
+  <div id="tasky-child-readonly-banner">
+    <button id="tasky-child-tasks-shortcut" type="button" hidden>Mis tareas</button>
+  </div>
+  <section id="tasky-family-panel" hidden aria-label="Mis tareas de Leah">
+    <div id="tasky-family-content"></div>
+  </section>
   <script>
     window.__TASKY_USE_FIREBASE_EMULATORS__ = true;
     window.addEventListener("tasky:workspace-ready", (event) => {
@@ -61,5 +67,7 @@
   </script>
   <script src="../tasky-firebase-config.js?v=20261120-firebase-env-1"></script>
   <script type="module" src="../tasky-auth.js?v=20261120-auth-first-1"></script>
+  <script type="module" src="../tasky-family.js?v=emulator-family-test"></script>
+
 </body>
 </html>
