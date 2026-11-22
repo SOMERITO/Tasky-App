@@ -207,11 +207,11 @@ function showWorkspacePicker(text = "", isError = false) {
   }
 
   if (submitButton) {
-    submitButton.disabled = memberships.size === 0;
     const selected = String(profileSelect && profileSelect.value || "");
+    submitButton.disabled = memberships.size === 0 || !selected;
     setSubmitLabel(selected && workspaceMetadata[selected]
-      ? "Entrar a " + workspaceMetadata[selected].shortName
-      : "Continuar");
+      ? "Entrar"
+      : "Selecciona un espacio");
   }
   setGateVisible(true);
   setMessage(text, isError);
@@ -234,8 +234,9 @@ if (profileSelect) {
   profileSelect.addEventListener("change", () => {
     const workspaceId = String(profileSelect.value || "");
     setSubmitLabel(workspaceId && workspaceMetadata[workspaceId]
-      ? "Entrar a " + workspaceMetadata[workspaceId].shortName
-      : "Continuar");
+      ? "Entrar"
+      : "Selecciona un espacio");
+    if (submitButton) submitButton.disabled = !workspaceId || !memberships.has(workspaceId);
     setMessage("");
   });
 }
@@ -285,10 +286,16 @@ async function loadMemberships(user) {
 
     if (!memberships.size) {
       document.documentElement.classList.remove("tasky-booting");
-      showWorkspacePicker(
-        "Tu cuenta fue identificada, pero todavía no tiene espacios autorizados. Solicita a un administrador que configure tu acceso.",
-        true
-      );
+      showWorkspacePicker("Esta cuenta todavía no tiene espacios habilitados.", true);
+      return;
+    }
+
+    // A single authorized workspace is unambiguous: enter it directly.
+    // The selector is reserved for accounts with multiple memberships.
+    if (memberships.size === 1) {
+      const [onlyWorkspaceId] = memberships.keys();
+      if (!persistSelectedWorkspace(onlyWorkspaceId)) return;
+      dispatchWorkspaceReady(onlyWorkspaceId);
       return;
     }
 
