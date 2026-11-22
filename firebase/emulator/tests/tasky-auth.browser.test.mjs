@@ -349,11 +349,9 @@ test("una membresía infantil deshabilitada no aparece como espacio disponible",
   const { context, page, forbiddenProductionRequests } = await openLoginPage();
   try {
     await login(page, users.leahDisabled);
-    assert.deepEqual(
-      await page.locator("#tasky-profile-select option").evaluateAll((options) => options.map((option) => option.value)),
-      [""]
-    );
-    assert.equal(await page.locator("#tasky-login-submit").isDisabled(), true);
+    assert.equal(await page.locator("#tasky-profile-select").isVisible(), false);
+    assert.equal(await page.locator("#tasky-login-submit").isVisible(), false);
+    assert.equal(await page.locator("#tasky-auth-signout").isVisible(), true);
     assert.match(await page.locator("#tasky-auth-message").innerText(), /todavía no tiene espacios autorizados/);
     assert.deepEqual(forbiddenProductionRequests, []);
   } finally {
