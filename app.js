@@ -26,6 +26,50 @@
     return activeWorkspaceId === "leah" &&
       Boolean(activeWorkspaceContext && activeWorkspaceContext.role === "child");
   }
+
+  function canLeahUseBoardTarget(target) {
+    if (!target || typeof target.closest !== "function") return false;
+    if (target.closest(".add-task-BarBtn, .inline-add-form")) return true;
+    if (target.closest(".task-check-circle")) return true;
+    if (target.closest('.box-header-actions [data-box-action="collapse"]')) return true;
+
+    const taskRow = target.closest(".task-item[data-task-id]");
+    if (!taskRow) return false;
+    const task = appState && appState.data && appState.data.tasks
+      ? appState.data.tasks.find((item) => String(item.id) === String(taskRow.dataset.taskId))
+      : null;
+    if (!task || task.__leahChildTask !== true || task.leahChildTaskStatus !== "pending") return false;
+
+    if (target.closest(".task-title")) return true;
+    const taskAction = target.closest('.task-right-actions [data-task-action="edit"], .task-right-actions [data-task-action="delete"]');
+    return Boolean(taskAction);
+  }
+
+  document.addEventListener("click", (event) => {
+    if (!isLeahChildAccount()) return;
+    const shell = event.target && event.target.closest ? event.target.closest(".app-shell") : null;
+    if (!shell || canLeahUseBoardTarget(event.target)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+  }, true);
+
+  document.addEventListener("submit", (event) => {
+    if (!isLeahChildAccount()) return;
+    const shell = event.target && event.target.closest ? event.target.closest(".app-shell") : null;
+    if (!shell || event.target.matches(".inline-add-form")) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+  }, true);
+
+  document.addEventListener("contextmenu", (event) => {
+    if (!isLeahChildAccount()) return;
+    if (event.target && event.target.closest && event.target.closest(".app-shell")) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, true);
   const GLOBAL_STORAGE_KEYS = new Set([STORAGE_KEYS.FIREBASE_CONFIG]);
   const memoryStorage = new Map();
 
@@ -13637,10 +13681,19 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       } else if (childBanner) {
         childBanner.hidden = true;
       }
-      if (workspaceShell) workspaceShell.setAttribute("inert", "");
+      // Leah can use task controls in the board; every task mutation is
+      // routed to her own child_tasks records or to a completion request.
+      // The shared board document itself remains read-only in pushCloudSync.
+      if (workspaceShell) {
+        workspaceShell.removeAttribute("inert");
+        workspaceShell.dataset.taskyChildInteractive = "true";
+      }
       if (backupOptionsButton) backupOptionsButton.hidden = true;
     } else {
-      if (workspaceShell) workspaceShell.removeAttribute("inert");
+      if (workspaceShell) {
+        workspaceShell.removeAttribute("inert");
+        delete workspaceShell.dataset.taskyChildInteractive;
+      }
       if (familyPanel) {
         familyPanel.inert = false;
         familyPanel.hidden = true;
@@ -13682,6 +13735,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
   });
 
   window.addEventListener("tasky:open-workspace-picker", () => {
+    leahChildTaskRecords = [];
+    leahChildPendingCompletionIds = new Set();
     if (window.TaskyPrivateModules) window.TaskyPrivateModules.close(activeWorkspaceContext);
     privateModulesReady = false;
   });
