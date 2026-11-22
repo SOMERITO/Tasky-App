@@ -162,6 +162,12 @@ function setSubmitLabel(label) {
 function showLogin(text = "", isError = false) {
   // No saved Firebase user: reveal the normal sign-in screen instead of the boot overlay.
   document.documentElement.classList.remove("tasky-booting");
+  const pickerTitle = document.getElementById("tasky-profile-picker-title");
+  const profileLabel = document.getElementById("tasky-profile-select-label");
+  if (pickerTitle) pickerTitle.textContent = "Elige tu espacio";
+  if (profileLabel) profileLabel.hidden = false;
+  if (profileSelect) profileSelect.hidden = false;
+  if (submitButton) submitButton.hidden = false;
   if (credentialsPanel) credentialsPanel.hidden = false;
   if (profilePicker) profilePicker.hidden = true;
   if (loginForm) loginForm.hidden = false;
@@ -176,43 +182,71 @@ function showLogin(text = "", isError = false) {
 }
 
 function showWorkspacePicker(text = "", isError = false) {
+  document.documentElement.classList.remove("tasky-booting");
   if (credentialsPanel) credentialsPanel.hidden = true;
   if (profilePicker) profilePicker.hidden = false;
   if (loginForm) loginForm.hidden = false;
   if (resetButton) resetButton.hidden = true;
   if (signoutButton) signoutButton.hidden = false;
 
+  const hasOneWorkspace = memberships.size === 1;
+  const hasMultipleWorkspaces = memberships.size > 1;
+  const hasNoWorkspace = memberships.size === 0;
+  const pickerTitle = document.getElementById("tasky-profile-picker-title");
+  const profileLabel = document.getElementById("tasky-profile-select-label");
+
+  if (pickerTitle) {
+    if (hasOneWorkspace) {
+      const onlyWorkspaceId = memberships.keys().next().value;
+      pickerTitle.textContent = workspaceMetadata[onlyWorkspaceId]?.name || "Tu espacio";
+    } else {
+      pickerTitle.textContent = hasNoWorkspace ? "Acceso no disponible" : "Elige tu espacio";
+    }
+  }
+
+  if (profileLabel) profileLabel.hidden = !hasMultipleWorkspaces;
   if (profileSelect) {
-    const previouslySelected = String(profileSelect.value || selectedWorkspaceId || "");
+    profileSelect.hidden = !hasMultipleWorkspaces;
     profileSelect.replaceChildren();
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = memberships.size ? "Selecciona un espacio" : "No hay espacios disponibles";
-    profileSelect.append(placeholder);
 
-    memberships.forEach((membership, workspaceId) => {
-      const meta = workspaceMetadata[workspaceId];
-      if (!meta) return;
-      const option = document.createElement("option");
-      option.value = workspaceId;
-      const roleLabel = meta.roleLabels && meta.roleLabels[membership.role]
-        ? meta.roleLabels[membership.role]
-        : "Acceso autorizado";
-      option.textContent = meta.name + " · " + roleLabel;
-      profileSelect.append(option);
-    });
+    if (hasMultipleWorkspaces) {
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Selecciona un espacio";
+      profileSelect.append(placeholder);
 
-    profileSelect.value = memberships.has(previouslySelected) ? previouslySelected : "";
-    profileSelect.disabled = memberships.size === 0;
+      memberships.forEach((membership, workspaceId) => {
+        const meta = workspaceMetadata[workspaceId];
+        if (!meta) return;
+        const option = document.createElement("option");
+        option.value = workspaceId;
+        const roleLabel = meta.roleLabels && meta.roleLabels[membership.role]
+          ? meta.roleLabels[membership.role]
+          : "Acceso autorizado";
+        option.textContent = meta.name + " · " + roleLabel;
+        profileSelect.append(option);
+      });
+
+      const previouslySelected = String(selectedWorkspaceId || readSelectedWorkspace() || "");
+      profileSelect.value = memberships.has(previouslySelected) ? previouslySelected : "";
+      profileSelect.disabled = false;
+    } else {
+      profileSelect.value = "";
+      profileSelect.disabled = true;
+    }
   }
 
   if (submitButton) {
-    const selected = String(profileSelect && profileSelect.value || "");
-    submitButton.disabled = memberships.size === 0;
-    setSubmitLabel(selected && workspaceMetadata[selected]
-      ? "Entrar"
-      : "Selecciona un espacio");
+    submitButton.hidden = hasNoWorkspace;
+    submitButton.disabled = hasNoWorkspace;
+    if (hasOneWorkspace) {
+      setSubmitLabel("Entrar");
+    } else if (hasMultipleWorkspaces) {
+      const selected = String(profileSelect && profileSelect.value || "");
+      setSubmitLabel(selected && workspaceMetadata[selected] ? "Entrar" : "Selecciona un espacio");
+    }
   }
+
   setGateVisible(true);
   setMessage(text, isError);
   if (passwordInput) passwordInput.value = "";
@@ -320,6 +354,7 @@ function dispatchWorkspaceReady(workspaceId) {
   if (!membership || !meta || !currentUser) return;
 
   setMessage("");
+  document.documentElement.classList.remove("tasky-booting");
   setGateVisible(false);
   document.documentElement.removeAttribute("data-tasky-workspace");
   document.documentElement.dataset.taskyRole = membership.role;
@@ -339,6 +374,10 @@ if (loginForm) {
     event.preventDefault();
 
     if (currentUser) {
+      if (memberships.size === 1) {
+        selectWorkspace(memberships.keys().next().value);
+        return;
+      }
       const workspaceId = String(profileSelect && profileSelect.value || "");
       if (!workspaceId || !memberships.has(workspaceId)) {
         showWorkspacePicker("Selecciona uno de los espacios autorizados para tu cuenta.", true);
@@ -358,6 +397,8 @@ if (loginForm) {
     submitButton.disabled = true;
     submitButton.textContent = "Verificando cuenta…";
     setMessage("");
+    document.documentElement.classList.add("tasky-booting");
+    setGateVisible(false);
     clearSelectedWorkspace();
     try {
       await signInWithEmailAndPassword(auth, email, password);
@@ -372,6 +413,8 @@ if (loginForm) {
           message: error && error.message ? String(error.message) : ""
         });
       }
+      document.documentElement.classList.remove("tasky-booting");
+      setGateVisible(true);
       setMessage(
         error && ["auth/invalid-credential", "auth/user-not-found", "auth/wrong-password"].includes(error.code)
           ? "El correo o la contraseña no son correctos."
@@ -421,7 +464,11 @@ if (signoutButton) {
 
 if (accountButton) {
   accountButton.addEventListener("click", () => {
-    window.dispatchEvent(new CustomEvent("tasky:open-workspace-picker"));
+    // A single-workspace account needs only the two session actions.
+    // Keep the current family panel mounted while its compact entry screen is shown.
+    if (memberships.size > 1) {
+      window.dispatchEvent(new CustomEvent("tasky:open-workspace-picker"));
+    }
     showWorkspacePicker();
   });
 }
@@ -466,14 +513,15 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  // If a workspace was already selected, keep the gate closed while Firebase
-  // restores membership. app.js removes the boot lock when it receives
-  // tasky:workspace-ready. If the saved workspace is invalid, loadMemberships
-  // will clear it and show the authorized workspace picker.
-  if (readSelectedWorkspace()) {
-    setGateVisible(false);
-  } else {
-    showWorkspacePicker("Verificando los espacios autorizados de tu cuenta…");
-  }
+  // Keep the branded loader visible until the membership query has resolved.
+  // Never flash an empty workspace selector while Firestore is still loading.
+  document.documentElement.classList.add("tasky-booting");
+  if (gate) gate.hidden = true;
+  document.documentElement.classList.add("tasky-auth-required");
+  document.documentElement.classList.remove("tasky-workspace-active");
+  const bootTitle = document.getElementById("tasky-boot-title");
+  const bootDescription = document.getElementById("tasky-boot-description");
+  if (bootTitle) bootTitle.textContent = "Cargando tu espacio…";
+  if (bootDescription) bootDescription.textContent = "Estamos verificando tu acceso y preparando Tasky.";
   await loadMemberships(user);
 });
