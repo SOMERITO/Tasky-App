@@ -7483,7 +7483,7 @@
         suggestionsBox.classList.add("open");
       }
 
-      function saveInlineTask(rawTitle, options = {}) {
+      async function saveInlineTask(rawTitle, options = {}) {
         const noDeadline = Boolean(inlineNoDeadlineInput && inlineNoDeadlineInput.checked);
         // A pasted list becomes one task per non-empty line. Strip common list
         // markers without damaging measurements such as "1.80 m × 3.5–4 cm".
@@ -7561,6 +7561,45 @@
               document.getElementById("modal-confirm").classList.add("open");
               return true;
             }
+          }
+        }
+
+        if (isLeahChildAccount()) {
+          const childApi = window.TaskyFamilyTasks;
+          if (!childApi || typeof childApi.create !== "function") {
+            showToast("No se pudo conectar el registro de tareas de Leah. Recarga Tasky e inténtalo nuevamente.", true);
+            return false;
+          }
+          const submitButton = inlineForm.querySelector('button[type="submit"]');
+          if (submitButton) submitButton.disabled = true;
+          try {
+            for (const title of taskTitles) {
+              await childApi.create({
+                title,
+                description: "",
+                module: String(box.id),
+                scheduledDate: getTodayISO(),
+                deadlineDate: "",
+                priority: "normal"
+              });
+            }
+            appState.keepInlineAddOpenBoxId = options.closeAfterSave ? null : box.id;
+            inlineInput.value = "";
+            resizeInlineInput();
+            suggestionsBox.classList.remove("open");
+            suggestionsBox.innerHTML = "";
+            activeSuggestionIdx = -1;
+            playUiSound("addTask");
+            showToast(taskTitles.length === 1
+              ? "Tarea registrada en tu casilla"
+              : taskTitles.length + " tareas registradas en " + box.name);
+            return true;
+          } catch (error) {
+            showToast(String(error && error.message || "No se pudieron registrar tus tareas."), true);
+            window.console && window.console.error("[Tasky Leah] Board task create failed:", error);
+            return false;
+          } finally {
+            if (submitButton) submitButton.disabled = false;
           }
         }
 
