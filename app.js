@@ -7546,7 +7546,7 @@
           return false;
         }
 
-        if (!options.skipDuplicateCheck) {
+        if (!options.skipDuplicateCheck && !isLeahChildAccount()) {
           const incomingKeys = new Set(taskTitles.map(normalizeDuplicateTaskTitle).filter(Boolean));
           const existingMatches = new Map();
           const existingDuplicateKeys = new Set();
