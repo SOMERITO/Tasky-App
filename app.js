@@ -9972,6 +9972,34 @@ function createTaskRowElement(task, box, showOriginBox = false) {
   }
 
   function toggleTaskDone(taskId, checkBtnEl) {
+    if (isLeahChildAccount()) {
+      const task = appState.data.tasks.find((item) => String(item.id) === String(taskId));
+      if (!task || task.done || task.leahChildTaskStatus === "awaiting_review" || task.leahCompletionPending) {
+        showToast("Esta tarea ya está terminada o espera la revisión de un adulto.");
+        return;
+      }
+      const childApi = window.TaskyFamilyTasks;
+      if (!childApi) {
+        showToast("No se pudo conectar el registro de tareas. Recarga Tasky e inténtalo nuevamente.", true);
+        return;
+      }
+      const operation = task.__leahChildTask
+        ? childApi.submitForReview(task.childTaskDocId)
+        : childApi.requestAssignedCompletion(task.id);
+      Promise.resolve(operation).then((ok) => {
+        if (ok) {
+          playUiSound("complete");
+          showToast(task.__leahChildTask
+            ? "✓ Tu tarea fue enviada a revisión"
+            : "✓ Avisamos a José o Camila que terminaste esta tarea");
+        } else {
+          showToast("No se pudo enviar la tarea a revisión. Comprueba su estado e inténtalo nuevamente.", true);
+        }
+      }).catch((error) => {
+        showToast(String(error && error.message || "No se pudo enviar la tarea a revisión."), true);
+      });
+      return;
+    }
     const selectedTasks = getTasksForSelectedAction(taskId);
     if (selectedTasks.length > 1) {
       completeSelectedTasks(taskId, checkBtnEl);
@@ -10505,6 +10533,25 @@ function createTaskRowElement(task, box, showOriginBox = false) {
   }
 
   function deleteTask(taskId) {
+    if (isLeahChildAccount()) {
+      const task = appState.data.tasks.find((item) => String(item.id) === String(taskId));
+      if (!task || !task.__leahChildTask || task.leahChildTaskStatus !== "pending") {
+        showToast("Solo puedes eliminar tus propias tareas pendientes.", true);
+        return;
+      }
+      const childApi = window.TaskyFamilyTasks;
+      if (!childApi || typeof childApi.remove !== "function") {
+        showToast("No se pudo conectar el registro de tareas. Recarga Tasky e inténtalo nuevamente.", true);
+        return;
+      }
+      if (!window.confirm("¿Eliminar esta tarea pendiente? Esta acción no se puede deshacer.")) return;
+      childApi.remove(task.childTaskDocId).then(() => {
+        showToast("Tarea eliminada de tus pendientes.");
+      }).catch((error) => {
+        showToast(String(error && error.message || "No se pudo eliminar la tarea."), true);
+      });
+      return;
+    }
     const id = String(taskId);
     const selectedIds = appState.selectedTaskIds;
     if (selectedIds && selectedIds.size > 1 && selectedIds.has(id)) {
@@ -12953,6 +13000,35 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       const tasks = appState.data.tasks.filter(task => requestedIds.includes(String(task.id)));
       if (!tasks.length) {
         showToast("Las tareas que intentabas editar ya no están disponibles.", true);
+        return;
+      }
+      if (isLeahChildAccount()) {
+        if (tasks.length !== 1 || !tasks[0].__leahChildTask ||
+            tasks[0].leahChildTaskStatus !== "pending") {
+          showToast("Solo puedes editar tus propias tareas pendientes.", true);
+          return;
+        }
+        const childApi = window.TaskyFamilyTasks;
+        if (!childApi || typeof childApi.update !== "function") {
+          showToast("No se pudo conectar el registro de tareas. Recarga Tasky e inténtalo nuevamente.", true);
+          return;
+        }
+        const descriptionInput = document.getElementById("input-edit-task-description");
+        childApi.update(tasks[0].childTaskDocId, {
+          title: val,
+          description: descriptionInput ? String(descriptionInput.value || "").trim().slice(0, 500) : "",
+          module: tasks[0].boxId,
+          scheduledDate: tasks[0].dueDate || getTodayISO(),
+          deadlineDate: tasks[0].deadlineDate || "",
+          priority: tasks[0].priority || "normal"
+        }).then(() => {
+          appState.editingTaskIds = [];
+          appState.editingTaskId = null;
+          document.getElementById("modal-edit-task").classList.remove("open");
+          showToast("Cambios guardados en tu tarea.");
+        }).catch((error) => {
+          showToast(String(error && error.message || "No se pudieron guardar los cambios."), true);
+        });
         return;
       }
       const descriptionInput = document.getElementById("input-edit-task-description");
