@@ -7606,15 +7606,33 @@ body.focus-mode-open #boxes-container {
 }
 .tasky-auth-link {
   display: inline-flex;
+  width: 100%;
+  min-height: 43px;
+  align-items: center;
   justify-content: center;
-  min-height: 39px;
-  padding: 8px 12px;
-  border: 0;
-  background: transparent;
-  color: #7E22CE;
-  font-size: 12px;
+  margin-top: 9px;
+  padding: 10px 16px;
+  border: 1px solid rgba(148, 119, 163, .22);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fff, #faf6fd);
+  color: #765c83;
+  font: inherit;
+  font-size: 13px;
   font-weight: 750;
   cursor: pointer;
+  box-shadow: 0 3px 10px rgba(50, 25, 65, .035);
+  transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.tasky-auth-link:hover {
+  transform: translateY(-1px);
+  border-color: rgba(168, 85, 247, .34);
+  background: linear-gradient(135deg, #faf5ff, #fff8fc);
+  color: #7E22CE;
+  box-shadow: 0 7px 18px rgba(126, 34, 206, .10);
+}
+.tasky-auth-link:focus-visible {
+  outline: 3px solid rgba(168, 85, 247, .25);
+  outline-offset: 3px;
 }
 .tasky-auth-signout {
   display: flex;
@@ -8622,4 +8640,37 @@ html[data-tasky-workspace="leah"] .gemini-aurora-bg {
   .tasky-child-tasks-shortcut {
     margin-left: auto;
   }
+}
+
+
+/* Auth state: keep the single-workspace action screen compact and explicit. */
+#tasky-profile-select[hidden],
+#tasky-profile-select-label[hidden],
+#tasky-login-submit[hidden] {
+  display: none !important;
+}
+#tasky-profile-picker-title {
+  margin-bottom: 14px;
+}
+.tasky-auth-message:empty {
+  display: none;
+}
+.tasky-family-panel[data-tasky-role="child"] {
+  scroll-margin-top: 18px;
+}
+.tasky-family-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text-secondary);
+  font-size: .85rem;
+}
+.tasky-family-loading::before {
+  content: "";
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(168, 85, 247, .18);
+  border-top-color: #a855f7;
+  border-radius: 50%;
+  animation: taskyBootSpin .8s linear infinite;
 }
