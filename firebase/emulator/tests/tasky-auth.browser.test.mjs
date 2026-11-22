@@ -358,7 +358,8 @@ test("Leah can use her main casilla board without writing to the shared board", 
   assert.match(familySource, /collection\(db, \.\.\.CHILD_TASKS_PATH\)/);
   assert.match(rulesSource, /match \/workspaces\/\{workspaceId\}\/child_tasks/);
   assert.match(rulesSource, /allow create: if workspaceId == 'leah' && isChild\(workspaceId\)/);
-  assert.match(appSource, /activeWorkspaceContext\.role === "child"\)\s*\{[\s\S]{0,260}?childSyncText\.textContent = "Tablero de consulta"/,
+  assert.match(appSource, /childSyncText\.textContent = "Tareas propias activas"/);
+  assert.match(appSource, /setRealtimeSyncStatus\("Tus tareas se guardan en tu espacio; el tablero familiar permanece protegido\."/,
     "Child task writes must not fall through to shared/main.");
 });
 
