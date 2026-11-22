@@ -13314,10 +13314,12 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       : null;
     if (!membership || membership.active !== true || membership.role !== detail.role) return;
 
-    // Expose the validated active workspace to scoped layout rules.
-    // tasky-auth.js clears this attribute before dispatching workspace-ready;
-    // restore it only after the membership has been verified.
+    // Expose the validated workspace to scoped layout rules only after Firebase membership checks.
     document.documentElement.dataset.taskyWorkspace = workspaceId;
+    const isLeahWorkspace = workspaceId === "leah";
+    document.documentElement.classList.toggle("tasky-leah-workspace", isLeahWorkspace);
+    document.body.classList.toggle("tasky-leah-workspace", isLeahWorkspace);
+    document.documentElement.classList.remove("tasky-greeting-scrolled");
 
     activeWorkspaceId = workspaceId;
     activeWorkspaceContext = {
@@ -13424,7 +13426,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
 
   window.addEventListener("tasky:open-workspace-picker", () => {
     document.documentElement.removeAttribute("data-tasky-workspace");
-    document.documentElement.classList.remove("tasky-greeting-scrolled");
+    document.documentElement.classList.remove("tasky-greeting-scrolled", "tasky-leah-workspace");
+    document.body.classList.remove("tasky-leah-workspace");
     document.documentElement.classList.add("tasky-auth-required");
     document.documentElement.classList.remove("tasky-workspace-active");
     const authGate = document.getElementById("tasky-auth-gate");
