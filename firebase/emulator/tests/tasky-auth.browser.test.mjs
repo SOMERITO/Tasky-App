@@ -338,6 +338,30 @@ test("the Leah task dialog does not reserve vertical space above the board", asy
   assert.match(cssSource, /html\[data-tasky-workspace="leah"\] body\.tasky-leah-workspace \.app-shell\s*\{[\s\S]{0,220}padding-top:\s*18px\s*!important/);
 });
 
+test("Leah can use her main casilla board without writing to the shared board", async () => {
+  const appSource = await readFile(resolve(rootDir, "app.js"), "utf8");
+  const familySource = await readFile(resolve(rootDir, "tasky-family.js"), "utf8");
+  const rulesSource = await readFile(resolve(rootDir, "firebase/firestore.rules"), "utf8");
+
+  assert.match(appSource, /workspaceShell\.removeAttribute\("inert"\)/,
+    "Leah's board must stay interactive rather than inert.");
+  assert.match(appSource, /childApi\.create\(/,
+    "The inline Add Task form must create a child-owned record.");
+  assert.match(appSource, /childApi\.submitForReview\(/,
+    "Leah's task check must submit her own task for adult review.");
+  assert.match(appSource, /childApi\.requestAssignedCompletion\(/,
+    "A task assigned by an adult must create a review request, not edit the shared task.");
+  assert.match(appSource, /childApi\.update\(/);
+  assert.match(appSource, /childApi\.remove\(/);
+  assert.match(appSource, /tasky:child-tasks-updated/);
+  assert.match(familySource, /window\.TaskyFamilyTasks\s*=\s*\{/);
+  assert.match(familySource, /collection\(db, \.\.\.CHILD_TASKS_PATH\)/);
+  assert.match(rulesSource, /match \/workspaces\/\{workspaceId\}\/child_tasks/);
+  assert.match(rulesSource, /allow create: if workspaceId == 'leah' && isChild\(workspaceId\)/);
+  assert.match(appSource, /activeWorkspaceContext\.role === "child"\)\s*\{[\s\S]{0,260}?childSyncText\.textContent = "Tablero de consulta"/,
+    "Child task writes must not fall through to shared/main.");
+});
+
 test("Leah puede crear, editar, eliminar y enviar a revisión sus propias tareas", async () => {
   const { context, page, forbiddenProductionRequests } = await openLoginPage();
   try {
