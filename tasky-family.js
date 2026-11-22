@@ -46,6 +46,8 @@ let editingChildTaskId = "";
 let requestBusy = false;
 let requestsLoadFailed = false;
 let childTasksLoadFailed = false;
+let requestsLoaded = false;
+let childTasksLoaded = false;
 
 function node(tag, className, text) {
   const element = document.createElement(tag);
@@ -154,6 +156,7 @@ function renderChildPanel() {
   );
 
   const newTaskForm = node("form", "tasky-family-form");
+  newTaskForm.id = "tasky-child-task-create-form";
   newTaskForm.innerHTML = `
     <label class="tasky-family-field"><span>¿Qué tarea debes realizar?</span><input name="title" maxlength="180" required placeholder="Ej. Leer el capítulo de Comunicación" /></label>
     <label class="tasky-family-field"><span>Detalle (opcional)</span><textarea name="description" maxlength="500" placeholder="Agrega instrucciones o materiales que necesitas."></textarea></label>
@@ -255,6 +258,10 @@ function renderAdultAssignedTaskList() {
       return aDue.localeCompare(bDue) || String(a.title || "").localeCompare(String(b.title || ""), "es");
     });
 
+  if (!boardTasks.length && !childTasksLoaded) {
+    list.append(node("div", "tasky-family-empty tasky-family-loading", "Cargando las tareas asignadas…"));
+    return;
+  }
   if (!eligibleTasks.length) {
     list.append(node("div", "tasky-family-empty", "Todavía no hay tareas asignadas por José o Camila."));
     return;
@@ -316,7 +323,9 @@ async function submitCompletionForTask(taskId) {
       relatedTaskId: String(taskId)
     });
   } catch (error) {
-    window.alert("No se pudo enviar el aviso de finalización. Comprueba tu conexión y los permisos.");
+    const code = String(error && error.code || "unknown");
+    window.alert("No se pudo enviar el aviso de finalización (" + code + ").");
+    window.console && window.console.error("[Tasky Leah] Submit assigned-task review failed:", error);
   } finally {
     setRequestBusy(false);
     renderAdultAssignedTaskList();
@@ -364,14 +373,16 @@ async function submitChildTask(event) {
     form.elements.scheduledDate.value = localDateISO();
     setMessage(message, "Tarea guardada como pendiente. Puedes editarla o eliminarla antes de enviarla a revisión.");
   } catch (error) {
-    setMessage(message, "No se pudo registrar la tarea. Revisa tu conexión o los permisos de este espacio.", true);
+    const code = String(error && error.code || "unknown");
+    setMessage(message, "No se pudo registrar la tarea (" + code + "). Comprueba la conexión y los permisos.", true);
+    window.console && window.console.error("[Tasky Leah] Create task failed:", error);
   } finally {
     setRequestBusy(false);
   }
 }
 
 function childTaskStatusLabel(status) {
-  if (status === "awaiting_review") return "Por revisar";
+  if (status === "awaiting_review") return "Lista para revisar";
   if (status === "completed") return "Completada";
   return "Pendiente";
 }
@@ -515,6 +526,10 @@ function renderChildTaskList() {
     ? childTasks.filter((task) => task.createdBy === activeUid)
     : childTasks;
 
+  if (!childTasksLoaded) {
+    list.append(node("div", "tasky-family-empty tasky-family-loading", "Cargando tus tareas…"));
+    return;
+  }
   if (!visibleTasks.length) {
     list.append(node("div", "tasky-family-empty",
       activeRole === "child"
@@ -577,7 +592,9 @@ async function saveChildTaskEdits(event, task) {
     editingChildTaskId = "";
     setMessage(message, "Cambios guardados.");
   } catch (error) {
-    setMessage(message, "No se pudieron guardar los cambios. Comprueba los permisos y la conexión.", true);
+    const code = String(error && error.code || "unknown");
+    setMessage(message, "No se pudieron guardar los cambios (" + code + ").", true);
+    window.console && window.console.error("[Tasky Leah] Update task failed:", error);
   } finally {
     setRequestBusy(false);
     renderChildTaskList();
@@ -596,7 +613,9 @@ async function markChildTaskForReview(taskId) {
       updatedAt: serverTimestamp()
     });
   } catch (error) {
-    window.alert("No se pudo enviar el aviso de finalización. Comprueba tu conexión.");
+    const code = String(error && error.code || "unknown");
+    window.alert("No se pudo enviar el aviso de finalización (" + code + ").");
+    window.console && window.console.error("[Tasky Leah] Submit completion failed:", error);
   } finally {
     setRequestBusy(false);
     renderChildTaskList();
@@ -630,7 +649,9 @@ async function reviewChildTask(taskId, decision) {
       window.alert("La tarea volvió a pendientes. Leah podrá revisarla y editarla.");
     }
   } catch (error) {
-    window.alert("No se pudo registrar la revisión. Comprueba los permisos y la conexión.");
+    const code = String(error && error.code || "unknown");
+    window.alert("No se pudo registrar la revisión (" + code + ").");
+    window.console && window.console.error("[Tasky Leah] Review task failed:", error);
   } finally {
     setRequestBusy(false);
     renderChildTaskList();
@@ -655,7 +676,9 @@ async function removeChildTask(taskId) {
     await deleteDoc(doc(db, ...CHILD_TASKS_PATH, String(taskId)));
     if (editingChildTaskId === String(taskId)) editingChildTaskId = "";
   } catch (error) {
-    window.alert("No se pudo eliminar la tarea. Comprueba los permisos y la conexión.");
+    const code = String(error && error.code || "unknown");
+    window.alert("No se pudo eliminar la tarea (" + code + ").");
+    window.console && window.console.error("[Tasky Leah] Delete task failed:", error);
   } finally {
     setRequestBusy(false);
     renderChildTaskList();
@@ -724,6 +747,10 @@ function renderRequestList() {
         childTasks.filter((task) => task.status === "awaiting_review").length
       );
     }
+  }
+  if (!requestsLoaded) {
+    list.append(node("div", "tasky-family-empty tasky-family-loading", "Cargando avisos…"));
+    return;
   }
   if (!visibleRequests.length) {
     list.append(node("div", "tasky-family-empty",
@@ -845,22 +872,31 @@ async function reviewRequest(requestId, decision) {
 
 if (childTasksShortcut) {
   childTasksShortcut.addEventListener("click", () => {
-    if (panel && !panel.hidden) {
-      panel.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    if (activeRole !== "child" || !panel) return;
+    panel.hidden = false;
+    panel.setAttribute("aria-hidden", "false");
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.setTimeout(() => {
+      const title = content && content.querySelector("#tasky-child-task-create-form input[name='title']");
+      if (title) title.focus({ preventScroll: true });
+    }, 320);
   });
 }
 
 function updatePanelVisibility() {
   if (!panel) return;
 
-  // Leah keeps access to her own task workflow even when both lists are empty.
-  // Guardians only need the panel when there is family activity or a load issue.
+  // Leah always has her own task workspace, even before the first snapshot returns.
   const hasFamilyActivity = requests.length > 0 || childTasks.length > 0;
   const hasLoadIssue = requestsLoadFailed || childTasksLoadFailed;
   const childMode = activeRole === "child";
+  panel.dataset.taskyRole = activeRole;
   panel.hidden = !(childMode || hasFamilyActivity || hasLoadIssue);
-  if (childTasksShortcut) childTasksShortcut.hidden = !childMode;
+  panel.setAttribute("aria-hidden", String(panel.hidden));
+  if (childTasksShortcut) {
+    childTasksShortcut.hidden = !childMode;
+    childTasksShortcut.setAttribute("aria-expanded", String(childMode && !panel.hidden));
+  }
 }
 
 function closeWorkspace() {
@@ -880,7 +916,13 @@ function closeWorkspace() {
   requestBusy = false;
   requestsLoadFailed = false;
   childTasksLoadFailed = false;
-  if (panel) panel.hidden = true;
+  requestsLoaded = false;
+  childTasksLoaded = false;
+  if (panel) {
+    panel.hidden = true;
+    panel.removeAttribute("data-tasky-role");
+    panel.setAttribute("aria-hidden", "true");
+  }
   if (childTasksShortcut) childTasksShortcut.hidden = true;
   if (content) content.replaceChildren();
 }
@@ -900,6 +942,10 @@ function openWorkspace(detail) {
   activeWorkspace = "leah";
   activeRole = membership.role;
   activeUid = api.currentUser.uid;
+  requestsLoaded = false;
+  childTasksLoaded = false;
+  requestsLoadFailed = false;
+  childTasksLoadFailed = false;
 
   if (activeRole === "child") renderChildPanel();
   else renderGuardianPanel();
@@ -911,19 +957,21 @@ function openWorkspace(detail) {
     limit(75)
   );
   unsubscribeRequests = onSnapshot(requestsQuery, (snapshot) => {
+    requestsLoaded = true;
     requestsLoadFailed = false;
     requests = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     renderRequestList();
     renderAdultAssignedTaskList();
     updatePanelVisibility();
   }, (error) => {
+    requestsLoaded = true;
     requestsLoadFailed = true;
     const list = content.querySelector("#tasky-family-requests-list");
     if (list) list.replaceChildren(node("div", "tasky-family-empty",
-      "No se pudieron cargar las solicitudes. Comprueba los permisos y la conexión."
+      "No se pudieron cargar los avisos (" + String(error && error.code || "error") + ")."
     ));
     updatePanelVisibility();
-    window.console && window.console.error("Tasky family requests listener failed:", error);
+    window.console && window.console.error("[Tasky Leah] Requests listener failed:", error);
   });
 
   const childTasksQuery = query(
@@ -932,6 +980,7 @@ function openWorkspace(detail) {
     limit(100)
   );
   unsubscribeChildTasks = onSnapshot(childTasksQuery, (snapshot) => {
+    childTasksLoaded = true;
     childTasksLoadFailed = false;
     childTasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     if (!childTasks.some((task) => String(task.id) === editingChildTaskId)) editingChildTaskId = "";
@@ -945,13 +994,14 @@ function openWorkspace(detail) {
       );
     }
   }, (error) => {
+    childTasksLoaded = true;
     childTasksLoadFailed = true;
     const list = content.querySelector("#tasky-family-child-tasks-list");
     if (list) list.replaceChildren(node("div", "tasky-family-empty",
-      "No se pudieron cargar las tareas registradas por Leah. Comprueba los permisos y la conexión."
+      "No se pudieron cargar tus tareas (" + String(error && error.code || "error") + ")."
     ));
     updatePanelVisibility();
-    window.console && window.console.error("Tasky child task listener failed:", error);
+    window.console && window.console.error("[Tasky Leah] Child tasks listener failed:", error);
   });
 
   if (activeRole === "child") {
@@ -963,7 +1013,7 @@ function openWorkspace(detail) {
     }, (error) => {
       boardTasks = [];
       renderAdultAssignedTaskList();
-      window.console && window.console.error("Tasky family board listener failed:", error);
+      window.console && window.console.error("[Tasky Leah] Shared board listener failed:", error);
     });
   }
 }
