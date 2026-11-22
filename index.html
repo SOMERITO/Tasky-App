@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261122-staging-loader-layout-1" />
+  <link rel="stylesheet" href="styles.css?v=20261122-auth-picker-clean-1" />
   <link rel="stylesheet" href="mobile-app.css?v=20261122-staging-loader-layout-1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -77,7 +77,6 @@
           <button id="tasky-password-reset" class="tasky-auth-link" type="button">Olvidé mi contraseña</button>
         </section>
         <section id="tasky-profile-picker" class="tasky-profile-picker" hidden>
-          <p class="tasky-auth-eyebrow">CUENTA VERIFICADA</p>
           <h2>Elige tu espacio</h2>
           <p class="tasky-auth-subtitle">Solo aparecen los espacios autorizados para tu cuenta.</p>
           <label for="tasky-profile-select">Espacios disponibles</label>
@@ -88,9 +87,15 @@
         <button id="tasky-login-submit" class="tasky-auth-primary" type="submit">Iniciar sesión</button>
       </form>
 
-      <button id="tasky-auth-signout" class="tasky-auth-link" type="button" hidden>Cerrar sesión</button>
+      <button id="tasky-auth-signout" class="tasky-auth-signout" type="button" hidden>
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <path d="M16 17l5-5-5-5"/>
+          <path d="M21 12H9"/>
+        </svg>
+        <span>Cerrar sesión</span>
+      </button>
       <p id="tasky-auth-message" class="tasky-auth-message" role="status" aria-live="polite"></p>
-      <p class="tasky-auth-footer">La selección no concede permisos: cada cuenta debe estar autorizada.</p>
     </div>
   </div>
 
@@ -1370,7 +1375,7 @@
   <script src="tasky-firebase-config.js?v=20261120-firebase-env-1"></script>
   <script src="app.js?v=20261122-staging-loader-layout-1"></script>
   <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
-  <script type="module" src="tasky-auth.js?v=20261122-staging-loader-layout-1"></script>
+  <script type="module" src="tasky-auth.js?v=20261122-auth-picker-clean-1"></script>
   <script type="module" src="tasky-private-modules.js?v=20261120-private-modules-2"></script>
   <script type="module" src="tasky-family.js?v=20261122-family-panel-empty-hide-1"></script>
 </body>
