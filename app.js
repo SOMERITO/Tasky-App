@@ -13373,6 +13373,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     const childBanner = document.getElementById("tasky-child-readonly-banner");
     const familyPanel = document.getElementById("tasky-family-panel");
     const familyShortcut = document.getElementById("tasky-child-tasks-shortcut");
+    const topActions = document.querySelector(".top-actions");
     const backupOptionsButton = document.getElementById("btn-more-options");
     const projectIdInput = document.getElementById("input-firebase-project-id");
     const rtdbUrlInput = document.getElementById("input-firebase-db-url");
@@ -13393,38 +13394,51 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     }
     if (rawConfigInput) rawConfigInput.hidden = true;
     if (rescueButton) rescueButton.hidden = true;
-    if (workspaceId === "leah" && workspaceShell && workspaceShell.parentNode) {
-      // Keep all family task actions outside the inert dashboard for every
-      // family member, including adults reviewing Leah's work.
+    if (workspaceId === "leah" && membership.role !== "child" &&
+        workspaceShell && workspaceShell.parentNode) {
+      // Adult review items stay before the shared board. Leah's own task panel
+      // is hidden until requested and opens as a fixed overlay.
       if (childBanner) workspaceShell.parentNode.insertBefore(childBanner, workspaceShell);
       if (familyPanel) workspaceShell.parentNode.insertBefore(familyPanel, workspaceShell);
     }
 
     if (membership.role === "child") {
-      // Keep the shared dashboard read-only, but always mount Leah's editable
-      // task workspace as a visible, interactive sibling before that dashboard.
-      // This also repairs older HTML deployments where the family panel was
-      // appended after the long dashboard and pushed below the visible page.
+      // Keep the board inert, but do not reserve a tall, invisible task panel
+      // above it. Desktop users open the task dialog from the top navigation;
+      // touch layouts keep the same action in the compact child banner.
       if (familyPanel) {
-        familyPanel.hidden = false;
-        familyPanel.inert = false;
-        familyPanel.setAttribute("aria-hidden", "false");
+        familyPanel.hidden = true;
+        familyPanel.inert = true;
+        familyPanel.classList.remove("is-open", "is-child-dialog");
+        familyPanel.setAttribute("aria-hidden", "true");
       }
-      if (childBanner) childBanner.hidden = false;
-      if (familyShortcut) familyShortcut.hidden = false;
+      if (familyShortcut) {
+        familyShortcut.hidden = false;
+        if (window.innerWidth > 700 && topActions) {
+          topActions.insertBefore(familyShortcut, topActions.firstChild);
+          if (childBanner) childBanner.hidden = true;
+        } else if (childBanner) {
+          childBanner.appendChild(familyShortcut);
+          childBanner.hidden = false;
+        }
+      } else if (childBanner) {
+        childBanner.hidden = true;
+      }
       if (workspaceShell) workspaceShell.setAttribute("inert", "");
       if (backupOptionsButton) backupOptionsButton.hidden = true;
     } else {
       if (workspaceShell) workspaceShell.removeAttribute("inert");
       if (familyPanel) {
         familyPanel.inert = false;
-        if (workspaceId !== "leah") {
-          familyPanel.hidden = true;
-          familyPanel.setAttribute("aria-hidden", "true");
-        }
+        familyPanel.hidden = true;
+        familyPanel.classList.remove("is-open", "is-child-dialog");
+        familyPanel.setAttribute("aria-hidden", "true");
       }
       if (childBanner) childBanner.hidden = true;
-      if (familyShortcut) familyShortcut.hidden = true;
+      if (familyShortcut) {
+        familyShortcut.hidden = true;
+        if (childBanner && familyShortcut.parentNode !== childBanner) childBanner.appendChild(familyShortcut);
+      }
       if (backupOptionsButton) backupOptionsButton.hidden = false;
     }
     const authGate = document.getElementById("tasky-auth-gate");
