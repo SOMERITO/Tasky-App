@@ -32,6 +32,14 @@ const childModules = [
   { id: "box_habitos", label: "Hábitos y rutinas" }
 ];
 const childModuleIds = new Set(childModules.map((item) => item.id));
+const defaultChildModules = childModules.map((item) => ({ ...item }));
+const privateChildModuleIds = new Set(["box_salud", "box_gastos"]);
+let boardModuleIds = new Set(childModuleIds);
+
+function isLeahChildVisibleModuleId(value) {
+  const id = String(value || "").trim();
+  return /^box_[A-Za-z0-9_-]{1,64}$/.test(id) && !privateChildModuleIds.has(id);
+}
 
 let activeWorkspace = null;
 let activeRole = "";
@@ -140,6 +148,36 @@ function fillModuleSelect(select, selectedValue = "") {
     select.append(option);
   });
   if (selectedValue && childModuleIds.has(selectedValue)) select.value = selectedValue;
+}
+
+function syncChildModules(boxes) {
+  if (!Array.isArray(boxes)) return;
+
+  childModules.splice(0, childModules.length, ...defaultChildModules.map((item) => ({ ...item })));
+  childModuleIds.clear();
+  defaultChildModules.forEach((item) => childModuleIds.add(item.id));
+  boardModuleIds = new Set();
+
+  boxes.forEach((box) => {
+    const id = String(box && box.id || "").trim();
+    if (!isLeahChildVisibleModuleId(id)) return;
+    boardModuleIds.add(id);
+
+    if (!childModuleIds.has(id)) {
+      const label = String(box.name || box.label || id.replace(/^box_/, ""))
+        .trim()
+        .slice(0, 80);
+      childModules.push({ id, label: label || "Otro módulo" });
+      childModuleIds.add(id);
+    }
+  });
+
+  if (content) {
+    content.querySelectorAll('select[name="module"]').forEach((select) => {
+      const selected = String(select.value || "");
+      fillModuleSelect(select, childModuleIds.has(selected) ? selected : "box_escolar");
+    });
+  }
 }
 
 function renderChildPanel() {
@@ -252,7 +290,7 @@ function renderAdultAssignedTaskList() {
   list.replaceChildren();
 
   const eligibleTasks = boardTasks
-    .filter((task) => task && childModuleIds.has(String(task.boxId)))
+    .filter((task) => task && boardModuleIds.has(String(task.boxId)))
     .sort((a, b) => {
       const aDue = String(a.dueDate || "");
       const bDue = String(b.dueDate || "");
@@ -312,7 +350,7 @@ async function submitCompletionForTask(taskId) {
     request.status === "pending" &&
     String(request.relatedTaskId || "") === String(taskId)
   );
-  if (!task || task.done || alreadyPending || !childModuleIds.has(String(task.boxId))) return;
+  if (!task || task.done || alreadyPending || !boardModuleIds.has(String(task.boxId))) return;
 
   setRequestBusy(true);
   try {
@@ -345,7 +383,8 @@ async function submitChildTask(event) {
   const priority = String(form.elements.priority.value || "normal");
   const message = form.querySelector("[data-family-message]");
 
-  if (!title || title.length > 180 || description.length > 500 || !childModuleIds.has(module)) {
+  if (!title || title.length > 180 || description.length > 500 ||
+      !childModuleIds.has(module) || !isLeahChildVisibleModuleId(module)) {
     setMessage(message, "Completa un título válido y selecciona un módulo permitido.", true);
     return;
   }
@@ -569,7 +608,8 @@ async function saveChildTaskEdits(event, task) {
   const priority = String(form.elements.priority.value || "normal");
   const message = form.querySelector("[data-family-message]");
 
-  if (!title || title.length > 180 || description.length > 500 || !childModuleIds.has(module)) {
+  if (!title || title.length > 180 || description.length > 500 ||
+      !childModuleIds.has(module) || !isLeahChildVisibleModuleId(module)) {
     setMessage(message, "Completa un título válido y selecciona un módulo permitido.", true);
     return;
   }
@@ -837,8 +877,17 @@ async function reviewRequest(requestId, decision) {
           requestUpdate.createdTaskId = taskId;
         } else if (request.type === "completion") {
           const task = payload.tasks.find((item) => String(item.id) === String(request.relatedTaskId));
-          if (!task || task.done || !childModuleIds.has(String(task.boxId))) {
-            throw new Error("La tarea ya no está pendiente o no pertenece a un módulo de Leah.");
+          const belongsToVisibleModule = Boolean(
+            task &&
+            isLeahChildVisibleModuleId(task.boxId) &&
+            Array.isArray(payload.boxes) &&
+            payload.boxes.some((box) =>
+              String(box && box.id || "") === String(task.boxId) &&
+              isLeahChildVisibleModuleId(box.id)
+            )
+          );
+          if (!task || task.done || !belongsToVisibleModule) {
+            throw new Error("La tarea ya no está pendiente o no pertenece a un módulo visible de Leah.");
           }
           task.done = true;
           task.completedDate = localDateISO();
@@ -1012,6 +1061,7 @@ function openWorkspace(detail) {
     unsubscribeBoard = onSnapshot(sharedRef, (snapshot) => {
       boardTasksLoaded = true;
       const payload = parseSharedPayload(snapshot);
+      syncChildModules(payload && payload.boxes);
       boardTasks = payload && Array.isArray(payload.tasks) ? payload.tasks : [];
       renderAdultAssignedTaskList();
     }, (error) => {
