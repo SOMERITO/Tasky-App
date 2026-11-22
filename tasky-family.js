@@ -48,6 +48,7 @@ let requestsLoadFailed = false;
 let childTasksLoadFailed = false;
 let requestsLoaded = false;
 let childTasksLoaded = false;
+let boardTasksLoaded = false;
 
 function node(tag, className, text) {
   const element = document.createElement(tag);
@@ -258,7 +259,7 @@ function renderAdultAssignedTaskList() {
       return aDue.localeCompare(bDue) || String(a.title || "").localeCompare(String(b.title || ""), "es");
     });
 
-  if (!boardTasks.length && !childTasksLoaded) {
+  if (!boardTasksLoaded) {
     list.append(node("div", "tasky-family-empty tasky-family-loading", "Cargando las tareas asignadas…"));
     return;
   }
@@ -918,6 +919,7 @@ function closeWorkspace() {
   childTasksLoadFailed = false;
   requestsLoaded = false;
   childTasksLoaded = false;
+  boardTasksLoaded = false;
   if (panel) {
     panel.hidden = true;
     panel.removeAttribute("data-tasky-role");
@@ -944,6 +946,7 @@ function openWorkspace(detail) {
   activeUid = api.currentUser.uid;
   requestsLoaded = false;
   childTasksLoaded = false;
+  boardTasksLoaded = false;
   requestsLoadFailed = false;
   childTasksLoadFailed = false;
 
@@ -1007,12 +1010,18 @@ function openWorkspace(detail) {
   if (activeRole === "child") {
     const sharedRef = doc(db, ...SHARED_PATH);
     unsubscribeBoard = onSnapshot(sharedRef, (snapshot) => {
+      boardTasksLoaded = true;
       const payload = parseSharedPayload(snapshot);
       boardTasks = payload && Array.isArray(payload.tasks) ? payload.tasks : [];
       renderAdultAssignedTaskList();
     }, (error) => {
+      boardTasksLoaded = true;
       boardTasks = [];
       renderAdultAssignedTaskList();
+      const list = content.querySelector("#tasky-family-assigned-tasks-list");
+      if (list) list.replaceChildren(node("div", "tasky-family-empty",
+        "No se pudieron cargar las tareas asignadas (" + String(error && error.code || "error") + ")."
+      ));
       window.console && window.console.error("[Tasky Leah] Shared board listener failed:", error);
     });
   }
