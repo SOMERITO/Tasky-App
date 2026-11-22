@@ -43,6 +43,8 @@ let unsubscribeChildTasks = null;
 let unsubscribeBoard = null;
 let editingChildTaskId = "";
 let requestBusy = false;
+let requestsLoadFailed = false;
+let childTasksLoadFailed = false;
 
 function node(tag, className, text) {
   const element = document.createElement(tag);
@@ -831,6 +833,17 @@ async function reviewRequest(requestId, decision) {
   }
 }
 
+function updatePanelVisibility() {
+  if (!panel) return;
+
+  // Child users need the task-entry form even when their lists are empty.
+  // Guardians only need this panel when family activity exists, or when
+  // a listener error needs to be displayed.
+  const hasFamilyActivity = requests.length > 0 || childTasks.length > 0;
+  const hasLoadIssue = requestsLoadFailed || childTasksLoadFailed;
+  panel.hidden = !(activeRole === "child" || hasFamilyActivity || hasLoadIssue);
+}
+
 function closeWorkspace() {
   if (unsubscribeRequests) unsubscribeRequests();
   if (unsubscribeChildTasks) unsubscribeChildTasks();
@@ -846,6 +859,8 @@ function closeWorkspace() {
   boardTasks = [];
   editingChildTaskId = "";
   requestBusy = false;
+  requestsLoadFailed = false;
+  childTasksLoadFailed = false;
   if (panel) panel.hidden = true;
   if (content) content.replaceChildren();
 }
@@ -868,6 +883,7 @@ function openWorkspace(detail) {
 
   if (activeRole === "child") renderChildPanel();
   else renderGuardianPanel();
+  updatePanelVisibility();
 
   const requestsQuery = query(
     collection(db, ...REQUESTS_PATH),
@@ -875,14 +891,18 @@ function openWorkspace(detail) {
     limit(75)
   );
   unsubscribeRequests = onSnapshot(requestsQuery, (snapshot) => {
+    requestsLoadFailed = false;
     requests = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     renderRequestList();
     renderAdultAssignedTaskList();
+    updatePanelVisibility();
   }, (error) => {
+    requestsLoadFailed = true;
     const list = content.querySelector("#tasky-family-requests-list");
     if (list) list.replaceChildren(node("div", "tasky-family-empty",
       "No se pudieron cargar las solicitudes. Comprueba los permisos y la conexión."
     ));
+    updatePanelVisibility();
     window.console && window.console.error("Tasky family requests listener failed:", error);
   });
 
@@ -892,9 +912,11 @@ function openWorkspace(detail) {
     limit(100)
   );
   unsubscribeChildTasks = onSnapshot(childTasksQuery, (snapshot) => {
+    childTasksLoadFailed = false;
     childTasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     if (!childTasks.some((task) => String(task.id) === editingChildTaskId)) editingChildTaskId = "";
     renderChildTaskList();
+    updatePanelVisibility();
     const count = content.querySelector("#tasky-family-pending-count");
     if (count) {
       count.textContent = String(
@@ -903,10 +925,12 @@ function openWorkspace(detail) {
       );
     }
   }, (error) => {
+    childTasksLoadFailed = true;
     const list = content.querySelector("#tasky-family-child-tasks-list");
     if (list) list.replaceChildren(node("div", "tasky-family-empty",
       "No se pudieron cargar las tareas registradas por Leah. Comprueba los permisos y la conexión."
     ));
+    updatePanelVisibility();
     window.console && window.console.error("Tasky child task listener failed:", error);
   });
 
