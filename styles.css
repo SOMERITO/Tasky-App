@@ -8135,3 +8135,40 @@ html[data-tasky-workspace="leah"] .brand-logo {
   font-size: 0.86rem;
   font-weight: 550;
 }
+
+/* Workspace greeting now lives beside the Tasky logo in the top bar. */
+.tasky-welcome.brand-workspace-welcome {
+  margin: 0;
+  flex: 0 1 340px;
+  min-width: 0;
+  max-width: min(340px, 30vw);
+}
+.tasky-welcome.brand-workspace-welcome h2 {
+  margin: 0;
+  font-size: clamp(0.9rem, 1.35vw, 1.06rem);
+  line-height: 1.16;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tasky-welcome.brand-workspace-welcome p {
+  margin: 3px 0 0;
+  font-size: 0.74rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 700px) {
+  .tasky-welcome.brand-workspace-welcome {
+    flex: 0 1 auto;
+    max-width: min(260px, calc(100vw - 100px));
+  }
+  .tasky-welcome.brand-workspace-welcome h2 {
+    font-size: 0.84rem;
+  }
+  .tasky-welcome.brand-workspace-welcome p {
+    font-size: 0.66rem;
+  }
+}
