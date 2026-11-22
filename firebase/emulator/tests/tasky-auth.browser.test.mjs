@@ -389,6 +389,27 @@ test("Leah puede crear, editar, eliminar y enviar a revisión sus propias tareas
   }
 });
 
+test("los adultos pueden revisar tareas de Leah en módulos personalizados", async () => {
+  const { context, page, forbiddenProductionRequests } = await openLoginPage();
+  try {
+    await login(page, users.jose);
+    await selectProfile(page, "leah");
+    await assertWorkspace(page, "leah", "guardian", "Tasky Leah");
+    await page.locator("#tasky-family-panel:not([hidden])").waitFor({ state: "visible" });
+
+    const frenchTask = page
+      .locator("#tasky-family-child-tasks-list article")
+      .filter({ hasText: "Practicar vocabulario de francés" });
+    await frenchTask.waitFor({ state: "visible" });
+    await frenchTask.getByText("FRANCÉS").waitFor({ state: "visible" });
+    await frenchTask.getByRole("button", { name: "Aprobar y completar" }).click();
+    await frenchTask.getByText("Completada").waitFor({ state: "visible" });
+    assert.deepEqual(forbiddenProductionRequests, []);
+  } finally {
+    await context.close();
+  }
+});
+
 test("una membresía infantil deshabilitada no aparece como espacio disponible", async () => {
   const { context, page, forbiddenProductionRequests } = await openLoginPage();
   try {
