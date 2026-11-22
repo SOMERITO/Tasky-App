@@ -17,6 +17,7 @@
     .tasky-profile-picker { margin-bottom: 1rem; }
     #tasky-auth-message { min-height: 1.5rem; }
   </style>
+  <link rel="stylesheet" href="../styles.css?v=20261122-leah-balanced-dashboard-6">
 </head>
 <body>
   <div id="tasky-boot-screen" role="status">Cargando tu espacio…</div>
@@ -46,9 +47,10 @@
   </main>
   <output id="tasky-test-result" aria-live="polite"></output>
   <output id="tasky-test-greeting" aria-live="polite"></output>
-  <div id="tasky-child-readonly-banner">
+  <div class="top-actions" aria-label="Acciones de Tasky">
     <button id="tasky-child-tasks-shortcut" type="button" hidden>Mis tareas</button>
   </div>
+  <div id="tasky-child-readonly-banner" hidden></div>
   <section id="tasky-family-panel" hidden aria-label="Mis tareas de Leah">
     <div id="tasky-family-content"></div>
   </section>
