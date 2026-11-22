@@ -8706,3 +8706,113 @@ html[data-tasky-workspace="leah"] .tasky-family-panel {
     margin-top: 8px !important;
   }
 }
+
+
+/* TASKY LEAH · balanced dashboard spacing and an overlay-only task workspace.
+   The aurora must remain behind page content; it must never cover flow items
+   while their layout height is still reserved. */
+@media (min-width: 701px) {
+  html[data-tasky-workspace="leah"] body.tasky-leah-workspace {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-top: 0 !important;
+    padding-bottom: 64px !important;
+  }
+  html[data-tasky-workspace="leah"] body.tasky-leah-workspace .app-shell {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-top: 18px !important;
+    padding-bottom: 22px !important;
+    margin-bottom: 0 !important;
+  }
+}
+html[data-tasky-workspace="leah"] .tasky-child-readonly-banner {
+  position: relative;
+  z-index: 2;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .top-actions .tasky-child-tasks-shortcut {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 34px;
+  height: 34px;
+  margin: 0 2px 0 0;
+  padding: 7px 11px;
+  border-radius: 11px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+html[data-tasky-workspace="leah"] .gemini-aurora-bg {
+  position: fixed !important;
+  inset: 0 !important;
+  height: 100vh !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+/* Leah's task form is a dialog overlay: opening it does not move the dashboard. */
+html.tasky-family-dialog-open,
+html.tasky-family-dialog-open body {
+  overflow: hidden !important;
+}
+.tasky-family-panel.is-child-dialog.is-open {
+  position: fixed !important;
+  z-index: 300 !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  max-height: 100vh;
+  max-height: 100dvh;
+  margin: 0 !important;
+  padding: max(18px, env(safe-area-inset-top, 0px)) 18px max(22px, env(safe-area-inset-bottom, 0px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: rgba(25, 18, 37, .42);
+  -webkit-backdrop-filter: blur(9px);
+  backdrop-filter: blur(9px);
+}
+.tasky-family-panel.is-child-dialog.is-open #tasky-family-content {
+  width: min(1180px, 100%);
+  max-width: 1180px;
+  margin: 0 auto;
+}
+.tasky-family-panel.is-child-dialog.is-open .tasky-family-card {
+  margin: 0 auto 14px;
+  box-shadow: 0 24px 70px rgba(18, 12, 29, .22);
+}
+.tasky-family-close {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 8px 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-hover, #f4eafa);
+  color: var(--text);
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.tasky-family-close:hover {
+  background: var(--primary-soft, #f3e8ff);
+}
+@media (max-width: 700px) {
+  html[data-tasky-workspace="leah"] body.tasky-leah-workspace {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-top: 0 !important;
+    padding-bottom: calc(var(--mobile-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 18px) !important;
+  }
+  html[data-tasky-workspace="leah"] body.tasky-leah-workspace .app-shell {
+    padding-top: 12px !important;
+    padding-bottom: 14px !important;
+  }
+  html[data-tasky-workspace="leah"] .tasky-family-panel.is-child-dialog.is-open {
+    padding: max(10px, env(safe-area-inset-top, 0px)) 10px max(16px, env(safe-area-inset-bottom, 0px));
+  }
+  html[data-tasky-workspace="leah"] .tasky-child-readonly-banner {
+    z-index: 2;
+    margin-top: 8px;
+  }
+}
