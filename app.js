@@ -29,7 +29,7 @@
 
   function canLeahUseBoardTarget(target) {
     if (!target || typeof target.closest !== "function") return false;
-    if (target.closest(".add-task-BarBtn, .inline-add-form")) return true;
+    if (target.closest(".add-task-BarBtn, .inline-add-form, .task-memory-suggestions .memory-suggestion-select")) return true;
     if (target.closest(".task-check-circle")) return true;
     if (target.closest('.box-header-actions [data-box-action="collapse"]')) return true;
 
@@ -7254,7 +7254,7 @@
       };
 
       boxTopRow.addEventListener("pointerdown", (e) => {
-        if (e.target.closest("button") || e.target.closest(".box-name")) return;
+        if (isLeahChildAccount() || e.target.closest("button") || e.target.closest(".box-name")) return;
         beginHoldDrag("box", box.id, card, e.clientX, e.clientY);
       });
 
