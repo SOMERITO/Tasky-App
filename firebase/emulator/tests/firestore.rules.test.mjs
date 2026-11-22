@@ -209,6 +209,35 @@ test("Leah can create, edit and delete her own pending tasks, but cannot approve
   }));
 });
 
+test("Leah can use custom visible modules but cannot use adult-private modules", async () => {
+  const db = env.authenticatedContext("leah").firestore();
+  const base = {
+    title: "Practicar francés",
+    description: "",
+    module: "box_custom_frances",
+    scheduledDate: "2026-11-22",
+    deadlineDate: "",
+    priority: "normal",
+    createdBy: "leah",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    status: "pending"
+  };
+
+  await assertSucceeds(setDoc(
+    doc(db, "workspaces/leah/child_tasks/custom-visible-module"),
+    base
+  ));
+  await assertFails(setDoc(
+    doc(db, "workspaces/leah/child_tasks/private-health-module"),
+    { ...base, module: "box_salud" }
+  ));
+  await assertFails(setDoc(
+    doc(db, "workspaces/leah/child_tasks/private-expenses-module"),
+    { ...base, module: "box_gastos" }
+  ));
+});
+
 test("Leah cannot create malformed child tasks or change ownership/status", async () => {
   const db = env.authenticatedContext("leah").firestore();
   const base = {
