@@ -379,7 +379,7 @@ async function submitCompletionForTask(taskId) {
     request.status === "pending" &&
     String(request.relatedTaskId || "") === String(taskId)
   );
-  if (!task || task.done || alreadyPending || !boardModuleIds.has(String(task.boxId))) return;
+  if (!task || task.done || alreadyPending || !boardModuleIds.has(String(task.boxId))) return false;
 
   setRequestBusy(true);
   try {
@@ -390,10 +390,11 @@ async function submitCompletionForTask(taskId) {
       status: "pending",
       relatedTaskId: String(taskId)
     });
+    return true;
   } catch (error) {
     const code = String(error && error.code || "unknown");
-    window.alert("No se pudo enviar el aviso de finalización (" + code + ").");
     window.console && window.console.error("[Tasky Leah] Submit assigned-task review failed:", error);
+    throw new Error("No se pudo enviar el aviso a revisión (" + code + ").");
   } finally {
     setRequestBusy(false);
     renderAdultAssignedTaskList();
@@ -511,7 +512,6 @@ async function submitChildTask(event) {
     return;
   }
 
-  setRequestBusy(true);
   setMessage(message, "Guardando tarea…");
   try {
     await createChildTaskFromBoard({ title, description, module, scheduledDate, deadlineDate, priority });
