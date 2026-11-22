@@ -4121,11 +4121,11 @@
     if (activeWorkspaceId === "leah" && activeWorkspaceContext &&
         activeWorkspaceContext.role === "child") {
       const childSyncText = document.getElementById("sync-status-text");
-      if (childSyncText) childSyncText.textContent = "Tablero de consulta";
-      setRealtimeSyncStatus("Tablero familiar protegido; las tareas de Leah se guardan por separado.");
+      if (childSyncText) childSyncText.textContent = "Tareas propias activas";
+      setRealtimeSyncStatus("Tus tareas se guardan en tu espacio; el tablero familiar permanece protegido.");
       const diagnostic = document.getElementById("sync-write-diagnostic-details");
-      if (diagnostic) diagnostic.textContent = "Leah registra y actualiza sus tareas en Mis tareas. El tablero compartido requiere revisión adulta.";
-      if (forceImmediateToast) showToast("Para agregar o editar tus pendientes, utiliza Mis tareas.");
+      if (diagnostic) diagnostic.textContent = "Puedes crear, editar y eliminar tus tareas pendientes desde las casillas. Al terminar, se envían a revisión. Las tareas asignadas por un adulto requieren su confirmación.";
+      if (forceImmediateToast) showToast("Tus tareas se guardan en tu espacio. Las tareas asignadas se envían a revisión.");
       return;
     }
     if (!cloudSyncReady || cloudSyncReadyConfig !== getCloudSyncConfigKey()) {
