@@ -59,7 +59,396 @@ service cloud.firestore {
         // Leah may use standard or custom child-visible boxes. Adult-private
         // health and expenses modules remain excluded from the child workspace.
         && data.module is string
-        && data.module.matches('^box_[A-Za-z0-9_-]{1,64}
+        && data.module.matches('^box_[A-Za-z0-9_-]{1,64}        && data.scheduledDate is string
+        && data.deadlineDate is string
+        && data.priority in ['low', 'normal', 'high']
+        && data.createdBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && data.status in ['pending', 'awaiting_review', 'completed']
+        && (
+          !data.keys().hasAny(['childCompletedAt'])
+          || data.childCompletedAt == null
+          || data.childCompletedAt is timestamp
+        )
+        && (
+          !data.keys().hasAny(['reviewedBy'])
+          || data.reviewedBy is string
+        )
+        && (
+          !data.keys().hasAny(['reviewedAt'])
+          || data.reviewedAt == null
+          || data.reviewedAt is timestamp
+        )
+        && (
+          !data.keys().hasAny(['reviewNote'])
+          || (data.reviewNote is string && data.reviewNote.size() <= 500)
+        )
+        && (
+          !data.keys().hasAny(['completedAt'])
+          || data.completedAt == null
+          || data.completedAt is timestamp
+        );
+    }
+
+    match /user_access/{uid}/workspaces/{workspaceId} {
+      allow get, list: if signedIn() && request.auth.uid == uid;
+      allow create, update, delete: if false;
+    }
+
+    match /workspaces/{workspaceId} {
+      allow get: if hasMembership(workspaceId);
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    match /workspaces/{workspaceId}/shared/{documentId} {
+      allow read: if hasMembership(workspaceId);
+      allow create, update, delete: if isAdult(workspaceId);
+    }
+
+    match /workspaces/{workspaceId}/child_tasks/{taskId} {
+      allow read: if workspaceId == 'leah' && hasMembership(workspaceId);
+
+      allow create: if workspaceId == 'leah' && isChild(workspaceId)
+        && validLeahChildTask(request.resource.data)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'pending';
+
+      allow update: if (
+        workspaceId == 'leah'
+        && isChild(workspaceId)
+        && resource.data.createdBy == request.auth.uid
+        && resource.data.status == 'pending'
+        && validLeahChildTask(request.resource.data)
+        && request.resource.data.createdBy == resource.data.createdBy
+        && (
+          (
+            request.resource.data.status == 'pending'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'title', 'description', 'module', 'scheduledDate',
+              'deadlineDate', 'priority', 'updatedAt'
+            ])
+          )
+          ||
+          (
+            request.resource.data.status == 'awaiting_review'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status', 'childCompletedAt', 'updatedAt'
+            ])
+            && request.resource.data.childCompletedAt is timestamp
+          )
+        )
+      ) || (
+        workspaceId == 'leah'
+        && isAdult(workspaceId)
+        && resource.data.createdBy == request.resource.data.createdBy
+        && validLeahChildTask(request.resource.data)
+        && (
+          (
+            request.resource.data.status == resource.data.status
+            && request.resource.data.status in ['pending', 'completed']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'title', 'description', 'module', 'scheduledDate',
+              'deadlineDate', 'priority', 'updatedAt'
+            ])
+          )
+          ||
+          (
+            resource.data.status == 'awaiting_review'
+            && request.resource.data.status in ['pending', 'completed']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status', 'reviewedBy', 'reviewedAt', 'reviewNote',
+              'completedAt', 'updatedAt'
+            ])
+            && request.resource.data.reviewedBy == request.auth.uid
+            && request.resource.data.reviewedAt is timestamp
+            && request.resource.data.reviewNote is string
+            && request.resource.data.reviewNote.size() <= 500
+            && request.resource.data.updatedAt is timestamp
+            && (
+              request.resource.data.status != 'completed'
+              || request.resource.data.completedAt is timestamp
+            )
+            && (
+              request.resource.data.status != 'pending'
+              || request.resource.data.completedAt == null
+            )
+          )
+        )
+      );
+
+      allow delete: if workspaceId == 'leah' && (
+        isAdult(workspaceId)
+        || (
+          isChild(workspaceId)
+          && resource.data.createdBy == request.auth.uid
+          && resource.data.status == 'pending'
+        )
+      );
+    }
+
+    match /workspaces/{workspaceId}/adult_private/{documentId} {
+      allow read, write: if isAdult(workspaceId);
+    }
+
+    match /workspaces/{workspaceId}/access_control/{controlId} {
+      allow read, write: if isAdult(workspaceId);
+    }
+
+    match /workspaces/{workspaceId}/task_requests/{requestId} {
+      allow read: if hasMembership(workspaceId);
+
+      allow create: if isChild(workspaceId)
+        && request.resource.data.keys().hasOnly([
+          'type', 'createdBy', 'createdAt', 'status', 'relatedTaskId'
+        ])
+        && request.resource.data.keys().hasAll([
+          'type', 'createdBy', 'createdAt', 'status', 'relatedTaskId'
+        ])
+        && request.resource.data.type == 'completion'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.status == 'pending'
+        && request.resource.data.relatedTaskId is string
+        && request.resource.data.relatedTaskId.size() > 0
+        && request.resource.data.relatedTaskId.size() <= 180;
+
+      allow update: if isAdult(workspaceId)
+        && resource.data.status == 'pending'
+        && request.resource.data.status in ['approved', 'rejected']
+        && request.resource.data.reviewedBy == request.auth.uid
+        && request.resource.data.reviewedAt is timestamp
+        && request.resource.data.reviewNote is string
+        && request.resource.data.reviewNote.size() <= 500
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'reviewedBy', 'reviewedAt', 'reviewNote', 'createdTaskId'
+        ])
+        && (
+          request.resource.data.status != 'approved'
+          || resource.data.type != 'new_task'
+          || (
+            request.resource.data.createdTaskId is string
+            && request.resource.data.createdTaskId.size() > 0
+          )
+        );
+      allow delete: if isAdult(workspaceId);
+    }
+
+    match /workspaces/{workspaceId}/notifications/{notificationId} {
+      allow read: if hasMembership(workspaceId);
+      allow create: if isAdult(workspaceId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.keys().hasOnly([
+          'eventType', 'title', 'createdAt', 'createdBy', 'audience', 'readBy'
+        ]);
+      allow update, delete: if isAdult(workspaceId);
+    }
+
+    // Deny all paths not explicitly allowed above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && data.module != 'box_salud'
+        && data.module != 'box_gastos'
+        && data.scheduledDate is string
+        && data.deadlineDate is string
+        && data.priority in ['low', 'normal', 'high']
+        && data.createdBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && data.status in ['pending', 'awaiting_review', 'completed']
+        && (
+          !data.keys().hasAny(['childCompletedAt'])
+          || data.childCompletedAt == null
+          || data.childCompletedAt is timestamp
+        )
+        && (
+          !data.keys().hasAny(['reviewedBy'])
+          || data.reviewedBy is string
+        )
+        && (
+          !data.keys().hasAny(['reviewedAt'])
+          || data.reviewedAt == null
+          || data.reviewedAt is timestamp
+        )
+        && (
+          !data.keys().hasAny(['reviewNote'])
+          || (data.reviewNote is string && data.reviewNote.size() <= 500)
+        )
+        && (
+          !data.keys().hasAny(['completedAt'])
+          || data.completedAt == null
+          || data.completedAt is timestamp
+        );
+    }
+
+    match /user_access/{uid}/workspaces/{workspaceId} {
+      allow get, list: if signedIn() && request.auth.uid == uid;
+      allow create, update, delete: if false;
+    }
+
+    match /workspaces/{workspaceId} {
+      allow get: if hasMembership(workspaceId);
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    match /workspaces/{workspaceId}/shared/{documentId} {
+      allow read: if hasMembership(workspaceId);
+      allow create, update, delete: if isAdult(workspaceId);
+    }
+
+    match /workspaces/{workspaceId}/child_tasks/{taskId} {
+      allow read: if workspaceId == 'leah' && hasMembership(workspaceId);
+
+      allow create: if workspaceId == 'leah' && isChild(workspaceId)
+        && validLeahChildTask(request.resource.data)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'pending';
+
+      allow update: if (
+        workspaceId == 'leah'
+        && isChild(workspaceId)
+        && resource.data.createdBy == request.auth.uid
+        && resource.data.status == 'pending'
+        && validLeahChildTask(request.resource.data)
+        && request.resource.data.createdBy == resource.data.createdBy
+        && (
+          (
+            request.resource.data.status == 'pending'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'title', 'description', 'module', 'scheduledDate',
+              'deadlineDate', 'priority', 'updatedAt'
+            ])
+          )
+          ||
+          (
+            request.resource.data.status == 'awaiting_review'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status', 'childCompletedAt', 'updatedAt'
+            ])
+            && request.resource.data.childCompletedAt is timestamp
+          )
+        )
+      ) || (
+        workspaceId == 'leah'
+        && isAdult(workspaceId)
+        && resource.data.createdBy == request.resource.data.createdBy
+        && validLeahChildTask(request.resource.data)
+        && (
+          (
+            request.resource.data.status == resource.data.status
+            && request.resource.data.status in ['pending', 'completed']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'title', 'description', 'module', 'scheduledDate',
+              'deadlineDate', 'priority', 'updatedAt'
+            ])
+          )
+          ||
+          (
+            resource.data.status == 'awaiting_review'
+            && request.resource.data.status in ['pending', 'completed']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status', 'reviewedBy', 'reviewedAt', 'reviewNote',
+              'completedAt', 'updatedAt'
+            ])
+            && request.resource.data.reviewedBy == request.auth.uid
+            && request.resource.data.reviewedAt is timestamp
+            && request.resource.data.reviewNote is string
+            && request.resource.data.reviewNote.size() <= 500
+            && request.resource.data.updatedAt is timestamp
+            && (
+              request.resource.data.status != 'completed'
+              || request.resource.data.completedAt is timestamp
+            )
+            && (
+              request.resource.data.status != 'pending'
+              || request.resource.data.completedAt == null
+            )
+          )
+        )
+      );
+
+      allow delete: if workspaceId == 'leah' && (
+        isAdult(workspaceId)
+        || (
+          isChild(workspaceId)
+          && resource.data.createdBy == request.auth.uid
+          && resource.data.status == 'pending'
+        )
+      );
+    }
+
+    match /workspaces/{workspaceId}/adult_private/{documentId} {
+      allow read, write: if isAdult(workspaceId);
+    }
+
+    match /workspaces/{workspaceId}/access_control/{controlId} {
+      allow read, write: if isAdult(workspaceId);
+    }
+
+    match /workspaces/{workspaceId}/task_requests/{requestId} {
+      allow read: if hasMembership(workspaceId);
+
+      allow create: if isChild(workspaceId)
+        && request.resource.data.keys().hasOnly([
+          'type', 'createdBy', 'createdAt', 'status', 'relatedTaskId'
+        ])
+        && request.resource.data.keys().hasAll([
+          'type', 'createdBy', 'createdAt', 'status', 'relatedTaskId'
+        ])
+        && request.resource.data.type == 'completion'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.status == 'pending'
+        && request.resource.data.relatedTaskId is string
+        && request.resource.data.relatedTaskId.size() > 0
+        && request.resource.data.relatedTaskId.size() <= 180;
+
+      allow update: if isAdult(workspaceId)
+        && resource.data.status == 'pending'
+        && request.resource.data.status in ['approved', 'rejected']
+        && request.resource.data.reviewedBy == request.auth.uid
+        && request.resource.data.reviewedAt is timestamp
+        && request.resource.data.reviewNote is string
+        && request.resource.data.reviewNote.size() <= 500
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'reviewedBy', 'reviewedAt', 'reviewNote', 'createdTaskId'
+        ])
+        && (
+          request.resource.data.status != 'approved'
+          || resource.data.type != 'new_task'
+          || (
+            request.resource.data.createdTaskId is string
+            && request.resource.data.createdTaskId.size() > 0
+          )
+        );
+      allow delete: if isAdult(workspaceId);
+    }
+
+    match /workspaces/{workspaceId}/notifications/{notificationId} {
+      allow read: if hasMembership(workspaceId);
+      allow create: if isAdult(workspaceId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.keys().hasOnly([
+          'eventType', 'title', 'createdAt', 'createdBy', 'audience', 'readBy'
+        ]);
+      allow update, delete: if isAdult(workspaceId);
+    }
+
+    // Deny all paths not explicitly allowed above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
         && data.scheduledDate is string
         && data.deadlineDate is string
         && data.priority in ['low', 'normal', 'high']
