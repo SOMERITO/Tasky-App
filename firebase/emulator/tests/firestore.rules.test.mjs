@@ -425,27 +425,30 @@ test("only an adult can create or change workspace membership records", async ()
 });
 
 test("completed private migration requires both valid module documents and blocks later saves on corruption", async () => {
-  let db;
-  await env.withSecurityRulesDisabled((context) => { db = context.firestore(); });
   const prefix = `workspaces/private-integrity-${Date.now()}`;
-  const markerRef = doc(db, `${prefix}/access_control/private_modules`);
-  const healthRef = doc(db, `${prefix}/adult_private/health`);
-  const expensesRef = doc(db, `${prefix}/adult_private/expenses`);
   const workspaceId = prefix.split("/").at(-1);
-  const sharedRef = doc(db, `${prefix}/shared/main`);
   const child = env.authenticatedContext("private-guard-child").firestore();
+  const readAdminDoc = (path) => env.withSecurityRulesDisabled((context) =>
+    getDoc(doc(context.firestore(), path))
+  );
   const validModule = (moduleId) => ({
     moduleId, schemaVersion: 1,
     payloadJson: JSON.stringify({ moduleId, box: { id: moduleId }, tasks: [], taskIds: [], deletedTaskIds: [], deletedBoxIds: [] })
   });
-  const attemptSave = async () => runTransaction(db, async (tx) => {
-    const [marker, health, expenses] = await Promise.all([tx.get(markerRef), tx.get(healthRef), tx.get(expensesRef)]);
-    const verified = validateCompletedPrivateModuleSet(
-      marker.exists() ? marker.data() : null,
-      { health: health.exists() ? health.data() : null, expenses: expenses.exists() ? expenses.data() : null }
-    );
-    tx.set(healthRef, { ...health.data(), payloadJson: JSON.stringify({ ...JSON.parse(health.data().payloadJson), tasks: [{ id: "new-save" }] }) });
-    return verified;
+  const attemptSave = () => env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    const markerRef = doc(db, `${prefix}/access_control/private_modules`);
+    const healthRef = doc(db, `${prefix}/adult_private/health`);
+    const expensesRef = doc(db, `${prefix}/adult_private/expenses`);
+    return runTransaction(db, async (tx) => {
+      const [marker, health, expenses] = await Promise.all([tx.get(markerRef), tx.get(healthRef), tx.get(expensesRef)]);
+      const verified = validateCompletedPrivateModuleSet(
+        marker.exists() ? marker.data() : null,
+        { health: health.exists() ? health.data() : null, expenses: expenses.exists() ? expenses.data() : null }
+      );
+      tx.set(healthRef, { ...health.data(), payloadJson: JSON.stringify({ ...JSON.parse(health.data().payloadJson), tasks: [{ id: "new-save" }] }) });
+      return verified;
+    });
   });
   const seed = async (state) => env.withSecurityRulesDisabled(async (context) => {
     const admin = context.firestore();
@@ -471,27 +474,30 @@ test("completed private migration requires both valid module documents and block
       health: missingId === "health" ? null : validModule("box_salud"),
       expenses: missingId === "expenses" ? null : validModule("box_gastos")
     });
-    const survivorRef = missingId === "health" ? expensesRef : healthRef;
-    const survivorBefore = (await getDoc(survivorRef)).data();
+    const survivorPath = missingId === "health" ? `${prefix}/adult_private/expenses` : `${prefix}/adult_private/health`;
+    const missingPath = missingId === "health" ? `${prefix}/adult_private/health` : `${prefix}/adult_private/expenses`;
+    const survivorBefore = (await readAdminDoc(survivorPath)).data();
     await assertFails(getDoc(doc(child, `${prefix}/shared/main`)));
     await assert.rejects(attemptSave(), /falta/);
-    assert.deepEqual((await getDoc(survivorRef)).data(), survivorBefore);
-    assert.equal((await getDoc(missingId === "health" ? healthRef : expensesRef)).exists(), false);
+    assert.deepEqual((await readAdminDoc(survivorPath)).data(), survivorBefore);
+    assert.equal((await readAdminDoc(missingPath)).exists(), false);
   }
 
   const corrupt = { ...validModule("box_salud"), payloadJson: "{not-json" };
   await seed({ marker: { ready: true, schemaVersion: 1 }, health: corrupt, expenses: validModule("box_gastos") });
-  const expensesBefore = (await getDoc(expensesRef)).data();
+  const expensesBefore = (await readAdminDoc(`${prefix}/adult_private/expenses`)).data();
   await assert.rejects(attemptSave(), /corrupto|formato inválido/);
-  assert.deepEqual((await getDoc(expensesRef)).data(), expensesBefore);
-  assert.equal((await getDoc(healthRef)).data().payloadJson, "{not-json");
+  assert.deepEqual((await readAdminDoc(`${prefix}/adult_private/expenses`)).data(), expensesBefore);
+  assert.equal((await readAdminDoc(`${prefix}/adult_private/health`)).data().payloadJson, "{not-json");
   await env.withSecurityRulesDisabled(async (context) => {
     await setDoc(doc(context.firestore(), `${prefix}/access_control/private_modules`), {
       ready: false, schemaVersion: 1, integrityFailure: "private-document-integrity"
     });
   });
   await assertFails(getDoc(doc(child, `${prefix}/shared/main`)));
-  const [healthAfterLock, expensesAfterLock] = await Promise.all([getDoc(healthRef), getDoc(expensesRef)]);
+  const [healthAfterLock, expensesAfterLock] = await Promise.all([
+    readAdminDoc(`${prefix}/adult_private/health`), readAdminDoc(`${prefix}/adult_private/expenses`)
+  ]);
   assert.throws(() => validateCompletedPrivateModuleSet(
     { ready: false, integrityFailure: "private-document-integrity" },
     { health: healthAfterLock.data(), expenses: expensesAfterLock.data() }

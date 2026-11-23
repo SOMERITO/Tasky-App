@@ -180,6 +180,14 @@ before(async () => {
       ready: true,
       schemaVersion: 1
     });
+    await setDoc(doc(db, "workspaces/leah/adult_private/health"), {
+      moduleId: "box_salud", schemaVersion: 1,
+      payloadJson: JSON.stringify({ moduleId: "box_salud", box: { id: "box_salud" }, tasks: [], taskIds: [], deletedTaskIds: [], deletedBoxIds: [] })
+    });
+    await setDoc(doc(db, "workspaces/leah/adult_private/expenses"), {
+      moduleId: "box_gastos", schemaVersion: 1,
+      payloadJson: JSON.stringify({ moduleId: "box_gastos", box: { id: "box_gastos" }, tasks: [], taskIds: [], deletedTaskIds: [], deletedBoxIds: [] })
+    });
     await setDoc(doc(db, "workspaces/leah/shared/main"), {
       payloadJson: JSON.stringify({
         boxes: [
