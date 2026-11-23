@@ -13,7 +13,9 @@
     MEMORY: "tasky_task_memory",
     CLOUD_CHANNEL: "tasky_cloud_channel",
     FIREBASE_CONFIG: "tasky_firebase_config_v1",
-    VIEW_STATE: "tasky_view_state_v1"
+    VIEW_STATE: "tasky_view_state_v1",
+    CLOUD_BASELINE: "tasky_cloud_baseline_fingerprint_v1",
+    CLOUD_DIRTY: "tasky_cloud_local_changes_pending_v1"
   };
 
   let activeWorkspaceId = "";
@@ -3220,6 +3222,32 @@
     return syncFingerprint(buildCloudSyncPayload(rawData));
   }
 
+  function hasPendingLocalCloudChanges() {
+    if (safeStorage.getItem(STORAGE_KEYS.CLOUD_DIRTY) === "1") return true;
+    const baseline = String(safeStorage.getItem(STORAGE_KEYS.CLOUD_BASELINE) || "");
+    return Boolean(baseline && cloudSyncFingerprint({
+      ...appState.data,
+      taskMemoryByBox: appState.taskMemory || appState.data.taskMemoryByBox || {},
+      history: appState.history || {},
+      settings: appState.settings || {}
+    }) !== baseline);
+  }
+
+  function preserveLocalSnapshotBeforeCloudAdoption(rawData) {
+    const local = normalizeDataPayload(rawData);
+    if (!local || !local.boxes.length) return true;
+    appState.backups.unshift({
+      id: `bkp_sync_guard_${Date.now()}`,
+      timestamp: Date.now(),
+      label: "Respaldo automático antes de adoptar Firestore",
+      boxesCount: local.boxes.length,
+      tasksCount: local.tasks.length,
+      data: local
+    });
+    if (appState.backups.length > 20) appState.backups = appState.backups.slice(0, 20);
+    return safeStorage.setItem(STORAGE_KEYS.BACKUPS, JSON.stringify(appState.backups)) !== false;
+  }
+
   function waitForPrivateModulesApi() {
     if (window.TaskyPrivateModules) return Promise.resolve(window.TaskyPrivateModules);
     return new Promise((resolve, reject) => {
@@ -3578,6 +3606,10 @@
   // ==========================================================================
   let cloudSyncReady = false;
   let cloudSyncReadyConfig = "";
+  // Writes are conditional on the last Firestore revision observed by this device.
+  let cloudFirestoreUpdateTime = "";
+  let cloudFirestoreExists = null;
+  let cloudRescueAuthorized = false;
   let privateModulesReady = false;
   let cloudPullInFlight = false;
   let cloudBootstrapInFlight = false;
@@ -3599,8 +3631,8 @@
       if (!activeWorkspaceId || typeof window.BroadcastChannel === "undefined") return;
       syncBroadcastChannel = new window.BroadcastChannel("tasky_firebase_realtime_bus_" + activeWorkspaceId);
       syncBroadcastChannel.onmessage = (ev) => {
-        if (ev.data && ev.data.payload && ev.data.deviceId !== appState.deviceId) {
-          applyIncomingSyncPayload(ev.data.payload, false);
+        if (ev.data && ev.data.type === "firestore-write-confirmed" && ev.data.deviceId !== appState.deviceId) {
+          scheduleIncomingSyncVerification();
         }
       };
     } catch (e) {
@@ -4138,7 +4170,7 @@
       try {
         syncBroadcastChannel.postMessage({
           deviceId: appState.deviceId,
-          payload: buildCloudSyncPayload(appState.data)
+          type: "firestore-write-confirmed"
         });
       } catch (e) {}
     }
@@ -4220,10 +4252,20 @@
             payloadJson: { stringValue: JSON.stringify(fullPayload) },
             compactEnvelope: { stringValue: compactStr },
             updatedAt: { integerValue: String(fullPayload.updatedAt) },
-            deviceId: { stringValue: String(appState.deviceId) }
+            deviceId: { stringValue: String(appState.deviceId) },
+            protocolVersion: { integerValue: "2" }
           }
         };
-        return { url: getFirebaseFirestoreUrl(), body: JSON.stringify(fsBody) };
+        let currentDocument = null;
+        if (cloudFirestoreExists === true && cloudFirestoreUpdateTime) currentDocument = { updateTime: cloudFirestoreUpdateTime };
+        else if (cloudFirestoreExists === false && cloudRescueAuthorized) currentDocument = { exists: false };
+        if (!currentDocument) throw new Error("No existe una revisión confirmada de Firestore. Se bloqueó la escritura hasta releer la nube o iniciar un rescate explícito.");
+        const cfg = appState.firebaseConfig || {};
+        const projectId = encodeURIComponent(String(cfg.projectId || ""));
+        const keyParam = cfg.apiKey ? "?key=" + encodeURIComponent(cfg.apiKey) : "";
+        const name = `projects/${projectId}/databases/(default)/documents/${String(cfg.docPath || "").split("/").filter(Boolean).map(encodeURIComponent).join("/")}`;
+        const url = `${getFirebaseFirestoreApiBase()}/projects/${projectId}/databases/(default)/documents:commit${keyParam}`;
+        return { url, body: JSON.stringify({ writes: [{ update: { name, fields: fsBody.fields }, currentDocument }] }) };
       })();
       const writePayloadBytes = bytesOf(firestoreBytes.body);
       // 1. Push to Firestore. Do not set keepalive: true for large sync payloads:
@@ -4231,19 +4273,44 @@
       try {
         const authHeaders = await getFirestoreAuthHeaders();
         const res = await window.fetch(firestoreBytes.url, {
-          method: "PATCH",
+          method: "POST",
           headers: authHeaders,
           body: firestoreBytes.body
         });
         if (res && res.ok) {
+          const commit = await res.json().catch(() => null);
+          const confirmedUpdateTime = commit && commit.writeResults && commit.writeResults[0] && commit.writeResults[0].updateTime;
+          if (!confirmedUpdateTime) throw new Error("Firestore no devolvió updateTime; la escritura queda pendiente de verificación.");
+          cloudFirestoreUpdateTime = confirmedUpdateTime;
+          cloudFirestoreExists = true;
+          cloudRescueAuthorized = false;
+          const writtenFingerprint = cloudSyncFingerprint(fullPayload);
+          safeStorage.setItem(STORAGE_KEYS.CLOUD_BASELINE, writtenFingerprint);
+          safeStorage.setItem(STORAGE_KEYS.CLOUD_DIRTY, cloudSyncFingerprint({
+            ...appState.data,
+            taskMemoryByBox: appState.taskMemory || {},
+            history: appState.history || {},
+            settings: appState.settings || {}
+          }) === writtenFingerprint ? "0" : "1");
           firebaseSaved = true;
           firestoreWriteStatus = `OK (HTTP ${res.status}; ${(writePayloadBytes / 1024).toFixed(1)} KiB)`;
         } else {
           const responseText = res ? await res.text().catch(() => "") : "";
           const detail = describeResponseError(responseText);
+          cloudSyncReady = false;
+          cloudSyncReadyConfig = "";
+          cloudFirestoreUpdateTime = "";
+          cloudRescueAuthorized = false;
+          setRealtimeSyncStatus("Conflicto o rechazo de escritura; se releerá Firestore antes de reintentar.");
           firestoreWriteStatus = `HTTP ${res ? res.status : "sin respuesta"}${detail ? ` · ${detail}` : ""}`;
+          scheduleIncomingSyncVerification();
         }
       } catch (e) {
+        cloudSyncReady = false;
+        cloudSyncReadyConfig = "";
+        cloudFirestoreUpdateTime = "";
+        cloudRescueAuthorized = false;
+        scheduleIncomingSyncVerification();
         firestoreWriteStatus = `Error de red · ${String(e && e.message || e).slice(0, 180)} (${(writePayloadBytes / 1024).toFixed(1)} KiB)`;
       }
       updateWriteDiagnostic();
@@ -4424,7 +4491,8 @@
           payloadJson: { stringValue: JSON.stringify(fullPayload) },
           compactEnvelope: { stringValue: compactStr },
           updatedAt: { integerValue: String(fullPayload.updatedAt) },
-          deviceId: { stringValue: String(appState.deviceId) }
+          deviceId: { stringValue: String(appState.deviceId) },
+          protocolVersion: { integerValue: "2" }
         }
       };
 
@@ -4439,6 +4507,8 @@
       if (response.ok) {
         cloudSyncReady = true;
         cloudSyncReadyConfig = getCloudSyncConfigKey();
+        cloudFirestoreExists = true;
+        cloudFirestoreUpdateTime = "";
         sourceStatus.firestore = "Documento creado automáticamente · " + candidate.boxes.length + " casillas, " + candidate.tasks.length + " tareas";
         renderSyncDiagnostics(sourceStatus);
         const syncText = document.getElementById("sync-status-text");
@@ -4525,18 +4595,24 @@
         const authHeaders = await getFirestoreAuthHeaders();
         const res = await window.fetch(fsUrl, { headers: authHeaders, cache: "no-store" });
         if (!res.ok) {
+          cloudFirestoreExists = res.status === 404 ? false : null;
+          cloudFirestoreUpdateTime = "";
           sourceStatus.firestore = `HTTP ${res.status} ${res.statusText || ""}`.trim();
         } else {
           const docJson = await res.json();
+          cloudFirestoreExists = true;
+          cloudFirestoreUpdateTime = typeof docJson.updateTime === "string" ? docJson.updateTime : "";
           const rawStr = docJson && docJson.fields && docJson.fields.payloadJson && docJson.fields.payloadJson.stringValue;
           if (!rawStr) {
             sourceStatus.firestore = "HTTP 200 · documento vacío o sin campo payloadJson";
           } else {
             const norm = normalizeDataPayload(JSON.parse(rawStr));
             sourceStatus.firestore = describeSnapshot(norm);
-            if (isValidSnapshot(norm)) {
+            if (isValidSnapshot(norm) && cloudFirestoreUpdateTime) {
               candidates.push(norm);
               durableCandidateCount++;
+            } else if (isValidSnapshot(norm)) {
+              sourceStatus.firestore = "Copia válida sin revisión confirmada; escritura bloqueada hasta releer Firestore.";
             }
           }
         }
@@ -4575,13 +4651,8 @@
       renderSyncDiagnostics(sourceStatus);
 
       if (durableCandidateCount === 0 && /^HTTP 404\b/.test(sourceStatus.firestore)) {
-        let bootstrapDataset = normalizeDataPayload(appState.data);
-        for (const candidate of candidates) {
-          bootstrapDataset = mergeSyncDatasets(bootstrapDataset, candidate);
-        }
-        const bootstrapResult = await autoBootstrapFirestoreDocument(bootstrapDataset, sourceStatus);
-        if (bootstrapResult === "created") return "syncing";
-        if (bootstrapResult === "exists" || bootstrapResult === "busy") return "syncing";
+        cloudFirestoreExists = false;
+        cloudFirestoreUpdateTime = "";
       }
 
       if (durableCandidateCount === 0 || !candidates.length) {
@@ -4609,6 +4680,28 @@
       const modalSyncTime = document.getElementById("modal-sync-last-time");
       if (!quiet && modalSyncTime) {
         modalSyncTime.textContent = `Copia remota verificada a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}; conciliando los dispositivos.`;
+      }
+      // A legacy cache with no proven local edits cannot outrank the verified cloud.
+      // Keep a recoverable snapshot before adopting it; private Leah data stays on
+      // its dedicated transactional module path and is never replaced here.
+      if (!hasPendingLocalCloudChanges() && !isLeahAdultWorkspace() &&
+          cloudSyncFingerprint(appState.data) !== cloudSyncFingerprint(cloudCandidate)) {
+        if (!preserveLocalSnapshotBeforeCloudAdoption(appState.data)) {
+          cloudSyncReady = false;
+          cloudSyncReadyConfig = "";
+          throw new Error("No se pudo guardar un respaldo local; se bloqueó la adopción de la copia de Firestore.");
+        }
+        safeStorage.setItem(STORAGE_KEYS.CLOUD_BASELINE, cloudSyncFingerprint(cloudCandidate));
+        safeStorage.setItem(STORAGE_KEYS.CLOUD_DIRTY, "0");
+        appState.data = applyLocalViewStateToData(normalizeDataPayload(cloudCandidate), appState.data);
+        appState.history = cloudCandidate.history && typeof cloudCandidate.history === "object" ? cloudCandidate.history : {};
+        appState.settings = { ...appState.settings, ...(cloudCandidate.settings || {}) };
+        appState.taskMemory = { ...(cloudCandidate.taskMemoryByBox || {}) };
+        safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
+        safeStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(appState.history));
+        safeStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(appState.history));
+        safeStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(appState.settings));
+        safeStorage.setItem(STORAGE_KEYS.MEMORY, JSON.stringify(appState.taskMemory));
       }
       applyIncomingSyncPayload(cloudCandidate, manual);
 
@@ -5218,6 +5311,9 @@
     const syncContentChanged = !previousData || previousSyncFingerprint !== syncFingerprint(appState.data);
     if (syncContentChanged) {
       appState.data.updatedAt = Math.max(Date.now(), Number(appState.data.updatedAt || 0) + 1);
+      safeStorage.setItem(STORAGE_KEYS.CLOUD_DIRTY, "1");
+    } else if (!safeStorage.getItem(STORAGE_KEYS.CLOUD_BASELINE)) {
+      safeStorage.setItem(STORAGE_KEYS.CLOUD_DIRTY, "0");
     }
     const payloadStr = JSON.stringify(appState.data);
     const ok = safeStorage.setItem(STORAGE_KEYS.DATA, payloadStr);
@@ -13147,6 +13243,9 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(appState.firebaseConfig));
       cloudSyncReady = false;
       cloudSyncReadyConfig = "";
+      cloudFirestoreUpdateTime = "";
+      cloudFirestoreExists = null;
+      cloudRescueAuthorized = false;
       startCloudSyncStream();
     }
 
@@ -13166,6 +13265,11 @@ function createTaskRowElement(task, box, showOriginBox = false) {
         saveFirebaseSettingsFromInputs();
         cloudSyncReady = true;
         cloudSyncReadyConfig = getCloudSyncConfigKey();
+        cloudRescueAuthorized = true;
+        // Rescue is create-only: an existing cloud document cannot be replaced
+        // by this control without first being read and version-checked.
+        cloudFirestoreExists = false;
+        cloudFirestoreUpdateTime = "";
         appState.data.updatedAt = Math.max(Date.now(), Number(appState.data.updatedAt || 0) + 1);
         appState.data.bootstrapSeedData = false;
         (appState.data.tasks || []).forEach(task => { delete task.bootstrapSeed; });

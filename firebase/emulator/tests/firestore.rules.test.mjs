@@ -51,9 +51,9 @@ before(async () => {
       });
     }
 
-    await setDoc(doc(db, "workspaces/jose/shared/main"), { payloadJson: "{}" });
-    await setDoc(doc(db, "workspaces/camila/shared/main"), { payloadJson: "{}" });
-    await setDoc(doc(db, "workspaces/leah/shared/main"), { payloadJson: "{}" });
+    await setDoc(doc(db, "workspaces/jose/shared/main"), { payloadJson: "{}", protocolVersion: 2 });
+    await setDoc(doc(db, "workspaces/camila/shared/main"), { payloadJson: "{}", protocolVersion: 2 });
+    await setDoc(doc(db, "workspaces/leah/shared/main"), { payloadJson: "{}", protocolVersion: 2 });
     await setDoc(doc(db, "workspaces/leah/access_control/private_modules"), {
       ready: true,
       schemaVersion: 1
@@ -97,9 +97,10 @@ test("José can access José and Leah, but not Camila", async () => {
   const db = env.authenticatedContext("jose").firestore();
 
   await assertSucceeds(getDoc(doc(db, "workspaces/jose/shared/main")));
-  await assertSucceeds(setDoc(doc(db, "workspaces/jose/shared/main"), { payloadJson: "jose update" }));
+  await assertSucceeds(setDoc(doc(db, "workspaces/jose/shared/main"), { payloadJson: "jose update", protocolVersion: 2 }));
+  await assertFails(setDoc(doc(db, "workspaces/jose/shared/main"), { payloadJson: "unversioned overwrite" }));
   await assertSucceeds(getDoc(doc(db, "workspaces/leah/shared/main")));
-  await assertSucceeds(setDoc(doc(db, "workspaces/leah/shared/main"), { payloadJson: "guardian update" }));
+  await assertSucceeds(setDoc(doc(db, "workspaces/leah/shared/main"), { payloadJson: "guardian update", protocolVersion: 2 }));
   await assertFails(getDoc(doc(db, "workspaces/camila/shared/main")));
   await assertFails(setDoc(doc(db, "workspaces/camila/shared/main"), { payloadJson: "forbidden" }));
 });
@@ -348,7 +349,8 @@ test("a guardian can atomically approve a completion request for an adult-create
         updatedAt: 1
       }),
       updatedAt: 1,
-      deviceId: "emulator-seed"
+      deviceId: "emulator-seed",
+      protocolVersion: 2
     });
   });
 
@@ -380,7 +382,8 @@ test("a guardian can atomically approve a completion request for an adult-create
     transaction.update(sharedRef, {
       payloadJson: JSON.stringify(payload),
       updatedAt: 2,
-      deviceId: "guardian-approval-test"
+      deviceId: "guardian-approval-test",
+      protocolVersion: 2
     });
     transaction.update(doc(guardian, "workspaces/leah/task_requests/atomic-approval-test"), {
       status: "approved",
@@ -480,7 +483,8 @@ test("a guardian migrates fictitious legacy health and expense data atomically b
       payloadJson: JSON.stringify(legacyPayload),
       compactEnvelope: "legacy-compact-private-data",
       updatedAt: 20,
-      deviceId: "legacy-fixture"
+      deviceId: "legacy-fixture",
+      protocolVersion: 2
     });
     await setDoc(doc(db, "workspaces/leah/adult_private/health"), {
       payloadJson: JSON.stringify({
@@ -545,7 +549,8 @@ test("a guardian migrates fictitious legacy health and expense data atomically b
       payloadJson: nextPayloadJson,
       compactEnvelope: "",
       updatedAt: 21,
-      deviceId: "emulator-private-migration"
+      deviceId: "emulator-private-migration",
+      protocolVersion: 2
     });
     mergedModules.forEach((moduleData, index) => {
       const ref = index === 0 ? healthRef : expensesRef;

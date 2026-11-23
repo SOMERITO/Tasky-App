@@ -107,7 +107,9 @@ service cloud.firestore {
 
     match /workspaces/{workspaceId}/shared/{documentId} {
       allow read: if hasMembership(workspaceId);
-      allow create, update, delete: if isAdult(workspaceId);
+      allow create, update: if isAdult(workspaceId)
+        && request.resource.data.protocolVersion == 2;
+      allow delete: if isAdult(workspaceId);
     }
 
     match /workspaces/{workspaceId}/child_tasks/{taskId} {
