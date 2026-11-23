@@ -153,7 +153,7 @@ La primera versión implementará un centro de notificaciones dentro de Tasky, v
 - Mantener intacto el documento anterior `tasky_sync/somerito_main`; no borrarlo ni sobrescribirlo durante la migración.
 - El documento legado existe en producción. Una copia de seguridad de solo lectura se guardó localmente con permisos restringidos; no se importó ni modificó. Las reglas activas de producción consultadas el 23 de noviembre de 2026 deniegan toda lectura y escritura (`allow read, write: if false`), por lo que el cliente antiguo no puede sincronizar con ese documento.
 - El espacio nuevo de José que responde 404 queda en `Migración pendiente`; no se crea desde la caché ni se consulta automáticamente el documento legado.
-- El importador explícito requiere una sesión autenticada en el preview de Staging, valida el JSON, presenta conteos y destino, pide confirmación, guarda una copia local de recuperación y escribe con precondición `updateTime` o `exists: false`. Una lectura posterior comprueba casillas, tareas, historial y campos críticos.
+- El importador explícito requiere una sesión autenticada en el preview de Staging, valida el JSON, presenta conteos y destino, pide confirmación, guarda una copia local de recuperación y escribe con precondición `updateTime` o `exists: false`. Una lectura posterior debe devolver el mismo `updateTime` y comprueba casillas, tareas, historial y campos críticos.
 - El importador actual está deliberadamente limitado a Staging. La restauración de la copia de recuperación y el procedimiento de producción requieren una fase operativa aparte; no se importó el respaldo real.
 - Mantener intacto el documento anterior `tasky_sync/somerito_main`; ninguna operación de migración lo lee o modifica.
 - No reabrir el documento anterior con reglas públicas.
@@ -164,4 +164,35 @@ La primera versión implementará un centro de notificaciones dentro de Tasky, v
 - La página y la configuración cargan con HTTP 200. En runtime, el hostname de ese preview selecciona `TaskyFirebaseEnvironment.name === "staging"` y `projectId === "tasky-staging-82acb"`. Se comprobó el formulario de acceso y que el panel familiar está antes del tablero. La pantalla de acceso no se automatizó con esas cuentas; el flujo Firebase Auth/Firestore se validó mediante solicitudes autenticadas con identidades ficticias.
 - Las reglas activas de Staging coinciden con `firebase/firestore.rules`; no se desplegaron reglas durante esta revisión.
 - La matriz autenticada creó cuentas y documentos sintéticos temporales y los eliminó al terminar: adultos solo leen/escriben su espacio; José y Camila leen/escriben Leah y ven cambios cruzados después de un inicio de sesión nuevo; el intento José→Camila y Camila→José fue denegado. La sincronización adulta persistió en Firestore después de volver a iniciar sesión.
-- Leah sintética creó y editó una tarea pendiente, la envió a revisión y pudo volver a editarla después de que un adulto la devolviera a pe
+- Leah sintética creó y editó una tarea pendiente, la envió a revisión y pudo volver a editarla después de que un adulto la devolviera a pendientes. El rol child no pudo escribir `shared/main` ni borrar su tarea; un adulto pudo revisar/aprobarla. Leah recibió denegación al leer documentos ficticios de Salud y Gastos privados.
+- En un workspace sintético aislado se probó la migración con un `documents:commit` atómico: un lote que incluía una escritura no autorizada falló sin cambiar el documento legado ni crear los documentos privados o el marcador; el lote válido sanitizó el tablero, separó Salud/Gastos y creó `ready: true`. La cuenta child quedó bloqueada antes del marcador; después solo pudo leer el tablero sanitizado y siguió sin acceso a los módulos privados. El workspace y las identidades temporales se limpiaron.
+- CI del HEAD: Firestore/Auth + Chromium #401 aprobó 44/44; Tasky Security Checks #212 aprobó. La prueba REST de precondiciones de Firestore aprobó 1/1 dentro del workflow.
+- La URL pública de GitHub Pages (`somerito.github.io/Tasky-App/`) sirve los mismos bytes de `index.html` y `app.js` que `origin/main`. El cliente público aún usa `tasky_sync/somerito_main`, no carga `tasky-auth.js` y no envía ID token en sus solicitudes REST.
+- No se cambiaron reglas ni datos de producción. La cuenta real de Leah sigue deshabilitada; no se importó el respaldo personal.
+
+## Fases de implementación
+
+1. **Implementado en PR #5:** modelo multi-espacio, reglas de acceso, autenticación, membresías consultadas por UID, namespaces locales y permisos infantiles. PR abierto en borrador.
+2. **Integrado y cubierto por CI:** conciliación Cloud First, respaldos locales antes de adoptar, tombstones versionados, commits Firestore con precondición `updateTime` y relectura tras conflicto.
+3. **Cubierto por emuladores/CI:** roles y reglas, flujo de Leah, privacidad de Salud/Gastos, migración sintética y rechazo de escrituras con revisión obsoleta.
+4. **Validado en Staging con Auth/Firestore REST:** aislamiento de José/Camila, sincronización y persistencia entre sesiones, permisos de Leah para tareas, separación Salud/Gastos y migración sintética atómica con caso de fallo. Los datos e identidades de la prueba se limpiaron.
+5. **Pendiente en la interfaz y dispositivos:** iniciar sesión desde el formulario del preview con usuarios de prueba persistentes y completar pruebas visuales/funcionales en escritorio, móvil y WebView/Median.co, incluido el modo sin conexión y retorno a línea.
+6. **Pendiente antes de producción:** coordinar una migración reversible del documento legado y una publicación conjunta del cliente y reglas; probar compatibilidad de clientes antiguos. No publicar reglas actuales del PR antes de esa coordinación.
+
+## Criterios mínimos de aceptación
+
+- Una persona sin sesión no puede leer ni escribir ningún documento.
+- José no puede leer documentos de Camila ni de Leah fuera de su membresía.
+- Camila no puede leer documentos de José.
+- Los tres miembros autorizados pueden leer los datos compartidos de Leah.
+- Leah no puede leer ni escribir documentos `adult_private`.
+- Leah no puede modificar `shared/main`, editar o borrar tareas adultas, borrar tareas propias ni establecer directamente el estado `completed`.
+- Leah puede crear tareas propias sin aprobación y editarlas solo mientras estén pendientes.
+- Una tarea marcada por Leah queda en `awaiting_review` y permanece visible/tachada hasta que un adulto la aprueba o la devuelve a pendientes.
+- Un usuario externo no puede enumerar membresías ni consultar espacios.
+- Al cerrar sesión no quedan datos de otro espacio visibles en memoria o pantalla.
+- No se publicará ningún cambio en producción hasta pasar las pruebas anteriores y comprobar la sincronización real.
+
+## Límites de esta fase
+
+Este documento no habilita Firebase Authentication en producción ni crea cuentas reales. El preview actual y las pruebas API autenticadas validan Staging con datos sintéticos, pero todavía no se probó el flujo de la interfaz con sesión persistente ni todos los dispositivos/offline. No habilitar la cuenta real de Leah ni cambiar las reglas de producción mientras falten esas pruebas de interfaz y el plan reversible de migración.

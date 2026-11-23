@@ -149,4 +149,6 @@ test("Jose 404 stays pending and backup import is staging-only, previewed, backe
   assert.match(app, /currentDocument\.updateTime \|\| null/);
   assert.match(app, /La lectura confirmatoria no coincide/);
   assert.match(app, /if \(activeWorkspaceId === "jose"\)\s*\{\s*const imported = await importJoseBackupSafely/);
+  assert.match(app, /if \(creatingNewFirestoreDocument\)\s*\{\s*const confirmation = await window\.fetch\(getFirebaseFirestoreUrl\(\)/);
+  assert.match(app, /if \(response\.ok\) \{\s*const confirmation = await window\.fetch/);
 });

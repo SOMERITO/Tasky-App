@@ -52,6 +52,7 @@ Fecha de actualización: 23 de noviembre de 2026.
 - No existe publicación, lectura o SSE en ntfy.sh.
 - La aprobación de una solicitud actualiza el tablero y el estado de la solicitud en una sola transacción.
 - La aplicación crea `adult_private/health`, `adult_private/expenses` y sanitiza `shared/main` en una misma transacción; el marcador se escribe solo al completar esa operación.
+- La creación de documentos nuevos exige precondición `exists: false` y una lectura confirmatoria que coincida con el payload escrito y devuelva `updateTime` antes de mostrar sincronización confirmada.
 - Un documento `shared/main` existente pero ilegible bloquea la migración y no crea el marcador.
 - Un marcador listo exige los dos documentos privados válidos. El guardado vuelve a verificar la puerta y ambos documentos dentro de la misma transacción. Si una lectura/listener detecta un documento ausente o corrupto, se detiene la sincronización privada y se intenta cerrar la puerta con `integrityFailure`; no se reconstruyen módulos vacíos.
 - La validación local de integridad de `payloadJson` detecta JSON corrupto y sus campos internos. Las reglas no analizan JSON arbitrario; también exigen el identificador del módulo dentro del payload como condición de lectura infantil.

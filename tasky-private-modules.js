@@ -44,6 +44,7 @@ let currentModules = [];
 let listeners = [];
 let snapshotGeneration = 0;
 let integrityLockdown = false;
+let integrityLockdownPromise = null;
 
 function moduleRef(module) {
   return doc(db, ...workspacePath, "adult_private", module.documentId);
@@ -124,16 +125,16 @@ function validateCompletedMigration(markerSnapshot, snapshots) {
   }
 }
 
-function lockPrivateSync(error, context) {
+async function lockPrivateSync(error, context) {
   ready = false;
   currentUid = "";
   currentModules = [];
   stopListeners();
   const message = String(error && error.message || error || "No se pudo verificar Salud y Gastos.");
-  if (!integrityLockdown && isGuardianContext(context)) {
+  if (!integrityLockdownPromise && !integrityLockdown && isGuardianContext(context)) {
     integrityLockdown = true;
     const markerRef = doc(db, "workspaces", "leah", "access_control", "private_modules");
-    runTransaction(db, async (transaction) => {
+    integrityLockdownPromise = runTransaction(db, async (transaction) => {
       const markerSnapshot = await transaction.get(markerRef);
       if (markerSnapshot.exists() && markerSnapshot.data()?.ready === true) {
         transaction.update(markerRef, {
@@ -143,9 +144,11 @@ function lockPrivateSync(error, context) {
         });
       }
     }).catch((lockError) => {
+      integrityLockdown = false;
       window.console && window.console.error("Tasky could not close the private migration gate:", lockError);
     });
   }
+  if (integrityLockdownPromise) await integrityLockdownPromise;
   window.dispatchEvent(new CustomEvent("tasky:private-modules-error", {
     detail: { message, uid: String(context && context.uid || "") }
   }));
@@ -192,6 +195,7 @@ async function initialize(initialData, taskMemory, context) {
   stopListeners();
   ready = false;
   integrityLockdown = false;
+  integrityLockdownPromise = null;
   currentUid = "";
   currentModules = [];
   if (!isGuardianContext(context)) {
@@ -267,7 +271,7 @@ async function initialize(initialData, taskMemory, context) {
     return mergedModules;
   });
   } catch (error) {
-    lockPrivateSync(error, context);
+    await lockPrivateSync(error, context);
     throw error;
   }
 
@@ -308,7 +312,7 @@ async function persistFromWorkspaceData(data, taskMemory, context) {
     return nextModules;
   });
   } catch (error) {
-    lockPrivateSync(error, context);
+    await lockPrivateSync(error, context);
     throw error;
   }
 
@@ -378,34 +382,34 @@ function startListeners(context) {
       detail: { uid: currentUid, modules: currentModules }
     }));
   };
-  const markerListener = onSnapshot(doc(db, "workspaces", "leah", "access_control", "private_modules"), (snapshot) => {
+  const markerListener = onSnapshot(doc(db, "workspaces", "leah", "access_control", "private_modules"), async (snapshot) => {
     if (generation !== snapshotGeneration || !ready || currentUid !== String(context.uid)) return;
     const marker = snapshot.exists() ? snapshot.data() || {} : {};
     if (marker.ready !== true || Number(marker.schemaVersion) !== 1) {
-      lockPrivateSync(new Error("El marcador de migración de Salud y Gastos falta o dejó de estar listo. Se bloqueó la sincronización privada."), context);
+      await lockPrivateSync(new Error("El marcador de migración de Salud y Gastos falta o dejó de estar listo. Se bloqueó la sincronización privada."), context);
       return;
     }
     markerVerified = true;
     for (const [moduleId, moduleSnapshot] of pendingSnapshots) {
       try { applyModuleSnapshot(MODULES.find((module) => module.id === moduleId), moduleSnapshot); }
-      catch (error) { lockPrivateSync(error, context); return; }
+      catch (error) { await lockPrivateSync(error, context); return; }
     }
     pendingSnapshots.clear();
-  }, (error) => lockPrivateSync(error, context));
+  }, async (error) => lockPrivateSync(error, context));
   listeners.push(markerListener);
   MODULES.forEach((module) => {
-    const unsubscribe = onSnapshot(moduleRef(module), (snapshot) => {
+    const unsubscribe = onSnapshot(moduleRef(module), async (snapshot) => {
       if (generation !== snapshotGeneration || !ready || currentUid !== String(context.uid)) return;
       pendingSnapshots.set(module.id, snapshot);
       if (!markerVerified) return;
       try { applyModuleSnapshot(module, snapshot); }
       catch (error) {
-        lockPrivateSync(error, context);
+        await lockPrivateSync(error, context);
         return;
       }
-    }, (error) => {
+    }, async (error) => {
       window.console && window.console.error("Tasky private module listener failed:", error);
-      lockPrivateSync(error, context);
+      await lockPrivateSync(error, context);
     });
     listeners.push(unsubscribe);
   });

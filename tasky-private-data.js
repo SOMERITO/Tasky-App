@@ -398,4 +398,103 @@ export function buildSharedWorkspacePayload(sourceRaw, modulesRaw = []) {
     .map((task) => clone(task));
   source.deletedTaskIds = uniqueStrings(source.deletedTaskIds).filter((id) => !privateTaskIds.has(id));
   source.deletedBoxIds = uniqueStrings(source.deletedBoxIds).filter((id) => !privateBoxIds.has(id));
-  source
+  source.deletedTaskUpdatedAt = Object.fromEntries(Object.entries(deletionTimes(source.deletedTaskUpdatedAt))
+    .filter(([id]) => source.deletedTaskIds.includes(id)));
+  source.deletedBoxUpdatedAt = Object.fromEntries(Object.entries(deletionTimes(source.deletedBoxUpdatedAt))
+    .filter(([id]) => source.deletedBoxIds.includes(id)));
+
+  const taskMemory = asObject(source.taskMemoryByBox);
+  Object.keys(taskMemory).forEach((key) => {
+    if (privateBoxIds.has(key) || privateMemoryKeys.has(key)) delete taskMemory[key];
+  });
+  source.taskMemoryByBox = taskMemory;
+
+  const dismissed = asObject(source.dismissedTaskSuggestionsByBox);
+  Object.keys(dismissed).forEach((key) => {
+    if (privateBoxIds.has(key) || privateMemoryKeys.has(key)) delete dismissed[key];
+  });
+  source.dismissedTaskSuggestionsByBox = dismissed;
+
+  const focusPlan = asObject(source.focusPlan);
+  const focusByBox = asObject(focusPlan.byBox);
+  Object.keys(focusByBox).forEach((key) => {
+    if (privateBoxIds.has(key)) delete focusByBox[key];
+  });
+  source.focusPlan = { ...focusPlan, byBox: focusByBox };
+
+  source.completionLog = asArray(source.completionLog)
+    .filter((event) => event &&
+      !privateBoxIds.has(String(event.boxId || "")) &&
+      !privateTaskIds.has(String(event.taskId || ""))
+    )
+    .map((event) => clone(event));
+  // Action history may contain private task titles. Keep it in the adult's local account only.
+  delete source.history;
+  return source;
+}
+
+export function attachPrivateModulesToWorkspace(sharedRaw, modulesRaw = []) {
+  const result = clone(asObject(sharedRaw)) || {};
+  const modules = Array.isArray(modulesRaw) ? modulesRaw : Object.values(asObject(modulesRaw));
+  const boxesById = new Map(asArray(result.boxes).map((box) => [String(box.id), box]));
+  const tasksById = new Map(asArray(result.tasks).map((task) => [String(task.id), task]));
+  const deletedTaskIds = new Set(uniqueStrings(result.deletedTaskIds));
+  const deletedBoxIds = new Set(uniqueStrings(result.deletedBoxIds));
+  const deletedTaskUpdatedAt = deletionTimes(result.deletedTaskUpdatedAt);
+  const deletedBoxUpdatedAt = deletionTimes(result.deletedBoxUpdatedAt);
+  const taskMemoryByBox = { ...asObject(result.taskMemoryByBox) };
+  const dismissed = { ...asObject(result.dismissedTaskSuggestionsByBox) };
+  const focusPlan = asObject(result.focusPlan);
+  const focusByBox = { ...asObject(focusPlan.byBox) };
+  const completionById = new Map(asArray(result.completionLog).map((event) => [String(event.id), event]));
+
+  modules.forEach((moduleData) => {
+    if (!moduleData || !isPrivateModuleId(moduleData.moduleId)) return;
+    if (moduleData.box) boxesById.set(String(moduleData.box.id), clone(moduleData.box));
+    asArray(moduleData.tasks).forEach((task) => {
+      if (task && task.id != null) tasksById.set(String(task.id), clone(task));
+    });
+    uniqueStrings(moduleData.deletedTaskIds).forEach((id) => deletedTaskIds.add(id));
+    uniqueStrings(moduleData.deletedBoxIds).forEach((id) => deletedBoxIds.add(id));
+    Object.entries(deletionTimes(moduleData.deletedTaskUpdatedAt)).forEach(([id, value]) => {
+      deletedTaskUpdatedAt[id] = Math.max(deletedTaskUpdatedAt[id] || 0, value);
+    });
+    Object.entries(deletionTimes(moduleData.deletedBoxUpdatedAt)).forEach(([id, value]) => {
+      deletedBoxUpdatedAt[id] = Math.max(deletedBoxUpdatedAt[id] || 0, value);
+    });
+
+    const memory = asObject(moduleData.taskMemoryByBox);
+    Object.entries(memory).forEach(([key, values]) => {
+      if (Array.isArray(values)) taskMemoryByBox[key] = clone(values);
+    });
+    const privateDismissed = asObject(moduleData.dismissedTaskSuggestionsByBox);
+    Object.entries(privateDismissed).forEach(([key, values]) => {
+      if (Array.isArray(values)) dismissed[key] = clone(values);
+    });
+    const privateFocus = asObject(moduleData.focusPlan);
+    const privateFocusByBox = asObject(privateFocus.byBox);
+    if (privateFocusByBox[moduleData.moduleId]) focusByBox[moduleData.moduleId] = clone(privateFocusByBox[moduleData.moduleId]);
+    asArray(moduleData.completionLog).forEach((event) => {
+      if (event && event.id != null) completionById.set(String(event.id), clone(event));
+    });
+  });
+
+  deletedTaskIds.forEach((id) => tasksById.delete(id));
+  deletedBoxIds.forEach((id) => boxesById.delete(id));
+  result.boxes = Array.from(boxesById.values()).sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+  result.tasks = Array.from(tasksById.values()).filter((task) => boxesById.has(String(task.boxId)));
+  result.deletedTaskIds = Array.from(deletedTaskIds);
+  result.deletedBoxIds = Array.from(deletedBoxIds);
+  result.deletedTaskUpdatedAt = Object.fromEntries(Object.entries(deletedTaskUpdatedAt).filter(([id]) => deletedTaskIds.has(id)));
+  result.deletedBoxUpdatedAt = Object.fromEntries(Object.entries(deletedBoxUpdatedAt).filter(([id]) => deletedBoxIds.has(id)));
+  result.taskMemoryByBox = taskMemoryByBox;
+  result.dismissedTaskSuggestionsByBox = dismissed;
+  result.focusPlan = {
+    ...focusPlan,
+    byBox: focusByBox,
+    updatedAt: Math.max(Number(focusPlan.updatedAt || 0), ...modules.map((item) => Number(item && item.focusPlan && item.focusPlan.updatedAt || 0)))
+  };
+  result.completionLog = Array.from(completionById.values());
+  result.updatedAt = Math.max(Number(result.updatedAt || 0), ...modules.map((item) => Number(item && item.updatedAt || 0)));
+  return result;
+}
