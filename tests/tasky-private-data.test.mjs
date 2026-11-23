@@ -6,7 +6,8 @@ import {
   mergePrivateModuleData,
   moduleDataFromWorkspace,
   buildSharedTaskMemory,
-  preparePrivateModuleMigration
+  preparePrivateModuleMigration,
+  validateCompletedPrivateModuleSet
 } from "../tasky-private-data.js";
 
 const base = {
@@ -65,6 +66,19 @@ test("private migration plan rejects a corrupt legacy shared board", () => {
     }),
     /no contiene una copia válida/
   );
+});
+
+test("completed private marker requires both valid module documents", () => {
+  const marker = { ready: true, schemaVersion: 1 };
+  const moduleDoc = (moduleId) => ({ moduleId, schemaVersion: 1, payloadJson: JSON.stringify({
+    moduleId, box: { id: moduleId }, tasks: [], taskIds: [], deletedTaskIds: [], deletedBoxIds: []
+  }) });
+  const documents = { health: moduleDoc("box_salud"), expenses: moduleDoc("box_gastos") };
+  assert.deepEqual(Object.keys(validateCompletedPrivateModuleSet(marker, documents)), ["box_salud", "box_gastos"]);
+  assert.throws(() => validateCompletedPrivateModuleSet(marker, { expenses: documents.expenses }), /falta health/);
+  assert.throws(() => validateCompletedPrivateModuleSet(marker, { health: documents.health }), /falta expenses/);
+  assert.throws(() => validateCompletedPrivateModuleSet(marker, { ...documents, health: { payloadJson: "{bad" } }), /corrupto/);
+  assert.equal(validateCompletedPrivateModuleSet({ ready: false }, {}), null);
 });
 
 test("shared payload excludes private boxes, tasks, tombstones and related metadata", () => {

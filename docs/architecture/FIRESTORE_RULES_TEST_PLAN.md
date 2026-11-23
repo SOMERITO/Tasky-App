@@ -15,6 +15,7 @@ Fecha de actualización: 23 de noviembre de 2026.
 - Camila lee y escribe `workspaces/camila/shared/main`.
 - José y Camila leen y escriben `workspaces/leah/shared/main`.
 - Leah lee `workspaces/leah/shared/main` únicamente cuando existe `access_control/private_modules` con `ready: true` y `schemaVersion: 1`.
+- Además, el marcador solo habilita su acceso si existen `adult_private/health` y `adult_private/expenses`, cada uno con su `moduleId`, `schemaVersion: 1` y payload que identifica el módulo correspondiente.
 - Leah crea una tarea propia válida directamente en `workspaces/leah/child_tasks`, sin aprobación previa.
 - Leah edita los campos permitidos de una tarea propia mientras su estado sea `pending`.
 - Leah cambia una tarea propia de `pending` a `awaiting_review`; los adultos pueden leer la nueva tarea y el cambio en tiempo real.
@@ -33,6 +34,7 @@ Fecha de actualización: 23 de noviembre de 2026.
 - Leah lee o escribe `workspaces/leah/adult_private/**`.
 - Leah o un visitante lee o modifica `workspaces/leah/access_control/private_modules`.
 - Una membresía child habilitada lee `shared/main` o `task_requests` antes de completar la migración privada.
+- Una membresía child lee `shared/main` cuando falta Salud/Gastos, el sobre del documento no coincide con el módulo, o la puerta de migración fue cerrada por fallo de integridad.
 - Leah crea, actualiza o elimina `workspaces/leah/shared/main`.
 - Leah edita una tarea de otro usuario, borra una tarea o salta el estado `awaiting_review` para establecer `completed`.
 - Leah actualiza o elimina cualquier solicitud después de crearla.
@@ -51,6 +53,8 @@ Fecha de actualización: 23 de noviembre de 2026.
 - La aprobación de una solicitud actualiza el tablero y el estado de la solicitud en una sola transacción.
 - La aplicación crea `adult_private/health`, `adult_private/expenses` y sanitiza `shared/main` en una misma transacción; el marcador se escribe solo al completar esa operación.
 - Un documento `shared/main` existente pero ilegible bloquea la migración y no crea el marcador.
+- Un marcador listo exige los dos documentos privados válidos. El guardado vuelve a verificar la puerta y ambos documentos dentro de la misma transacción. Si una lectura/listener detecta un documento ausente o corrupto, se detiene la sincronización privada y se intenta cerrar la puerta con `integrityFailure`; no se reconstruyen módulos vacíos.
+- La validación local de integridad de `payloadJson` detecta JSON corrupto y sus campos internos. Las reglas no analizan JSON arbitrario; también exigen el identificador del módulo dentro del payload como condición de lectura infantil.
 - El acceso infantil permanece deshabilitado hasta validar el aislamiento completo de Salud y Gastos en staging.
 
 ## Pruebas de navegador del acceso
@@ -62,12 +66,13 @@ Fecha de actualización: 23 de noviembre de 2026.
 - Una cuenta sin membresía para el perfil elegido recibe acceso denegado.
 - El fixture de navegador bloquea las llamadas a endpoints reales de Firebase y no carga el motor de sincronización de producción.
 
-## Resultado CI más reciente
-- HEAD `72978d84bf96d66fda4c9692e4eddafc4162e510`: Firestore/Auth + Chromium #401 aprobó **44/44**; Tasky Security Checks #212 aprobó. La prueba REST de precondiciones Firestore en ese workflow aprobó **1/1**.
+## Resultado CI anterior a las correcciones de integridad
+- HEAD `72978d84bf96d66fda4c9692e4eddafc4162e510`: Firestore/Auth + Chromium #401 aprobó **44/44**; Tasky Security Checks #212 aprobó. La prueba REST de precondiciones Firestore en ese workflow aprobó **1/1**. El commit documental posterior `54a771ff0ebf94d2305dc7a6af86163776a67a12` también pasó ambos workflows. Esos resultados no incluyen las nuevas pruebas de integridad de este cambio.
 - `tests/sync-safety.test.mjs` invoca el algoritmo de conciliación actual con escenarios de dos dispositivos, cambios offline, caché sin versión, tombstones versionados y recreación más reciente.
 - `tests/firestore-precondition.integration.test.mjs` usa Firestore Emulator REST y una configuración aislada (`firebase/emulator/sync-safety.firebase.json` + `firebase/emulator/firestore.sync-safety.rules`) para demostrar que dos escrituras con el mismo `updateTime` no pueden sobrescribirse, que el conflicto requiere releer y que los datos confirmados persisten tras una lectura posterior.
 - Las reglas permisivas de la prueba REST solo cubren `/sync_safety_test/{documentId}` en ese emulator aislado. No se incluyen en `firebase.json` de despliegue ni en `firebase/firestore.rules`.
 - Las pruebas locales y de emulador usan identidades, documentos y datos sintéticos; no modifican Firebase de producción.
+- La prueba nueva de integridad en Firestore Emulator cubre documentos completos, ausencia de cada módulo, payload corrupto, rechazo de guardado sin modificar el documento sobreviviente y bloqueo de lectura infantil tras cerrar la puerta. La ejecución local de Emulator requiere Java; en esta estación no está instalado y el resultado de esta nueva prueba queda pendiente de CI.
 - En Staging se publicó el canal temporal `codex-tasky-72978d8` para ese SHA. La verificación directa confirmó HTTP 200, formulario de acceso, panel familiar antes del tablero y selección runtime del proyecto `tasky-staging-82acb`. Las reglas activas de Staging coinciden con el archivo de reglas del repositorio; no se desplegaron reglas en esta revisión.
 - La matriz directa con identidades temporales de Firebase Auth confirmó en Staging aislamiento José/Camila; acceso adulto a Leah y sincronización visible entre las dos sesiones tras un inicio de sesión nuevo; tarea infantil pending → awaiting_review, edición pendiente y edición después de devolución adulta; rechazo de borrado infantil y escritura infantil en `shared/main`; aprobación adulta; y bloqueo infantil de documentos privados Salud/Gastos. Las cuentas, membresías y documentos de prueba se limpiaron.
 - Una migración sintética en workspace aleatorio validó en Staging el fallo atómico (sin sanitizar tablero ni crear privados/marcador) y el lote válido (sanitiza tablero, separa Salud/Gastos y establece el marcador). El child no pudo leer antes del marcador; después leyó únicamente el tablero limpio y no los documentos privados. El fixture se limpió.

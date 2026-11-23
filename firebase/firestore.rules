@@ -12,9 +12,21 @@ service cloud.firestore {
 
     function privateModuleMigrationReady(workspaceId) {
       let statePath = /databases/$(database)/documents/workspaces/$(workspaceId)/access_control/private_modules;
+      let healthPath = /databases/$(database)/documents/workspaces/$(workspaceId)/adult_private/health;
+      let expensesPath = /databases/$(database)/documents/workspaces/$(workspaceId)/adult_private/expenses;
       return exists(statePath)
         && get(statePath).data.ready == true
-        && get(statePath).data.schemaVersion == 1;
+        && get(statePath).data.schemaVersion == 1
+        && exists(healthPath)
+        && get(healthPath).data.moduleId == 'box_salud'
+        && get(healthPath).data.schemaVersion == 1
+        && get(healthPath).data.payloadJson is string
+        && get(healthPath).data.payloadJson.matches('.*"moduleId":"box_salud".*')
+        && exists(expensesPath)
+        && get(expensesPath).data.moduleId == 'box_gastos'
+        && get(expensesPath).data.schemaVersion == 1
+        && get(expensesPath).data.payloadJson is string
+        && get(expensesPath).data.payloadJson.matches('.*"moduleId":"box_gastos".*');
     }
 
     function hasMembership(workspaceId) {

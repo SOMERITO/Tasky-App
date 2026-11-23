@@ -137,3 +137,16 @@ test("dirty local state is backed up before remote-first reconciliation; backup 
   assert.equal(blocked.result.ok, false);
   assert.equal(blocked.appState.data, local);
 });
+
+test("Jose 404 stays pending and backup import is staging-only, previewed, backed up and confirmed", () => {
+  const pullStart = app.indexOf("async function pullCloudSync(");
+  const pullEnd = app.indexOf('\n  window.addEventListener("tasky:manual-refresh"', pullStart);
+  const pull = app.slice(pullStart, pullEnd);
+  assert.match(pull, /activeWorkspaceId === "jose"[\s\S]{0,260}Migración pendiente/);
+  assert.match(app, /environment\.name !== "staging"/);
+  assert.match(app, /tasky:migration-recovery:jose/);
+  assert.match(app, /window\.confirm\(confirmText\)/);
+  assert.match(app, /currentDocument\.updateTime \|\| null/);
+  assert.match(app, /La lectura confirmatoria no coincide/);
+  assert.match(app, /if \(activeWorkspaceId === "jose"\)\s*\{\s*const imported = await importJoseBackupSafely/);
+});

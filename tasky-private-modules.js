@@ -13,8 +13,9 @@ import {
   collectPrivateTaskIds,
   mergePrivateModuleData,
   moduleDataFromWorkspace,
-  preparePrivateModuleMigration
-} from "./tasky-private-data.js?v=20261120-private-data-2";
+  preparePrivateModuleMigration,
+  validateCompletedPrivateModuleSet
+} from "./tasky-private-data.js?v=20261123-private-integrity-1";
 
 const db = getFirestore(getApp("tasky-multi-workspace"));
 const MODULES = [
@@ -42,6 +43,7 @@ let ready = false;
 let currentModules = [];
 let listeners = [];
 let snapshotGeneration = 0;
+let integrityLockdown = false;
 
 function moduleRef(module) {
   return doc(db, ...workspacePath, "adult_private", module.documentId);
@@ -81,11 +83,15 @@ function makeDefaultModule(module) {
 function parseModuleDocument(snapshot, module) {
   if (!snapshot || !snapshot.exists()) return null;
   const data = snapshot.data() || {};
+  if (data.moduleId !== module.id || Number(data.schemaVersion) !== 1) return null;
   const raw = data.payloadJson;
   if (typeof raw !== "string" || !raw) return null;
   try {
     const parsed = JSON.parse(raw);
-    if (!parsed || parsed.moduleId !== module.id) return null;
+    if (!parsed || parsed.moduleId !== module.id ||
+        !Array.isArray(parsed.tasks) || !Array.isArray(parsed.taskIds) ||
+        !Array.isArray(parsed.deletedTaskIds) || !Array.isArray(parsed.deletedBoxIds) ||
+        !parsed.box || parsed.box.id !== module.id) return null;
     return parsed;
   } catch (error) {
     return null;
@@ -99,6 +105,51 @@ function moduleDataFromDocOrDefault(snapshot, module) {
     throw new Error("El documento privado " + module.documentId + " no tiene un formato válido; se bloqueó la migración para no sobrescribir datos.");
   }
   return parsed;
+}
+
+function validateCompletedMigration(markerSnapshot, snapshots) {
+  const marker = markerSnapshot && markerSnapshot.exists() ? markerSnapshot.data() || {} : null;
+  if (marker && marker.integrityFailure) {
+    throw new Error("La migración privada está en bloqueo de integridad y requiere reparación explícita; no se crearán módulos vacíos.");
+  }
+  if (!marker || marker.ready !== true) return null;
+  try {
+    const parsed = validateCompletedPrivateModuleSet(marker, Object.fromEntries(MODULES.map((module, index) => [
+      module.documentId,
+      snapshots[index] && snapshots[index].exists() ? snapshots[index].data() : null
+    ])));
+    return MODULES.map((module) => parsed[module.id]);
+  } catch (error) {
+    throw new Error(String(error && error.message || error) + " Se bloqueó la sincronización privada para proteger los datos.");
+  }
+}
+
+function lockPrivateSync(error, context) {
+  ready = false;
+  currentUid = "";
+  currentModules = [];
+  stopListeners();
+  const message = String(error && error.message || error || "No se pudo verificar Salud y Gastos.");
+  if (!integrityLockdown && isGuardianContext(context)) {
+    integrityLockdown = true;
+    const markerRef = doc(db, "workspaces", "leah", "access_control", "private_modules");
+    runTransaction(db, async (transaction) => {
+      const markerSnapshot = await transaction.get(markerRef);
+      if (markerSnapshot.exists() && markerSnapshot.data()?.ready === true) {
+        transaction.update(markerRef, {
+          ready: false,
+          integrityFailure: "private-document-integrity",
+          integrityFailureAt: Date.now()
+        });
+      }
+    }).catch((lockError) => {
+      window.console && window.console.error("Tasky could not close the private migration gate:", lockError);
+    });
+  }
+  window.dispatchEvent(new CustomEvent("tasky:private-modules-error", {
+    detail: { message, uid: String(context && context.uid || "") }
+  }));
+  return message;
 }
 
 function parseSharedDocument(snapshot) {
@@ -140,6 +191,7 @@ function isGuardianContext(context) {
 async function initialize(initialData, taskMemory, context) {
   stopListeners();
   ready = false;
+  integrityLockdown = false;
   currentUid = "";
   currentModules = [];
   if (!isGuardianContext(context)) {
@@ -156,7 +208,9 @@ async function initialize(initialData, taskMemory, context) {
   const localData = initialData && typeof initialData === "object" ? initialData : {};
   const localMemory = taskMemory && typeof taskMemory === "object" ? taskMemory : {};
 
-  const result = await runTransaction(db, async (transaction) => {
+  let result;
+  try {
+  result = await runTransaction(db, async (transaction) => {
     const [boardSnapshot, healthSnapshot, expensesSnapshot, migrationStateSnapshot] = await Promise.all([
       transaction.get(boardRef),
       transaction.get(healthRef),
@@ -168,6 +222,8 @@ async function initialize(initialData, taskMemory, context) {
     if (boardSnapshot && boardSnapshot.exists() && !legacyShared) {
       throw new Error("El documento shared/main existente no contiene una copia válida; la migración privada se detuvo sin habilitar el acceso infantil.");
     }
+    const completed = validateCompletedMigration(migrationStateSnapshot, [healthSnapshot, expensesSnapshot]);
+    if (completed) return completed;
     const existing = [
       moduleDataFromDocOrDefault(healthSnapshot, MODULES[0]),
       moduleDataFromDocOrDefault(expensesSnapshot, MODULES[1])
@@ -210,6 +266,10 @@ async function initialize(initialData, taskMemory, context) {
     });
     return mergedModules;
   });
+  } catch (error) {
+    lockPrivateSync(error, context);
+    throw error;
+  }
 
   currentUid = String(context.uid);
   currentModules = result;
@@ -223,11 +283,18 @@ async function persistFromWorkspaceData(data, taskMemory, context) {
   }
 
   const refs = MODULES.map(moduleRef);
+  const migrationStateRef = doc(db, "workspaces", "leah", "access_control", "private_modules");
   const memory = taskMemory && typeof taskMemory === "object" ? taskMemory : {};
-  const savedModules = await runTransaction(db, async (transaction) => {
-    const snapshots = await Promise.all(refs.map((ref) => transaction.get(ref)));
+  let savedModules;
+  try {
+  savedModules = await runTransaction(db, async (transaction) => {
+    const [snapshots, markerSnapshot] = await Promise.all([
+      Promise.all(refs.map((ref) => transaction.get(ref))), transaction.get(migrationStateRef)
+    ]);
+    const completed = validateCompletedMigration(markerSnapshot, snapshots);
+    if (!completed) throw new Error("La migración de Salud y Gastos aún no está completada. Se bloqueó el guardado privado.");
     const nextModules = MODULES.map((module, index) => {
-      const existing = moduleDataFromDocOrDefault(snapshots[index], module);
+      const existing = completed[index];
       const knownMemoryKeys = [
         ...Object.keys(existing.taskMemoryByBox || {}),
         ...Object.keys(existing.dismissedTaskSuggestionsByBox || {})
@@ -240,6 +307,10 @@ async function persistFromWorkspaceData(data, taskMemory, context) {
     });
     return nextModules;
   });
+  } catch (error) {
+    lockPrivateSync(error, context);
+    throw error;
+  }
 
   currentModules = savedModules;
   return savedModules;
@@ -293,20 +364,48 @@ function startListeners(context) {
   stopListeners();
   if (!isGuardianContext(context) || !ready || currentUid !== String(context.uid)) return;
   const generation = snapshotGeneration;
+  let markerVerified = false;
+  const pendingSnapshots = new Map();
+  const applyModuleSnapshot = (module, snapshot) => {
+    if (!snapshot.exists()) throw new Error("La migración privada está completa, pero falta el documento " + module.documentId + ". Se bloqueó la sincronización privada.");
+    const incoming = moduleDataFromDocOrDefault(snapshot, module);
+    const previous = currentModules.find((item) => item.moduleId === module.id) || makeDefaultModule(module);
+    const merged = withDefaultBox(mergePrivateModuleData(previous, incoming), module);
+    currentModules = MODULES.map((item) => item.id === module.id
+      ? merged
+      : currentModules.find((entry) => entry.moduleId === item.id) || makeDefaultModule(item));
+    window.dispatchEvent(new CustomEvent("tasky:private-modules-updated", {
+      detail: { uid: currentUid, modules: currentModules }
+    }));
+  };
+  const markerListener = onSnapshot(doc(db, "workspaces", "leah", "access_control", "private_modules"), (snapshot) => {
+    if (generation !== snapshotGeneration || !ready || currentUid !== String(context.uid)) return;
+    const marker = snapshot.exists() ? snapshot.data() || {} : {};
+    if (marker.ready !== true || Number(marker.schemaVersion) !== 1) {
+      lockPrivateSync(new Error("El marcador de migración de Salud y Gastos falta o dejó de estar listo. Se bloqueó la sincronización privada."), context);
+      return;
+    }
+    markerVerified = true;
+    for (const [moduleId, moduleSnapshot] of pendingSnapshots) {
+      try { applyModuleSnapshot(MODULES.find((module) => module.id === moduleId), moduleSnapshot); }
+      catch (error) { lockPrivateSync(error, context); return; }
+    }
+    pendingSnapshots.clear();
+  }, (error) => lockPrivateSync(error, context));
+  listeners.push(markerListener);
   MODULES.forEach((module) => {
     const unsubscribe = onSnapshot(moduleRef(module), (snapshot) => {
       if (generation !== snapshotGeneration || !ready || currentUid !== String(context.uid)) return;
-      const incoming = moduleDataFromDocOrDefault(snapshot, module);
-      const previous = currentModules.find((item) => item.moduleId === module.id) || makeDefaultModule(module);
-      const merged = withDefaultBox(mergePrivateModuleData(previous, incoming), module);
-      currentModules = MODULES.map((item) => item.id === module.id
-        ? merged
-        : currentModules.find((entry) => entry.moduleId === item.id) || makeDefaultModule(item));
-      window.dispatchEvent(new CustomEvent("tasky:private-modules-updated", {
-        detail: { uid: currentUid, modules: currentModules }
-      }));
+      pendingSnapshots.set(module.id, snapshot);
+      if (!markerVerified) return;
+      try { applyModuleSnapshot(module, snapshot); }
+      catch (error) {
+        lockPrivateSync(error, context);
+        return;
+      }
     }, (error) => {
       window.console && window.console.error("Tasky private module listener failed:", error);
+      lockPrivateSync(error, context);
     });
     listeners.push(unsubscribe);
   });

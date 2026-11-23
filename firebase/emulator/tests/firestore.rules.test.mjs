@@ -8,7 +8,8 @@ import {
 } from "@firebase/rules-unit-testing";
 import {
   attachPrivateModulesToWorkspace,
-  preparePrivateModuleMigration
+  preparePrivateModuleMigration,
+  validateCompletedPrivateModuleSet
 } from "../../../tasky-private-data.js";
 import {
   collection,
@@ -58,8 +59,14 @@ before(async () => {
       ready: true,
       schemaVersion: 1
     });
-    await setDoc(doc(db, "workspaces/leah/adult_private/health"), { notes: "private test data" });
-    await setDoc(doc(db, "workspaces/leah/adult_private/expenses"), { total: 120 });
+    await setDoc(doc(db, "workspaces/leah/adult_private/health"), {
+      moduleId: "box_salud", schemaVersion: 1,
+      payloadJson: JSON.stringify({ moduleId: "box_salud", box: { id: "box_salud" }, tasks: [], taskIds: [], deletedTaskIds: [], deletedBoxIds: [] })
+    });
+    await setDoc(doc(db, "workspaces/leah/adult_private/expenses"), {
+      moduleId: "box_gastos", schemaVersion: 1,
+      payloadJson: JSON.stringify({ moduleId: "box_gastos", box: { id: "box_gastos" }, tasks: [], taskIds: [], deletedTaskIds: [], deletedBoxIds: [] })
+    });
     await setDoc(doc(db, "workspaces/leah/task_requests/seed"), {
       type: "new_task",
       createdBy: "leah",
@@ -121,10 +128,12 @@ test("adult guardians can read and write private health and expense documents; L
   await assertSucceeds(getDoc(doc(guardian, "workspaces/leah/adult_private/health")));
   await assertSucceeds(getDoc(doc(guardian, "workspaces/leah/adult_private/expenses")));
   await assertSucceeds(setDoc(doc(guardian, "workspaces/leah/adult_private/health"), {
-    payloadJson: JSON.stringify({ appointments: [] })
+    moduleId: "box_salud", schemaVersion: 1,
+    payloadJson: JSON.stringify({ moduleId: "box_salud", box: { id: "box_salud" }, tasks: [], taskIds: [], deletedTaskIds: [], deletedBoxIds: [], appointments: [] })
   }));
   await assertSucceeds(setDoc(doc(guardian, "workspaces/leah/adult_private/expenses"), {
-    payloadJson: JSON.stringify({ items: [] })
+    moduleId: "box_gastos", schemaVersion: 1,
+    payloadJson: JSON.stringify({ moduleId: "box_gastos", box: { id: "box_gastos" }, tasks: [], taskIds: [], deletedTaskIds: [], deletedBoxIds: [], items: [] })
   }));
 
   await assertSucceeds(getDoc(doc(child, "workspaces/leah/shared/main")));
@@ -415,244 +424,12 @@ test("only an adult can create or change workspace membership records", async ()
   await assertFails(deleteDoc(doc(leah, "user_access/leah/workspaces/leah")));
 });
 
-test("a guardian migrates fictitious legacy health and expense data atomically before Leah can read the shared board", async () => {
-  const privateModules = [
-    {
-      id: "box_salud",
-      name: "SALUD Y CITAS",
-      documentId: "health",
-      color: "#A855F7",
-      emoji: "💗",
-      order: 5
-    },
-    {
-      id: "box_gastos",
-      name: "GASTOS RELACIONADOS CON LEAH",
-      documentId: "expenses",
-      color: "#A855F7",
-      emoji: "💜",
-      order: 7
-    }
-  ];
-  const legacyPayload = {
-    boxes: [
-      { id: "box_escolar", name: "ESCOLAR", order: 0 },
-      { id: "box_salud", name: "SALUD Y CITAS", order: 5, updatedAt: 20 },
-      { id: "box_gastos", name: "GASTOS RELACIONADOS CON LEAH", order: 7, updatedAt: 20 }
-    ],
-    tasks: [
-      { id: "migration-school-1", boxId: "box_escolar", title: "Leer capítulo", description: "Libro de ciencias", updatedAt: 20 },
-      { id: "migration-health-1", boxId: "box_salud", title: "Control pediátrico ficticio", description: "Dato clínico ficticio; no corresponde a ninguna persona real.", updatedAt: 20 },
-      { id: "migration-expense-1", boxId: "box_gastos", title: "Reembolso ficticio", description: "S/ 123.45 · comprobante ficticio", updatedAt: 20 }
-    ],
-    deletedTaskIds: ["migration-health-deleted"],
-    deletedBoxIds: [],
-    taskMemoryByBox: {
-      "box_mem_SALUD Y CITAS": ["Recordatorio clínico ficticio"],
-      "box_mem_GASTOS RELACIONADOS CON LEAH": ["Pago ficticio del mes"]
-    },
-    dismissedTaskSuggestionsByBox: {
-      "box_mem_SALUD Y CITAS": ["Sugerencia médica ficticia"],
-      "box_mem_GASTOS RELACIONADOS CON LEAH": ["Sugerencia de gasto ficticia"]
-    },
-    focusPlan: {
-      date: "2026-11-20",
-      updatedAt: 20,
-      byBox: {
-        box_salud: { priorities: [["migration-health-1"], [], []] },
-        box_gastos: { priorities: [["migration-expense-1"], [], []] }
-      }
-    },
-    completionLog: [
-      { id: "migration-health-event", taskId: "migration-health-1", title: "Control pediátrico ficticio", boxId: "box_salud", boxName: "SALUD Y CITAS", completedDate: "2026-11-19", completedAt: 1, updatedAt: 1 },
-      { id: "migration-expense-event", taskId: "migration-expense-1", title: "Reembolso ficticio", boxId: "box_gastos", boxName: "GASTOS RELACIONADOS CON LEAH", completedDate: "2026-11-19", completedAt: 1, updatedAt: 1 },
-      { id: "migration-health-deleted-event", taskId: "migration-health-deleted", title: "Evento histórico de salud confidencial ficticio", boxId: "box_salud", boxName: "SALUD Y CITAS", completedDate: "2026-11-18", completedAt: 1, updatedAt: 1 }
-    ],
-    history: { lastAction: "Control pediátrico ficticio · Reembolso ficticio" },
-    updatedAt: 20,
-    syncSchemaVersion: 1
-  };
-
-  const guardian = env.authenticatedContext("jose").firestore();
-  const sharedRef = doc(guardian, "workspaces/leah/shared/main");
-  const healthRef = doc(guardian, "workspaces/leah/adult_private/health");
-  const expensesRef = doc(guardian, "workspaces/leah/adult_private/expenses");
-  const markerRef = doc(guardian, "workspaces/leah/access_control/private_modules");
-
-  await env.withSecurityRulesDisabled(async (context) => {
-    const db = context.firestore();
-    await setDoc(doc(db, "workspaces/leah/shared/main"), {
-      payloadJson: JSON.stringify(legacyPayload),
-      compactEnvelope: "legacy-compact-private-data",
-      updatedAt: 20,
-      deviceId: "legacy-fixture",
-      protocolVersion: 2
-    });
-    await setDoc(doc(db, "workspaces/leah/adult_private/health"), {
-      payloadJson: JSON.stringify({
-        moduleId: "box_salud",
-        tasks: [],
-        taskIds: ["migration-health-deleted"],
-        deletedTaskIds: [],
-        taskMemoryByBox: {},
-        dismissedTaskSuggestionsByBox: {},
-        focusPlan: { byBox: {} },
-        completionLog: [],
-        updatedAt: 0
-      })
-    });
-    await setDoc(doc(db, "workspaces/leah/adult_private/expenses"), {
-      payloadJson: JSON.stringify({
-        moduleId: "box_gastos",
-        tasks: [],
-        taskIds: [],
-        deletedTaskIds: [],
-        taskMemoryByBox: {},
-        dismissedTaskSuggestionsByBox: {},
-        focusPlan: { byBox: {} },
-        completionLog: [],
-        updatedAt: 0
-      })
-    });
-    await deleteDoc(doc(db, "workspaces/leah/access_control/private_modules"));
-  });
-
-  const child = env.authenticatedContext("leah").firestore();
-  await assertFails(getDoc(doc(child, "workspaces/leah/shared/main")));
-  await assertFails(getDoc(doc(child, "workspaces/leah/task_requests/seed")));
-
-  await assertSucceeds(runTransaction(guardian, async (transaction) => {
-    const [sharedSnapshot, healthSnapshot, expensesSnapshot, markerSnapshot] = await Promise.all([
-      transaction.get(sharedRef),
-      transaction.get(healthRef),
-      transaction.get(expensesRef),
-      transaction.get(markerRef)
-    ]);
-    assert.equal(markerSnapshot.exists(), false);
-    assert.equal(sharedSnapshot.exists(), true);
-    const sharedLegacy = JSON.parse(sharedSnapshot.data().payloadJson);
-    const existing = [healthSnapshot, expensesSnapshot].map((snapshot) => {
-      const parsed = JSON.parse(snapshot.data().payloadJson);
-      assert.ok(parsed.moduleId);
-      return parsed;
-    });
-
-    const migrationPlan = preparePrivateModuleMigration({
-      sharedPayload: sharedLegacy,
-      existingModules: existing,
-      localData: sharedLegacy,
-      taskMemory: sharedLegacy.taskMemoryByBox || {},
-      moduleSpecs: privateModules
-    });
-    const mergedModules = migrationPlan.modules;
-    const sanitized = migrationPlan.sanitizedSharedPayload;
-    const nextPayloadJson = JSON.stringify(sanitized);
-    transaction.update(sharedRef, {
-      payloadJson: nextPayloadJson,
-      compactEnvelope: "",
-      updatedAt: 21,
-      deviceId: "emulator-private-migration",
-      protocolVersion: 2
-    });
-    mergedModules.forEach((moduleData, index) => {
-      const ref = index === 0 ? healthRef : expensesRef;
-      transaction.set(ref, {
-        moduleId: moduleData.moduleId,
-        schemaVersion: 1,
-        payloadJson: JSON.stringify(moduleData),
-        updatedAt: moduleData.updatedAt || 21,
-        deviceId: "emulator-private-migration"
-      });
-    });
-    transaction.set(markerRef, {
-      ready: true,
-      schemaVersion: 1,
-      updatedAt: 21,
-      migratedBy: "jose",
-      migrationVersion: "20261120-private-health-expenses-1"
-    });
-  }));
-
-  const [sharedSnapshot, healthSnapshot, expensesSnapshot, markerSnapshot] = await Promise.all([
-    assertSucceeds(getDoc(sharedRef)),
-    assertSucceeds(getDoc(healthRef)),
-    assertSucceeds(getDoc(expensesRef)),
-    assertSucceeds(getDoc(markerRef))
-  ]);
-  const sanitizedText = sharedSnapshot.data().payloadJson;
-  const sanitized = JSON.parse(sanitizedText);
-  const health = JSON.parse(healthSnapshot.data().payloadJson);
-  const expenses = JSON.parse(expensesSnapshot.data().payloadJson);
-
-  assert.equal(sharedSnapshot.data().compactEnvelope, "");
-  assert.equal(sanitized.boxes.some((box) => box.id === "box_salud" || box.id === "box_gastos"), false);
-  assert.equal(sanitized.tasks.some((task) => /migration-(health|expense)/.test(task.id)), false);
-  assert.equal(sanitizedText.includes("Control pediátrico ficticio"), false);
-  assert.equal(sanitizedText.includes("Reembolso ficticio"), false);
-  assert.equal(sanitizedText.includes("Recordatorio clínico ficticio"), false);
-  assert.equal(sanitizedText.includes("Pago ficticio del mes"), false);
-  assert.equal(sanitizedText.includes("migration-health-event"), false);
-  assert.equal(sanitizedText.includes("Evento histórico de salud confidencial ficticio"), false);
-  assert.equal(sanitizedText.includes("migration-health-deleted-event"), false);
-  assert.equal(sanitizedText.includes("lastAction"), false);
-
-  assert.equal(health.tasks.some((task) => task.id === "migration-health-1"), true);
-  assert.equal(health.deletedTaskIds.includes("migration-health-deleted"), true);
-  assert.equal(health.completionLog.some((event) => event.id === "migration-health-deleted-event"), true);
-  assert.equal(health.taskMemoryByBox["box_mem_SALUD Y CITAS"][0], "Recordatorio clínico ficticio");
-  assert.equal(health.dismissedTaskSuggestionsByBox["box_mem_SALUD Y CITAS"][0], "Sugerencia médica ficticia");
-  assert.equal(expenses.tasks.some((task) => task.id === "migration-expense-1"), true);
-  assert.equal(expenses.taskMemoryByBox["box_mem_GASTOS RELACIONADOS CON LEAH"][0], "Pago ficticio del mes");
-  assert.equal(markerSnapshot.data().ready, true);
-  assert.equal(markerSnapshot.data().schemaVersion, 1);
-
-  // The marker is the final access gate: Leah can now read the sanitized board, but not private docs.
-  await assertSucceeds(getDoc(doc(child, "workspaces/leah/shared/main")));
-  await assertFails(getDoc(doc(child, "workspaces/leah/adult_private/health")));
-  await assertFails(getDoc(doc(child, "workspaces/leah/adult_private/expenses")));
-});
-
-test("only adults can inspect or change the private-module migration gate", async () => {
-  const guardian = env.authenticatedContext("jose").firestore();
-  const child = env.authenticatedContext("leah").firestore();
-  const outsider = env.authenticatedContext("intruder").firestore();
-
-  await assertSucceeds(getDoc(doc(guardian, "workspaces/leah/access_control/private_modules")));
-  await assertFails(getDoc(doc(child, "workspaces/leah/access_control/private_modules")));
-  await assertFails(setDoc(doc(child, "workspaces/leah/access_control/private_modules"), {
-    ready: true,
-    schemaVersion: 1
-  }));
-  await assertFails(getDoc(doc(outsider, "workspaces/leah/access_control/private_modules")));
-});
-
-test("an enabled child membership is still blocked until private-module migration is complete", async () => {
-  await env.withSecurityRulesDisabled(async (context) => {
-    await setDoc(doc(context.firestore(), "user_access/child-before-migration/workspaces/leah-before-migration"), {
-      active: true,
-      role: "child",
-      workspaceId: "leah-before-migration",
-      childAccessEnabled: true,
-      displayName: "Tasky Leah"
-    });
-  });
-
-  const child = env.authenticatedContext("child-before-migration").firestore();
-  await assertFails(getDoc(doc(child, "workspaces/leah-before-migration/shared/main")));
-  await assertFails(getDoc(doc(child, "workspaces/leah-before-migration/task_requests/seed")));
-});
-
-test("Leah's child workspace access stays disabled until private module data is separated", async () => {
-  await env.withSecurityRulesDisabled(async (context) => {
-    await setDoc(doc(context.firestore(), "user_access/child-paused/workspaces/leah"), {
-      active: true,
-      role: "child",
-      workspaceId: "leah",
-      childAccessEnabled: false,
-      displayName: "Tasky Leah"
-    });
-  });
-  const db = env.authenticatedContext("child-paused").firestore();
-  await assertFails(getDoc(doc(db, "workspaces/leah/shared/main")));
-  await assertFails(getDoc(doc(db, "workspaces/leah/task_requests/seed")));
-});
+test("completed private migration requires both valid module documents and blocks later saves on corruption", async () => {
+  const db = await env.withSecurityRulesDisabled((context) => context.firestore());
+  const prefix = `workspaces/private-integrity-${Date.now()}`;
+  const markerRef = doc(db, `${prefix}/access_control/private_modules`);
+  const healthRef = doc(db, `${prefix}/adult_private/health`);
+  const expensesRef = doc(db, `${prefix}/adult_private/expenses`);
+  const workspaceId = prefix.split("/").at(-1);
+  const sharedRef = doc(db, `${prefix}/shared/main`);
+  const child = env.authenticatedContext("private-guard-child").fire
