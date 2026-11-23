@@ -4377,7 +4377,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261120-firebase-environment-split-1";
+  const TASKY_BUILD_ID = "20261122-cloud-first-workspace-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [

@@ -193,7 +193,8 @@ async function initialize(initialData, taskMemory, context) {
           payloadJson,
           compactEnvelope: "",
           updatedAt,
-          deviceId: "tasky-private-module-migration"
+          deviceId: "tasky-private-module-migration",
+          protocolVersion: 2
         });
       }
     }
