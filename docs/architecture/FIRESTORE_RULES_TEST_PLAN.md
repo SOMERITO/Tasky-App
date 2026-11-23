@@ -1,6 +1,6 @@
 # Plan de pruebas — reglas multi-espacio
 
-Fecha de actualización: 20 de noviembre de 2026.
+Fecha de actualización: 23 de noviembre de 2026.
 
 > Ejecutar con Firebase Emulator Suite antes de publicar las reglas. No usar datos reales.
 
@@ -63,10 +63,12 @@ Fecha de actualización: 20 de noviembre de 2026.
 - El fixture de navegador bloquea las llamadas a endpoints reales de Firebase y no carga el motor de sincronización de producción.
 
 ## Resultado CI más reciente
-- Última línea base histórica antes de los cambios login-first y child_tasks: 25 aprobadas, 0 fallidas (ejecución anterior #115); no valida los cambios nuevos.
-- Las pruebas actualizadas deben ejecutarse nuevamente en GitHub Actions antes de publicar reglas o desplegar.
+- HEAD `72978d84bf96d66fda4c9692e4eddafc4162e510`: Firestore/Auth + Chromium #401 aprobó **44/44**; Tasky Security Checks #212 aprobó. La prueba REST de precondiciones Firestore en ese workflow aprobó **1/1**.
 - `tests/sync-safety.test.mjs` invoca el algoritmo de conciliación actual con escenarios de dos dispositivos, cambios offline, caché sin versión, tombstones versionados y recreación más reciente.
 - `tests/firestore-precondition.integration.test.mjs` usa Firestore Emulator REST y una configuración aislada (`firebase/emulator/sync-safety.firebase.json` + `firebase/emulator/firestore.sync-safety.rules`) para demostrar que dos escrituras con el mismo `updateTime` no pueden sobrescribirse, que el conflicto requiere releer y que los datos confirmados persisten tras una lectura posterior.
 - Las reglas permisivas de la prueba REST solo cubren `/sync_safety_test/{documentId}` en ese emulator aislado. No se incluyen en `firebase.json` de despliegue ni en `firebase/firestore.rules`.
 - Las pruebas locales y de emulador usan identidades, documentos y datos sintéticos; no modifican Firebase de producción.
-- La validación de staging y la integración visual de escritorio/móvil deben repetirse sobre el commit candidato final. La cuenta infantil real permanece deshabilitada hasta entonces.
+- En Staging se publicó el canal temporal `codex-tasky-72978d8` para ese SHA. La verificación directa confirmó HTTP 200, formulario de acceso, panel familiar antes del tablero y selección runtime del proyecto `tasky-staging-82acb`. Las reglas activas de Staging coinciden con el archivo de reglas del repositorio; no se desplegaron reglas en esta revisión.
+- Aún no se ejecutaron con sesión autenticada las matrices de membresía/rol, aislamiento de José/Camila/Leah, escrituras y persistencia Firestore, sincronización entre dos sesiones ni migración Salud/Gastos en Staging. La comprobación del emulador no sustituye esos casos.
+- Producción tiene reglas activas que deniegan todas las operaciones; el cliente público publicado en GitHub Pages sigue siendo el cliente antiguo, sin Firebase Auth ni ID token. No cambiar reglas hasta coordinar migración y reemplazo del cliente.
+- La integración visual en escritorio/móvil y las pruebas de WebView deben completarse. La cuenta infantil real permanece deshabilitada.
