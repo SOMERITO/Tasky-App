@@ -1,7 +1,7 @@
 # Tasky — arquitectura multi-espacio (v1)
 
-Fecha: 22 de noviembre de 2026
-Estado: implementación en revisión en PR #5; no fusionada. La protección de sincronización del PR #3 se está integrando y todavía requiere CI y validación en staging sobre el commit final.
+Fecha: 23 de noviembre de 2026
+Estado: implementación en revisión en PR #5, HEAD `72978d84bf96d66fda4c9692e4eddafc4162e510`; abierto y en borrador. Las protecciones Cloud First seleccionadas del PR #3 están integradas en esta rama. CI de este HEAD aprobó; la validación funcional autenticada en Firebase Staging aún no se ha completado.
 
 ## Objetivo
 
@@ -137,14 +137,9 @@ Los datos privados de salud y gastos van en documentos separados: Firestore Rule
 Las tareas propias de Leah se mantienen en una colección separada para evitar que la cuenta infantil reemplace o altere el documento JSON completo del tablero compartido. El panel familiar muestra esos registros y los adultos los reciben mediante suscripción en tiempo real.
 ## Aislamiento en el navegador
 
-El código actual utiliza claves locales globales como `tasky_data`, `tasky_settings`, `tasky_backups`, `tasky_history`, `tasky_task_memory` y otras. Antes de habilitar multi-espacio deben migrarse a claves versionadas y separadas, por ejemplo:
+El código actual aplica un namespace al almacenamiento local al seleccionar un espacio: `tasky:v2:{workspaceId}:...`; el espacio Leah añade además el UID autenticado. La configuración de Firebase es global porque determina el destino del cliente. Las claves legacy se leen únicamente para José; el espacio adulto de Leah puede migrar claves legacy de su namespace anterior, y el rol child no lee esas claves. No copiar claves legacy a Camila ni al espacio infantil.
 
-- `tasky:v2:jose:data`
-- `tasky:v2:jose:settings`
-- `tasky:v2:camila:data`
-- `tasky:v2:leah:data`
-
-La migración de claves antiguas se ejecutará únicamente al entrar autenticado al espacio `jose`, con copia previa y verificación. Nunca copiar los datos existentes a Camila o Leah. Al cambiar de espacio se debe limpiar el estado en memoria, cancelar listeners y cargar únicamente el espacio seleccionado. Cerrar sesión debe limpiar el estado activo y bloquear la pantalla.
+La selección del espacio recarga el documento autorizado y el namespace local correspondiente; el cambio de sesión reinicia la aplicación y el área autenticada se mantiene bloqueada hasta autenticar. La matriz de cambio de espacio, cierre de sesión y persistencia entre sesiones todavía debe completarse en Staging con cuentas ficticias.
 
 ## Notificaciones
 
@@ -154,20 +149,28 @@ La primera versión implementará un centro de notificaciones dentro de Tasky, v
 
 - Conservar el respaldo JSON exportado por José.
 - Mantener intacto el documento anterior `tasky_sync/somerito_main`; no borrarlo ni sobrescribirlo durante la migración.
-- El documento viejo permanece inaccesible con las reglas temporales actuales.
+- El documento legado existe en producción. Una copia de seguridad de solo lectura se guardó localmente con permisos restringidos; no se importó ni modificó. Las reglas activas de producción consultadas el 23 de noviembre de 2026 deniegan toda lectura y escritura (`allow read, write: if false`), por lo que el cliente antiguo no puede sincronizar con ese documento.
 - Una vez desplegada la autenticación y probadas las reglas, importar el respaldo JSON validado al nuevo destino `workspaces/jose/shared/main` con la sesión de José.
 - Comparar número de casillas, tareas y campos críticos antes de considerar terminada la migración.
 - No reabrir el documento anterior con reglas públicas.
 
+## Estado de validación de entornos (23 de noviembre de 2026)
+
+- El canal temporal `codex-tasky-72978d8` se publicó en Firebase Hosting del proyecto `tasky-staging-82acb`, desde el HEAD indicado arriba. URL: `https://tasky-staging-82acb--codex-tasky-72978d8-stfm6qrl.web.app` (vence el 29 de noviembre de 2026).
+- La página y la configuración cargan con HTTP 200. En runtime, el hostname de ese preview selecciona `TaskyFirebaseEnvironment.name === "staging"` y `projectId === "tasky-staging-82acb"`. Se comprobó la pantalla de acceso y que el panel familiar está antes del tablero. No se inició sesión en Staging ni se probó persistencia con cuentas ficticias en esta revisión.
+- Las reglas activas de Staging coinciden con `firebase/firestore.rules`; no se desplegaron reglas durante esta revisión.
+- CI del HEAD: Firestore/Auth + Chromium #401 aprobó 44/44; Tasky Security Checks #212 aprobó. La prueba REST de precondiciones de Firestore aprobó 1/1 dentro del workflow.
+- La URL pública de GitHub Pages (`somerito.github.io/Tasky-App/`) sirve los mismos bytes de `index.html` y `app.js` que `origin/main`. El cliente público aún usa `tasky_sync/somerito_main`, no carga `tasky-auth.js` y no envía ID token en sus solicitudes REST.
+- No se cambiaron reglas ni datos de producción. La cuenta real de Leah sigue deshabilitada; no se importó el respaldo personal.
+
 ## Fases de implementación
 
-1. **Fundación de seguridad (esta rama):** modelo de datos, reglas propuestas y pruebas negativas.
-2. **Autenticación:** correo y contraseña primero; recuperación y cierre de sesión; sin auto-registro.
-3. **Membresías y autorización:** después de autenticar, mostrar únicamente los espacios activos del UID; el selector no concede acceso por sí solo.
-4. **Aislamiento local/cloud:** prefijos por workspace, Firestore con ID token y carga/guardado de documentos separados.
-5. **Flujo infantil:** el código y las reglas permiten tareas propias, edición solo en estado pendiente y envío a revisión; las reglas prohíben borrado infantil y cambios a tareas de adultos. El texto visible de «Tus pendientes» indica ahora esos mismos límites. Falta ejecutar la matriz completa de UI en escritorio/móvil sobre el commit final.
-6. **Privacidad por módulo:** Salud y Gastos se separan mediante transacción Firestore y el marcador de acceso se escribe en la misma transacción. La suite del emulador contiene cobertura sintética de aislamiento y fallo de migración; falta repetir los casos de extremo a extremo en staging sobre el commit final.
-7. **Migración y despliegue:** importar copia de José, probar y solo después abrir reglas autenticadas.
+1. **Implementado en PR #5:** modelo multi-espacio, reglas de acceso, autenticación, membresías consultadas por UID, namespaces locales y permisos infantiles. PR abierto en borrador.
+2. **Integrado y cubierto por CI:** conciliación Cloud First, respaldos locales antes de adoptar, tombstones versionados, commits Firestore con precondición `updateTime` y relectura tras conflicto.
+3. **Cubierto por emuladores/CI:** roles y reglas, flujo de Leah, privacidad de Salud/Gastos, migración sintética y rechazo de escrituras con revisión obsoleta.
+4. **Pendiente en Staging real:** crear/usar cuentas ficticias y membresías, probar los tres espacios autenticados, persistencia después de recarga, sincronización entre sesiones y migración sintética con caso de fallo.
+5. **Pendiente en dispositivos:** pruebas visuales/funcionales en escritorio, móvil y WebView/Median.co, modo sin conexión y retorno a línea.
+6. **Pendiente antes de producción:** coordinar una migración reversible del documento legado y una publicación conjunta del cliente y reglas; probar compatibilidad de clientes antiguos. No publicar reglas actuales del PR antes de esa coordinación.
 
 ## Criterios mínimos de aceptación
 
@@ -185,4 +188,4 @@ La primera versión implementará un centro de notificaciones dentro de Tasky, v
 
 ## Límites de esta fase
 
-Este documento no habilita Firebase Authentication en producción, no crea cuentas ni publica reglas en Firebase. El estado previo de staging corresponde a una revisión anterior y no valida cambios posteriores hasta que se publique un nuevo canal de vista previa y se repitan las pruebas sintéticas. No habilitar la cuenta real de Leah ni publicar reglas en producción mientras la revisión integral, la validación móvil/escritorio y las evidencias de CI/staging del commit final sigan pendientes.
+Este documento no habilita Firebase Authentication en producción ni crea cuentas reales. El preview actual valida publicación estática, selección del proyecto Staging y pantalla de acceso, pero no valida el flujo autenticado ni la persistencia real. No habilitar la cuenta real de Leah ni cambiar las reglas de producción mientras falten las pruebas funcionales autenticadas de Staging, las pruebas móviles/WebView y el plan reversible de migración.
