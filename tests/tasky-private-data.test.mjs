@@ -139,6 +139,34 @@ test("private module ignores a stale unversioned secondary deletion and lets new
   assert.deepEqual(preserved.deletedTaskIds, []);
 });
 
+test("migration versions legacy tombstones and preserves a later private edit", () => {
+  const moduleSpecs = [
+    { id: "box_salud", name: "SALUD Y CITAS", order: 1 },
+    { id: "box_gastos", name: "GASTOS RELACIONADOS CON LEAH", order: 2 }
+  ];
+  const sharedPayload = {
+    boxes: [{ id: "box_salud", name: "SALUD Y CITAS" }, { id: "box_gastos", name: "GASTOS RELACIONADOS CON LEAH" }],
+    tasks: [], deletedTaskIds: ["health-deleted"], deletedBoxIds: [], updatedAt: 100
+  };
+  const existingModules = moduleSpecs.map((module) => ({
+    moduleId: module.id, box: null, tasks: [], taskIds: module.id === "box_salud" ? ["health-deleted"] : [],
+    deletedTaskIds: [], deletedTaskUpdatedAt: {}, deletedBoxIds: [], deletedBoxUpdatedAt: {}, updatedAt: 50
+  }));
+  const localData = {
+    ...sharedPayload,
+    tasks: [{ id: "health-deleted", boxId: "box_salud", title: "Edición adulta posterior", updatedAt: 150 }],
+    deletedTaskIds: []
+  };
+  const plan = preparePrivateModuleMigration({
+    sharedPayload, existingModules, localData, taskMemory: {}, moduleSpecs
+  });
+  const health = plan.modules.find((module) => module.moduleId === "box_salud");
+  assert.deepEqual(health.deletedTaskIds, []);
+  assert.equal(health.tasks.find((task) => task.id === "health-deleted").title, "Edición adulta posterior");
+  assert.equal(Object.hasOwn(plan.sanitizedSharedPayload, "deletedTaskUpdatedAt"), true);
+  assert.deepEqual(plan.sanitizedSharedPayload.deletedTaskUpdatedAt, {});
+});
+
 test("attaching private modules restores adult-only modules without mixing them into shared data", () => {
   const health = moduleDataFromWorkspace(base, "box_salud", ["health-deleted"]);
   const expenses = moduleDataFromWorkspace(base, "box_gastos");

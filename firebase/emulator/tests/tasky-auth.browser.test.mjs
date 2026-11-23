@@ -326,7 +326,7 @@ test("the Leah task dialog does not reserve vertical space above the board", asy
   const appSource = await readFile(resolve(rootDir, "app.js"), "utf8");
   const familySource = await readFile(resolve(rootDir, "tasky-family.js"), "utf8");
   const cssSource = await readFile(resolve(rootDir, "styles.css"), "utf8");
-  const panelPosition = indexHtml.indexOf('id="tasky-family-panel"');
+  const panelPosition = indexHtml.indexOf('<section id="tasky-family-panel"');
   const boardPosition = indexHtml.indexOf('<div class="app-shell">');
 
   assert.ok(panelPosition >= 0 && panelPosition < boardPosition,

@@ -327,6 +327,14 @@ export function preparePrivateModuleMigration({
       null,
       knownMemoryKeys
     );
+    // A tombstone imported from the legacy shared document has no item-level
+    // revision. Stamp it with the source snapshot revision (or migration time)
+    // so it survives migration while still losing to a newer private task edit.
+    legacy.deletedTaskIds.forEach((id) => {
+      if (!(Number(legacy.deletedTaskUpdatedAt[id] || 0) > 0)) {
+        legacy.deletedTaskUpdatedAt[id] = Math.max(1, Number(legacy.updatedAt || legacySource.updatedAt || Date.now()));
+      }
+    });
     const local = moduleDataFromWorkspace(
       localData,
       spec.id,
