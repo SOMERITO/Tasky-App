@@ -220,7 +220,7 @@ function renderChildPanel() {
   const newTaskCard = node("section", "tasky-family-form-card");
   newTaskCard.append(
     node("h3", "", "Agregar una tarea"),
-    node("p", "tasky-family-help", "Quedará pendiente. Puedes editarla o eliminarla hasta enviarla a revisión.")
+    node("p", "tasky-family-help", "Quedará pendiente. Puedes editarla mientras siga pendiente y enviarla a revisión; no puedes eliminarla.")
   );
 
   const newTaskForm = node("form", "tasky-family-form");
@@ -501,7 +501,7 @@ async function submitChildTask(event) {
     form.reset();
     fillModuleSelect(form.elements.module, "box_escolar");
     form.elements.scheduledDate.value = localDateISO();
-    setMessage(message, "Tarea guardada en tu tablero. Puedes editarla o eliminarla antes de enviarla a revisión.");
+    setMessage(message, "Tarea guardada en tu tablero. Puedes editarla mientras siga pendiente y enviarla a revisión; no puedes eliminarla.");
   } catch (error) {
     const code = String(error && error.code || "unknown");
     setMessage(message, "No se pudo registrar la tarea (" + code + "): " + String(error && error.message || ""), true);
