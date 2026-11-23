@@ -14,19 +14,19 @@ service cloud.firestore {
       let statePath = /databases/$(database)/documents/workspaces/$(workspaceId)/access_control/private_modules;
       let healthPath = /databases/$(database)/documents/workspaces/$(workspaceId)/adult_private/health;
       let expensesPath = /databases/$(database)/documents/workspaces/$(workspaceId)/adult_private/expenses;
-      return exists(statePath)
-        && get(statePath).data.ready == true
-        && get(statePath).data.schemaVersion == 1
-        && exists(healthPath)
-        && get(healthPath).data.moduleId == 'box_salud'
-        && get(healthPath).data.schemaVersion == 1
-        && get(healthPath).data.payloadJson is string
-        && get(healthPath).data.payloadJson.matches('.*"moduleId":"box_salud".*')
-        && exists(expensesPath)
-        && get(expensesPath).data.moduleId == 'box_gastos'
-        && get(expensesPath).data.schemaVersion == 1
-        && get(expensesPath).data.payloadJson is string
-        && get(expensesPath).data.payloadJson.matches('.*"moduleId":"box_gastos".*');
+      let state = get(statePath);
+      let health = get(healthPath);
+      let expenses = get(expensesPath);
+      return state.data.ready == true
+        && state.data.schemaVersion == 1
+        && health.data.moduleId == 'box_salud'
+        && health.data.schemaVersion == 1
+        && health.data.payloadJson is string
+        && health.data.payloadJson.matches('.*"moduleId":"box_salud".*')
+        && expenses.data.moduleId == 'box_gastos'
+        && expenses.data.schemaVersion == 1
+        && expenses.data.payloadJson is string
+        && expenses.data.payloadJson.matches('.*"moduleId":"box_gastos".*');
     }
 
     function hasMembership(workspaceId) {

@@ -425,7 +425,8 @@ test("only an adult can create or change workspace membership records", async ()
 });
 
 test("completed private migration requires both valid module documents and blocks later saves on corruption", async () => {
-  const db = await env.withSecurityRulesDisabled((context) => context.firestore());
+  let db;
+  await env.withSecurityRulesDisabled((context) => { db = context.firestore(); });
   const prefix = `workspaces/private-integrity-${Date.now()}`;
   const markerRef = doc(db, `${prefix}/access_control/private_modules`);
   const healthRef = doc(db, `${prefix}/adult_private/health`);
