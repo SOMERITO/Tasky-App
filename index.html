@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 33797)
-Total output lines: 1386
-
 <!DOCTYPE html>
 <html lang="es" class="tasky-booting tasky-auth-required">
 <head>
@@ -87,7 +84,666 @@ Total output lines: 1386
         <button id="tasky-login-submit" class="tasky-auth-primary" type="submit">Iniciar sesión</button>
       </form>
 
-      <button id="tasky-auth-signout" class="tasky-auth-signout" type="button" hidde…13797 tokens truncated…rm-hint">Este detalle aparecerá debajo del nombre de la tarea.</p>
+      <button id="tasky-auth-signout" class="tasky-auth-signout" type="button" hidden>
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <path d="M16 17l5-5-5-5"/>
+          <path d="M21 12H9"/>
+        </svg>
+        <span>Cerrar sesión</span>
+      </button>
+      <p id="tasky-auth-message" class="tasky-auth-message" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <!-- Top Navigation & Search Bar -->
+  <header class="top-navbar">
+    <div class="brand-cluster">
+      <div class="brand-logo" data-tip-title="Tasky Pro" data-tip-desc="Tu plataforma personal de enfoque, casillas y productividad diaria.">
+        <img src="data:image/png;base64,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" alt="Tasky" class="brand-logo-img" />
+      </div>
+      <div class="tasky-welcome brand-workspace-welcome" aria-live="polite">
+        <h2 id="tasky-welcome-title">¡Te damos la bienvenida!</h2>
+        <p id="tasky-welcome-subtitle">Tu espacio de organización personal y familiar.</p>
+      </div>
+    </div>
+
+    <div class="nav-right-cluster">
+      <div class="search-wrapper">
+        <span class="search-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
+        <input type="search" id="search-input" class="search-input" placeholder="Buscar tareas, casillas o notas..." aria-label="Buscar tareas, casillas o notas" />
+        <button type="button" id="search-clear-btn" class="search-clear-btn" aria-label="Limpiar búsqueda">×</button>
+      </div>
+
+      <div class="top-actions">
+        <!-- Point 5: Sincronizado as static text, NOT a button -->
+        <div id="sync-status-indicator" class="sync-status-static">
+          <span class="sync-dot"></span>
+          <span id="sync-status-text">Verificando…</span>
+        </div>
+
+        <!-- Point 6: Restored Sound Toggle Button -->
+        <button type="button" id="btn-sound-toggle" class="icon-btn" aria-label="Sonidos" data-tip-title="🔊 Efectos de Sonido" data-tip-desc="Activa o silencia las confirmaciones acústicas al completar o mover tareas."></button>
+
+        <button type="button" id="btn-theme-toggle" class="icon-btn" aria-label="Tema" data-tip-title="🌗 Apariencia Visual" data-tip-desc="Alterna entre el modo claro luminoso y el modo oscuro profundo."></button>
+
+        <button type="button" id="btn-tasky-account" class="tasky-account-button" aria-label="Cambiar espacio o cerrar sesión" title="Cambiar espacio o cerrar sesión">Mi espacio</button>
+
+        <button type="button" id="btn-more-options" class="icon-btn" aria-label="Más opciones" data-tip-title="••• Estado de Sincronización y Copias" data-tip-desc="Consulta los detalles de sincronización, copias automáticas e importación/exportación JSON.">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div id="tasky-child-readonly-banner" class="tasky-child-readonly-banner" hidden>
+    <span class="tasky-child-banner-heart" aria-hidden="true">♡</span>
+    <span class="tasky-child-banner-copy">
+      <strong>Espacio de Leah</strong>
+      <small>Para agregar tareas propias, editar las pendientes o enviarlas a revisión, entra en Mis tareas. No puedes eliminar tareas.</small>
+    </span>
+    <button type="button" id="tasky-child-tasks-shortcut" class="tasky-child-tasks-shortcut" aria-controls="tasky-family-panel" aria-expanded="false" hidden>
+      <span aria-hidden="true">✓</span> Mis tareas
+    </button>
+  </div>
+
+  <section id="tasky-family-panel" class="tasky-family-panel" aria-label="Solicitudes familiares de Leah" hidden>
+    <div id="tasky-family-content"></div>
+  </section>
+
+  <div class="app-shell">
+    <!-- Hero Section -->
+    <section class="hero-header">
+      <div class="hero-left">
+        <div class="tasky-welcome hero-workspace-welcome" aria-live="polite">
+          <h2 data-tasky-welcome-title>¡Te damos la bienvenida!</h2>
+          <p data-tasky-welcome-subtitle>Tu espacio de organización personal y familiar.</p>
+        </div>
+        <h1 class="hero-title">Tu día, tu orden.</h1>
+        <div id="quote-container" class="quote-inline-box" role="button" tabindex="0" aria-label="Un clic copia la frase y el autor; doble clic muestra la siguiente frase" data-tip-title="📋 Copiar · ⏭️ Siguiente" data-tip-desc="Un clic copia la frase y su autor. Dos clics seguidos muestran la siguiente frase. También cambia automáticamente cada 75 segundos.">
+          <p id="quote-text" class="quote-text">La dicha del hombre consiste en observar las reglas y condiciones por las cuales se consigue el bien de todos los hombres.</p>
+          <span id="quote-author" class="quote-author">— León Tolstói</span>
+        </div>
+      </div>
+
+      <div class="hero-date-stack">
+        <div id="current-date-display" class="date-card">Viernes, 16 de octubre</div>
+        <button type="button" id="btn-date-birthday-shortcut" class="date-birthday-shortcut" aria-haspopup="dialog" aria-controls="modal-birthdays" aria-label="Abrir registro de cumpleaños" data-tip-title="Cumpleaños hoy" data-tip-desc="Pulsa para abrir el registro completo de cumpleaños." hidden>
+          <span class="date-birthday-icon" aria-hidden="true">🎂</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 3-Card Metrics Grid -->
+    <section class="metrics-grid" aria-label="Métricas de productividad">
+      <div class="metric-card">
+        <div class="metric-info">
+          <span class="metric-label">Progreso diario</span>
+          <span id="metric-daily-pct" class="metric-value">0%</span>
+          <span id="metric-daily-sub" class="metric-sub">0 de 24 tareas de hoy</span>
+        </div>
+        <div class="ring-container">
+          <svg class="ring-svg" viewBox="0 0 48 48">
+            <circle class="ring-bg" cx="24" cy="24" r="20"></circle>
+            <circle id="daily-progress-ring" class="ring-progress" cx="24" cy="24" r="20"></circle>
+          </svg>
+          <span class="ring-center-icon">✓</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-info">
+          <span class="metric-label">Tareas pendientes</span>
+          <span id="metric-pending-count" class="metric-value">24</span>
+          <span id="metric-pending-sub" class="metric-sub">Lo que aún requiere atención</span>
+        </div>
+        <div class="metric-icon-box" style="background:var(--danger-soft);color:var(--danger);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </div>
+      </div>
+
+      <button type="button" id="btn-open-completion-history" class="metric-card completion-history-metric-card" aria-haspopup="dialog" aria-controls="modal-completion-history" aria-label="Abrir el registro de tareas completadas">
+        <span class="metric-info">
+          <span class="metric-label">Completadas</span>
+          <span id="metric-completed-count" class="metric-value">66</span>
+          <span class="metric-sub">Tareas logradas este mes · Ver registro</span>
+        </span>
+        <span class="metric-icon-box" aria-hidden="true" style="background:var(--success-soft);color:var(--success);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        </span>
+      </button>
+    </section>
+
+    <!-- Daily and weekly learning goals -->
+    <section id="learning-goals-section" class="learning-section" aria-label="Metas de aprendizaje">
+      <div class="learning-summary-grid" aria-label="Metas de aprendizaje actuales">
+        <article class="learning-summary-card" role="button" tabindex="0" data-learning-open="daily" aria-label="Abrir registro de la meta diaria">
+          <div class="learning-summary-topline">
+            <span class="learning-summary-label">☀️ Meta diaria</span>
+            <span id="learning-daily-summary-status" class="learning-status-chip" data-status="empty">Sin registrar</span>
+          </div>
+          <p id="learning-daily-summary-goal" class="learning-summary-goal">Todavía no has registrado la meta de hoy.</p>
+          <span id="learning-summary-today-date" class="learning-summary-date">Hoy</span>
+        </article>
+        <article class="learning-summary-card" role="button" tabindex="0" data-learning-open="weekly" aria-label="Abrir registro de la meta semanal">
+          <div class="learning-summary-topline">
+            <span class="learning-summary-label">📚 Meta semanal</span>
+            <span id="learning-weekly-summary-status" class="learning-status-chip" data-status="empty">Sin registrar</span>
+          </div>
+          <p id="learning-weekly-summary-goal" class="learning-summary-goal">Todavía no has registrado el tema de esta semana.</p>
+          <span id="learning-summary-week-range" class="learning-summary-date">Esta semana</span>
+        </article>
+      </div>
+
+    </section>
+
+    <div id="learning-details-panel" class="modal-backdrop learning-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="learning-modal-title">
+      <div class="modal-dialog wide learning-modal-dialog" tabindex="-1">
+        <div class="modal-header">
+          <div>
+            <div class="modal-eyebrow">🎯 METAS DE APRENDIZAJE</div>
+            <h2 id="learning-modal-title" class="modal-title">Registro de aprendizaje</h2>
+          </div>
+          <button type="button" class="modal-close-btn" data-close-modal="learning-details-panel" aria-label="Cerrar">✕</button>
+        </div>
+        <div class="learning-details-content">
+      <div class="learning-cards-grid">
+        <article class="learning-card learning-daily-card">
+          <div class="learning-card-heading">
+            <div>
+              <span class="learning-card-kicker">META DIARIA · <span id="learning-today-date">HOY</span></span>
+              <h3>Aprender algo nuevo</h3>
+            </div>
+            <span class="learning-card-symbol" aria-hidden="true">☀️</span>
+          </div>
+          <label class="learning-label" for="input-learning-daily-goal">¿Qué vas a aprender hoy?</label>
+          <input id="input-learning-daily-goal" class="learning-input" type="text" maxlength="220" placeholder="Ej.: comprender cómo funciona la memoria" />
+          <label class="learning-label" for="input-learning-daily-notes">Apunte o aprendizaje obtenido</label>
+          <textarea id="input-learning-daily-notes" class="learning-input learning-textarea" rows="3" maxlength="1200" placeholder="Anota una idea, explicación o ejemplo para recordar lo aprendido."></textarea>
+          <div class="learning-action-row">
+            <button type="button" id="btn-save-daily-learning" class="btn-primary">Guardar meta diaria</button>
+            <span id="learning-daily-status" class="learning-status-chip">Sin registrar</span>
+          </div>
+
+          <div class="learning-review-panel learning-today-checkin-panel">
+            <div class="learning-review-title">
+              <strong>Seguimiento de hoy</strong>
+              <span id="learning-today-checkin-date">Hoy</span>
+            </div>
+            <p class="learning-review-hint">Cuando termines tu meta, regístrala aquí. No necesitas esperar hasta mañana.</p>
+            <span id="learning-today-checkin-status" class="learning-status-chip" data-status="empty">Sin registrar</span>
+            <div class="learning-action-row learning-review-actions">
+              <button type="button" class="btn-primary learning-status-btn" data-learning-action="mark-today" data-learning-status="completed" disabled>✓ Sí, la cumplí</button>
+              <button type="button" class="btn-secondary learning-status-btn" data-learning-action="mark-today" data-learning-status="pending" disabled>Aún en curso</button>
+            </div>
+          </div>
+
+          <div class="learning-review-panel">
+            <div class="learning-review-title">
+              <strong>Revisión de ayer</strong>
+              <span id="learning-yesterday-date"></span>
+            </div>
+            <p id="learning-yesterday-goal" class="learning-review-goal">Aún no hay una meta diaria registrada para ayer.</p>
+            <span id="learning-yesterday-status" class="learning-status-chip">Pendiente de revisión</span>
+            <div class="learning-action-row learning-review-actions">
+              <button type="button" class="btn-secondary learning-status-btn" data-learning-action="mark-yesterday" data-learning-status="completed" disabled>✓ Sí, la cumplí</button>
+              <button type="button" class="btn-secondary learning-status-btn" data-learning-action="mark-yesterday" data-learning-status="missed" disabled>No llegué</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="learning-card learning-weekly-card">
+          <div class="learning-card-heading">
+            <div>
+              <span class="learning-card-kicker">META SEMANAL · <span id="learning-week-range">ESTA SEMANA</span></span>
+              <h3>Profundizar en un tema</h3>
+            </div>
+            <span class="learning-card-symbol" aria-hidden="true">📚</span>
+          </div>
+          <label class="learning-label" for="input-learning-weekly-goal">¿Qué tema aprenderás esta semana?</label>
+          <input id="input-learning-weekly-goal" class="learning-input" type="text" maxlength="220" placeholder="Ej.: estudiar los fundamentos de la estadística" />
+          <label class="learning-label" for="input-learning-weekly-notes">Avance, apuntes o dudas</label>
+          <textarea id="input-learning-weekly-notes" class="learning-input learning-textarea" rows="3" maxlength="1600" placeholder="Divide el tema en partes y registra lo que vas comprendiendo."></textarea>
+          <div class="learning-action-row">
+            <button type="button" id="btn-save-weekly-learning" class="btn-primary">Guardar meta semanal</button>
+            <span id="learning-weekly-status" class="learning-status-chip">Sin registrar</span>
+          </div>
+          <div class="learning-review-panel">
+            <div class="learning-review-title">
+              <strong>Evaluación semanal</strong>
+              <span>El domingo</span>
+            </div>
+            <p class="learning-review-hint">Marca el resultado al finalizar la semana. Puedes actualizar tus apuntes durante el proceso.</p>
+            <div class="learning-action-row learning-review-actions">
+              <button type="button" class="btn-secondary learning-status-btn" data-learning-action="mark-weekly" data-learning-status="completed" disabled>✓ Meta cumplida</button>
+              <button type="button" class="btn-secondary learning-status-btn" data-learning-action="mark-weekly" data-learning-status="missed" disabled>No completada</button>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div class="learning-history-grid">
+        <div class="learning-history-card">
+          <h4>Metas diarias recientes</h4>
+          <div id="learning-daily-history" class="learning-history-list"><p class="learning-empty-history">Tus metas diarias guardadas aparecerán aquí.</p></div>
+        </div>
+        <div class="learning-history-card">
+          <h4>Metas semanales recientes</h4>
+          <div id="learning-weekly-history" class="learning-history-list"><p class="learning-empty-history">Tus metas semanales guardadas aparecerán aquí.</p></div>
+        </div>
+      </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Filters & Quick Actions -->
+    <nav class="controls-bar" aria-label="Filtros de tareas">
+      <div class="tabs-group">
+        <button type="button" class="tab-btn active" data-tab="all" data-tip-title="📋 Vista Completa" data-tip-desc="Muestra todas tus casillas y tareas registradas.">Todas</button>
+        <button type="button" class="tab-btn" data-tab="today" data-tip-title="☀️ Enfoque de Hoy" data-tip-desc="Filtra únicamente las tareas programadas para ejecutarse hoy.">Para hoy</button>
+        <button type="button" class="tab-btn" data-tab="completed" data-tip-title="✅ Tareas Cumplidas" data-tip-desc="Revisa las tareas que ya has completado en cada casilla.">Completadas</button>
+      </div>
+
+      <div class="quick-pills">
+        <button type="button" id="btn-toggle-focus-mode" class="pill-btn focus-mode-toggle" aria-controls="focus-mode-panel" aria-expanded="false" data-tip-title="🎯 Modo Enfoque" data-tip-desc="Organiza todas las tareas que necesites en los niveles P1, P2 y P3 de cada casilla y consulta su avance.">
+          <span aria-hidden="true">🎯</span>
+          <span id="focus-mode-toggle-label">Modo Enfoque</span>
+          <span id="focus-mode-count" class="pill-badge-circle">0</span>
+        </button>
+        <button type="button" id="btn-open-productivity" class="pill-btn" data-tip-title="📊 Analítica de Productividad" data-tip-desc="Abre el panel ejecutivo con gráficos de evolución, distribución y métricas de avance.">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span>Mi productividad</span>
+        </button>
+        <button type="button" id="btn-open-deadline-reminders" class="pill-btn deadline-reminder-pill" aria-haspopup="dialog" aria-controls="modal-deadline-reminders" data-tip-title="🔔 Recordatorios de vencimientos" data-tip-desc="Configura avisos del navegador antes de que venzan tus tareas.">
+          <span aria-hidden="true">🔔</span>
+          <span>Recordatorios</span>
+        </button>
+        <button type="button" id="btn-open-birthdays" class="pill-btn birthday-calendar-btn" aria-haspopup="dialog" aria-controls="modal-birthdays" data-tip-title="🎂 Calendario de cumpleaños" data-tip-desc="Consulta los 12 meses, registra cumpleaños y edita fechas importantes.">
+          <span aria-hidden="true">🎂</span>
+          <span>Cumpleaños</span>
+          <span id="birthday-count" class="pill-badge-circle">0</span>
+        </button>
+        <button type="button" id="btn-filter-rescheduled" class="pill-btn pill-rescheduled" data-tip-title="☀️ Gestión de Reprogramadas" data-tip-desc="Consulta las tareas postergadas a fechas futuras o tráelas de vuelta al día de hoy.">
+          <span>☀️ Tareas reprogramadas</span>
+          <span id="badge-rescheduled-count" class="pill-badge-circle">3</span>
+        </button>
+        <button type="button" id="btn-filter-overdue" class="pill-btn pill-overdue" data-tip-title="⚠️ Control de Atrasadas" data-tip-desc="Verifica si existen tareas con fecha vencida pendientes de atención.">
+          <span>⚠️ Atrasadas</span>
+          <span id="badge-overdue-count">0</span>
+        </button>
+        <button type="button" id="btn-toggle-all-boxes" class="pill-btn all-boxes-toggle" aria-label="Plegar todas las casillas" aria-expanded="true" data-tip-title="Plegar todas las casillas" data-tip-desc="Pliega todas las casillas de una vez, sin modificar ni eliminar sus tareas.">
+          <svg id="all-boxes-toggle-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="m8 13 4 3 4-3"/></svg>
+        </button>
+      </div>
+    </nav>
+
+    <section class="task-smart-filter-bar" aria-label="Filtros inteligentes de tareas">
+      <div class="task-smart-filter-heading">
+        <strong>Filtrar tareas</strong>
+        <span id="task-smart-filter-summary">Todas las pendientes</span>
+      </div>
+      <div class="task-smart-filter-options" role="group" aria-label="Filtrar por estado">
+        <button type="button" class="task-smart-filter-chip is-active" data-smart-filter="all" aria-pressed="true">
+          Todas <span class="task-smart-filter-count">0</span>
+        </button>
+        <button type="button" class="task-smart-filter-chip filter-overdue" data-smart-filter="overdue" aria-pressed="false">
+          ⚠️ Atrasadas <span class="task-smart-filter-count">0</span>
+        </button>
+        <button type="button" class="task-smart-filter-chip filter-no-deadline" data-smart-filter="no-deadline" aria-pressed="false">
+          ∞ Sin fecha límite <span class="task-smart-filter-count">0</span>
+        </button>
+        <button type="button" class="task-smart-filter-chip filter-due-soon" data-smart-filter="due-soon" aria-pressed="false">
+          📅 Vencen en 7 días <span class="task-smart-filter-count">0</span>
+        </button>
+        <button type="button" class="task-smart-filter-chip filter-rescheduled" data-smart-filter="rescheduled" aria-pressed="false">
+          🔁 Reprogramadas <span class="task-smart-filter-count">0</span>
+        </button>
+      </div>
+    </section>
+
+    <section id="focus-mode-panel" class="focus-mode-panel" aria-label="Modo Enfoque" hidden>
+      <div class="focus-mode-header">
+        <div class="focus-mode-heading">
+          <h2>🎯 Mis prioridades de hoy</h2>
+          <p>Tus tareas prioritarias agrupadas en orden P1, P2 y P3.</p>
+        </div>
+        <div class="focus-mode-progress">
+          <strong id="focus-mode-progress">Aún sin prioridades asignadas</strong>
+          <span id="focus-mode-date"></span>
+        </div>
+      </div>
+      <div id="focus-mode-priorities" class="focus-mode-priority-groups"></div>
+      <p id="focus-mode-empty" class="focus-mode-empty">Organiza tantas tareas como necesites en los niveles P1, P2 y P3.</p>
+    </section>
+
+    <div id="multi-select-toolbar" class="multi-select-toolbar" role="toolbar" aria-label="Acciones para tareas seleccionadas" style="display:none;">
+      <div class="multi-select-info">
+        <strong><span id="multi-select-count">0</span> tareas seleccionadas</strong>
+        <span class="multi-select-hint">Mantén Ctrl y haz clic en las tareas para añadirlas o quitarlas de la selección.</span>
+      </div>
+      <div class="multi-select-actions">
+        <button type="button" id="btn-multi-reschedule" class="btn-primary">📅 Reprogramar seleccionadas</button>
+        <button type="button" id="btn-multi-today" class="btn-secondary btn-multi-today" style="display:none;">☀️ Pasar seleccionadas para hoy</button>
+        <button type="button" id="btn-multi-tomorrow" class="btn-secondary">☀️ Pasar a mañana</button>
+        <button type="button" id="btn-multi-delete" class="btn-danger-soft" style="display:none;">🗑️ Eliminar seleccionadas</button>
+        <button type="button" id="btn-multi-clear" class="btn-secondary">Cancelar selección</button>
+      </div>
+    </div>
+
+    <!-- Dynamic Boxes & Tasks Container -->
+    <main id="boxes-container" class="boxes-container"></main>
+  </div>
+
+
+  <nav id="mobile-app-nav" class="mobile-app-nav" aria-label="Navegación de Tasky">
+    <button type="button" class="mobile-app-nav-item is-active" id="mobile-nav-today" aria-label="Ir a hoy">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 9h18M8 13h3M8 17h7"/></svg><span>Hoy</span>
+    </button>
+    <button type="button" class="mobile-app-nav-item" id="mobile-nav-boxes" aria-label="Ir a casillas">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg><span>Casillas</span>
+    </button>
+    <button type="button" class="mobile-app-nav-item" id="mobile-nav-search" aria-label="Buscar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><span>Buscar</span>
+    </button>
+    <button type="button" class="mobile-app-nav-item" id="mobile-nav-progress" aria-label="Mi productividad">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V12M10 20V4M16 20v-6M22 20H2"/></svg><span>Progreso</span>
+    </button>
+    <button type="button" class="mobile-app-nav-item" id="mobile-nav-more" aria-label="Más opciones">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg><span>Más</span>
+    </button>
+  </nav>
+  <!-- Bottom-Right Floating Action Buttons -->
+  <div id="fab-wrapper" class="fab-wrapper">
+    <div class="fab-menu">
+      <button type="button" id="fab-action-whatsapp" class="fab-item" data-tip-title="📲 Resumen para WhatsApp" data-tip-desc="Genera y copia en el portapapeles tu reporte diario formateado.">📲 Copiar a WhatsApp</button>
+      <button type="button" id="fab-action-backup" class="fab-item" data-tip-title="💾 Descargar Respaldo" data-tip-desc="Exporta un archivo .json con todas tus casillas y tareas.">💾 Exportar respaldo</button>
+      <button type="button" id="fab-action-new-box" class="fab-item" data-tip-title="🗂️ Crear Casilla" data-tip-desc="Añade un nuevo bloque temático a tu tablero.">🗂️ Nueva casilla</button>
+    </div>
+    <div class="fab-buttons-column">
+      <button type="button" id="fab-collapse-all" class="fab-secondary-circle" aria-label="Subir al inicio" data-tip-title="↑ Subir al inicio" data-tip-desc="Desplaza la vista suavemente hasta la parte superior de la página.">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+      </button>
+      <button type="button" id="fab-main-trigger" class="fab-main-btn" aria-label="Menú de acciones rápidas" data-tip-title="⚡ Acciones Rápidas" data-tip-desc="Despliega accesos directos para crear casilla, exportar respaldo o copiar a WhatsApp.">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL 1: "Tareas reprogramadas" (con casillas de selección múltiple y botón Programar todas para hoy) -->
+  <div id="modal-rescheduled-list" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="resched-modal-title">
+    <div class="modal-dialog wide">
+      <div class="modal-header">
+        <div>
+          <div class="modal-eyebrow">☀️ PLANIFICACIÓN FUTURA</div>
+          <h3 id="resched-modal-title" class="modal-title">Tareas reprogramadas</h3>
+          <p style="font-size:0.82rem;color:var(--muted);margin-top:3px;">Selecciona una, varias o todas las tareas para programarlas para el día de hoy.</p>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal="modal-rescheduled-list" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="rescheduled-search-panel">
+        <label class="rescheduled-search-label" for="rescheduled-global-search">Buscar entre todas tus tareas</label>
+        <div class="rescheduled-search-field">
+          <input
+            type="search"
+            id="rescheduled-global-search"
+            class="form-input"
+            placeholder="Escribe el nombre de una tarea o casilla..."
+            autocomplete="off"
+            aria-label="Buscar en todas las tareas"
+          />
+          <button type="button" id="rescheduled-global-search-clear" class="btn-secondary rescheduled-search-clear" hidden>Limpiar</button>
+        </div>
+        <p class="rescheduled-search-help">Incluye tareas pendientes, reprogramadas y completadas. Elige un resultado para localizarlo en el tablero.</p>
+      </div>
+      <div id="rescheduled-search-results" class="resched-modal-list rescheduled-search-results" hidden></div>
+      <div id="rescheduled-modal-items" class="resched-modal-list"></div>
+    </div>
+  </div>
+
+  <!-- MODAL 1B: "Tareas atrasadas" (Separado de Reprogramadas · con selección múltiple y Programar todas para hoy) -->
+  <div id="modal-overdue-list" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="overdue-modal-title">
+    <div class="modal-dialog wide">
+      <div class="modal-header">
+        <div>
+          <div class="modal-eyebrow" style="color:var(--danger);">⚠️ CONTROL DE VENCIMIENTOS</div>
+          <h3 id="overdue-modal-title" class="modal-title">Tareas atrasadas</h3>
+          <p style="font-size:0.82rem;color:var(--muted);margin-top:3px;">Tareas pendientes con fecha anterior a hoy. Elige varias con las casillas o programa todas para hoy.</p>
+        </div>
+        <div class="overdue-modal-header-actions">
+          <button type="button" class="modal-close-btn" data-close-modal="modal-overdue-list" aria-label="Cerrar">✕</button>
+        </div>
+      </div>
+      <div id="overdue-search-panel" class="rescheduled-search-panel overdue-search-panel">
+        <label class="rescheduled-search-label" for="overdue-global-search">Buscar en tareas atrasadas</label>
+        <div class="rescheduled-search-field">
+          <input
+            type="search"
+            id="overdue-global-search"
+            class="form-input"
+            placeholder="Nombre de la tarea, casilla o fecha..."
+            autocomplete="off"
+            aria-label="Buscar tareas atrasadas"
+          />
+          <button type="button" id="overdue-global-search-clear" class="btn-secondary rescheduled-search-clear" hidden>Limpiar</button>
+        </div>
+        <p class="rescheduled-search-help">La búsqueda solo filtra las tareas atrasadas; no modifica tus registros.</p>
+      </div>
+      <div id="overdue-modal-items" class="resched-modal-list"></div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Reprogramar / Cambiar Fecha de Tarea con Calendario Visual Profesional al lado (Point 4) -->
+  <div id="modal-date-picker" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="date-modal-title">
+    <div class="modal-dialog wide" style="max-width:790px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-eyebrow">📅 PLANIFICAR FECHA</div>
+          <h3 id="date-modal-title" class="modal-title">Reprogramar tarea</h3>
+          <p id="resched-task-name" style="font-size:0.84rem;color:var(--muted);margin-top:4px;"></p>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal="modal-date-picker" aria-label="Cerrar">✕</button>
+      </div>
+
+      <div class="resched-split-layout">
+        <!-- Left Pane: Quick Presets + Date Input Form -->
+        <div class="resched-left-pane">
+          <div class="date-presets-grid">
+            <button type="button" class="preset-date-btn" data-date-preset="today" style="display:none;" aria-hidden="true">
+              <span>☀️ Para hoy</span>
+              <span style="font-size:0.73rem;color:var(--muted);">Mover al tablero de hoy</span>
+            </button>
+            <button type="button" class="preset-date-btn" data-date-preset="tomorrow">
+              <span>🌤️ Mañana</span>
+              <span style="font-size:0.73rem;color:var(--muted);">+1 día</span>
+            </button>
+            <button type="button" class="preset-date-btn" data-date-preset="dayafter">
+              <span>📆 Pasado mañana</span>
+              <span style="font-size:0.73rem;color:var(--muted);">+2 días</span>
+            </button>
+            <button type="button" class="preset-date-btn" data-date-preset="monday">
+              <span>📅 Próximo lunes</span>
+              <span style="font-size:0.73rem;color:var(--muted);">Inicio de semana</span>
+            </button>
+            <button type="button" class="preset-date-btn" data-date-preset="saturday">
+              <span>🗓️ Próximo sábado</span>
+              <span style="font-size:0.73rem;color:var(--muted);">Fin de semana</span>
+            </button>
+          </div>
+
+          <form id="form-date-picker">
+            <div class="form-group">
+              <label class="form-label" for="input-resched-date">O elegir fecha específica en calendario</label>
+              <input type="date" id="input-resched-date" class="form-input" />
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label for="input-resched-no-deadline" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;color:var(--text);">
+                <input type="checkbox" id="input-resched-no-deadline" style="width:18px;height:18px;flex-shrink:0;margin-top:2px;accent-color:var(--primary);" />
+                <span>
+                  <strong style="display:block;font-size:0.86rem;">Sin fecha límite</strong>
+                  <small id="resched-no-deadline-help" style="display:block;color:var(--muted);font-size:0.76rem;line-height:1.4;">Se aplica al instante; conserva el día programado, pero no se contará como pendiente ni se marcará como atrasada.</small>
+                </span>
+              </label>
+            </div>
+            <div class="modal-footer" style="margin-top:14px;">
+              <button type="button" class="btn-secondary" data-close-modal="modal-date-picker">Cancelar</button>
+              <button type="submit" class="btn-primary">Guardar fecha</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Right Pane: Interactive Professional Visual Calendar -->
+        <div class="pro-calendar-widget" aria-label="Calendario interactivo">
+          <div class="pro-cal-header">
+            <span id="pro-cal-month-label" class="pro-cal-month-title">Octubre 2026</span>
+            <div class="pro-cal-nav">
+              <button type="button" id="btn-cal-prev-month" class="pro-cal-nav-btn" aria-label="Mes anterior">‹</button>
+              <button type="button" id="btn-cal-today-jump" class="pro-cal-nav-btn">Hoy</button>
+              <button type="button" id="btn-cal-next-month" class="pro-cal-nav-btn" aria-label="Mes siguiente">›</button>
+            </div>
+          </div>
+
+          <div class="pro-cal-weekdays">
+            <span class="pro-cal-weekday">Lu</span>
+            <span class="pro-cal-weekday">Ma</span>
+            <span class="pro-cal-weekday">Mi</span>
+            <span class="pro-cal-weekday">Ju</span>
+            <span class="pro-cal-weekday">Vi</span>
+            <span class="pro-cal-weekday">Sá</span>
+            <span class="pro-cal-weekday">Do</span>
+          </div>
+
+          <div id="pro-cal-days-grid" class="pro-cal-days-grid"></div>
+
+          <div id="pro-cal-selected-banner" class="pro-cal-selected-banner">
+            <span id="pro-cal-selected-text">📅 Fecha seleccionada</span>
+            <span style="font-size:0.71rem;opacity:0.85;">Doble clic para guardar directo</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2B: Point 8 — Configurar Repetición (Todos los días, algunos días, o un día de la semana) -->
+  <div id="modal-repeat-picker" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="repeat-modal-title">
+    <div class="modal-dialog" style="max-width:480px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-eyebrow">🔁 HÁBITO Y REPETICIÓN</div>
+          <h3 id="repeat-modal-title" class="modal-title">Frecuencia de la tarea</h3>
+          <p id="repeat-task-name" style="font-size:0.84rem;color:var(--muted);margin-top:4px;"></p>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal="modal-repeat-picker" aria-label="Cerrar">✕</button>
+      </div>
+
+      <div class="date-presets-grid">
+        <button type="button" class="preset-date-btn" data-repeat-preset="daily">
+          <span>🔁 Todos los días</span>
+          <span style="font-size:0.73rem;color:var(--muted);">Lunes a Domingo</span>
+        </button>
+        <button type="button" class="preset-date-btn" data-repeat-preset="weekdays">
+          <span>💼 Lunes a viernes</span>
+          <span style="font-size:0.73rem;color:var(--muted);">Días laborables</span>
+        </button>
+        <button type="button" class="preset-date-btn" data-repeat-preset="weekends">
+          <span>🌴 Fines de semana</span>
+          <span style="font-size:0.73rem;color:var(--muted);">Sábado y Domingo</span>
+        </button>
+        <button type="button" class="preset-date-btn" data-repeat-preset="once">
+          <span>⏹️ Sin repetición</span>
+          <span style="font-size:0.73rem;color:var(--muted);">Ejecutar solo una vez</span>
+        </button>
+      </div>
+
+      <div>
+        <span class="form-label">O selecciona qué día(s) específico(s) deseas repetirla:</span>
+        <div id="repeat-weekdays-grid" class="weekdays-selector">
+          <button type="button" class="weekday-chip" data-day="1">L</button>
+          <button type="button" class="weekday-chip" data-day="2">M</button>
+          <button type="button" class="weekday-chip" data-day="3">Mi</button>
+          <button type="button" class="weekday-chip" data-day="4">J</button>
+          <button type="button" class="weekday-chip" data-day="5">V</button>
+          <button type="button" class="weekday-chip" data-day="6">S</button>
+          <button type="button" class="weekday-chip" data-day="0">D</button>
+        </div>
+      </div>
+
+      <div class="repeat-duration-control">
+        <span class="form-label">¿Durante cuánto tiempo?</span>
+        <div class="repeat-duration-options" role="group" aria-label="Duración de la repetición">
+          <button type="button" class="repeat-duration-option is-active" data-repeat-duration="forever" aria-pressed="true">
+            <span class="repeat-duration-title">🔁 Todas las semanas</span>
+            <span class="repeat-duration-subtitle">Se repite cada semana</span>
+          </button>
+          <button type="button" class="repeat-duration-option" data-repeat-duration="thisWeek" aria-pressed="false">
+            <span class="repeat-duration-title">📅 Solo esta semana</span>
+            <span class="repeat-duration-subtitle">Termina el domingo</span>
+          </button>
+        </div>
+        <p id="repeat-duration-help" class="repeat-duration-help">La tarea seguirá repitiéndose en los días elegidos cada semana, hasta que cambies su frecuencia.</p>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" data-close-modal="modal-repeat-picker">Cancelar</button>
+        <button type="button" id="btn-save-custom-repeat" class="btn-primary">Guardar días seleccionados</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Create / Rename Box (Casilla) -->
+  <div id="modal-box" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-box-title">
+    <div class="modal-dialog" style="max-width:440px;">
+      <div class="modal-header">
+        <h3 id="modal-box-title" class="modal-title">Nueva casilla</h3>
+        <button type="button" class="modal-close-btn" data-close-modal="modal-box" aria-label="Cerrar">✕</button>
+      </div>
+      <form id="form-box" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="input-box-name">Nombre de la casilla</label>
+          <input type="text" id="input-box-name" class="form-input" placeholder="Ej. CASA, MERCADO, OFICINA" maxlength="60" />
+        </div>
+
+        <div class="form-group box-emoji-form-group">
+          <label class="form-label" for="input-box-emoji">Emoji de la casilla <span class="box-emoji-optional">(opcional)</span></label>
+          <div class="box-emoji-input-row">
+            <input type="text" id="input-box-emoji" class="form-input box-emoji-input" placeholder="Pega un emoji, por ejemplo 🏠" maxlength="16" autocomplete="off" aria-describedby="box-emoji-help" />
+            <button type="button" id="btn-clear-box-emoji" class="btn-secondary box-emoji-clear" aria-label="Quitar emoji" title="Quitar emoji">Quitar</button>
+          </div>
+          <p id="box-emoji-help" class="box-emoji-help">Pega tu propio emoji o elige uno de los siguientes.</p>
+          <div class="box-emoji-search-wrap">
+            <svg class="box-emoji-search-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+            <input type="search" id="input-box-emoji-search" class="form-input box-emoji-search" placeholder="Buscar emoji: casa, trabajo, comida..." autocomplete="off" aria-label="Buscar un emoji por nombre o categoría" />
+            <button type="button" id="btn-clear-box-emoji-search" class="box-emoji-search-clear" aria-label="Limpiar búsqueda" title="Limpiar búsqueda" hidden>×</button>
+          </div>
+          <p id="box-emoji-results" class="box-emoji-results" aria-live="polite">Elige entre la colección de emojis.</p>
+          <div id="box-emoji-gallery" class="box-emoji-gallery" role="group" aria-label="Elegir un emoji para la casilla"></div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" data-close-modal="modal-box">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 4: Edit Task Title -->
+  <div id="modal-edit-task" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-edit-task-title">
+    <div class="modal-dialog" style="max-width:460px;">
+      <div class="modal-header">
+        <h3 id="modal-edit-task-title" class="modal-title">Editar tarea</h3>
+        <button type="button" class="modal-close-btn" data-close-modal="modal-edit-task" aria-label="Cerrar">✕</button>
+      </div>
+      <form id="form-edit-task" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="input-edit-task-title">Nombre de la tarea</label>
+          <input type="text" id="input-edit-task-title" class="form-input" maxlength="180" />
+        </div>
+        <div class="form-group" id="edit-task-description-group">
+          <label class="form-label" for="input-edit-task-description">Descripción o contexto <span class="form-label-optional">(opcional)</span></label>
+          <textarea id="input-edit-task-description" class="form-input task-description-input" rows="4" maxlength="800" placeholder="Añade detalles, instrucciones, materiales o información que te ayude a completar esta tarea."></textarea>
+          <p class="form-hint">Este detalle aparecerá debajo del nombre de la tarea.</p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn-secondary" data-close-modal="modal-edit-task">Cancelar</button>
@@ -722,7 +1378,7 @@ Total output lines: 1386
 
   <script src="tasky-firebase-config.js?v=20261120-firebase-env-1"></script>
   <script src="app.js?v=20261122-cloud-first-tombstones-1"></script>
-  <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
+  <script src="mobile-app.js?v=20261122-cloud-first-tombstones-1"></script>
   <script type="module" src="tasky-auth.js?v=20261122-auth-flow-polish-3"></script>
   <script type="module" src="tasky-private-modules.js?v=20261122-cloud-first-1"></script>
   <script type="module" src="tasky-family.js?v=20261123-child-no-delete-7"></script>
