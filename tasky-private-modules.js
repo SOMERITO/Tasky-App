@@ -253,6 +253,10 @@ function buildSharedPayload(data) {
   return buildSharedWorkspacePayload(data, currentModules);
 }
 
+function restorePrivateModulesToWorkspace(sharedData) {
+  return attachPrivateModulesToWorkspace(buildSharedWorkspacePayload(sharedData, currentModules), currentModules);
+}
+
 function buildSharedTaskMemoryPayload(memory) {
   return buildSharedTaskMemory(memory, currentModules);
 }
@@ -320,6 +324,7 @@ window.TaskyPrivateModules = {
   initialize,
   persistFromWorkspaceData,
   buildSharedPayload,
+  restorePrivateModulesToWorkspace,
   buildSharedTaskMemory: buildSharedTaskMemoryPayload,
   getPrivateTaskIds,
   mergeIntoWorkspace,

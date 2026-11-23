@@ -258,7 +258,7 @@ function renderChildPanel() {
   const ownTasks = node("section", "tasky-family-inbox-card");
   ownTasks.append(
     node("h3", "", "Tus pendientes"),
-    node("p", "tasky-family-help", "Edita o elimina tus pendientes antes de enviarlos a revisión.")
+    node("p", "tasky-family-help", "Puedes editar tus tareas mientras sigan pendientes y enviarlas a revisión; no puedes eliminarlas.")
   );
   const taskList = node("div", "tasky-family-list");
   taskList.id = "tasky-family-child-tasks-list";

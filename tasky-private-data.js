@@ -21,6 +21,12 @@ function uniqueStrings(values) {
   return Array.from(new Set(asArray(values).map((value) => String(value || "")).filter(Boolean)));
 }
 
+function deletionTimes(values) {
+  if (!values || typeof values !== "object" || Array.isArray(values)) return {};
+  return Object.fromEntries(Object.entries(values).map(([id, value]) => [String(id), Number(value || 0)])
+    .filter(([id, value]) => id && Number.isFinite(value) && value > 0));
+}
+
 function chooseNewest(first, second, getTime = (value) => Number(value && value.updatedAt || 0)) {
   if (!first) return second || null;
   if (!second) return first;
@@ -67,6 +73,8 @@ export function moduleDataFromWorkspace(sourceRaw, moduleId, knownTaskIds = [], 
   const completionTaskIds = privateCompletionLog.map((entry) => String(entry.taskId || "")).filter(Boolean);
   const taskIds = uniqueStrings([...knownTaskIds, ...currentTaskIds, ...completionTaskIds]);
   const deletedTaskIds = uniqueStrings(source.deletedTaskIds).filter((id) => taskIds.includes(id));
+  const deletedTaskUpdatedAt = Object.fromEntries(Object.entries(deletionTimes(source.deletedTaskUpdatedAt))
+    .filter(([id]) => deletedTaskIds.includes(id)));
   const sourceMemory = { ...asObject(source.taskMemoryByBox), ...asObject(taskMemoryRaw) };
   const memoryKeys = privateModuleMemoryKeys(moduleId, box, knownMemoryKeys);
   const memory = selectMemoryEntries(sourceMemory, memoryKeys);
@@ -88,7 +96,9 @@ export function moduleDataFromWorkspace(sourceRaw, moduleId, knownTaskIds = [], 
     tasks,
     taskIds,
     deletedTaskIds,
+    deletedTaskUpdatedAt,
     deletedBoxIds: [],
+    deletedBoxUpdatedAt: {},
     taskMemoryByBox: memory,
     memoryKeys,
     focusPlan,
@@ -111,9 +121,13 @@ export function mergePrivateModuleData(...rawEntries) {
   const deletedTaskIds = new Set();
   const taskIds = new Set();
   const deletedBoxIds = new Set();
+  const deletedTaskUpdatedAt = {};
+  const deletedBoxUpdatedAt = {};
   const taskMemoryByBox = {};
   const dismissedTaskSuggestionsByBox = {};
   const completionById = new Map();
+  const primaryLegacyDeletions = new Set(uniqueStrings(entries[0] && entries[0].deletedTaskIds)
+    .filter((id) => !(Number(deletionTimes(entries[0] && entries[0].deletedTaskUpdatedAt)[id] || 0) > 0)));
   let focusPlan = { date: "", updatedAt: 0, byBox: {} };
   let updatedAt = 0;
 
@@ -123,6 +137,12 @@ export function mergePrivateModuleData(...rawEntries) {
     uniqueStrings(entry.taskIds).forEach((id) => taskIds.add(id));
     uniqueStrings(entry.deletedTaskIds).forEach((id) => deletedTaskIds.add(id));
     uniqueStrings(entry.deletedBoxIds).forEach((id) => deletedBoxIds.add(id));
+    Object.entries(deletionTimes(entry.deletedTaskUpdatedAt)).forEach(([id, value]) => {
+      deletedTaskUpdatedAt[id] = Math.max(deletedTaskUpdatedAt[id] || 0, value);
+    });
+    Object.entries(deletionTimes(entry.deletedBoxUpdatedAt)).forEach(([id, value]) => {
+      deletedBoxUpdatedAt[id] = Math.max(deletedBoxUpdatedAt[id] || 0, value);
+    });
 
     asArray(entry.tasks).forEach((task) => {
       if (!task || task.id == null) return;
@@ -181,6 +201,27 @@ export function mergePrivateModuleData(...rawEntries) {
     });
   });
 
+  // An older device may carry an unversioned deletion. A remote/current primary
+  // legacy tombstone remains authoritative; unversioned secondary cache tombstones
+  // are ignored. Versioned tombstones lose only to a later explicit item revision.
+  const taskVersions = new Map();
+  entries.forEach((entry) => asArray(entry.tasks).forEach((task) => {
+    if (!task || task.id == null) return;
+    const id = String(task.id);
+    taskVersions.set(id, Math.max(taskVersions.get(id) || 0, Number(task.updatedAt || 0)));
+  }));
+  Array.from(deletedTaskIds).forEach((id) => {
+    const deletedAt = Number(deletedTaskUpdatedAt[id] || 0);
+    if (deletedAt <= 0 && !primaryLegacyDeletions.has(id)) {
+      deletedTaskIds.delete(id);
+      return;
+    }
+    if (deletedAt > 0 && Number(taskVersions.get(id) || 0) > deletedAt) {
+      deletedTaskIds.delete(id);
+      delete deletedTaskUpdatedAt[id];
+    }
+  });
+
   const tasks = Array.from(tasksById.values())
     .filter((task) => !deletedTaskIds.has(String(task.id)))
     .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
@@ -192,7 +233,9 @@ export function mergePrivateModuleData(...rawEntries) {
     tasks,
     taskIds: knownIds,
     deletedTaskIds: Array.from(deletedTaskIds),
+    deletedTaskUpdatedAt: Object.fromEntries(Object.entries(deletedTaskUpdatedAt).filter(([id]) => deletedTaskIds.has(id))),
     deletedBoxIds: Array.from(deletedBoxIds),
+    deletedBoxUpdatedAt: Object.fromEntries(Object.entries(deletedBoxUpdatedAt).filter(([id]) => deletedBoxIds.has(id))),
     taskMemoryByBox,
     focusPlan,
     dismissedTaskSuggestionsByBox,
@@ -264,7 +307,9 @@ export function preparePrivateModuleMigration({
       tasks: [],
       taskIds: [],
       deletedTaskIds: [],
+      deletedTaskUpdatedAt: {},
       deletedBoxIds: [],
+      deletedBoxUpdatedAt: {},
       taskMemoryByBox: {},
       dismissedTaskSuggestionsByBox: {},
       focusPlan: { date: "", updatedAt: 0, byBox: {} },
@@ -324,6 +369,10 @@ export function buildSharedWorkspacePayload(sourceRaw, modulesRaw = []) {
     .map((task) => clone(task));
   source.deletedTaskIds = uniqueStrings(source.deletedTaskIds).filter((id) => !privateTaskIds.has(id));
   source.deletedBoxIds = uniqueStrings(source.deletedBoxIds).filter((id) => !privateBoxIds.has(id));
+  source.deletedTaskUpdatedAt = Object.fromEntries(Object.entries(deletionTimes(source.deletedTaskUpdatedAt))
+    .filter(([id]) => source.deletedTaskIds.includes(id)));
+  source.deletedBoxUpdatedAt = Object.fromEntries(Object.entries(deletionTimes(source.deletedBoxUpdatedAt))
+    .filter(([id]) => source.deletedBoxIds.includes(id)));
 
   const taskMemory = asObject(source.taskMemoryByBox);
   Object.keys(taskMemory).forEach((key) => {
@@ -362,6 +411,8 @@ export function attachPrivateModulesToWorkspace(sharedRaw, modulesRaw = []) {
   const tasksById = new Map(asArray(result.tasks).map((task) => [String(task.id), task]));
   const deletedTaskIds = new Set(uniqueStrings(result.deletedTaskIds));
   const deletedBoxIds = new Set(uniqueStrings(result.deletedBoxIds));
+  const deletedTaskUpdatedAt = deletionTimes(result.deletedTaskUpdatedAt);
+  const deletedBoxUpdatedAt = deletionTimes(result.deletedBoxUpdatedAt);
   const taskMemoryByBox = { ...asObject(result.taskMemoryByBox) };
   const dismissed = { ...asObject(result.dismissedTaskSuggestionsByBox) };
   const focusPlan = asObject(result.focusPlan);
@@ -376,6 +427,12 @@ export function attachPrivateModulesToWorkspace(sharedRaw, modulesRaw = []) {
     });
     uniqueStrings(moduleData.deletedTaskIds).forEach((id) => deletedTaskIds.add(id));
     uniqueStrings(moduleData.deletedBoxIds).forEach((id) => deletedBoxIds.add(id));
+    Object.entries(deletionTimes(moduleData.deletedTaskUpdatedAt)).forEach(([id, value]) => {
+      deletedTaskUpdatedAt[id] = Math.max(deletedTaskUpdatedAt[id] || 0, value);
+    });
+    Object.entries(deletionTimes(moduleData.deletedBoxUpdatedAt)).forEach(([id, value]) => {
+      deletedBoxUpdatedAt[id] = Math.max(deletedBoxUpdatedAt[id] || 0, value);
+    });
 
     const memory = asObject(moduleData.taskMemoryByBox);
     Object.entries(memory).forEach(([key, values]) => {
@@ -399,6 +456,8 @@ export function attachPrivateModulesToWorkspace(sharedRaw, modulesRaw = []) {
   result.tasks = Array.from(tasksById.values()).filter((task) => boxesById.has(String(task.boxId)));
   result.deletedTaskIds = Array.from(deletedTaskIds);
   result.deletedBoxIds = Array.from(deletedBoxIds);
+  result.deletedTaskUpdatedAt = Object.fromEntries(Object.entries(deletedTaskUpdatedAt).filter(([id]) => deletedTaskIds.has(id)));
+  result.deletedBoxUpdatedAt = Object.fromEntries(Object.entries(deletedBoxUpdatedAt).filter(([id]) => deletedBoxIds.has(id)));
   result.taskMemoryByBox = taskMemoryByBox;
   result.dismissedTaskSuggestionsByBox = dismissed;
   result.focusPlan = {

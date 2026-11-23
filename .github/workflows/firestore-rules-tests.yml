@@ -18,6 +18,8 @@ on:
       - "tasky-firebase-config.js"
       - "tasky-private-data.js"
       - "tasky-private-modules.js"
+      - "firebase/emulator/sync-safety.firebase.json"
+      - "firebase/emulator/firestore.sync-safety.rules"
       - ".github/workflows/firestore-rules-tests.yml"
   pull_request:
     branches:
@@ -29,6 +31,8 @@ on:
       - "tasky-auth.js"
       - "tasky-private-data.js"
       - "tasky-private-modules.js"
+      - "firebase/emulator/sync-safety.firebase.json"
+      - "firebase/emulator/firestore.sync-safety.rules"
       - ".github/workflows/firestore-rules-tests.yml"
 
 permissions:

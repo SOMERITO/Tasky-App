@@ -65,5 +65,8 @@ Fecha de actualización: 20 de noviembre de 2026.
 ## Resultado CI más reciente
 - Última línea base histórica antes de los cambios login-first y child_tasks: 25 aprobadas, 0 fallidas (ejecución anterior #115); no valida los cambios nuevos.
 - Las pruebas actualizadas deben ejecutarse nuevamente en GitHub Actions antes de publicar reglas o desplegar.
-- Las pruebas usan identidades y membresías ficticias en emuladores locales; no modifican Firebase real.
-- La integración visual y la migración de datos reales aún requieren validación en staging; no habilitar la cuenta infantil en producción.
+- `tests/sync-safety.test.mjs` invoca el algoritmo de conciliación actual con escenarios de dos dispositivos, cambios offline, caché sin versión, tombstones versionados y recreación más reciente.
+- `tests/firestore-precondition.integration.test.mjs` usa Firestore Emulator REST y una configuración aislada (`firebase/emulator/sync-safety.firebase.json` + `firebase/emulator/firestore.sync-safety.rules`) para demostrar que dos escrituras con el mismo `updateTime` no pueden sobrescribirse, que el conflicto requiere releer y que los datos confirmados persisten tras una lectura posterior.
+- Las reglas permisivas de la prueba REST solo cubren `/sync_safety_test/{documentId}` en ese emulator aislado. No se incluyen en `firebase.json` de despliegue ni en `firebase/firestore.rules`.
+- Las pruebas locales y de emulador usan identidades, documentos y datos sintéticos; no modifican Firebase de producción.
+- La validación de staging y la integración visual de escritorio/móvil deben repetirse sobre el commit candidato final. La cuenta infantil real permanece deshabilitada hasta entonces.

@@ -2381,6 +2381,8 @@
       birthdays: [],
       deletedTaskIds: [],
       deletedBoxIds: [],
+      deletedTaskUpdatedAt: {},
+      deletedBoxUpdatedAt: {},
       syncSchemaVersion: 1,
       bootstrapSeedData: true,
       updatedAt: 0
@@ -2419,6 +2421,8 @@
       birthdays: [],
       deletedTaskIds: [],
       deletedBoxIds: [],
+      deletedTaskUpdatedAt: {},
+      deletedBoxUpdatedAt: {},
       syncSchemaVersion: 2,
       bootstrapSeedData: false,
       updatedAt: Date.now()
@@ -3411,10 +3415,34 @@
       birthdays: normalizeBirthdays(raw.birthdays),
       deletedTaskIds: Array.isArray(raw.deletedTaskIds) ? Array.from(new Set(raw.deletedTaskIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
       deletedBoxIds: Array.isArray(raw.deletedBoxIds) ? Array.from(new Set(raw.deletedBoxIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
+      deletedTaskUpdatedAt: normalizeDeletionTimestamps(raw.deletedTaskUpdatedAt),
+      deletedBoxUpdatedAt: normalizeDeletionTimestamps(raw.deletedBoxUpdatedAt),
       syncSchemaVersion: Number(raw.syncSchemaVersion || 0),
       bootstrapSeedData: Boolean(raw.bootstrapSeedData),
       updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : 0
     };
+  }
+
+  function normalizeDeletionTimestamps(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+    return Object.fromEntries(Object.entries(raw)
+      .map(([id, value]) => [String(id), Number(value || 0)])
+      .filter(([id, value]) => id && Number.isFinite(value) && value > 0));
+  }
+
+  function buildVersionedDeletionTimestamps(deletedIds, priorTimestamps, priorItems, currentIds, changedAt) {
+    const result = normalizeDeletionTimestamps(priorTimestamps);
+    const live = new Set(Array.from(currentIds || [], id => String(id)));
+    const priorById = new Map((Array.isArray(priorItems) ? priorItems : [])
+      .filter(item => item && item.id != null).map(item => [String(item.id), item]));
+    (Array.isArray(deletedIds) ? deletedIds : []).forEach(rawId => {
+      const id = String(rawId || "");
+      if (!id || live.has(id) || result[id]) return;
+      const previous = priorById.get(id);
+      if (previous) result[id] = Math.max(Number(changedAt || 0), Number(previous.updatedAt || 0) + 1);
+    });
+    return Object.fromEntries(Object.entries(result).filter(([id]) =>
+      (Array.isArray(deletedIds) ? deletedIds : []).map(String).includes(id) && !live.has(id)));
   }
 
   // ==========================================================================
@@ -3641,12 +3669,7 @@
   }
 
   window.addEventListener("storage", (ev) => {
-    if (ev.key === getScopedStorageKey(STORAGE_KEYS.DATA) && ev.newValue) {
-      try {
-        const parsed = JSON.parse(ev.newValue);
-        applyIncomingSyncPayload(parsed, false);
-      } catch (e) {}
-    }
+    if (ev.key === getScopedStorageKey(STORAGE_KEYS.DATA)) scheduleIncomingSyncVerification();
   });
 
   async function getFirestoreAuthHeaders() {
@@ -3737,6 +3760,8 @@
       sv: 1,
       dt: Array.isArray(d.deletedTaskIds) ? d.deletedTaskIds : [],
       db: Array.isArray(d.deletedBoxIds) ? d.deletedBoxIds : [],
+      dta: normalizeDeletionTimestamps(d.deletedTaskUpdatedAt),
+      dba: normalizeDeletionTimestamps(d.deletedBoxUpdatedAt),
       lg: normalizeLearningGoalsData(d.learningGoals),
       fp: normalizeFocusPlanData(d.focusPlan, d.tasks),
       cl: normalizeCompletionLog(d.completionLog),
@@ -3813,6 +3838,8 @@
         completedBoxCollapsed: false,
         deletedTaskIds: Array.isArray(parsed.dt) ? parsed.dt : [],
         deletedBoxIds: Array.isArray(parsed.db) ? parsed.db : [],
+        deletedTaskUpdatedAt: normalizeDeletionTimestamps(parsed.dta),
+        deletedBoxUpdatedAt: normalizeDeletionTimestamps(parsed.dba),
         learningGoals: normalizeLearningGoalsData(parsed.lg),
         focusPlan: normalizeFocusPlanData(parsed.fp, tasks),
         completionLog: normalizeCompletionLog(parsed.cl),
@@ -3836,6 +3863,8 @@
       tasks: d.tasks,
       deletedTaskIds: d.deletedTaskIds.slice().sort(),
       deletedBoxIds: d.deletedBoxIds.slice().sort(),
+      deletedTaskUpdatedAt: normalizeDeletionTimestamps(d.deletedTaskUpdatedAt),
+      deletedBoxUpdatedAt: normalizeDeletionTimestamps(d.deletedBoxUpdatedAt),
       monthlyCompletedBase: d.monthlyCompletedBase,
       taskMemoryByBox: d.taskMemoryByBox || {},
       learningGoals: normalizeLearningGoalsData(d.learningGoals),
@@ -3873,7 +3902,7 @@
     };
   }
 
-  function mergeSyncDatasets(leftRaw, rightRaw) {
+  function mergeSyncDatasets(leftRaw, rightRaw, preferLeftAsRemote = false) {
     const left = normalizeDataPayload(leftRaw);
     const right = normalizeDataPayload(rightRaw);
     if (!left) return right;
@@ -3881,7 +3910,8 @@
 
     const leftTime = Number(left.updatedAt || 0);
     const rightTime = Number(right.updatedAt || 0);
-    let primary = (leftTime <= 0 && rightTime > 0) ? right
+    let primary = preferLeftAsRemote ? left
+      : (leftTime <= 0 && rightTime > 0) ? right
       : (rightTime <= 0 && leftTime > 0) ? left
       : (rightTime >= leftTime ? right : left);
     let secondary = primary === left ? right : left;
@@ -3891,12 +3921,48 @@
     const ignoreUnversionedSecondary = primaryTime > 0 && secondaryTime <= 0;
     const primaryIsSeed = Boolean(primary.bootstrapSeedData);
     const secondaryIsSeed = Boolean(secondary.bootstrapSeedData);
-    const deletedTaskIds = Array.from(new Set([
-      ...(left.deletedTaskIds || []), ...(right.deletedTaskIds || [])
-    ])).filter(Boolean);
-    const deletedBoxIds = Array.from(new Set([
-      ...(left.deletedBoxIds || []), ...(right.deletedBoxIds || [])
-    ])).filter(Boolean);
+    function mergeDeletionState(primaryIds, primaryTimes, secondaryIds, secondaryTimes, primaryItems, secondaryItems, isBox = false) {
+      const byId = new Map();
+      (Array.isArray(primaryIds) ? primaryIds : []).forEach(id => {
+        const key = String(id || "").trim();
+        if (key) byId.set(key, Number(primaryTimes && primaryTimes[key] || 0));
+      });
+      (Array.isArray(secondaryIds) ? secondaryIds : []).forEach(id => {
+        const key = String(id || "").trim();
+        if (!key) return;
+        const version = Number(secondaryTimes && secondaryTimes[key] || 0);
+        if (preferLeftAsRemote && version <= 0) return;
+        if (!byId.has(key) || version > byId.get(key)) byId.set(key, version);
+      });
+      const itemVersions = new Map();
+      const addVersions = (items, versionedOnly = false) => (Array.isArray(items) ? items : []).forEach(item => {
+        if (!item || item.id == null) return;
+        const version = Number(item.updatedAt || 0);
+        if (versionedOnly && version <= 0) return;
+        const id = String(item.id);
+        itemVersions.set(id, Math.max(itemVersions.get(id) || 0, version));
+      });
+      addVersions(primaryItems);
+      addVersions(secondaryItems, preferLeftAsRemote);
+      byId.forEach((deletedAt, id) => {
+        const remoteLegacyTombstone = preferLeftAsRemote &&
+          (Array.isArray(primaryIds) ? primaryIds : []).some(value => String(value) === id) &&
+          Number(primaryTimes && primaryTimes[id] || 0) <= 0;
+        if (remoteLegacyTombstone) return;
+        let latestItemVersion = itemVersions.get(id) || 0;
+        if (isBox) latestItemVersion = Math.max(latestItemVersion,
+          ...[primary, ...(preferLeftAsRemote ? [] : [secondary])]
+            .flatMap(data => (data.tasks || []).filter(task => String(task.boxId) === id).map(task => Number(task.updatedAt || 0))), 0);
+        if (latestItemVersion > deletedAt) byId.delete(id);
+      });
+      return Object.fromEntries(byId);
+    }
+    const deletedTaskUpdatedAt = mergeDeletionState(primary.deletedTaskIds, primary.deletedTaskUpdatedAt,
+      secondary.deletedTaskIds, secondary.deletedTaskUpdatedAt, primary.tasks, secondary.tasks);
+    const deletedBoxUpdatedAt = mergeDeletionState(primary.deletedBoxIds, primary.deletedBoxUpdatedAt,
+      secondary.deletedBoxIds, secondary.deletedBoxUpdatedAt, primary.boxes, secondary.boxes, true);
+    const deletedTaskIds = Object.keys(deletedTaskUpdatedAt);
+    const deletedBoxIds = Object.keys(deletedBoxUpdatedAt);
     const deletedTasks = new Set(deletedTaskIds);
     const deletedBoxes = new Set(deletedBoxIds);
 
@@ -3910,8 +3976,8 @@
       const legacyContactCenterKeys = new Set(["oficina", "asesortelefonico"]);
       if (legacyContactCenterKeys.has(existingKey) && candidateKey === "asesordecontactcenter") return candidate;
       if (legacyContactCenterKeys.has(candidateKey) && existingKey === "asesordecontactcenter") return existing;
-      const existingUpdatedAt = Number(existing && existing.updatedAt || existingSourceUpdatedAt || 0);
-      const candidateUpdatedAt = Number(candidate && candidate.updatedAt || candidateSourceUpdatedAt || 0);
+      const existingUpdatedAt = Number(existing && existing.updatedAt || (preferLeftAsRemote ? 0 : existingSourceUpdatedAt) || 0);
+      const candidateUpdatedAt = Number(candidate && candidate.updatedAt || (preferLeftAsRemote ? 0 : candidateSourceUpdatedAt) || 0);
       if (existingUpdatedAt !== candidateUpdatedAt) return candidateUpdatedAt > existingUpdatedAt ? candidate : existing;
       if (existing && existing.bootstrapSeed === true && candidate && candidate.bootstrapSeed !== true) return candidate;
       if (candidate && candidate.bootstrapSeed === true && existing && existing.bootstrapSeed !== true) return existing;
@@ -3982,6 +4048,11 @@
       if (primaryBoxesById.has(id)) return;
       if (unmatchedPrimaryByName.has(canonicalBoxKey(box.name))) return;
       if (ignoreUnversionedSecondary) return;
+      if (preferLeftAsRemote && Number(box.updatedAt || 0) <= 0) {
+        const hasExplicitTaskEdit = (secondary.tasks || []).some(task =>
+          String(task && task.boxId) === id && Number(task && task.updatedAt || 0) > 0);
+        if (!hasExplicitTaskEdit) return;
+      }
       if (box.bootstrapSeed === true && !primaryIsSeed) return;
       if (!canonicalBoxesById.has(id)) canonicalBoxesById.set(id, box);
       secondaryIdToCanonical.set(id, id);
@@ -4019,8 +4090,8 @@
         const useOtherAuthoritativeItem = item.bootstrapSeed === true && otherItem && otherItem.bootstrapSeed !== true && !secondaryIsSeed;
         let chosenItem = useOtherAuthoritativeItem ? otherItem : item;
         if (otherItem && !useOtherAuthoritativeItem) {
-          const primaryItemVersion = Number(item.updatedAt || primaryTime || 0);
-          const secondaryItemVersion = Number(otherItem.updatedAt || secondaryTime || 0);
+          const primaryItemVersion = Number(item.updatedAt || (preferLeftAsRemote ? 0 : primaryTime) || 0);
+          const secondaryItemVersion = Number(otherItem.updatedAt || (preferLeftAsRemote ? 0 : secondaryTime) || 0);
           if (secondaryItemVersion > primaryItemVersion) chosenItem = otherItem;
         }
         if (!suppressSeed && (!extraFilter || extraFilter(chosenItem))) byId.set(id, chosenItem);
@@ -4032,7 +4103,8 @@
           if (tombstones.has(id) || byId.has(id)) return;
           const matchedOther = (Array.isArray(primaryItems) ? primaryItems : []).some(entry => entry && String(entry[idKey]) === id);
           const suppressSeed = item.bootstrapSeed === true && !primaryIsSeed && !matchedOther;
-          if (!suppressSeed && (!extraFilter || extraFilter(item))) byId.set(id, item);
+          const suppressLegacyItem = preferLeftAsRemote && Number(item.updatedAt || 0) <= 0;
+          if (!suppressSeed && !suppressLegacyItem && (!extraFilter || extraFilter(item))) byId.set(id, item);
         });
       }
       return Array.from(byId.values());
@@ -4062,6 +4134,8 @@
       tasks: normalizedTasks,
       deletedTaskIds,
       deletedBoxIds,
+      deletedTaskUpdatedAt,
+      deletedBoxUpdatedAt,
       taskMemoryByBox: { ...(secondary.taskMemoryByBox || {}), ...(primary.taskMemoryByBox || {}) },
       history: { ...(secondary.history || {}), ...(primary.history || {}) },
       completionLog: mergeCompletionLogs(primary.completionLog, secondary.completionLog),
@@ -4089,16 +4163,31 @@
 
   function applyIncomingSyncPayload(incomingRaw, showNotification = false) {
     const norm = normalizeDataPayload(incomingRaw);
-    if (!norm || !Array.isArray(norm.boxes) || !norm.boxes.length) return false;
+    if (!norm || !Array.isArray(norm.boxes) || !norm.boxes.length) return { ok: false, changed: false, needsPush: false };
     const local = normalizeDataPayload(appState.data);
+    const hasPending = hasPendingLocalCloudChanges();
+    if (hasPending && syncFingerprint(local) !== syncFingerprint(norm) &&
+        !preserveLocalSnapshotBeforeCloudAdoption(local)) {
+      setRealtimeSyncStatus("No se pudo guardar el respaldo local; se bloqueó la conciliación.");
+      return { ok: false, changed: false, needsPush: false };
+    }
     let merged;
     try {
-      merged = mergeSyncDatasets(local, norm);
+      merged = mergeSyncDatasets(norm, local, true);
     } catch (error) {
       setRealtimeSyncStatus(`Error al conciliar: ${String(error && error.message || error).slice(0, 150)}`);
-      return false;
+      return { ok: false, changed: false, needsPush: false };
     }
-    if (!merged) return false;
+    if (!merged) return { ok: false, changed: false, needsPush: false };
+    if (isLeahAdultWorkspace()) {
+      const privateManager = window.TaskyPrivateModules;
+      if (!privateModulesReady || !privateManager || !privateManager.ready ||
+          typeof privateManager.restorePrivateModulesToWorkspace !== "function") {
+        setRealtimeSyncStatus("Los módulos privados no están verificados; se bloqueó la conciliación compartida.");
+        return { ok: false, changed: false, needsPush: false };
+      }
+      merged = privateManager.restorePrivateModulesToWorkspace(merged);
+    }
     applyLocalViewStateToData(merged, local);
 
     const currentSig = syncFingerprint(local);
@@ -4109,8 +4198,8 @@
         appState.data.syncSchemaVersion = 1;
         safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
       }
-      if (cloudSyncFingerprint(merged) !== cloudSyncFingerprint(norm)) pushCloudSync(false);
-      return false;
+      const needsPush = cloudSyncFingerprint(merged) !== cloudSyncFingerprint(norm);
+      return { ok: true, changed: false, needsPush };
     }
 
     appState.data = merged;
@@ -4126,9 +4215,8 @@
     const mergedMatchesIncoming = cloudSyncFingerprint(merged) === cloudSyncFingerprint(norm);
     const syncText = document.getElementById("sync-status-text");
     if (syncText) syncText.textContent = mergedMatchesIncoming ? "Sincronizado" : "Conciliando…";
-    if (!mergedMatchesIncoming) pushCloudSync(false);
     if (showNotification) showToast("🔄 Datos fusionados sin perder tareas");
-    return true;
+    return { ok: true, changed: true, needsPush: !mergedMatchesIncoming };
   }
 
   let cloudPushTimer = null;
@@ -4377,7 +4465,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261122-cloud-first-workspace-1";
+  const TASKY_BUILD_ID = "20261122-cloud-first-tombstones-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -4703,10 +4791,15 @@
         safeStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(appState.settings));
         safeStorage.setItem(STORAGE_KEYS.MEMORY, JSON.stringify(appState.taskMemory));
       }
-      applyIncomingSyncPayload(cloudCandidate, manual);
+      const reconciliation = applyIncomingSyncPayload(cloudCandidate, manual);
+      if (!reconciliation || !reconciliation.ok) {
+        cloudSyncReady = false;
+        cloudSyncReadyConfig = "";
+        return "reconcile-error";
+      }
 
       const localNow = normalizeDataPayload(appState.data);
-      if (
+      if (reconciliation.needsPush ||
         cloudNeedsRepair ||
         cloudSyncFingerprint(localNow) !== cloudSyncFingerprint(cloudCandidate)
       ) {
@@ -5307,6 +5400,12 @@
     currentBoxIds.forEach(id => deletedBoxes.delete(id));
     appState.data.deletedTaskIds = Array.from(deletedTasks);
     appState.data.deletedBoxIds = Array.from(deletedBoxes);
+    appState.data.deletedTaskUpdatedAt = buildVersionedDeletionTimestamps(
+      Array.from(deletedTasks), { ...(previousData && previousData.deletedTaskUpdatedAt), ...(appState.data.deletedTaskUpdatedAt || {}) },
+      previousData && previousData.tasks, currentTaskIds, recordChangeTime);
+    appState.data.deletedBoxUpdatedAt = buildVersionedDeletionTimestamps(
+      Array.from(deletedBoxes), { ...(previousData && previousData.deletedBoxUpdatedAt), ...(appState.data.deletedBoxUpdatedAt || {}) },
+      previousData && previousData.boxes, currentBoxIds, recordChangeTime);
     appState.data.syncSchemaVersion = 1;
     const syncContentChanged = !previousData || previousSyncFingerprint !== syncFingerprint(appState.data);
     if (syncContentChanged) {

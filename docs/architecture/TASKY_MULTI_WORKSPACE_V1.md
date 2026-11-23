@@ -1,7 +1,7 @@
 # Tasky — arquitectura multi-espacio (v1)
 
-Fecha: 20 de noviembre de 2026  
-Estado: implementación parcial en la rama de desarrollo; no desplegada.
+Fecha: 22 de noviembre de 2026
+Estado: implementación en revisión en PR #5; no fusionada. La protección de sincronización del PR #3 se está integrando y todavía requiere CI y validación en staging sobre el commit final.
 
 ## Objetivo
 
@@ -57,6 +57,16 @@ Antes de reabrir Firestore, la aplicación debe:
 7. Nunca confiar en un nombre de perfil, una opción del navegador o un workspaceId enviado por el cliente como autorización.
 
 La API key del cliente identifica el proyecto, pero no reemplaza la autenticación ni las reglas. No incluir credenciales de cuentas de servicio, claves privadas ni tokens en el código.
+
+## Sincronización Cloud First y recuperación
+
+- Firestore es la fuente remota autoritativa. Los mensajes entre pestañas/dispositivos solo notifican que hay que volver a leer Firestore; no aplican una copia local recibida por `storage`.
+- Cada escritura normal usa `documents:commit` con `currentDocument.updateTime`. La creación inicial requiere la autorización explícita de rescate y la precondición `exists: false`; una revisión ausente bloquea la escritura.
+- Ante conflicto o rechazo, Tasky descarta la revisión conocida y vuelve a leer antes de conciliar y reintentar. Si la lectura, el respaldo o la conciliación falla, no sube el resultado.
+- Los borrados se conservan como `deletedTaskUpdatedAt` y `deletedBoxUpdatedAt`. Al conciliar cambios locales pendientes, una eliminación sin versión procedente de una caché antigua se ignora; las eliminaciones versionadas se comparan con las últimas versiones de tareas/casillas y de las tareas hijas de una casilla. Una edición/recreación posterior puede volver a habilitar el elemento.
+- Antes de adoptar una copia remota distinta o conciliar cambios locales pendientes, la aplicación guarda una copia local recuperable. Si no puede guardarla, bloquea la adopción/escritura.
+- El formato compacto también transporta las versiones de los tombstones. Las cargas de Salud y Gastos se filtran del documento compartido y sus borrados versionados se mantienen en los documentos privados de adultos.
+- La suite de reglas y autenticación usa Firebase Emulator. La aceptación de precondiciones REST usa una configuración separada de emulator y una ruta sintética; esas reglas abiertas no forman parte de `firebase.json` de despliegue.
 
 ## Modelo de datos propuesto
 
@@ -155,8 +165,8 @@ La primera versión implementará un centro de notificaciones dentro de Tasky, v
 2. **Autenticación:** correo y contraseña primero; recuperación y cierre de sesión; sin auto-registro.
 3. **Membresías y autorización:** después de autenticar, mostrar únicamente los espacios activos del UID; el selector no concede acceso por sí solo.
 4. **Aislamiento local/cloud:** prefijos por workspace, Firestore con ID token y carga/guardado de documentos separados.
-5. **Flujo infantil:** en actualización en esta rama: registro directo de tareas propias, edición limitada, aviso de finalización, revisión adulta y escucha en tiempo real; pendiente de ejecución de CI y validación funcional en staging.
-6. **Privacidad por módulo:** capa de aislamiento y migración transaccional implementadas en esta rama; pendientes pruebas integrales de aplicación y staging antes de habilitar a Leah.
+5. **Flujo infantil:** el código y las reglas permiten tareas propias, edición solo en estado pendiente y envío a revisión; las reglas prohíben borrado infantil y cambios a tareas de adultos. El texto visible de «Tus pendientes» indica ahora esos mismos límites. Falta ejecutar la matriz completa de UI en escritorio/móvil sobre el commit final.
+6. **Privacidad por módulo:** Salud y Gastos se separan mediante transacción Firestore y el marcador de acceso se escribe en la misma transacción. La suite del emulador contiene cobertura sintética de aislamiento y fallo de migración; falta repetir los casos de extremo a extremo en staging sobre el commit final.
 7. **Migración y despliegue:** importar copia de José, probar y solo después abrir reglas autenticadas.
 
 ## Criterios mínimos de aceptación
@@ -175,4 +185,4 @@ La primera versión implementará un centro de notificaciones dentro de Tasky, v
 
 ## Límites de esta fase
 
-Este documento no habilita Firebase Authentication en producción, no crea cuentas ni publica reglas en Firebase. El archivo de reglas de esta rama es una propuesta versionada para revisión y pruebas; no se debe publicar desde la consola hasta terminar la separación de datos privados, el staging y la validación integral.
+Este documento no habilita Firebase Authentication en producción, no crea cuentas ni publica reglas en Firebase. El estado previo de staging corresponde a una revisión anterior y no valida cambios posteriores hasta que se publique un nuevo canal de vista previa y se repitan las pruebas sintéticas. No habilitar la cuenta real de Leah ni publicar reglas en producción mientras la revisión integral, la validación móvil/escritorio y las evidencias de CI/staging del commit final sigan pendientes.

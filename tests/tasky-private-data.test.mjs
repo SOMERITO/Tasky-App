@@ -22,6 +22,8 @@ const base = {
   ],
   deletedTaskIds: ["health-deleted", "school-deleted"],
   deletedBoxIds: [],
+  deletedTaskUpdatedAt: { "health-deleted": 11, "school-deleted": 12 },
+  deletedBoxUpdatedAt: {},
   taskMemoryByBox: {
     box_escolar: ["Leer"],
     "box_mem_SALUD Y CITAS": ["Pediatría"],
@@ -74,6 +76,8 @@ test("shared payload excludes private boxes, tasks, tombstones and related metad
   assert.deepEqual(shared.tasks.map((task) => task.id), ["school-1"]);
   assert.deepEqual(shared.deletedTaskIds, ["school-deleted"]);
   assert.deepEqual(shared.deletedBoxIds, []);
+  assert.deepEqual(shared.deletedTaskUpdatedAt, { "school-deleted": 12 });
+  assert.deepEqual(shared.deletedBoxUpdatedAt, {});
   assert.deepEqual(Object.keys(shared.taskMemoryByBox), ["box_escolar"]);
   assert.deepEqual(Object.keys(shared.dismissedTaskSuggestionsByBox), []);
   assert.deepEqual(Object.keys(shared.taskMemoryByBox).filter((key) => key.includes("SALUD") || key.includes("GASTOS")), []);
@@ -82,6 +86,7 @@ test("shared payload excludes private boxes, tasks, tombstones and related metad
   assert.deepEqual(shared.completionLog.map((entry) => entry.taskId), ["school-1"]);
   assert.equal(Object.hasOwn(shared, "history"), false);
   assert.equal(health.taskIds.includes("health-deleted"), true);
+  assert.deepEqual(health.deletedTaskUpdatedAt, { "health-deleted": 11 });
   assert.equal(health.completionLog.some((entry) => entry.id === "health-deleted-event"), true);
 });
 
@@ -111,6 +116,27 @@ test("private module merge preserves newer task edits and explicit deletions", (
   assert.equal(merged.tasks.find((task) => task.id === "health-1").title, "Cita médica");
   assert.deepEqual(merged.deletedTaskIds, ["health-deleted"]);
   assert.equal(merged.taskIds.includes("health-deleted"), true);
+});
+
+test("private module ignores a stale unversioned secondary deletion and lets newer edits beat old tombstones", () => {
+  const current = {
+    moduleId: "box_salud",
+    box: { id: "box_salud", name: "SALUD Y CITAS" },
+    tasks: [{ id: "health-1", boxId: "box_salud", title: "Consulta actualizada", updatedAt: 500 }],
+    taskIds: ["health-1"], deletedTaskIds: [], deletedTaskUpdatedAt: {}, deletedBoxIds: [], deletedBoxUpdatedAt: {}
+  };
+  const staleCache = {
+    ...current,
+    tasks: [], taskIds: ["health-1"], deletedTaskIds: ["health-1"], deletedTaskUpdatedAt: {}
+  };
+  const ignored = mergePrivateModuleData(current, staleCache);
+  assert.equal(ignored.tasks.some((task) => task.title === "Consulta actualizada"), true);
+  assert.deepEqual(ignored.deletedTaskIds, []);
+
+  const olderVersionedDeletion = { ...staleCache, deletedTaskUpdatedAt: { "health-1": 400 } };
+  const preserved = mergePrivateModuleData(current, olderVersionedDeletion);
+  assert.equal(preserved.tasks.some((task) => task.id === "health-1"), true);
+  assert.deepEqual(preserved.deletedTaskIds, []);
 });
 
 test("attaching private modules restores adult-only modules without mixing them into shared data", () => {

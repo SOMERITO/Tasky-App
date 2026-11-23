@@ -195,6 +195,18 @@ test("Leah can create and edit her own pending tasks, but cannot delete or appro
     createdBy: "camila",
     updatedAt: new Date()
   }));
+  await assertSucceeds(deleteDoc(guardianTaskRef));
+
+  const adultTaskRef = doc(guardian, "workspaces/leah/child_tasks/adult-owned-task");
+  await assertSucceeds(setDoc(adultTaskRef, {
+    title: "Adult assignment", description: "", module: "box_escolar",
+    scheduledDate: "2026-11-22", deadlineDate: "", priority: "normal",
+    createdBy: "jose", createdAt: new Date(), updatedAt: new Date(), status: "pending"
+  }));
+  await assertFails(updateDoc(doc(db, "workspaces/leah/child_tasks/adult-owned-task"), {
+    title: "Leah cannot edit an adult task", updatedAt: new Date()
+  }));
+  await assertSucceeds(deleteDoc(adultTaskRef));
 });
 
 test("Leah can use custom visible modules but cannot use adult-private modules", async () => {
