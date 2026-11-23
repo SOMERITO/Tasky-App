@@ -428,19 +428,25 @@ test("completed private migration requires both valid module documents and block
   const prefix = `workspaces/private-integrity-${Date.now()}`;
   const workspaceId = prefix.split("/").at(-1);
   const child = env.authenticatedContext("private-guard-child").firestore();
-  const readAdminDoc = (path) => env.withSecurityRulesDisabled((context) =>
-    getDoc(doc(context.firestore(), path))
-  );
+  const readAdminDoc = async (path) => {
+    let snapshot;
+    await env.withSecurityRulesDisabled(async (context) => {
+      snapshot = await getDoc(doc(context.firestore(), path));
+    });
+    return snapshot;
+  };
   const validModule = (moduleId) => ({
     moduleId, schemaVersion: 1,
     payloadJson: JSON.stringify({ moduleId, box: { id: moduleId }, tasks: [], taskIds: [], deletedTaskIds: [], deletedBoxIds: [] })
   });
-  const attemptSave = () => env.withSecurityRulesDisabled(async (context) => {
-    const db = context.firestore();
-    const markerRef = doc(db, `${prefix}/access_control/private_modules`);
-    const healthRef = doc(db, `${prefix}/adult_private/health`);
-    const expensesRef = doc(db, `${prefix}/adult_private/expenses`);
-    return runTransaction(db, async (tx) => {
+  const attemptSave = async () => {
+    let result;
+    await env.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      const markerRef = doc(db, `${prefix}/access_control/private_modules`);
+      const healthRef = doc(db, `${prefix}/adult_private/health`);
+      const expensesRef = doc(db, `${prefix}/adult_private/expenses`);
+      result = await runTransaction(db, async (tx) => {
       const [marker, health, expenses] = await Promise.all([tx.get(markerRef), tx.get(healthRef), tx.get(expensesRef)]);
       const verified = validateCompletedPrivateModuleSet(
         marker.exists() ? marker.data() : null,
@@ -448,8 +454,10 @@ test("completed private migration requires both valid module documents and block
       );
       tx.set(healthRef, { ...health.data(), payloadJson: JSON.stringify({ ...JSON.parse(health.data().payloadJson), tasks: [{ id: "new-save" }] }) });
       return verified;
+      });
     });
-  });
+    return result;
+  };
   const seed = async (state) => env.withSecurityRulesDisabled(async (context) => {
     const admin = context.firestore();
     await setDoc(doc(admin, `user_access/private-guard-child/workspaces/${workspaceId}`), {
