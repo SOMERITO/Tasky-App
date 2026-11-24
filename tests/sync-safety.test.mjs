@@ -156,9 +156,9 @@ test("Jose 404 stays pending and backup import is staging-only, previewed, backe
 
 test("Tasky backup round-trips separate history, settings, memory and durable task metadata", () => {
   const isRecord = value => Boolean(value && typeof value === "object" && !Array.isArray(value));
-  const isRecordSource = extractFunction("isTaskyBackupRecord", "\\n  function buildTaskyBackupEnvelope");
-  const buildSource = extractFunction("buildTaskyBackupEnvelope", "\\n  function normalizeTaskyBackupEnvelope");
-  const normalizeSource = extractFunction("normalizeTaskyBackupEnvelope", "\\n  function exportJsonBackup");
+  const isRecordSource = extractFunction("isTaskyBackupRecord", "\n  function buildTaskyBackupEnvelope");
+  const buildSource = extractFunction("buildTaskyBackupEnvelope", "\n  function normalizeTaskyBackupEnvelope");
+  const normalizeSource = extractFunction("normalizeTaskyBackupEnvelope", "\n  function exportJsonBackup");
   const predicate = new Function(`return (${isRecordSource});`)();
   const build = new Function("isTaskyBackupRecord", `return (${buildSource});`)(predicate);
   const normalizeDataPayloadForTest = raw => ({
@@ -204,17 +204,17 @@ test("Tasky backup round-trips separate history, settings, memory and durable ta
     "birthdays", "monthlyCompletedBase"
   ]) assert.deepEqual(restored.imported[key], source[key], `round-trip failed for ${key}`);
 
-  const importSource = extractFunction("importJoseBackupSafely", "\\n\\n  // Point 5:");
+  const importSource = extractFunction("importJoseBackupSafely", "\n\n  // Point 5:");
   assert.match(importSource, /document: currentRemoteDocument/);
   assert.match(importSource, /verifiedPayloadJson !== expectedPayloadJson/);
-  assert.match(importSource, /STORAGE_KEYS\\.SETTINGS/);
-  assert.match(importSource, /STORAGE_KEYS\\.MEMORY/);
+  assert.match(importSource, /STORAGE_KEYS\.SETTINGS/);
+  assert.match(importSource, /STORAGE_KEYS\.MEMORY/);
 });
 
 test("legacy Tasky JSON backups keep embedded history, settings and task memory", () => {
   const isRecord = value => Boolean(value && typeof value === "object" && !Array.isArray(value));
-  const isRecordSource = extractFunction("isTaskyBackupRecord", "\\n  function buildTaskyBackupEnvelope");
-  const normalizeSource = extractFunction("normalizeTaskyBackupEnvelope", "\\n  function exportJsonBackup");
+  const isRecordSource = extractFunction("isTaskyBackupRecord", "\n  function buildTaskyBackupEnvelope");
+  const normalizeSource = extractFunction("normalizeTaskyBackupEnvelope", "\n  function exportJsonBackup");
   const predicate = new Function(`return (${isRecordSource});`)();
   const normalizeDataPayloadForTest = raw => ({
     ...raw,
