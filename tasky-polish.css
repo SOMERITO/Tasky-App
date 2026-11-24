@@ -1,0 +1,591 @@
+/* ==========================================================================
+   TASKY STUDIO POLISH · Animaciones profesionales, modo oscuro completo y UX
+   Capa modular no invasiva cargada después de styles.css y mobile-app.css.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Keyframes de movimiento fluido (60fps, GPU-composited)
+   -------------------------------------------------------------------------- */
+@keyframes taskyAuthPanelIn {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.975);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes taskyCardReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes taskyModalEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.965);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes taskyBackdropFade {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes taskySyncPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.42);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(34, 197, 94, 0);
+  }
+}
+
+@keyframes taskyNavPop {
+  0% {
+    transform: scale(0.86);
+  }
+  60% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes taskyBrandFloat {
+  0%, 100% {
+    box-shadow: 0 10px 26px rgba(168, 85, 247, 0.28);
+  }
+  50% {
+    box-shadow: 0 14px 34px rgba(217, 70, 239, 0.42);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   2. Fix crítico: Modo Oscuro completo para Tasky Leah y refuerzo general
+      (Sobrescribe la especificidad de html[data-tasky-workspace="leah"])
+   -------------------------------------------------------------------------- */
+html[data-theme="dark"][data-tasky-workspace="leah"] {
+  --bg: #0c0916;
+  --surface: rgba(24, 18, 42, 0.86);
+  --surface-solid: #161026;
+  --surface-muted: rgba(38, 28, 64, 0.78);
+  --surface-hover: rgba(54, 40, 88, 0.94);
+  --text: #f8f5ff;
+  --text-secondary: #d7cbe9;
+  --muted: #a696c4;
+  --line: rgba(216, 180, 254, 0.13);
+  --line-strong: rgba(216, 180, 254, 0.25);
+  --primary: #c084fc;
+  --primary-hover: #d8b4fe;
+  --primary-2: #f472b6;
+  --primary-soft: rgba(192, 132, 252, 0.18);
+  --shadow-xs: 0 4px 12px rgba(0, 0, 0, 0.36);
+  --shadow-sm: 0 12px 30px rgba(0, 0, 0, 0.44);
+  --shadow: 0 24px 56px rgba(0, 0, 0, 0.56);
+  --shadow-lg: 0 36px 96px rgba(0, 0, 0, 0.72);
+}
+
+html[data-theme="dark"] body {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .top-navbar {
+  background: rgba(15, 20, 34, 0.82);
+  border-color: var(--line);
+}
+
+html[data-theme="dark"][data-tasky-workspace="leah"] .top-navbar {
+  background: rgba(20, 14, 36, 0.86);
+}
+
+html[data-theme="dark"] .sync-status-static,
+html[data-theme="dark"] #sync-status-text,
+html[data-theme="dark"] .tasky-welcome,
+html[data-theme="dark"] .tasky-welcome-title,
+html[data-theme="dark"] .tasky-welcome-sub,
+html[data-theme="dark"] .quote-text,
+html[data-theme="dark"] .quote-author,
+html[data-theme="dark"] .hero-date-pill,
+html[data-theme="dark"] .date-pill {
+  color: var(--text);
+}
+
+html[data-theme="dark"] .tasky-welcome-sub,
+html[data-theme="dark"] .quote-author {
+  color: var(--text-secondary);
+}
+
+html[data-theme="dark"] .metric-card,
+html[data-theme="dark"] .learning-summary-card,
+html[data-theme="dark"] .controls-bar,
+html[data-theme="dark"] .box-card,
+html[data-theme="dark"] .quote-inline-box,
+html[data-theme="dark"] .task-filter-bar {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .metric-label,
+html[data-theme="dark"] .metric-sub,
+html[data-theme="dark"] .learning-summary-date,
+html[data-theme="dark"] .box-empty-state {
+  color: var(--text-secondary);
+}
+
+html[data-theme="dark"] .box-pill.neutral,
+html[data-theme="dark"] .learning-status-chip[data-status="empty"] {
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  border-color: var(--line);
+}
+
+html[data-theme="dark"] .inline-add-trigger,
+html[data-theme="dark"] .btn-add-inline,
+html[data-theme="dark"] .box-add-btn {
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  border-color: var(--line);
+}
+
+html[data-theme="dark"] .inline-add-trigger:hover,
+html[data-theme="dark"] .btn-add-inline:hover,
+html[data-theme="dark"] .box-add-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+html[data-theme="dark"] .icon-btn,
+html[data-theme="dark"] .box-action-btn,
+html[data-theme="dark"] .box-header-actions button,
+html[data-theme="dark"] .tasky-account-button {
+  background: var(--surface-muted);
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+html[data-theme="dark"] .icon-btn:hover,
+html[data-theme="dark"] .box-action-btn:hover,
+html[data-theme="dark"] .box-header-actions button:hover,
+html[data-theme="dark"] .tasky-account-button:hover {
+  background: var(--surface-hover);
+  border-color: var(--primary);
+}
+
+html[data-theme="dark"] .task-check-circle {
+  border-color: rgba(248, 250, 252, 0.34);
+}
+
+html[data-theme="dark"] .tasky-auth-panel {
+  background: rgba(22, 16, 38, 0.92);
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .tasky-auth-form input,
+html[data-theme="dark"] .tasky-profile-select {
+  background: var(--surface-muted);
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+/* --------------------------------------------------------------------------
+   3. Pulido de Pantalla de Login (#tasky-auth-gate)
+   -------------------------------------------------------------------------- */
+html.tasky-auth-required,
+html.tasky-auth-required body {
+  min-height: 100dvh;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  overflow: hidden;
+}
+
+.tasky-auth-gate {
+  min-height: 100dvh;
+  max-height: 100dvh;
+  overflow-y: auto;
+  padding: clamp(16px, 4vw, 32px);
+  backdrop-filter: blur(16px) saturate(135%);
+  -webkit-backdrop-filter: blur(16px) saturate(135%);
+}
+
+.tasky-auth-panel {
+  animation: taskyAuthPanelIn 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+  box-shadow:
+    0 24px 60px rgba(15, 23, 42, 0.12),
+    0 4px 16px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease;
+}
+
+.tasky-auth-mark {
+  animation: taskyBrandFloat 4.8s ease-in-out infinite;
+}
+
+.tasky-auth-form input,
+.tasky-profile-select {
+  transition: border-color 0.2s ease, box-shadow 0.22s ease, background-color 0.2s ease;
+}
+
+.tasky-auth-form input:focus,
+.tasky-profile-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3.5px var(--primary-soft);
+}
+
+/* Transformar "Olvidé mi contraseña" en enlace secundario limpio y discreto */
+.tasky-auth-link {
+  width: auto !important;
+  min-height: auto !important;
+  margin: 4px 0 6px auto !important;
+  padding: 4px 2px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: flex-end;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  color: var(--primary) !important;
+  font-size: 0.84rem !important;
+  font-weight: 600 !important;
+  text-decoration: none;
+  opacity: 0.88;
+  transition: opacity 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.tasky-auth-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Botón principal "Iniciar sesión" con contraste nítido (texto blanco) y sheen */
+.tasky-auth-primary {
+  position: relative;
+  overflow: hidden;
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 52%, #db2777 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow:
+    0 10px 24px rgba(124, 58, 237, 0.30),
+    0 2px 6px rgba(15, 23, 42, 0.12) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease, filter 0.22s ease !important;
+}
+
+.tasky-auth-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, 0.24) 50%, transparent 80%);
+  transform: translateX(-120%);
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.tasky-auth-primary:hover {
+  transform: translateY(-1.5px);
+  filter: brightness(1.04);
+  box-shadow:
+    0 14px 30px rgba(124, 58, 237, 0.38),
+    0 4px 10px rgba(15, 23, 42, 0.14) !important;
+}
+
+.tasky-auth-primary:hover::after {
+  transform: translateX(120%);
+}
+
+.tasky-auth-primary:active {
+  transform: translateY(0) scale(0.985) !important;
+}
+
+/* --------------------------------------------------------------------------
+   4. Animaciones de nivel profesional y microinteracciones del tablero
+   -------------------------------------------------------------------------- */
+/* Entrada escalonada de tarjetas de métricas y metas */
+.metric-card {
+  animation: taskyCardReveal 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition:
+    transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.22s ease !important;
+}
+
+.metric-card:nth-child(1) { animation-delay: 0.03s; }
+.metric-card:nth-child(2) { animation-delay: 0.08s; }
+.metric-card:nth-child(3) { animation-delay: 0.13s; }
+
+.learning-summary-card {
+  animation: taskyCardReveal 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.22s ease !important;
+}
+
+.learning-summary-card:nth-child(1) { animation-delay: 0.16s; }
+.learning-summary-card:nth-child(2) { animation-delay: 0.21s; }
+
+@media (hover: hover) and (pointer: fine) {
+  .metric-card:hover,
+  .learning-summary-card:hover {
+    transform: translateY(-2.5px);
+    box-shadow: var(--shadow-sm);
+    border-color: var(--line-strong);
+  }
+
+  .box-card {
+    transition:
+      transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.22s ease !important;
+  }
+
+  .box-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+    border-color: var(--line-strong);
+  }
+
+  .task-item {
+    transition:
+      transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      box-shadow 0.2s ease !important;
+  }
+
+  .task-item:hover {
+    transform: translateX(2px);
+  }
+
+  .task-check-circle:hover {
+    transform: scale(1.12);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-soft);
+  }
+}
+
+/* Respuesta física táctil al pulsar controles */
+.icon-btn:active,
+.tab-btn:active,
+.quick-pill:active,
+.btn:active,
+.tasky-account-button:active,
+.fab-main-btn:active,
+.modal-close-btn:active,
+.mobile-app-nav-item:active {
+  transform: scale(0.95) !important;
+}
+
+/* Focus visible accesible y moderno en todo el teclado */
+:is(button, a, input, select, textarea, [role="button"]):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Punto de sincronización siempre redondo (jamás aplastado) con pulso suave */
+.sync-dot {
+  flex-shrink: 0 !important;
+  aspect-ratio: 1 / 1 !important;
+  animation: taskySyncPulse 2.8s ease-in-out infinite;
+}
+
+/* Modales con entrada resorte, desenfoque limpio y cierre con micro-rotación */
+.modal-backdrop.open {
+  animation: taskyBackdropFade 0.22s ease both;
+  backdrop-filter: blur(14px) saturate(135%);
+  -webkit-backdrop-filter: blur(14px) saturate(135%);
+}
+
+.modal-backdrop.open .modal-dialog {
+  animation: taskyModalEnter 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.modal-header > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.modal-close-btn {
+  flex-shrink: 0 !important;
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease, color 0.2s ease !important;
+}
+
+.modal-close-btn:hover {
+  transform: rotate(90deg) scale(1.06);
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: transparent;
+}
+
+/* FAB con sombra luminosa y rotación fluida */
+.fab-main-btn {
+  box-shadow:
+    0 12px 28px rgba(37, 99, 235, 0.34),
+    0 3px 10px rgba(15, 23, 42, 0.14) !important;
+  transition:
+    transform 0.26s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.24s ease,
+    filter 0.2s ease !important;
+}
+
+html[data-tasky-workspace="leah"] .fab-main-btn {
+  box-shadow:
+    0 12px 28px rgba(168, 85, 247, 0.38),
+    0 3px 10px rgba(15, 23, 42, 0.16) !important;
+}
+
+.fab-main-btn:hover {
+  transform: translateY(-2px) scale(1.05);
+  filter: brightness(1.05);
+}
+
+/* Toast con aspecto refinado tipo Dynamic Island sin tapar el encabezado */
+.toast-stack {
+  top: calc(78px + var(--safe-top));
+  z-index: 250;
+}
+
+/* --------------------------------------------------------------------------
+   5. Correcciones de UX Móvil (<= 700px) — Sin romper rendimiento GPU móvil
+   -------------------------------------------------------------------------- */
+@media (max-width: 700px) {
+  /* Evitar colisión entre "Tasky" y el texto de sincronización en pantallas estrechas */
+  .top-navbar {
+    gap: 6px 8px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .sync-status-static {
+    max-width: 24px !important;
+    width: 24px !important;
+    height: 24px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+    border-radius: 999px;
+    background: var(--surface-muted);
+    border: 1px solid var(--line);
+  }
+
+  #sync-status-text {
+    display: none !important;
+  }
+
+  /* Indicador activo animado en la barra inferior móvil */
+  .mobile-app-nav-item {
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.16s ease !important;
+  }
+
+  .mobile-app-nav-item.is-active svg {
+    animation: taskyNavPop 0.34s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  /* Fade suave en filtros horizontales para evitar cortes bruscos de texto */
+  body[data-mobile-view="today"] .controls-bar .quick-pills,
+  body[data-mobile-view="boxes"] .controls-bar .quick-pills,
+  body[data-mobile-view="boxes"] .controls-bar .tabs-group {
+    -webkit-mask-image: linear-gradient(to right, #000 0%, #000 90%, transparent 100%);
+    mask-image: linear-gradient(to right, #000 0%, #000 90%, transparent 100%);
+    padding-right: 18px !important;
+  }
+
+  /* Evitar que .modal-eyebrow tape el botón ✕ (Cerrar) y pulir presentación móvil */
+  .modal-header {
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding-bottom: 12px;
+  }
+
+  .modal-eyebrow {
+    display: block !important;
+    line-height: 1.35 !important;
+    white-space: normal !important;
+    word-break: break-word;
+    margin-bottom: 5px !important;
+  }
+
+  .modal-close-btn {
+    position: relative;
+    z-index: 4;
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  .modal-backdrop {
+    padding: 12px !important;
+    align-items: flex-end !important;
+  }
+
+  .modal-dialog {
+    max-height: 88dvh !important;
+    border-radius: 24px !important;
+    padding: 20px 18px calc(22px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* Métricas cómodas en teléfonos estrechos (2 arriba + 1 ancha abajo en lugar de 3 apretadas) */
+@media (max-width: 480px) {
+  .brand-cluster::after {
+    font-size: 0.98rem !important;
+  }
+
+  body[data-mobile-view="today"] .metrics-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  body[data-mobile-view="today"] .metrics-grid .metric-card {
+    min-height: 98px !important;
+    padding: 13px 13px !important;
+  }
+
+  body[data-mobile-view="today"] .metrics-grid .metric-card:nth-child(3) {
+    grid-column: 1 / -1 !important;
+    min-height: 82px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   6. Accesibilidad: respetar prefers-reduced-motion globalmente
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .aurora-orb {
+    animation: none !important;
+  }
+}
