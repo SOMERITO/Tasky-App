@@ -4811,6 +4811,7 @@
       // A legacy cache with no proven local edits cannot outrank the verified cloud.
       // Keep a recoverable snapshot before adopting it; private Leah data stays on
       // its dedicated transactional module path and is never replaced here.
+      let adoptedCloudDirectly = false;
       if (!hasPendingLocalCloudChanges() && !isLeahAdultWorkspace() &&
           cloudSyncFingerprint(appState.data) !== cloudSyncFingerprint(cloudCandidate)) {
         if (!preserveLocalSnapshotBeforeCloudAdoption(appState.data)) {
@@ -4825,12 +4826,19 @@
         appState.settings = { ...appState.settings, ...(cloudCandidate.settings || {}) };
         appState.taskMemory = { ...(cloudCandidate.taskMemoryByBox || {}) };
         safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
+        adoptedCloudDirectly = true;
         safeStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(appState.history));
         safeStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(appState.history));
         safeStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(appState.settings));
         safeStorage.setItem(STORAGE_KEYS.MEMORY, JSON.stringify(appState.taskMemory));
       }
       const reconciliation = applyIncomingSyncPayload(cloudCandidate, manual);
+      if (adoptedCloudDirectly && reconciliation && reconciliation.ok && !reconciliation.changed) {
+        rebuildTaskMemoryFromTasks();
+        renderBoard();
+        renderLearningGoalsPanel();
+        renderBirthdayUpcomingList();
+      }
       if (!reconciliation || !reconciliation.ok) {
         cloudSyncReady = false;
         cloudSyncReadyConfig = "";
