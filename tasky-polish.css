@@ -852,3 +852,350 @@ html[data-tasky-workspace="leah"] #learning-goals-section,
 html[data-tasky-workspace="camila"] #learning-goals-section {
   display: none !important;
 }
+
+/* --------------------------------------------------------------------------
+   9. Rediseño Studio del Panel "Mis tareas" (.tasky-family-panel)
+      Corrige el hueco de 50%, da bordes limpios a los inputs y eleva tarjetas.
+   -------------------------------------------------------------------------- */
+.tasky-family-panel.is-child-dialog.is-open {
+  padding: clamp(12px, 3vw, 28px) !important;
+  backdrop-filter: blur(14px) saturate(135%);
+  -webkit-backdrop-filter: blur(14px) saturate(135%);
+  animation: taskyBackdropFade 0.22s ease both;
+}
+
+.tasky-family-panel .tasky-family-card {
+  max-width: 780px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  border-radius: 26px !important;
+  padding: 26px 28px !important;
+  background: var(--surface-solid, #ffffff) !important;
+  border: 1px solid rgba(168, 85, 247, 0.16) !important;
+  box-shadow:
+    0 28px 70px rgba(15, 23, 42, 0.18),
+    0 6px 20px rgba(168, 85, 247, 0.08) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 20px !important;
+  animation: taskyModalEnter 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.tasky-family-heading {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line, rgba(15, 23, 42, 0.08));
+}
+
+.tasky-family-eyebrow {
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase;
+  color: #9333ea !important;
+  margin-bottom: 4px !important;
+}
+
+.tasky-family-title {
+  font-size: 1.48rem !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.03em !important;
+  color: var(--text, #0f172a) !important;
+  margin-bottom: 4px !important;
+}
+
+.tasky-family-subtitle {
+  font-size: 0.88rem !important;
+  color: var(--text-secondary, #475569) !important;
+  line-height: 1.45 !important;
+}
+
+.tasky-family-close {
+  flex-shrink: 0 !important;
+  padding: 8px 16px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(168, 85, 247, 0.22) !important;
+  background: rgba(168, 85, 247, 0.08) !important;
+  color: #7e22ce !important;
+  font-weight: 700 !important;
+  font-size: 0.84rem !important;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.18s ease, box-shadow 0.2s ease !important;
+}
+
+.tasky-family-close:hover {
+  background: rgba(168, 85, 247, 0.16) !important;
+  transform: translateY(-1px);
+}
+
+.tasky-family-close:active {
+  transform: scale(0.96);
+}
+
+/* Fix principal: eliminar el hueco vacío del 50% a la derecha en modo niña */
+.tasky-family-panel[data-tasky-role="child"] .tasky-family-grid,
+.tasky-family-grid:has(> :only-child) {
+  grid-template-columns: 1fr !important;
+}
+
+/* Tarjeta de formulario "Agregar una tarea" */
+.tasky-family-form-card {
+  background: linear-gradient(180deg, #faf5ff 0%, #fdf4ff 100%) !important;
+  border: 1.5px solid rgba(168, 85, 247, 0.18) !important;
+  border-radius: 20px !important;
+  padding: 20px 22px !important;
+  box-shadow: 0 4px 16px rgba(168, 85, 247, 0.06) !important;
+}
+
+.tasky-family-form-card h3,
+.tasky-family-inbox-card h3 {
+  font-size: 1.05rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+  color: var(--text, #0f172a) !important;
+  margin-bottom: 4px !important;
+}
+
+.tasky-family-help {
+  font-size: 0.83rem !important;
+  color: var(--muted, #64748b) !important;
+  margin-bottom: 14px !important;
+  line-height: 1.4 !important;
+}
+
+.tasky-family-form {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 13px !important;
+}
+
+.tasky-family-field {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.tasky-family-field > span {
+  font-size: 0.80rem !important;
+  font-weight: 700 !important;
+  color: var(--text-secondary, #334155) !important;
+}
+
+/* Inputs, textareas y selects con fondo blanco limpio y bordes nítidos */
+.tasky-family-field input,
+.tasky-family-field textarea,
+.tasky-family-field select {
+  width: 100% !important;
+  padding: 11px 14px !important;
+  border-radius: 12px !important;
+  border: 1.5px solid rgba(15, 23, 42, 0.13) !important;
+  background: #ffffff !important;
+  color: var(--text, #0f172a) !important;
+  font-family: inherit !important;
+  font-size: 0.92rem !important;
+  line-height: 1.4 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+}
+
+.tasky-family-field textarea {
+  min-height: 78px !important;
+  resize: vertical !important;
+}
+
+.tasky-family-field input:hover,
+.tasky-family-field textarea:hover,
+.tasky-family-field select:hover {
+  border-color: rgba(168, 85, 247, 0.36) !important;
+}
+
+.tasky-family-field input:focus,
+.tasky-family-field textarea:focus,
+.tasky-family-field select:focus {
+  outline: none !important;
+  border-color: #a855f7 !important;
+  box-shadow: 0 0 0 3.5px rgba(168, 85, 247, 0.16) !important;
+}
+
+.tasky-family-two-fields {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+/* Botones principales y secundarios */
+.tasky-family-primary {
+  align-self: flex-start;
+  padding: 10px 18px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  background: linear-gradient(135deg, #9333ea 0%, #db2777 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 0.88rem !important;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(147, 51, 234, 0.26) !important;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease, filter 0.2s ease !important;
+}
+
+.tasky-family-primary:hover {
+  transform: translateY(-1.5px);
+  filter: brightness(1.05);
+  box-shadow: 0 12px 26px rgba(147, 51, 234, 0.34) !important;
+}
+
+.tasky-family-primary:active {
+  transform: scale(0.97) !important;
+}
+
+.tasky-family-secondary {
+  padding: 9px 15px !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--line-strong, rgba(15, 23, 42, 0.14)) !important;
+  background: #ffffff !important;
+  color: var(--text, #0f172a) !important;
+  font-weight: 700 !important;
+  font-size: 0.84rem !important;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.18s ease !important;
+}
+
+.tasky-family-secondary:hover {
+  background: var(--surface-hover, #f8fafc) !important;
+  border-color: rgba(168, 85, 247, 0.38) !important;
+}
+
+/* Secciones de listas ("Tareas asignadas", "Tus pendientes", "Enviadas a revisión") */
+.tasky-family-inbox-card {
+  background: rgba(248, 250, 252, 0.78) !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  border-radius: 20px !important;
+  padding: 18px 20px !important;
+}
+
+.tasky-family-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(168, 85, 247, 0.28) transparent;
+}
+
+/* Tarjetas individuales de cada tarea */
+.tasky-family-request {
+  background: #ffffff !important;
+  border: 1px solid rgba(168, 85, 247, 0.15) !important;
+  border-radius: 15px !important;
+  padding: 14px 16px !important;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.tasky-family-request:hover {
+  transform: translateY(-1.5px);
+  border-color: rgba(168, 85, 247, 0.34) !important;
+  box-shadow: 0 8px 20px rgba(168, 85, 247, 0.09) !important;
+}
+
+.tasky-family-request-top {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+}
+
+.tasky-family-request-title {
+  font-size: 0.96rem !important;
+  font-weight: 800 !important;
+  color: var(--text, #0f172a) !important;
+  line-height: 1.35 !important;
+}
+
+.tasky-family-request-meta {
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  color: var(--muted, #64748b) !important;
+}
+
+.tasky-family-status {
+  flex-shrink: 0 !important;
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  font-size: 0.68rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase;
+}
+
+.tasky-family-empty {
+  padding: 18px 16px !important;
+  border-radius: 14px !important;
+  border: 1.5px dashed rgba(168, 85, 247, 0.24) !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  color: var(--muted, #64748b) !important;
+  text-align: center !important;
+  font-size: 0.86rem !important;
+  font-weight: 500 !important;
+}
+
+/* Modo oscuro para el panel "Mis tareas" */
+html[data-theme="dark"] .tasky-family-panel .tasky-family-card {
+  background: #161026 !important;
+  border-color: rgba(216, 180, 254, 0.20) !important;
+}
+
+html[data-theme="dark"] .tasky-family-form-card {
+  background: linear-gradient(180deg, rgba(42, 28, 72, 0.72) 0%, rgba(32, 22, 56, 0.72) 100%) !important;
+  border-color: rgba(192, 132, 252, 0.24) !important;
+}
+
+html[data-theme="dark"] .tasky-family-inbox-card {
+  background: rgba(26, 20, 44, 0.75) !important;
+  border-color: rgba(216, 180, 254, 0.14) !important;
+}
+
+html[data-theme="dark"] .tasky-family-request,
+html[data-theme="dark"] .tasky-family-field input,
+html[data-theme="dark"] .tasky-family-field textarea,
+html[data-theme="dark"] .tasky-family-field select,
+html[data-theme="dark"] .tasky-family-secondary {
+  background: rgba(34, 25, 58, 0.92) !important;
+  border-color: rgba(216, 180, 254, 0.20) !important;
+  color: var(--text, #f8f5ff) !important;
+}
+
+html[data-theme="dark"] .tasky-family-empty {
+  background: rgba(34, 25, 58, 0.45) !important;
+  border-color: rgba(192, 132, 252, 0.26) !important;
+}
+
+html[data-theme="dark"] .tasky-family-close {
+  background: rgba(192, 132, 252, 0.16) !important;
+  color: #e9d5ff !important;
+}
+
+@media (max-width: 600px) {
+  .tasky-family-panel .tasky-family-card {
+    padding: 18px 16px !important;
+    border-radius: 20px !important;
+  }
+
+  .tasky-family-form-card,
+  .tasky-family-inbox-card {
+    padding: 15px 14px !important;
+    border-radius: 16px !important;
+  }
+
+  .tasky-family-two-fields {
+    grid-template-columns: 1fr !important;
+  }
+}
