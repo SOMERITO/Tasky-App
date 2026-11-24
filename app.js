@@ -12085,6 +12085,82 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     showToast("Respaldo exportado");
   }
 
+  function isTaskyBackupRecord(value) {
+    return Boolean(value && typeof value === "object" && !Array.isArray(value));
+  }
+
+  function buildTaskyBackupEnvelope({ data, history, settings, taskMemoryByBox } = {}) {
+    const sourceData = isTaskyBackupRecord(data) ? data : {};
+    const memory = isTaskyBackupRecord(taskMemoryByBox)
+      ? taskMemoryByBox
+      : (isTaskyBackupRecord(sourceData.taskMemoryByBox) ? sourceData.taskMemoryByBox : {});
+    const taskyData = { ...sourceData, taskMemoryByBox: { ...memory } };
+    return {
+      format: "tasky-backup",
+      schemaVersion: 2,
+      version: "Tasky Pro Vol. 144",
+      exportedAt: new Date().toISOString(),
+      tasky_data: taskyData,
+      boxes: Array.isArray(taskyData.boxes) ? taskyData.boxes : [],
+      tasks: Array.isArray(taskyData.tasks) ? taskyData.tasks : [],
+      history: isTaskyBackupRecord(history) ? history : {},
+      settings: isTaskyBackupRecord(settings) ? settings : {},
+      taskMemoryByBox: { ...memory }
+    };
+  }
+
+  function normalizeTaskyBackupEnvelope(parsedFile) {
+    const envelope = isTaskyBackupRecord(parsedFile) ? parsedFile : {};
+    const raw = isTaskyBackupRecord(envelope.tasky_data) ? envelope.tasky_data : envelope;
+    const imported = normalizeDataPayload(raw);
+    if (!imported) throw new Error("El respaldo no contiene datos Tasky válidos.");
+
+    const historySource = isTaskyBackupRecord(envelope.history)
+      ? envelope.history
+      : (isTaskyBackupRecord(raw.history) ? raw.history : {});
+    const settingsSource = isTaskyBackupRecord(envelope.settings)
+      ? envelope.settings
+      : (isTaskyBackupRecord(raw.settings) ? raw.settings : null);
+    const memorySource = isTaskyBackupRecord(envelope.taskMemoryByBox)
+      ? envelope.taskMemoryByBox
+      : (isTaskyBackupRecord(envelope.taskMemory)
+        ? envelope.taskMemory
+        : (isTaskyBackupRecord(raw.taskMemoryByBox)
+          ? raw.taskMemoryByBox
+          : (isTaskyBackupRecord(raw.taskMemory)
+            ? raw.taskMemory
+            : (isTaskyBackupRecord(imported.taskMemoryByBox) ? imported.taskMemoryByBox : {}))));
+
+    imported.taskMemoryByBox = { ...memorySource };
+    return {
+      raw,
+      imported,
+      history: { ...historySource },
+      settings: settingsSource ? { ...settingsSource } : null,
+      taskMemoryByBox: { ...memorySource }
+    };
+  }
+
+  function exportJsonBackup() {
+    const taskMemoryByBox = appState.taskMemory || appState.data.taskMemoryByBox || {};
+    const exportPayload = buildTaskyBackupEnvelope({
+      data: appState.data,
+      history: appState.history,
+      settings: appState.settings,
+      taskMemoryByBox
+    });
+    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `tasky-backup-${getTodayISO()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("Respaldo exportado");
+  }
+
   async function importJoseBackupSafely(file) {
     const environment = window.TaskyFirebaseEnvironment || {};
     if (activeWorkspaceId !== "jose" || environment.name !== "staging" || environment.projectId !== "tasky-staging-82acb") {
@@ -12097,18 +12173,25 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       throw new Error("El destino no coincide con el espacio José de Staging.");
     }
     if (Number(file.size || 0) > 10 * 1024 * 1024) throw new Error("El archivo supera el límite de 10 MiB para la importación segura.");
+
     const parsedFile = JSON.parse(await file.text());
-    const raw = parsedFile && parsedFile.tasky_data ? parsedFile.tasky_data : parsedFile;
-    const imported = normalizeDataPayload(raw);
+    const backup = normalizeTaskyBackupEnvelope(parsedFile);
+    const raw = backup.raw;
+    const imported = backup.imported;
     if (!imported || imported.boxes.length < 1 || !Array.isArray(imported.tasks) ||
         imported.boxes.some(box => !box || !box.id || !box.name) ||
         imported.tasks.some(task => !task || !task.id || !task.boxId || !task.title)) {
       throw new Error("El respaldo no tiene una estructura Tasky válida; no se modificó el espacio.");
     }
+    const history = backup.history;
+    const settings = backup.settings || appState.settings || {};
+    const taskMemoryByBox = backup.taskMemoryByBox;
+
     const baseUrl = getFirebaseFirestoreUrl();
     const headers = await getFirestoreAuthHeaders();
     const read = await window.fetch(baseUrl, { headers, cache: "no-store" });
     let currentDocument = null;
+    let currentRemoteDocument = null;
     let destinationSummary = "el documento destino aún no existe";
     let currentPayload = null;
     if (read.status === 404) {
@@ -12118,18 +12201,27 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       if (!remote.updateTime) throw new Error("Firestore no devolvió updateTime del destino; se canceló la importación.");
       currentDocument = { updateTime: remote.updateTime };
       const encoded = remote.fields && remote.fields.payloadJson && remote.fields.payloadJson.stringValue;
-      if (encoded) {
-        try { currentPayload = JSON.parse(encoded); } catch (error) { throw new Error("El destino existente no se puede validar; se canceló la importación."); }
+      if (!encoded) {
+        throw new Error("El destino existente no contiene un respaldo Tasky verificable; se canceló la importación para no sobrescribir datos desconocidos.");
       }
-      const currentData = currentPayload && normalizeDataPayload(currentPayload);
+      try {
+        currentPayload = JSON.parse(encoded);
+      } catch (error) {
+        throw new Error("El destino existente no se puede validar; se canceló la importación.");
+      }
+      if (!isTaskyBackupRecord(currentPayload) || !Array.isArray(currentPayload.boxes) || !Array.isArray(currentPayload.tasks)) {
+        throw new Error("El destino existente tiene un formato Tasky incompleto; se canceló la importación.");
+      }
+      currentRemoteDocument = remote;
+      const currentData = normalizeDataPayload(currentPayload);
       destinationSummary = currentData
         ? `destino actual: ${currentData.boxes.length} casillas y ${currentData.tasks.length} tareas`
         : "destino actual con formato no reconocido";
     } else {
       throw new Error(`No se pudo leer el destino (${read.status}); se canceló la importación.`);
     }
-    const history = raw.history && typeof raw.history === "object" ? raw.history : {};
-    const confirmText = `¿Importar el respaldo de José a Staging?\n\nArchivo: ${imported.boxes.length} casillas, ${imported.tasks.length} tareas, ${Object.keys(history).length} entradas de historial.\n${destinationSummary}.\n\nLa importación reemplaza el tablero de Staging si confirmas.`;
+
+    const confirmText = `¿Importar el respaldo de José a Staging?\\n\\nArchivo: ${imported.boxes.length} casillas, ${imported.tasks.length} tareas, ${Object.keys(history).length} entradas de historial y ${Object.keys(taskMemoryByBox).length} grupos de memoria.\\n${destinationSummary}.\\n\\nLa importación reemplaza el tablero de Staging si confirmas.`;
     if (!window.confirm(confirmText)) return false;
 
     const recoverySnapshot = {
@@ -12138,21 +12230,24 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       documentPath: docPath,
       updateTime: currentDocument.updateTime || null,
       exists: currentDocument.exists !== false,
-      document: currentPayload
+      document: currentRemoteDocument,
+      previousPayload: currentPayload
     };
     if (safeStorage.setItem("tasky:migration-recovery:jose", JSON.stringify(recoverySnapshot)) === false) {
-      throw new Error("No se pudo guardar la copia de recuperación del destino; se canceló la importación.");
+      throw new Error("No se pudo guardar la copia íntegra de recuperación del destino; se canceló la importación.");
     }
 
     const payload = {
       ...buildSyncPayload(imported),
       history,
-      settings: raw.settings && typeof raw.settings === "object" ? raw.settings : appState.settings,
+      settings,
+      taskMemoryByBox,
       deviceId: appState.deviceId,
       updatedAt: Math.max(Date.now(), Number(imported.updatedAt || 0) + 1)
     };
+    const expectedPayloadJson = JSON.stringify(payload);
     const documentFields = {
-      payloadJson: { stringValue: JSON.stringify(payload) },
+      payloadJson: { stringValue: expectedPayloadJson },
       compactEnvelope: { stringValue: "" },
       updatedAt: { integerValue: String(payload.updatedAt) },
       deviceId: { stringValue: String(appState.deviceId) },
@@ -12171,23 +12266,37 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     const verify = await window.fetch(baseUrl, { headers, cache: "no-store" });
     if (!verify.ok) throw new Error("La escritura se envió, pero la lectura confirmatoria falló; revisa Diagnóstico antes de reintentar.");
     const verifiedJson = await verify.json();
-    const verifyPayload = JSON.parse(verifiedJson.fields.payloadJson.stringValue);
-    const checks = ["boxes", "tasks", "history", "learningGoals", "focusPlan", "deletedTaskIds", "deletedBoxIds"];
-    const same = checks.every(key => JSON.stringify(verifyPayload[key] ?? null) === JSON.stringify(payload[key] ?? null));
-    if (verifiedJson.updateTime !== updateTime || !same) throw new Error("La lectura confirmatoria no coincide con la revisión escrita, casillas, tareas, historial y campos críticos; la importación queda sin confirmar.");
+    const verifiedPayloadJson = verifiedJson.fields && verifiedJson.fields.payloadJson && verifiedJson.fields.payloadJson.stringValue;
+    if (verifiedPayloadJson) {
+      try { JSON.parse(verifiedPayloadJson); } catch (error) {
+        throw new Error("La lectura confirmatoria devolvió un documento no válido; la importación queda sin confirmar.");
+      }
+    }
+    if (verifiedJson.updateTime !== updateTime || verifiedPayloadJson !== expectedPayloadJson) {
+      throw new Error("La lectura confirmatoria no coincide con la revisión ni con el contenido completo escrito; la importación queda sin confirmar.");
+    }
 
     appState.data = imported;
+    appState.taskMemory = { ...taskMemoryByBox };
+    appState.data.taskMemoryByBox = { ...taskMemoryByBox };
     appState.history = history;
-    appState.settings = { ...appState.settings, ...(payload.settings || {}) };
+    appState.settings = { ...appState.settings, ...settings };
     appState.data.updatedAt = payload.updatedAt;
     safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
     safeStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(appState.history));
     safeStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(appState.history));
+    safeStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(appState.settings));
+    safeStorage.setItem(STORAGE_KEYS.MEMORY, JSON.stringify(appState.taskMemory));
     cloudFirestoreExists = true;
     cloudFirestoreUpdateTime = verifiedJson.updateTime;
     cloudSyncReady = true;
     cloudSyncReadyConfig = getCloudSyncConfigKey();
-    safeStorage.setItem(STORAGE_KEYS.CLOUD_BASELINE, cloudSyncFingerprint({ ...payload, taskMemoryByBox: imported.taskMemoryByBox || {} }));
+    safeStorage.setItem(STORAGE_KEYS.CLOUD_BASELINE, cloudSyncFingerprint({
+      ...payload,
+      taskMemoryByBox: appState.taskMemory,
+      history: appState.history,
+      settings: appState.settings
+    }));
     safeStorage.setItem(STORAGE_KEYS.CLOUD_DIRTY, "0");
     renderBoard();
     showToast(`Importación de Staging confirmada: ${imported.boxes.length} casillas y ${imported.tasks.length} tareas.`);
