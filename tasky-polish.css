@@ -589,3 +589,258 @@ html[data-tasky-workspace="leah"] .fab-main-btn {
     animation: none !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   7. Selector de Espacios Premium (Tarjetas Interactivas en lugar de <select>)
+   -------------------------------------------------------------------------- */
+@keyframes taskyWsCardIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tasky-profile-picker.has-custom-cards #tasky-profile-select-label,
+.tasky-profile-picker.has-custom-cards #tasky-profile-select {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.tasky-ws-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 6px 0 4px;
+}
+
+.tasky-ws-card {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 13px 14px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(15, 23, 42, 0.09);
+  background: rgba(248, 250, 252, 0.88);
+  color: var(--text, #0f172a);
+  text-align: left;
+  cursor: pointer;
+  animation: taskyWsCardIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--card-index, 0) * 65ms) both;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.22s ease;
+}
+
+.tasky-ws-card:hover {
+  transform: translateY(-1.5px);
+  background: #ffffff;
+  border-color: rgba(99, 102, 241, 0.34);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+}
+
+.tasky-ws-card:active {
+  transform: scale(0.985);
+}
+
+.tasky-ws-card.is-selected {
+  background: #ffffff;
+  border-color: #6366f1;
+  box-shadow:
+    0 12px 28px rgba(99, 102, 241, 0.16),
+    0 0 0 3px rgba(99, 102, 241, 0.13);
+}
+
+.tasky-ws-card[data-accent="leah"]:hover {
+  border-color: rgba(168, 85, 247, 0.42);
+}
+
+.tasky-ws-card[data-accent="leah"].is-selected {
+  border-color: #a855f7;
+  box-shadow:
+    0 12px 28px rgba(168, 85, 247, 0.18),
+    0 0 0 3px rgba(168, 85, 247, 0.14);
+}
+
+.tasky-ws-card[data-accent="camila"].is-selected {
+  border-color: #ec4899;
+  box-shadow:
+    0 12px 28px rgba(236, 72, 153, 0.16),
+    0 0 0 3px rgba(236, 72, 153, 0.13);
+}
+
+.tasky-ws-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 1.02rem;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.28);
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.tasky-ws-card[data-accent="camila"] .tasky-ws-avatar {
+  background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+  box-shadow: 0 6px 16px rgba(236, 72, 153, 0.28);
+}
+
+.tasky-ws-card[data-accent="leah"] .tasky-ws-avatar {
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+  box-shadow: 0 6px 16px rgba(168, 85, 247, 0.30);
+}
+
+.tasky-ws-card:hover .tasky-ws-avatar,
+.tasky-ws-card.is-selected .tasky-ws-avatar {
+  transform: scale(1.06);
+}
+
+.tasky-ws-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.tasky-ws-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tasky-ws-title {
+  font-size: 0.96rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text, #0f172a);
+}
+
+.tasky-ws-role {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  background: rgba(99, 102, 241, 0.11);
+  color: #4f46e5;
+}
+
+.tasky-ws-card[data-accent="leah"] .tasky-ws-role {
+  background: rgba(168, 85, 247, 0.12);
+  color: #9333ea;
+}
+
+.tasky-ws-card[data-accent="camila"] .tasky-ws-role {
+  background: rgba(236, 72, 153, 0.12);
+  color: #db2777;
+}
+
+.tasky-ws-sub {
+  font-size: 0.78rem;
+  color: var(--muted, #64748b);
+  font-weight: 500;
+}
+
+.tasky-ws-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(15, 23, 42, 0.16);
+  background: transparent;
+  color: transparent;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.26s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.tasky-ws-card.is-selected .tasky-ws-check {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #ffffff;
+  transform: scale(1.06);
+}
+
+.tasky-ws-card[data-accent="leah"].is-selected .tasky-ws-check {
+  background: #9333ea;
+  border-color: #9333ea;
+}
+
+.tasky-ws-card[data-accent="camila"].is-selected .tasky-ws-check {
+  background: #db2777;
+  border-color: #db2777;
+}
+
+/* Botón Cerrar sesión refinado */
+.tasky-auth-signout {
+  border-radius: 14px !important;
+  border: 1px solid rgba(15, 23, 42, 0.10) !important;
+  background: rgba(248, 250, 252, 0.7) !important;
+  color: var(--text-secondary, #475569) !important;
+  font-weight: 600 !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.18s ease !important;
+}
+
+.tasky-auth-signout:hover {
+  background: rgba(244, 63, 94, 0.08) !important;
+  border-color: rgba(244, 63, 94, 0.25) !important;
+  color: #e11d48 !important;
+}
+
+/* Modo oscuro para las tarjetas de selección de espacio */
+html[data-theme="dark"] .tasky-ws-card {
+  background: rgba(30, 24, 52, 0.72);
+  border-color: rgba(255, 255, 255, 0.10);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .tasky-ws-card:hover,
+html[data-theme="dark"] .tasky-ws-card.is-selected {
+  background: rgba(42, 32, 72, 0.92);
+}
+
+html[data-theme="dark"] .tasky-ws-title {
+  color: var(--text);
+}
+
+html[data-theme="dark"] .tasky-ws-sub {
+  color: var(--muted);
+}
+
+html[data-theme="dark"] .tasky-ws-check {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+html[data-theme="dark"] .tasky-auth-signout {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: var(--text-secondary) !important;
+}
