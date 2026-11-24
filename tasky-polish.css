@@ -844,3 +844,11 @@ html[data-theme="dark"] .tasky-auth-signout {
   border-color: rgba(255, 255, 255, 0.12) !important;
   color: var(--text-secondary) !important;
 }
+
+/* --------------------------------------------------------------------------
+   8. Personalización por espacio: ocultar Meta diaria/semanal en Leah y Camila
+   -------------------------------------------------------------------------- */
+html[data-tasky-workspace="leah"] #learning-goals-section,
+html[data-tasky-workspace="camila"] #learning-goals-section {
+  display: none !important;
+}
