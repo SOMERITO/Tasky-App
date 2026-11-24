@@ -68,3 +68,22 @@ jobs:
       - name: Run Firestore rules and authentication browser tests
         working-directory: firebase/emulator
         run: npm test
+
+
+      - name: Package exact repository snapshot for review
+        if: success()
+        run: |
+          archive="$RUNNER_TEMP/Tasky-App-${GITHUB_SHA}.zip"
+          git archive --format=zip --prefix="Tasky-App-${GITHUB_SHA}/" HEAD > "$archive"
+          sha256sum "$archive" | tee "$RUNNER_TEMP/Tasky-App-${GITHUB_SHA}.sha256"
+
+      - name: Upload repository review archive
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tasky-App-source-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/Tasky-App-${{ github.sha }}.zip
+            ${{ runner.temp }}/Tasky-App-${{ github.sha }}.sha256
+          if-no-files-found: error
+          retention-days: 7
