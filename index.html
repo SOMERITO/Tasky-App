@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" class="tasky-booting">
+<html lang="es" class="tasky-booting tasky-auth-required">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261119-birthday-popup-1" />
-  <link rel="stylesheet" href="mobile-app.css?v=20261030-mobile-pull-refresh-1" />
+  <link rel="stylesheet" href="styles.css?v=20261123-child-no-delete-8" />
+  <link rel="stylesheet" href="mobile-app.css?v=20261122-staging-loader-layout-1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -26,6 +26,19 @@
     <div class="aurora-orb orb-2"></div>
     <div class="aurora-orb orb-3"></div>
     <div class="aurora-orb orb-4"></div>
+  </div>
+
+  <!-- Branded boot screen shown while Firebase restores the session and Tasky builds the active workspace. -->
+  <div id="tasky-boot-screen" class="tasky-boot-screen" role="status" aria-live="polite" aria-label="Cargando Tasky">
+    <div class="tasky-boot-card">
+      <div class="tasky-boot-mark" aria-hidden="true"><span>T</span><i></i></div>
+      <div class="tasky-boot-spinner" aria-hidden="true"></div>
+      <div class="tasky-boot-copy">
+        <strong id="tasky-boot-title">Cargando tu espacio…</strong>
+        <span id="tasky-boot-description">Estamos verificando tu acceso y preparando Tasky.</span>
+      </div>
+      <div class="tasky-boot-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+    </div>
   </div>
 
   <!-- Point 10: Custom Floating Glassmorphic Pro Tooltip -->
@@ -40,11 +53,58 @@
   <!-- Point 4: Fast, Minimal Notification Pill Positioned Below Top Navbar -->
   <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
 
+  <div id="tasky-auth-gate" class="tasky-auth-gate" role="dialog" aria-modal="true" aria-labelledby="tasky-auth-title" hidden>
+    <div class="tasky-auth-panel">
+      <div class="tasky-auth-brand">
+        <div class="tasky-auth-mark" aria-hidden="true">T</div>
+        <div>
+          <h1 id="tasky-auth-title">Bienvenido a Tasky</h1>
+        </div>
+      </div>
+
+      <form id="tasky-login-form" class="tasky-auth-form" novalidate>
+        <section id="tasky-login-credentials">
+          <h2>Iniciar sesión</h2>
+          <label for="tasky-login-email">Correo electrónico</label>
+          <input id="tasky-login-email" name="email" type="email" autocomplete="username" required placeholder="tu@correo.com" />
+          <label for="tasky-login-password">Contraseña</label>
+          <div class="tasky-password-field">
+             <input id="tasky-login-password" name="password" type="password" autocomplete="current-password" required placeholder="Tu contraseña" aria-describedby="tasky-password-toggle" />
+             <button id="tasky-password-toggle" class="tasky-password-toggle" type="button" aria-label="Mostrar contraseña" aria-pressed="false" title="Mostrar contraseña">👁️</button>
+           </div>
+          <button id="tasky-password-reset" class="tasky-auth-link" type="button">Olvidé mi contraseña</button>
+        </section>
+        <section id="tasky-profile-picker" class="tasky-profile-picker" hidden>
+          <h2 id="tasky-profile-picker-title">Elige tu espacio</h2>
+          <label id="tasky-profile-select-label" for="tasky-profile-select">Espacio</label>
+          <select id="tasky-profile-select" name="workspace" class="tasky-profile-select" required>
+            <option value="">Selecciona un espacio</option>
+          </select>
+        </section>
+        <button id="tasky-login-submit" class="tasky-auth-primary" type="submit">Iniciar sesión</button>
+      </form>
+
+      <button id="tasky-auth-signout" class="tasky-auth-signout" type="button" hidden>
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <path d="M16 17l5-5-5-5"/>
+          <path d="M21 12H9"/>
+        </svg>
+        <span>Cerrar sesión</span>
+      </button>
+      <p id="tasky-auth-message" class="tasky-auth-message" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
   <!-- Top Navigation & Search Bar -->
   <header class="top-navbar">
     <div class="brand-cluster">
       <div class="brand-logo" data-tip-title="Tasky Pro" data-tip-desc="Tu plataforma personal de enfoque, casillas y productividad diaria.">
         <img src="data:image/png;base64,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" alt="Tasky" class="brand-logo-img" />
+      </div>
+      <div class="tasky-welcome brand-workspace-welcome" aria-live="polite">
+        <h2 id="tasky-welcome-title">¡Te damos la bienvenida!</h2>
+        <p id="tasky-welcome-subtitle">Tu espacio de organización personal y familiar.</p>
       </div>
     </div>
 
@@ -69,6 +129,8 @@
 
         <button type="button" id="btn-theme-toggle" class="icon-btn" aria-label="Tema" data-tip-title="🌗 Apariencia Visual" data-tip-desc="Alterna entre el modo claro luminoso y el modo oscuro profundo."></button>
 
+        <button type="button" id="btn-tasky-account" class="tasky-account-button" aria-label="Cambiar espacio o cerrar sesión" title="Cambiar espacio o cerrar sesión">Mi espacio</button>
+
         <button type="button" id="btn-more-options" class="icon-btn" aria-label="Más opciones" data-tip-title="••• Estado de Sincronización y Copias" data-tip-desc="Consulta los detalles de sincronización, copias automáticas e importación/exportación JSON.">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
         </button>
@@ -76,10 +138,29 @@
     </div>
   </header>
 
+  <div id="tasky-child-readonly-banner" class="tasky-child-readonly-banner" hidden>
+    <span class="tasky-child-banner-heart" aria-hidden="true">♡</span>
+    <span class="tasky-child-banner-copy">
+      <strong>Espacio de Leah</strong>
+      <small>Para agregar tareas propias, editar las pendientes o enviarlas a revisión, entra en Mis tareas. No puedes eliminar tareas.</small>
+    </span>
+    <button type="button" id="tasky-child-tasks-shortcut" class="tasky-child-tasks-shortcut" aria-controls="tasky-family-panel" aria-expanded="false" hidden>
+      <span aria-hidden="true">✓</span> Mis tareas
+    </button>
+  </div>
+
+  <section id="tasky-family-panel" class="tasky-family-panel" aria-label="Solicitudes familiares de Leah" hidden>
+    <div id="tasky-family-content"></div>
+  </section>
+
   <div class="app-shell">
     <!-- Hero Section -->
     <section class="hero-header">
       <div class="hero-left">
+        <div class="tasky-welcome hero-workspace-welcome" aria-live="polite">
+          <h2 data-tasky-welcome-title>¡Te damos la bienvenida!</h2>
+          <p data-tasky-welcome-subtitle>Tu espacio de organización personal y familiar.</p>
+        </div>
         <h1 class="hero-title">Tu día, tu orden.</h1>
         <div id="quote-container" class="quote-inline-box" role="button" tabindex="0" aria-label="Un clic copia la frase y el autor; doble clic muestra la siguiente frase" data-tip-title="📋 Copiar · ⏭️ Siguiente" data-tip-desc="Un clic copia la frase y su autor. Dos clics seguidos muestran la siguiente frase. También cambia automáticamente cada 75 segundos.">
           <p id="quote-text" class="quote-text">La dicha del hombre consiste en observar las reglas y condiciones por las cuales se consigue el bien de todos los hombres.</p>
@@ -354,6 +435,7 @@
     <!-- Dynamic Boxes & Tasks Container -->
     <main id="boxes-container" class="boxes-container"></main>
   </div>
+
 
   <nav id="mobile-app-nav" class="mobile-app-nav" aria-label="Navegación de Tasky">
     <button type="button" class="mobile-app-nav-item is-active" id="mobile-nav-today" aria-label="Ir a hoy">
@@ -702,23 +784,23 @@
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;padding-top:10px;border-top:1px solid rgba(22,163,74,0.20);">
           <div>
-            <label class="form-label" for="input-firebase-project-id" style="font-size:0.75rem;margin-bottom:4px;">🔥 Proyecto Firebase (`projectId`)</label>
-            <input type="text" id="input-firebase-project-id" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" placeholder="ID del proyecto de Firebase" value="tasky-7a30c" />
+            <label class="form-label" for="input-firebase-project-id" style="font-size:0.75rem;margin-bottom:4px;">🔥 Proyecto Firebase administrado por Tasky</label>
+            <input type="text" id="input-firebase-project-id" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" value="tasky-7a30c" readonly aria-readonly="true" />
           </div>
           <div>
-            <label class="form-label" for="input-firebase-db-url" style="font-size:0.75rem;margin-bottom:4px;">🔗 URL Realtime Database o Colección</label>
-            <input type="text" id="input-firebase-db-url" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" placeholder="Opcional: https://tu-app.firebaseio.com" />
+            <label class="form-label" for="input-firebase-db-url" style="font-size:0.75rem;margin-bottom:4px;">🔗 Realtime Database</label>
+            <input type="text" id="input-firebase-db-url" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" value="Desactivada; Tasky usa Firestore autenticado" disabled />
           </div>
           <div>
-            <label class="form-label" for="input-cloud-sync-channel" style="font-size:0.75rem;margin-bottom:4px;">🔑 Ruta de Documento / Canal en Firebase</label>
-            <input type="text" id="input-cloud-sync-channel" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" value="tasky_sync/somerito_main" />
+            <label class="form-label" for="input-cloud-sync-channel" style="font-size:0.75rem;margin-bottom:4px;">🔑 Ruta del espacio activo</label>
+            <input type="text" id="input-cloud-sync-channel" class="form-input" style="padding:7px 11px;font-size:0.82rem;background:var(--surface-solid);" value="Se asigna al seleccionar un espacio" readonly aria-readonly="true" />
           </div>
         </div>
 
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:4px;">
-          <input type="text" id="input-firebase-raw-paste" class="form-input" style="flex:1;min-width:220px;padding:7px 11px;font-size:0.80rem;background:var(--surface-solid);" placeholder="O pega aquí tu bloque firebaseConfig = { apiKey, projectId, ... } para conectar otro proyecto..." />
+          <input type="text" id="input-firebase-raw-paste" class="form-input" style="display:none;flex:1;min-width:220px;padding:7px 11px;font-size:0.80rem;background:var(--surface-solid);" disabled aria-hidden="true" />
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button type="button" id="btn-firebase-rescue-migrate" class="btn-primary" style="padding:8px 14px;font-size:0.80rem;background:linear-gradient(135deg,#f59e0b,#ea580c);">🔥 Rescatar y Subir Todo a Firebase</button>
+            <button type="button" id="btn-firebase-rescue-migrate" class="btn-primary" style="display:none;padding:8px 14px;font-size:0.80rem;background:linear-gradient(135deg,#f59e0b,#ea5800);" disabled>🔥 Rescatar y Subir Todo a Firebase</button>
             <button type="button" id="btn-cloud-sync-now" class="btn-primary" style="padding:8px 14px;font-size:0.80rem;">🔄 Sincronizar ahora</button>
           </div>
         </div>
@@ -1294,7 +1376,11 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261119-no-public-ntfy-1"></script>
-  <script src="mobile-app.js?v=20261030-mobile-pull-refresh-2"></script>
+  <script src="tasky-firebase-config.js?v=20261120-firebase-env-1"></script>
+  <script src="app.js?v=20261123-private-migration-integrity-1"></script>
+  <script src="mobile-app.js?v=20261122-cloud-first-tombstones-1"></script>
+  <script type="module" src="tasky-auth.js?v=20261122-auth-flow-polish-3"></script>
+  <script type="module" src="tasky-private-modules.js?v=20261123-private-integrity-1"></script>
+  <script type="module" src="tasky-family.js?v=20261123-child-no-delete-7"></script>
 </body>
 </html>

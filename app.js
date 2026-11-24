@@ -13,23 +13,106 @@
     MEMORY: "tasky_task_memory",
     CLOUD_CHANNEL: "tasky_cloud_channel",
     FIREBASE_CONFIG: "tasky_firebase_config_v1",
-    VIEW_STATE: "tasky_view_state_v1"
+    VIEW_STATE: "tasky_view_state_v1",
+    CLOUD_BASELINE: "tasky_cloud_baseline_fingerprint_v1",
+    CLOUD_DIRTY: "tasky_cloud_local_changes_pending_v1"
   };
 
+  let activeWorkspaceId = "";
+  let activeWorkspaceContext = null;
+  let activeStorageNamespace = "";
+  let leahChildTaskRecords = [];
+  let leahChildPendingCompletionIds = new Set();
+
+  function isLeahChildAccount() {
+    return activeWorkspaceId === "leah" &&
+      Boolean(activeWorkspaceContext && activeWorkspaceContext.role === "child");
+  }
+
+  function canLeahUseBoardTarget(target) {
+    if (!target || typeof target.closest !== "function") return false;
+    if (target.closest(".add-task-BarBtn, .inline-add-form, .task-memory-suggestions .memory-suggestion-select")) return true;
+    if (target.closest(".task-check-circle")) return true;
+    if (target.closest('.box-header-actions [data-box-action="collapse"]')) return true;
+
+    const taskRow = target.closest(".task-item[data-task-id]");
+    if (!taskRow) return false;
+    const task = appState && appState.data && appState.data.tasks
+      ? appState.data.tasks.find((item) => String(item.id) === String(taskRow.dataset.taskId))
+      : null;
+    if (!task || task.__leahChildTask !== true || task.leahChildTaskStatus !== "pending") return false;
+
+    if (target.closest(".task-title")) return true;
+    const taskAction = target.closest('.task-right-actions [data-task-action="edit"]');
+    return Boolean(taskAction);
+  }
+
+  document.addEventListener("click", (event) => {
+    if (!isLeahChildAccount()) return;
+    const shell = event.target && event.target.closest ? event.target.closest(".app-shell") : null;
+    if (!shell || canLeahUseBoardTarget(event.target)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+  }, true);
+
+  document.addEventListener("submit", (event) => {
+    if (!isLeahChildAccount()) return;
+    const shell = event.target && event.target.closest ? event.target.closest(".app-shell") : null;
+    if (!shell || event.target.matches(".inline-add-form")) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+  }, true);
+
+  document.addEventListener("contextmenu", (event) => {
+    if (!isLeahChildAccount()) return;
+    if (event.target && event.target.closest && event.target.closest(".app-shell")) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, true);
+  const GLOBAL_STORAGE_KEYS = new Set([STORAGE_KEYS.FIREBASE_CONFIG]);
   const memoryStorage = new Map();
+
+  function getScopedStorageKey(key) {
+    return !activeStorageNamespace || GLOBAL_STORAGE_KEYS.has(key)
+      ? key
+      : activeStorageNamespace + ":" + key;
+  }
 
   const safeStorage = {
     getItem(key) {
+      const scopedKey = getScopedStorageKey(key);
       try {
-        const val = window.localStorage.getItem(key);
+        const val = window.localStorage.getItem(scopedKey);
         if (val !== null) return val;
+        // Legacy Tasky keys belong only to José. Never use them for Camila or Leah.
+        if (activeWorkspaceId === "jose" && scopedKey !== key) {
+          const legacyVal = window.localStorage.getItem(key);
+          if (legacyVal !== null) return legacyVal;
+        }
+        // Preserve the previous shared Leah cache for adult guardians only.
+        // The child role never reads this namespace, so private data cannot bleed into it.
+        if (activeWorkspaceId === "leah" && activeWorkspaceContext &&
+            activeWorkspaceContext.role !== "child" && scopedKey !== key) {
+          const legacyAdultKey = "tasky:v2:leah:" + key;
+          const legacyAdultValue = window.localStorage.getItem(legacyAdultKey);
+          if (legacyAdultValue !== null) {
+            try { window.localStorage.setItem(scopedKey, legacyAdultValue); } catch (e) {}
+            return legacyAdultValue;
+          }
+        }
       } catch (e) {}
-      return memoryStorage.has(key) ? memoryStorage.get(key) : null;
+      if (memoryStorage.has(scopedKey)) return memoryStorage.get(scopedKey);
+      if (activeWorkspaceId === "jose" && scopedKey !== key && memoryStorage.has(key)) return memoryStorage.get(key);
+      return null;
     },
     setItem(key, value) {
-      memoryStorage.set(key, value);
+      const scopedKey = getScopedStorageKey(key);
+      memoryStorage.set(scopedKey, value);
       try {
-        window.localStorage.setItem(key, value);
+        window.localStorage.setItem(scopedKey, value);
         return true;
       } catch (e) {
         return false;
@@ -2298,9 +2381,51 @@
       birthdays: [],
       deletedTaskIds: [],
       deletedBoxIds: [],
+      deletedTaskUpdatedAt: {},
+      deletedBoxUpdatedAt: {},
       syncSchemaVersion: 1,
       bootstrapSeedData: true,
       updatedAt: 0
+    };
+  }
+
+  function buildEmptyWorkspaceDataset(workspaceId) {
+    const leahModules = [
+      ["box_escolar", "ESCOLAR", "#F4A7C8", "📚"],
+      ["box_evaluaciones", "EVALUACIONES", "#A855F7", "📝"],
+      ["box_materiales", "MATERIALES", "#F4A7C8", "🎒"],
+      ["box_actividades", "ACTIVIDADES", "#A855F7", "🎨"],
+      ["box_coordinacion", "COORDINACIÓN FAMILIAR", "#F4A7C8", "👨‍👩‍👧"],
+      ["box_salud", "SALUD Y CITAS", "#A855F7", "💗"],
+      ["box_habitos", "HÁBITOS Y RUTINAS", "#F4A7C8", "🌷"],
+      ["box_gastos", "GASTOS RELACIONADOS CON LEAH", "#A855F7", "💜"]
+    ];
+    const modules = workspaceId === "leah"
+      ? (activeWorkspaceContext && activeWorkspaceContext.role === "child"
+        ? leahModules.filter(([id]) => id !== "box_salud" && id !== "box_gastos")
+        : leahModules)
+      : [["box_pendientes", "PENDIENTES", "#A855F7", "✓"]];
+    const boxes = modules.map(([id, name, color, emoji], order) => ({
+      id, name, color, emoji, order, collapsed: false
+    }));
+    return {
+      boxes,
+      tasks: [],
+      monthlyCompletedBase: 0,
+      completedBoxCollapsed: false,
+      learningGoals: { daily: {}, weekly: {} },
+      focusPlan: { date: "", byBox: {}, updatedAt: 0 },
+      completionLog: [],
+      dismissedTaskSuggestionsByBox: {},
+      taskMemoryByBox: {},
+      birthdays: [],
+      deletedTaskIds: [],
+      deletedBoxIds: [],
+      deletedTaskUpdatedAt: {},
+      deletedBoxUpdatedAt: {},
+      syncSchemaVersion: 2,
+      bootstrapSeedData: false,
+      updatedAt: Date.now()
     };
   }
 
@@ -2328,18 +2453,23 @@
     redoStack: [],
     cloudChannel: "tasky_somerito_jose_sync_v1",
     cloudEventSource: null,
+    activeWorkspace: null,
     deviceId: `dev_${Math.random().toString(36).slice(2, 10)}`,
     hasBootRendered: false,
     selectedRescheduledIds: new Set(),
     selectedOverdueIds: new Set(),
     selectedTaskIds: new Set(),
     firebaseConfig: {
-      apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YhrvEcb8",
-      authDomain: "tasky-7a30c.firebaseapp.com",
-      projectId: "tasky-7a30c",
-      storageBucket: "tasky-7a30c.firebasestorage.app",
-      messagingSenderId: "505071526437",
-      appId: "1:505071526437:web:6c9eb46dbb4fef296655cc",
+      ...(window.TaskyFirebaseEnvironment && window.TaskyFirebaseEnvironment.config
+        ? window.TaskyFirebaseEnvironment.config
+        : {
+            apiKey: "AIzaSyBCiHv2iS76-q4y3WHgdrJ2zW5YhrvEcb8",
+            authDomain: "tasky-7a30c.firebaseapp.com",
+            projectId: "tasky-7a30c",
+            storageBucket: "tasky-7a30c.firebasestorage.app",
+            messagingSenderId: "505071526437",
+            appId: "1:505071526437:web:6c9eb46dbb4fef296655cc6"
+          }),
       databaseURL: "",
       docPath: "tasky_sync/somerito_main"
     },
@@ -2367,6 +2497,80 @@
       balance: null
     }
   };
+
+  function applyLeahChildTaskProjection() {
+    if (!appState || !appState.data) return;
+    const currentTasks = Array.isArray(appState.data.tasks) ? appState.data.tasks : [];
+    const sharedTasks = currentTasks.filter((task) => !task || task.__leahChildTask !== true);
+
+    sharedTasks.forEach((task) => {
+      if (task) delete task.leahCompletionPending;
+    });
+
+    if (!isLeahChildAccount()) {
+      appState.data.tasks = sharedTasks;
+      return;
+    }
+
+    sharedTasks.forEach((task) => {
+      if (task && leahChildPendingCompletionIds.has(String(task.id))) {
+        task.leahCompletionPending = true;
+      }
+    });
+
+    const availableBoxIds = new Set((appState.data.boxes || []).map((box) => String(box.id)));
+    const ownTasks = leahChildTaskRecords
+      .filter((task) => task && String(task.createdBy || "") === String(activeWorkspaceContext.uid))
+      .filter((task) => availableBoxIds.has(String(task.module)))
+      .map((task) => {
+        const createdAt = task.createdAt && typeof task.createdAt.toMillis === "function"
+          ? task.createdAt.toMillis()
+          : Number(task.createdAt || Date.now());
+        const completedAt = task.completedAt && typeof task.completedAt.toMillis === "function"
+          ? task.completedAt.toMillis()
+          : Number(task.completedAt || 0);
+        const status = ["pending", "awaiting_review", "completed"].includes(task.status)
+          ? task.status
+          : "pending";
+        return {
+          id: "leah_child_" + String(task.id),
+          childTaskDocId: String(task.id),
+          __leahChildTask: true,
+          leahChildTaskStatus: status,
+          boxId: String(task.module),
+          title: String(task.title || "Tarea sin título"),
+          description: String(task.description || ""),
+          createdBy: String(task.createdBy || ""),
+          createdAt,
+          updatedAt: Date.now(),
+          dueDate: String(task.scheduledDate || getTodayISO()),
+          deadlineDate: String(task.deadlineDate || ""),
+          noDeadline: !String(task.deadlineDate || ""),
+          priority: String(task.priority || "normal"),
+          done: status === "completed",
+          completedDate: status === "completed" ? getTodayISO() : null,
+          completedAt,
+          frequency: "once",
+          repeatDays: [],
+          rescheduledCount: 0,
+          isRescheduled: false,
+          order: createdAt
+        };
+      });
+
+    appState.data.tasks = sharedTasks.concat(ownTasks);
+  }
+
+  window.addEventListener("tasky:child-tasks-updated", (event) => {
+    const detail = event && event.detail ? event.detail : {};
+    if (!isLeahChildAccount() || String(detail.uid || "") !== String(activeWorkspaceContext.uid || "")) return;
+    leahChildTaskRecords = Array.isArray(detail.tasks) ? detail.tasks : [];
+    leahChildPendingCompletionIds = new Set(
+      (Array.isArray(detail.pendingCompletionTaskIds) ? detail.pendingCompletionTaskIds : []).map(String)
+    );
+    applyLeahChildTaskProjection();
+    if (typeof taskyWorkspaceBooted !== "undefined" && taskyWorkspaceBooted) renderBoard();
+  });
 
   function escapeHtml(str) {
     return String(str || "")
@@ -2963,6 +3167,106 @@
     };
   }
 
+  function isLeahAdultWorkspace() {
+    return activeWorkspaceId === "leah" &&
+      activeWorkspaceContext &&
+      ["guardian", "owner"].includes(activeWorkspaceContext.role);
+  }
+
+  function buildCloudSyncPayload(rawData) {
+    const source = rawData && typeof rawData === "object" ? rawData : {};
+    if (activeWorkspaceId !== "leah") return buildSyncPayload(source);
+
+    const manager = window.TaskyPrivateModules;
+    if (manager && typeof manager.buildSharedPayload === "function") {
+      return buildSyncPayload(manager.buildSharedPayload(source));
+    }
+
+    // Fail closed if the private-module adapter has not loaded yet.
+    const privateBoxIds = new Set(["box_salud", "box_gastos"]);
+    const privateMemoryKeys = new Set([
+      "box_mem_SALUD Y CITAS",
+      "box_mem_GASTOS RELACIONADOS CON LEAH"
+    ]);
+    const privateTaskIds = new Set(
+      (Array.isArray(source.tasks) ? source.tasks : [])
+        .filter(task => task && privateBoxIds.has(String(task.boxId)))
+        .map(task => String(task.id))
+    );
+    const safe = {
+      ...source,
+      boxes: (Array.isArray(source.boxes) ? source.boxes : []).filter(box => box && !privateBoxIds.has(String(box.id))),
+      tasks: (Array.isArray(source.tasks) ? source.tasks : []).filter(task =>
+        task && !privateBoxIds.has(String(task.boxId)) && !privateTaskIds.has(String(task.id))
+      ),
+      deletedTaskIds: (Array.isArray(source.deletedTaskIds) ? source.deletedTaskIds : [])
+        .filter(id => !privateTaskIds.has(String(id))),
+      deletedBoxIds: (Array.isArray(source.deletedBoxIds) ? source.deletedBoxIds : [])
+        .filter(id => !privateBoxIds.has(String(id))),
+      taskMemoryByBox: { ...(source.taskMemoryByBox || {}) },
+      dismissedTaskSuggestionsByBox: { ...(source.dismissedTaskSuggestionsByBox || {}) },
+      focusPlan: { ...(source.focusPlan || {}), byBox: { ...((source.focusPlan && source.focusPlan.byBox) || {}) } },
+      completionLog: (Array.isArray(source.completionLog) ? source.completionLog : [])
+        .filter(entry => entry && !privateTaskIds.has(String(entry.taskId || "")))
+    };
+    privateBoxIds.forEach(id => {
+      delete safe.taskMemoryByBox[id];
+      delete safe.dismissedTaskSuggestionsByBox[id];
+      delete safe.focusPlan.byBox[id];
+    });
+    privateMemoryKeys.forEach(key => {
+      delete safe.taskMemoryByBox[key];
+      delete safe.dismissedTaskSuggestionsByBox[key];
+    });
+    delete safe.history;
+    return buildSyncPayload(safe);
+  }
+
+  function cloudSyncFingerprint(rawData) {
+    return syncFingerprint(buildCloudSyncPayload(rawData));
+  }
+
+  function hasPendingLocalCloudChanges() {
+    if (safeStorage.getItem(STORAGE_KEYS.CLOUD_DIRTY) === "1") return true;
+    const baseline = String(safeStorage.getItem(STORAGE_KEYS.CLOUD_BASELINE) || "");
+    return Boolean(baseline && cloudSyncFingerprint({
+      ...appState.data,
+      taskMemoryByBox: appState.taskMemory || appState.data.taskMemoryByBox || {},
+      history: appState.history || {},
+      settings: appState.settings || {}
+    }) !== baseline);
+  }
+
+  function preserveLocalSnapshotBeforeCloudAdoption(rawData) {
+    const local = normalizeDataPayload(rawData);
+    if (!local || !local.boxes.length) return true;
+    appState.backups.unshift({
+      id: `bkp_sync_guard_${Date.now()}`,
+      timestamp: Date.now(),
+      label: "Respaldo automático antes de adoptar Firestore",
+      boxesCount: local.boxes.length,
+      tasksCount: local.tasks.length,
+      data: local
+    });
+    if (appState.backups.length > 20) appState.backups = appState.backups.slice(0, 20);
+    return safeStorage.setItem(STORAGE_KEYS.BACKUPS, JSON.stringify(appState.backups)) !== false;
+  }
+
+  function waitForPrivateModulesApi() {
+    if (window.TaskyPrivateModules) return Promise.resolve(window.TaskyPrivateModules);
+    return new Promise((resolve, reject) => {
+      const timeout = window.setTimeout(() => {
+        window.removeEventListener("tasky:private-modules-loaded", handleReady);
+        reject(new Error("No se pudo cargar el administrador de módulos privados."));
+      }, 10000);
+      function handleReady() {
+        window.clearTimeout(timeout);
+        resolve(window.TaskyPrivateModules);
+      }
+      window.addEventListener("tasky:private-modules-loaded", handleReady, { once: true });
+    });
+  }
+
   function normalizeBirthdayRecord(raw, index = 0) {
     if (!raw || typeof raw !== "object") return null;
     const id = String(raw.id || `birthday_${Date.now()}_${index}`).trim();
@@ -3111,10 +3415,34 @@
       birthdays: normalizeBirthdays(raw.birthdays),
       deletedTaskIds: Array.isArray(raw.deletedTaskIds) ? Array.from(new Set(raw.deletedTaskIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
       deletedBoxIds: Array.isArray(raw.deletedBoxIds) ? Array.from(new Set(raw.deletedBoxIds.map(x => String(x || "").trim()).filter(Boolean))) : [],
+      deletedTaskUpdatedAt: normalizeDeletionTimestamps(raw.deletedTaskUpdatedAt),
+      deletedBoxUpdatedAt: normalizeDeletionTimestamps(raw.deletedBoxUpdatedAt),
       syncSchemaVersion: Number(raw.syncSchemaVersion || 0),
       bootstrapSeedData: Boolean(raw.bootstrapSeedData),
       updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : 0
     };
+  }
+
+  function normalizeDeletionTimestamps(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+    return Object.fromEntries(Object.entries(raw)
+      .map(([id, value]) => [String(id), Number(value || 0)])
+      .filter(([id, value]) => id && Number.isFinite(value) && value > 0));
+  }
+
+  function buildVersionedDeletionTimestamps(deletedIds, priorTimestamps, priorItems, currentIds, changedAt) {
+    const result = normalizeDeletionTimestamps(priorTimestamps);
+    const live = new Set(Array.from(currentIds || [], id => String(id)));
+    const priorById = new Map((Array.isArray(priorItems) ? priorItems : [])
+      .filter(item => item && item.id != null).map(item => [String(item.id), item]));
+    (Array.isArray(deletedIds) ? deletedIds : []).forEach(rawId => {
+      const id = String(rawId || "");
+      if (!id || live.has(id) || result[id]) return;
+      const previous = priorById.get(id);
+      if (previous) result[id] = Math.max(Number(changedAt || 0), Number(previous.updatedAt || 0) + 1);
+    });
+    return Object.fromEntries(Object.entries(result).filter(([id]) =>
+      (Array.isArray(deletedIds) ? deletedIds : []).map(String).includes(id) && !live.has(id)));
   }
 
   // ==========================================================================
@@ -3306,6 +3634,11 @@
   // ==========================================================================
   let cloudSyncReady = false;
   let cloudSyncReadyConfig = "";
+  // Writes are conditional on the last Firestore revision observed by this device.
+  let cloudFirestoreUpdateTime = "";
+  let cloudFirestoreExists = null;
+  let cloudRescueAuthorized = false;
+  let privateModulesReady = false;
   let cloudPullInFlight = false;
   let cloudBootstrapInFlight = false;
   let syncRecoveryIntervalId = null;
@@ -3319,28 +3652,43 @@
     const details = document.getElementById("sync-realtime-status-details");
     if (details) details.textContent = `Canal en tiempo real: ${realtimeSyncStatus}`;
   }
-  try {
-    if (typeof window.BroadcastChannel !== "undefined") {
-      syncBroadcastChannel = new window.BroadcastChannel("tasky_firebase_realtime_bus");
+  function initializeWorkspaceBroadcastChannel() {
+    try {
+      if (syncBroadcastChannel) syncBroadcastChannel.close();
+      syncBroadcastChannel = null;
+      if (!activeWorkspaceId || typeof window.BroadcastChannel === "undefined") return;
+      syncBroadcastChannel = new window.BroadcastChannel("tasky_firebase_realtime_bus_" + activeWorkspaceId);
       syncBroadcastChannel.onmessage = (ev) => {
-        if (ev.data && ev.data.payload && ev.data.deviceId !== appState.deviceId) {
-          applyIncomingSyncPayload(ev.data.payload, false);
+        if (ev.data && ev.data.type === "firestore-write-confirmed" && ev.data.deviceId !== appState.deviceId) {
+          scheduleIncomingSyncVerification();
         }
       };
+    } catch (e) {
+      syncBroadcastChannel = null;
     }
-  } catch (e) {}
+  }
 
   window.addEventListener("storage", (ev) => {
-    if (ev.key === STORAGE_KEYS.DATA && ev.newValue) {
-      try {
-        const parsed = JSON.parse(ev.newValue);
-        applyIncomingSyncPayload(parsed, false);
-      } catch (e) {}
-    }
+    if (ev.key === getScopedStorageKey(STORAGE_KEYS.DATA)) scheduleIncomingSyncVerification();
   });
+
+  async function getFirestoreAuthHeaders() {
+    const authApi = window.TaskyAuth;
+    if (!authApi || !authApi.currentUser || typeof authApi.getIdToken !== "function") {
+      throw new Error("Se requiere una sesión autenticada para acceder a Firestore.");
+    }
+    const token = await authApi.getIdToken();
+    if (!token) throw new Error("Firebase Authentication no entregó un token válido.");
+    return {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    };
+  }
 
   function isCloudNetworkAllowed() {
     return (
+      Boolean(window.TaskyAuth && window.TaskyAuth.currentUser && activeWorkspaceId) &&
+      (!isLeahAdultWorkspace() || privateModulesReady) &&
       typeof window.fetch === "function" &&
       (window.location.protocol === "https:" || window.location.protocol === "http:") &&
       navigator.onLine !== false
@@ -3357,67 +3705,63 @@
   }
 
   function loadSavedFirebaseConfig() {
-    try {
-      const raw = safeStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === "object" && parsed.projectId) {
-          const parsedProjectId = String(parsed.projectId).trim();
-          if (parsedProjectId === "esbas-2026" || parsedProjectId === "tasky-7a30c") {
-            // Migrate stale devices to the verified Tasky web config. Keep the chosen Firestore path.
-            // Preserve a Realtime Database URL only when the saved config is already Tasky's project.
-            const migrated = {
-              ...appState.firebaseConfig,
-              docPath: String(parsed.docPath || appState.firebaseConfig.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, ""),
-              databaseURL: parsedProjectId === "tasky-7a30c" ? String(parsed.databaseURL || "") : ""
-            };
-            appState.firebaseConfig = migrated;
-            safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(migrated));
-          } else {
-            appState.firebaseConfig = {
-              ...appState.firebaseConfig,
-              ...parsed
-            };
-          }
-        }
-      }
-      ["jsonbin_config", "tasky_jsonbin", "cfo_v101_final"].forEach((legacyKey) => {
-        try {
-          if (legacyKey.includes("jsonbin")) window.localStorage.removeItem(legacyKey);
-        } catch (e) {}
-      });
-    } catch (e) {}
+    // The active host selects the Firebase project. Ignore cached/manual project overrides
+    // so a staging tab can never silently redirect to production (or vice versa).
+    const environmentConfig = window.TaskyFirebaseEnvironment && window.TaskyFirebaseEnvironment.config;
+    if (!environmentConfig || !environmentConfig.projectId) {
+      throw new Error("No se pudo determinar el proyecto Firebase de Tasky.");
+    }
+    appState.firebaseConfig = {
+      ...environmentConfig,
+      databaseURL: "",
+      docPath: activeWorkspaceId
+        ? "workspaces/" + activeWorkspaceId + "/shared/main"
+        : "tasky_sync/somerito_main"
+    };
+    safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(appState.firebaseConfig));
+
+    ["jsonbin_config", "tasky_jsonbin", "cfo_v101_final"].forEach((legacyKey) => {
+      try {
+        if (legacyKey.includes("jsonbin")) window.localStorage.removeItem(legacyKey);
+      } catch (e) {}
+    });
+  }
+
+  function getFirebaseFirestoreApiBase() {
+    const configuredBase = window.TaskyFirebaseEnvironment && window.TaskyFirebaseEnvironment.firestoreApiBase;
+    let base = String(configuredBase || "https://firestore.googleapis.com/v1");
+    while (base.endsWith("/")) base = base.slice(0, -1);
+    return base;
   }
 
   function getFirebaseFirestoreUrl() {
     const cfg = appState.firebaseConfig || {};
-    const proj = String(cfg.projectId || "tasky-7a30c").trim();
-    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, "");
+    const environmentProjectId = window.TaskyFirebaseEnvironment && window.TaskyFirebaseEnvironment.projectId;
+    const proj = String(cfg.projectId || environmentProjectId || "tasky-7a30c").trim();
+    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").split("/").filter(Boolean).join("/");
     const keyParam = cfg.apiKey ? `?key=${encodeURIComponent(cfg.apiKey)}` : "";
-    return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(proj)}/databases/(default)/documents/${docPath}${keyParam}`;
+    return `${getFirebaseFirestoreApiBase()}/projects/${encodeURIComponent(proj)}/databases/(default)/documents/${docPath}${keyParam}`;
   }
 
+
   function getFirebaseRtdbUrl() {
-    const cfg = appState.firebaseConfig || {};
-    // Only query Realtime Database when its exact URL is configured.
-    // Tasky's registered Firebase Web SDK config does not contain databaseURL, so do not guess a host.
-    const base = String(cfg.databaseURL || "").trim().replace(/\/+$/, "");
-    if (!base) return "";
-    const docPath = String(cfg.docPath || "tasky_sync/somerito_main").replace(/^\/+|\/+$/g, "");
-    return `${base}/${docPath}.json`;
+    // Multi-workspace Tasky uses authenticated Firestore only. No alternate RTDB path.
+    return "";
   }
 
   function packCompactEnvelope() {
-    const d = appState.data;
+    const d = buildCloudSyncPayload(appState.data);
     return JSON.stringify({
       v: 2,
       d: appState.deviceId,
       u: Number(d.updatedAt || Date.now()),
-      m: Number(d.monthlyCompletedBase || 66),
+      m: Number(d.monthlyCompletedBase ?? 66),
       cc: 0,
       sv: 1,
       dt: Array.isArray(d.deletedTaskIds) ? d.deletedTaskIds : [],
       db: Array.isArray(d.deletedBoxIds) ? d.deletedBoxIds : [],
+      dta: normalizeDeletionTimestamps(d.deletedTaskUpdatedAt),
+      dba: normalizeDeletionTimestamps(d.deletedBoxUpdatedAt),
       lg: normalizeLearningGoalsData(d.learningGoals),
       fp: normalizeFocusPlanData(d.focusPlan, d.tasks),
       cl: normalizeCompletionLog(d.completionLog),
@@ -3490,10 +3834,12 @@
       return normalizeDataPayload({
         boxes,
         tasks,
-        monthlyCompletedBase: Number(parsed.m || 66),
+        monthlyCompletedBase: Number(parsed.m ?? 66),
         completedBoxCollapsed: false,
         deletedTaskIds: Array.isArray(parsed.dt) ? parsed.dt : [],
         deletedBoxIds: Array.isArray(parsed.db) ? parsed.db : [],
+        deletedTaskUpdatedAt: normalizeDeletionTimestamps(parsed.dta),
+        deletedBoxUpdatedAt: normalizeDeletionTimestamps(parsed.dba),
         learningGoals: normalizeLearningGoalsData(parsed.lg),
         focusPlan: normalizeFocusPlanData(parsed.fp, tasks),
         completionLog: normalizeCompletionLog(parsed.cl),
@@ -3517,6 +3863,8 @@
       tasks: d.tasks,
       deletedTaskIds: d.deletedTaskIds.slice().sort(),
       deletedBoxIds: d.deletedBoxIds.slice().sort(),
+      deletedTaskUpdatedAt: normalizeDeletionTimestamps(d.deletedTaskUpdatedAt),
+      deletedBoxUpdatedAt: normalizeDeletionTimestamps(d.deletedBoxUpdatedAt),
       monthlyCompletedBase: d.monthlyCompletedBase,
       taskMemoryByBox: d.taskMemoryByBox || {},
       learningGoals: normalizeLearningGoalsData(d.learningGoals),
@@ -3554,7 +3902,7 @@
     };
   }
 
-  function mergeSyncDatasets(leftRaw, rightRaw) {
+  function mergeSyncDatasets(leftRaw, rightRaw, preferLeftAsRemote = false) {
     const left = normalizeDataPayload(leftRaw);
     const right = normalizeDataPayload(rightRaw);
     if (!left) return right;
@@ -3562,7 +3910,8 @@
 
     const leftTime = Number(left.updatedAt || 0);
     const rightTime = Number(right.updatedAt || 0);
-    let primary = (leftTime <= 0 && rightTime > 0) ? right
+    let primary = preferLeftAsRemote ? left
+      : (leftTime <= 0 && rightTime > 0) ? right
       : (rightTime <= 0 && leftTime > 0) ? left
       : (rightTime >= leftTime ? right : left);
     let secondary = primary === left ? right : left;
@@ -3572,12 +3921,48 @@
     const ignoreUnversionedSecondary = primaryTime > 0 && secondaryTime <= 0;
     const primaryIsSeed = Boolean(primary.bootstrapSeedData);
     const secondaryIsSeed = Boolean(secondary.bootstrapSeedData);
-    const deletedTaskIds = Array.from(new Set([
-      ...(left.deletedTaskIds || []), ...(right.deletedTaskIds || [])
-    ])).filter(Boolean);
-    const deletedBoxIds = Array.from(new Set([
-      ...(left.deletedBoxIds || []), ...(right.deletedBoxIds || [])
-    ])).filter(Boolean);
+    function mergeDeletionState(primaryIds, primaryTimes, secondaryIds, secondaryTimes, primaryItems, secondaryItems, isBox = false) {
+      const byId = new Map();
+      (Array.isArray(primaryIds) ? primaryIds : []).forEach(id => {
+        const key = String(id || "").trim();
+        if (key) byId.set(key, Number(primaryTimes && primaryTimes[key] || 0));
+      });
+      (Array.isArray(secondaryIds) ? secondaryIds : []).forEach(id => {
+        const key = String(id || "").trim();
+        if (!key) return;
+        const version = Number(secondaryTimes && secondaryTimes[key] || 0);
+        if (preferLeftAsRemote && version <= 0) return;
+        if (!byId.has(key) || version > byId.get(key)) byId.set(key, version);
+      });
+      const itemVersions = new Map();
+      const addVersions = (items, versionedOnly = false) => (Array.isArray(items) ? items : []).forEach(item => {
+        if (!item || item.id == null) return;
+        const version = Number(item.updatedAt || 0);
+        if (versionedOnly && version <= 0) return;
+        const id = String(item.id);
+        itemVersions.set(id, Math.max(itemVersions.get(id) || 0, version));
+      });
+      addVersions(primaryItems);
+      addVersions(secondaryItems, preferLeftAsRemote);
+      byId.forEach((deletedAt, id) => {
+        const remoteLegacyTombstone = preferLeftAsRemote &&
+          (Array.isArray(primaryIds) ? primaryIds : []).some(value => String(value) === id) &&
+          Number(primaryTimes && primaryTimes[id] || 0) <= 0;
+        if (remoteLegacyTombstone) return;
+        let latestItemVersion = itemVersions.get(id) || 0;
+        if (isBox) latestItemVersion = Math.max(latestItemVersion,
+          ...[primary, ...(preferLeftAsRemote ? [] : [secondary])]
+            .flatMap(data => (data.tasks || []).filter(task => String(task.boxId) === id).map(task => Number(task.updatedAt || 0))), 0);
+        if (latestItemVersion > deletedAt) byId.delete(id);
+      });
+      return Object.fromEntries(byId);
+    }
+    const deletedTaskUpdatedAt = mergeDeletionState(primary.deletedTaskIds, primary.deletedTaskUpdatedAt,
+      secondary.deletedTaskIds, secondary.deletedTaskUpdatedAt, primary.tasks, secondary.tasks);
+    const deletedBoxUpdatedAt = mergeDeletionState(primary.deletedBoxIds, primary.deletedBoxUpdatedAt,
+      secondary.deletedBoxIds, secondary.deletedBoxUpdatedAt, primary.boxes, secondary.boxes, true);
+    const deletedTaskIds = Object.keys(deletedTaskUpdatedAt);
+    const deletedBoxIds = Object.keys(deletedBoxUpdatedAt);
     const deletedTasks = new Set(deletedTaskIds);
     const deletedBoxes = new Set(deletedBoxIds);
 
@@ -3591,8 +3976,8 @@
       const legacyContactCenterKeys = new Set(["oficina", "asesortelefonico"]);
       if (legacyContactCenterKeys.has(existingKey) && candidateKey === "asesordecontactcenter") return candidate;
       if (legacyContactCenterKeys.has(candidateKey) && existingKey === "asesordecontactcenter") return existing;
-      const existingUpdatedAt = Number(existing && existing.updatedAt || existingSourceUpdatedAt || 0);
-      const candidateUpdatedAt = Number(candidate && candidate.updatedAt || candidateSourceUpdatedAt || 0);
+      const existingUpdatedAt = Number(existing && existing.updatedAt || (preferLeftAsRemote ? 0 : existingSourceUpdatedAt) || 0);
+      const candidateUpdatedAt = Number(candidate && candidate.updatedAt || (preferLeftAsRemote ? 0 : candidateSourceUpdatedAt) || 0);
       if (existingUpdatedAt !== candidateUpdatedAt) return candidateUpdatedAt > existingUpdatedAt ? candidate : existing;
       if (existing && existing.bootstrapSeed === true && candidate && candidate.bootstrapSeed !== true) return candidate;
       if (candidate && candidate.bootstrapSeed === true && existing && existing.bootstrapSeed !== true) return existing;
@@ -3663,6 +4048,11 @@
       if (primaryBoxesById.has(id)) return;
       if (unmatchedPrimaryByName.has(canonicalBoxKey(box.name))) return;
       if (ignoreUnversionedSecondary) return;
+      if (preferLeftAsRemote && Number(box.updatedAt || 0) <= 0) {
+        const hasExplicitTaskEdit = (secondary.tasks || []).some(task =>
+          String(task && task.boxId) === id && Number(task && task.updatedAt || 0) > 0);
+        if (!hasExplicitTaskEdit) return;
+      }
       if (box.bootstrapSeed === true && !primaryIsSeed) return;
       if (!canonicalBoxesById.has(id)) canonicalBoxesById.set(id, box);
       secondaryIdToCanonical.set(id, id);
@@ -3700,8 +4090,8 @@
         const useOtherAuthoritativeItem = item.bootstrapSeed === true && otherItem && otherItem.bootstrapSeed !== true && !secondaryIsSeed;
         let chosenItem = useOtherAuthoritativeItem ? otherItem : item;
         if (otherItem && !useOtherAuthoritativeItem) {
-          const primaryItemVersion = Number(item.updatedAt || primaryTime || 0);
-          const secondaryItemVersion = Number(otherItem.updatedAt || secondaryTime || 0);
+          const primaryItemVersion = Number(item.updatedAt || (preferLeftAsRemote ? 0 : primaryTime) || 0);
+          const secondaryItemVersion = Number(otherItem.updatedAt || (preferLeftAsRemote ? 0 : secondaryTime) || 0);
           if (secondaryItemVersion > primaryItemVersion) chosenItem = otherItem;
         }
         if (!suppressSeed && (!extraFilter || extraFilter(chosenItem))) byId.set(id, chosenItem);
@@ -3713,7 +4103,8 @@
           if (tombstones.has(id) || byId.has(id)) return;
           const matchedOther = (Array.isArray(primaryItems) ? primaryItems : []).some(entry => entry && String(entry[idKey]) === id);
           const suppressSeed = item.bootstrapSeed === true && !primaryIsSeed && !matchedOther;
-          if (!suppressSeed && (!extraFilter || extraFilter(item))) byId.set(id, item);
+          const suppressLegacyItem = preferLeftAsRemote && Number(item.updatedAt || 0) <= 0;
+          if (!suppressSeed && !suppressLegacyItem && (!extraFilter || extraFilter(item))) byId.set(id, item);
         });
       }
       return Array.from(byId.values());
@@ -3743,6 +4134,8 @@
       tasks: normalizedTasks,
       deletedTaskIds,
       deletedBoxIds,
+      deletedTaskUpdatedAt,
+      deletedBoxUpdatedAt,
       taskMemoryByBox: { ...(secondary.taskMemoryByBox || {}), ...(primary.taskMemoryByBox || {}) },
       history: { ...(secondary.history || {}), ...(primary.history || {}) },
       completionLog: mergeCompletionLogs(primary.completionLog, secondary.completionLog),
@@ -3770,16 +4163,31 @@
 
   function applyIncomingSyncPayload(incomingRaw, showNotification = false) {
     const norm = normalizeDataPayload(incomingRaw);
-    if (!norm || !Array.isArray(norm.boxes) || !norm.boxes.length) return false;
+    if (!norm || !Array.isArray(norm.boxes) || !norm.boxes.length) return { ok: false, changed: false, needsPush: false };
     const local = normalizeDataPayload(appState.data);
+    const hasPending = hasPendingLocalCloudChanges();
+    if (hasPending && syncFingerprint(local) !== syncFingerprint(norm) &&
+        !preserveLocalSnapshotBeforeCloudAdoption(local)) {
+      setRealtimeSyncStatus("No se pudo guardar el respaldo local; se bloqueó la conciliación.");
+      return { ok: false, changed: false, needsPush: false };
+    }
     let merged;
     try {
-      merged = mergeSyncDatasets(local, norm);
+      merged = mergeSyncDatasets(norm, local, true);
     } catch (error) {
       setRealtimeSyncStatus(`Error al conciliar: ${String(error && error.message || error).slice(0, 150)}`);
-      return false;
+      return { ok: false, changed: false, needsPush: false };
     }
-    if (!merged) return false;
+    if (!merged) return { ok: false, changed: false, needsPush: false };
+    if (isLeahAdultWorkspace()) {
+      const privateManager = window.TaskyPrivateModules;
+      if (!privateModulesReady || !privateManager || !privateManager.ready ||
+          typeof privateManager.restorePrivateModulesToWorkspace !== "function") {
+        setRealtimeSyncStatus("Los módulos privados no están verificados; se bloqueó la conciliación compartida.");
+        return { ok: false, changed: false, needsPush: false };
+      }
+      merged = privateManager.restorePrivateModulesToWorkspace(merged);
+    }
     applyLocalViewStateToData(merged, local);
 
     const currentSig = syncFingerprint(local);
@@ -3790,8 +4198,8 @@
         appState.data.syncSchemaVersion = 1;
         safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
       }
-      if (syncFingerprint(merged) !== syncFingerprint(norm)) pushCloudSync(false);
-      return false;
+      const needsPush = cloudSyncFingerprint(merged) !== cloudSyncFingerprint(norm);
+      return { ok: true, changed: false, needsPush };
     }
 
     appState.data = merged;
@@ -3804,12 +4212,11 @@
     if (todayBirthdayPopupSchedulerReady) checkTodayBirthdayPopup();
     const birthdayModal = document.getElementById("modal-birthdays");
     if (birthdayModal && birthdayModal.classList.contains("open")) renderBirthdayCalendar();
-    const mergedMatchesIncoming = syncFingerprint(merged) === syncFingerprint(norm);
+    const mergedMatchesIncoming = cloudSyncFingerprint(merged) === cloudSyncFingerprint(norm);
     const syncText = document.getElementById("sync-status-text");
     if (syncText) syncText.textContent = mergedMatchesIncoming ? "Sincronizado" : "Conciliando…";
-    if (!mergedMatchesIncoming) pushCloudSync(false);
     if (showNotification) showToast("🔄 Datos fusionados sin perder tareas");
-    return true;
+    return { ok: true, changed: true, needsPush: !mergedMatchesIncoming };
   }
 
   let cloudPushTimer = null;
@@ -3829,6 +4236,18 @@
     }, 450);
   }
   function pushCloudSync(forceImmediateToast = false) {
+    // Leah's shared board is read-only. Her own task operations are written
+    // through the family task workflow, never through shared/main.
+    if (activeWorkspaceId === "leah" && activeWorkspaceContext &&
+        activeWorkspaceContext.role === "child") {
+      const childSyncText = document.getElementById("sync-status-text");
+      if (childSyncText) childSyncText.textContent = "Tareas propias activas";
+      setRealtimeSyncStatus("Tus tareas se guardan en tu espacio; el tablero familiar permanece protegido.");
+      const diagnostic = document.getElementById("sync-write-diagnostic-details");
+      if (diagnostic) diagnostic.textContent = "Puedes crear tareas propias, editar las tuyas mientras estén pendientes y enviarlas a revisión. No puedes eliminarlas. Las tareas asignadas por un adulto requieren su confirmación.";
+      if (forceImmediateToast) showToast("Tus tareas se guardan en tu espacio. Las tareas asignadas se envían a revisión.");
+      return;
+    }
     if (!cloudSyncReady || cloudSyncReadyConfig !== getCloudSyncConfigKey()) {
       if (forceImmediateToast) showToast("Sincronización bloqueada por seguridad: primero hay que verificar la nube o usar «Rescatar y Subir Todo a Firebase».");
       const blockedSyncText = document.getElementById("sync-status-text");
@@ -3839,7 +4258,7 @@
       try {
         syncBroadcastChannel.postMessage({
           deviceId: appState.deviceId,
-          payload: buildSyncPayload(appState.data)
+          type: "firestore-write-confirmed"
         });
       } catch (e) {}
     }
@@ -3861,13 +4280,32 @@
       }
       cloudPushInFlight = true;
       try {
+      if (isLeahAdultWorkspace()) {
+        const privateManager = window.TaskyPrivateModules;
+        if (!privateModulesReady || !privateManager || !privateManager.ready) {
+          throw new Error("Los módulos privados de Leah no están verificados; se bloqueó la escritura compartida.");
+        }
+        await privateManager.persistFromWorkspaceData(appState.data, appState.taskMemory, activeWorkspaceContext);
+      }
+      const sharedPayload = buildCloudSyncPayload(appState.data);
+      const privateManager = window.TaskyPrivateModules;
+      const sharedTaskMemory = activeWorkspaceId === "leah" && privateManager &&
+        typeof privateManager.buildSharedTaskMemory === "function"
+        ? privateManager.buildSharedTaskMemory(appState.taskMemory)
+        : { ...(appState.taskMemory || {}) };
+      if (activeWorkspaceId === "leah") {
+        delete sharedTaskMemory.box_salud;
+        delete sharedTaskMemory.box_gastos;
+        delete sharedTaskMemory["box_mem_SALUD Y CITAS"];
+        delete sharedTaskMemory["box_mem_GASTOS RELACIONADOS CON LEAH"];
+      }
       const fullPayload = {
-        ...buildSyncPayload(appState.data),
+        ...sharedPayload,
         syncSchemaVersion: 1,
-        deletedTaskIds: Array.isArray(appState.data.deletedTaskIds) ? appState.data.deletedTaskIds : [],
-        deletedBoxIds: Array.isArray(appState.data.deletedBoxIds) ? appState.data.deletedBoxIds : [],
-        taskMemoryByBox: appState.taskMemory,
-        history: appState.history,
+        deletedTaskIds: Array.isArray(sharedPayload.deletedTaskIds) ? sharedPayload.deletedTaskIds : [],
+        deletedBoxIds: Array.isArray(sharedPayload.deletedBoxIds) ? sharedPayload.deletedBoxIds : [],
+        taskMemoryByBox: sharedTaskMemory,
+        history: activeWorkspaceId === "leah" ? {} : appState.history,
         settings: appState.settings,
         deviceId: appState.deviceId,
         updatedAt: Number(appState.data.updatedAt || Date.now())
@@ -3896,35 +4334,84 @@
         if (!details) return;
         details.textContent = `Última escritura — Firestore: ${firestoreWriteStatus} · Realtime Database: ${rtdbWriteStatus} · Canal público: desactivado por seguridad`;
       };
+      let creatingNewFirestoreDocument = false;
       const firestoreBytes = (() => {
         const fsBody = {
           fields: {
             payloadJson: { stringValue: JSON.stringify(fullPayload) },
             compactEnvelope: { stringValue: compactStr },
             updatedAt: { integerValue: String(fullPayload.updatedAt) },
-            deviceId: { stringValue: String(appState.deviceId) }
+            deviceId: { stringValue: String(appState.deviceId) },
+            protocolVersion: { integerValue: "2" }
           }
         };
-        return { url: getFirebaseFirestoreUrl(), body: JSON.stringify(fsBody) };
+        let currentDocument = null;
+        if (cloudFirestoreExists === true && cloudFirestoreUpdateTime) currentDocument = { updateTime: cloudFirestoreUpdateTime };
+        else if (cloudFirestoreExists === false && cloudRescueAuthorized) {
+          currentDocument = { exists: false };
+          creatingNewFirestoreDocument = true;
+        }
+        if (!currentDocument) throw new Error("No existe una revisión confirmada de Firestore. Se bloqueó la escritura hasta releer la nube o iniciar un rescate explícito.");
+        const cfg = appState.firebaseConfig || {};
+        const projectId = encodeURIComponent(String(cfg.projectId || ""));
+        const keyParam = cfg.apiKey ? "?key=" + encodeURIComponent(cfg.apiKey) : "";
+        const name = `projects/${projectId}/databases/(default)/documents/${String(cfg.docPath || "").split("/").filter(Boolean).map(encodeURIComponent).join("/")}`;
+        const url = `${getFirebaseFirestoreApiBase()}/projects/${projectId}/databases/(default)/documents:commit${keyParam}`;
+        return { url, body: JSON.stringify({ writes: [{ update: { name, fields: fsBody.fields }, currentDocument }] }) };
       })();
       const writePayloadBytes = bytesOf(firestoreBytes.body);
       // 1. Push to Firestore. Do not set keepalive: true for large sync payloads:
       // Fetch keepalive bodies are limited to 64 KiB and can throw before reaching Firebase.
       try {
+        const authHeaders = await getFirestoreAuthHeaders();
         const res = await window.fetch(firestoreBytes.url, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          method: "POST",
+          headers: authHeaders,
           body: firestoreBytes.body
         });
         if (res && res.ok) {
+          const commit = await res.json().catch(() => null);
+          const confirmedUpdateTime = commit && commit.writeResults && commit.writeResults[0] && commit.writeResults[0].updateTime;
+          if (!confirmedUpdateTime) throw new Error("Firestore no devolvió updateTime; la escritura queda pendiente de verificación.");
+          if (creatingNewFirestoreDocument) {
+            const confirmation = await window.fetch(getFirebaseFirestoreUrl(), { headers: authHeaders, cache: "no-store" });
+            if (!confirmation.ok) throw new Error("El documento se creó, pero la lectura confirmatoria de Firestore falló.");
+            const confirmedDocument = await confirmation.json();
+            const confirmedPayload = confirmedDocument.fields && confirmedDocument.fields.payloadJson && confirmedDocument.fields.payloadJson.stringValue;
+            if (confirmedDocument.updateTime !== confirmedUpdateTime || confirmedPayload !== JSON.stringify(fullPayload)) {
+              throw new Error("La lectura confirmatoria no coincide con la nueva escritura; la sincronización queda pendiente.");
+            }
+          }
+          cloudFirestoreUpdateTime = confirmedUpdateTime;
+          cloudFirestoreExists = true;
+          cloudRescueAuthorized = false;
+          const writtenFingerprint = cloudSyncFingerprint(fullPayload);
+          safeStorage.setItem(STORAGE_KEYS.CLOUD_BASELINE, writtenFingerprint);
+          safeStorage.setItem(STORAGE_KEYS.CLOUD_DIRTY, cloudSyncFingerprint({
+            ...appState.data,
+            taskMemoryByBox: appState.taskMemory || {},
+            history: appState.history || {},
+            settings: appState.settings || {}
+          }) === writtenFingerprint ? "0" : "1");
           firebaseSaved = true;
           firestoreWriteStatus = `OK (HTTP ${res.status}; ${(writePayloadBytes / 1024).toFixed(1)} KiB)`;
         } else {
           const responseText = res ? await res.text().catch(() => "") : "";
           const detail = describeResponseError(responseText);
+          cloudSyncReady = false;
+          cloudSyncReadyConfig = "";
+          cloudFirestoreUpdateTime = "";
+          cloudRescueAuthorized = false;
+          setRealtimeSyncStatus("Conflicto o rechazo de escritura; se releerá Firestore antes de reintentar.");
           firestoreWriteStatus = `HTTP ${res ? res.status : "sin respuesta"}${detail ? ` · ${detail}` : ""}`;
+          scheduleIncomingSyncVerification();
         }
       } catch (e) {
+        cloudSyncReady = false;
+        cloudSyncReadyConfig = "";
+        cloudFirestoreUpdateTime = "";
+        cloudRescueAuthorized = false;
+        scheduleIncomingSyncVerification();
         firestoreWriteStatus = `Error de red · ${String(e && e.message || e).slice(0, 180)} (${(writePayloadBytes / 1024).toFixed(1)} KiB)`;
       }
       updateWriteDiagnostic();
@@ -3991,7 +4478,7 @@
     }, forceImmediateToast ? 10 : 80);
   }
 
-  const TASKY_BUILD_ID = "20261119-no-public-ntfy-1";
+  const TASKY_BUILD_ID = "20261122-cloud-first-tombstones-1";
 
   function renderSyncDiagnostics(statuses) {
     const entries = [
@@ -4029,6 +4516,16 @@
 
   async function autoBootstrapFirestoreDocument(localRaw, sourceStatus) {
     if (cloudBootstrapInFlight) return "busy";
+    if (activeWorkspaceId === "jose") {
+      sourceStatus.firestore = "Migración pendiente: este espacio no se inicializa desde datos locales. Importa el respaldo de José mediante el proceso explícito de migración.";
+      renderSyncDiagnostics(sourceStatus);
+      return "migration-pending";
+    }
+    if (activeWorkspaceContext && activeWorkspaceContext.role === "child") {
+      sourceStatus.firestore = "Un adulto debe inicializar este espacio antes del primer uso.";
+      renderSyncDiagnostics(sourceStatus);
+      return "blocked-child-bootstrap";
+    }
     cloudBootstrapInFlight = true;
     try {
       const cfg = appState.firebaseConfig || {};
@@ -4062,10 +4559,29 @@
       safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
       rebuildTaskMemoryFromTasks();
 
+      if (isLeahAdultWorkspace()) {
+        const privateManager = window.TaskyPrivateModules;
+        if (!privateModulesReady || !privateManager || !privateManager.ready) {
+          throw new Error("Los módulos privados de Leah no están verificados; se bloqueó la inicialización compartida.");
+        }
+        await privateManager.persistFromWorkspaceData(appState.data, appState.taskMemory, activeWorkspaceContext);
+      }
+      const sharedPayload = buildCloudSyncPayload(appState.data);
+      const privateManager = window.TaskyPrivateModules;
+      const sharedTaskMemory = activeWorkspaceId === "leah" && privateManager &&
+        typeof privateManager.buildSharedTaskMemory === "function"
+        ? privateManager.buildSharedTaskMemory(appState.taskMemory)
+        : { ...(appState.taskMemory || {}) };
+      if (activeWorkspaceId === "leah") {
+        delete sharedTaskMemory.box_salud;
+        delete sharedTaskMemory.box_gastos;
+        delete sharedTaskMemory["box_mem_SALUD Y CITAS"];
+        delete sharedTaskMemory["box_mem_GASTOS RELACIONADOS CON LEAH"];
+      }
       const fullPayload = {
-        ...buildSyncPayload(appState.data),
-        taskMemoryByBox: appState.taskMemory,
-        history: appState.history,
+        ...sharedPayload,
+        taskMemoryByBox: sharedTaskMemory,
+        history: activeWorkspaceId === "leah" ? {} : appState.history,
         settings: appState.settings,
         deviceId: appState.deviceId,
         updatedAt: Number(appState.data.updatedAt)
@@ -4074,27 +4590,38 @@
       const documentId = parts[parts.length - 1];
       const collectionPath = parts.slice(0, -1).map(encodeURIComponent).join("/");
       const keyParam = cfg.apiKey ? "&key=" + encodeURIComponent(cfg.apiKey) : "";
-      const createUrl = "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(projectId) +
+      const createUrl = getFirebaseFirestoreApiBase() + "/projects/" + encodeURIComponent(projectId) +
         "/databases/(default)/documents/" + collectionPath + "?documentId=" + encodeURIComponent(documentId) + keyParam;
       const body = {
         fields: {
           payloadJson: { stringValue: JSON.stringify(fullPayload) },
           compactEnvelope: { stringValue: compactStr },
           updatedAt: { integerValue: String(fullPayload.updatedAt) },
-          deviceId: { stringValue: String(appState.deviceId) }
+          deviceId: { stringValue: String(appState.deviceId) },
+          protocolVersion: { integerValue: "2" }
         }
       };
 
+      const authHeaders = await getFirestoreAuthHeaders();
       const response = await window.fetch(createUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders,
         body: JSON.stringify(body)
       });
       const responseText = await response.text();
 
       if (response.ok) {
+        const confirmation = await window.fetch(getFirebaseFirestoreUrl(), { headers: authHeaders, cache: "no-store" });
+        if (!confirmation.ok) throw new Error("Firestore aceptó la creación, pero falló la lectura confirmatoria.");
+        const confirmedDocument = await confirmation.json();
+        const confirmedPayload = confirmedDocument.fields && confirmedDocument.fields.payloadJson && confirmedDocument.fields.payloadJson.stringValue;
+        if (!confirmedDocument.updateTime || confirmedPayload !== JSON.stringify(fullPayload)) {
+          throw new Error("La lectura confirmatoria no coincide con el documento recién creado.");
+        }
         cloudSyncReady = true;
         cloudSyncReadyConfig = getCloudSyncConfigKey();
+        cloudFirestoreExists = true;
+        cloudFirestoreUpdateTime = confirmedDocument.updateTime;
         sourceStatus.firestore = "Documento creado automáticamente · " + candidate.boxes.length + " casillas, " + candidate.tasks.length + " tareas";
         renderSyncDiagnostics(sourceStatus);
         const syncText = document.getElementById("sync-status-text");
@@ -4178,20 +4705,27 @@
 
       try {
         const fsUrl = getFirebaseFirestoreUrl();
-        const res = await window.fetch(fsUrl, { cache: "no-store" });
+        const authHeaders = await getFirestoreAuthHeaders();
+        const res = await window.fetch(fsUrl, { headers: authHeaders, cache: "no-store" });
         if (!res.ok) {
+          cloudFirestoreExists = res.status === 404 ? false : null;
+          cloudFirestoreUpdateTime = "";
           sourceStatus.firestore = `HTTP ${res.status} ${res.statusText || ""}`.trim();
         } else {
           const docJson = await res.json();
+          cloudFirestoreExists = true;
+          cloudFirestoreUpdateTime = typeof docJson.updateTime === "string" ? docJson.updateTime : "";
           const rawStr = docJson && docJson.fields && docJson.fields.payloadJson && docJson.fields.payloadJson.stringValue;
           if (!rawStr) {
             sourceStatus.firestore = "HTTP 200 · documento vacío o sin campo payloadJson";
           } else {
             const norm = normalizeDataPayload(JSON.parse(rawStr));
             sourceStatus.firestore = describeSnapshot(norm);
-            if (isValidSnapshot(norm)) {
+            if (isValidSnapshot(norm) && cloudFirestoreUpdateTime) {
               candidates.push(norm);
               durableCandidateCount++;
+            } else if (isValidSnapshot(norm)) {
+              sourceStatus.firestore = "Copia válida sin revisión confirmada; escritura bloqueada hasta releer Firestore.";
             }
           }
         }
@@ -4230,13 +4764,22 @@
       renderSyncDiagnostics(sourceStatus);
 
       if (durableCandidateCount === 0 && /^HTTP 404\b/.test(sourceStatus.firestore)) {
-        let bootstrapDataset = normalizeDataPayload(appState.data);
-        for (const candidate of candidates) {
-          bootstrapDataset = mergeSyncDatasets(bootstrapDataset, candidate);
-        }
-        const bootstrapResult = await autoBootstrapFirestoreDocument(bootstrapDataset, sourceStatus);
-        if (bootstrapResult === "created") return "syncing";
-        if (bootstrapResult === "exists" || bootstrapResult === "busy") return "syncing";
+        cloudFirestoreExists = false;
+        cloudFirestoreUpdateTime = "";
+      }
+
+      if (durableCandidateCount === 0 && activeWorkspaceId === "jose" && /^HTTP 404\b/.test(sourceStatus.firestore)) {
+        cloudSyncReady = false;
+        cloudSyncReadyConfig = "";
+        const message = "Migración pendiente · no se recuperó el documento legado y no se subieron datos locales.";
+        sourceStatus.firestore = message;
+        renderSyncDiagnostics(sourceStatus);
+        const syncText = document.getElementById("sync-status-text");
+        if (syncText) syncText.textContent = "Migración pendiente";
+        const modalSyncTime = document.getElementById("modal-sync-last-time");
+        if (modalSyncTime) modalSyncTime.textContent = "El espacio de José espera una importación explícita del respaldo. El documento legado no se consultó ni modificó.";
+        if (manual) showToast("Migración pendiente. No se recuperaron ni subieron datos de José.", true);
+        return "migration-pending";
       }
 
       if (durableCandidateCount === 0 || !candidates.length) {
@@ -4255,7 +4798,7 @@
       for (let i = 1; i < candidates.length; i++) {
         cloudCandidate = mergeSyncDatasets(cloudCandidate, candidates[i]);
       }
-      const cloudNeedsRepair = candidates.some(candidate => syncFingerprint(candidate) !== syncFingerprint(cloudCandidate));
+      const cloudNeedsRepair = candidates.some(candidate => cloudSyncFingerprint(candidate) !== cloudSyncFingerprint(cloudCandidate));
 
       cloudSyncReady = true;
       cloudSyncReadyConfig = getCloudSyncConfigKey();
@@ -4265,13 +4808,39 @@
       if (!quiet && modalSyncTime) {
         modalSyncTime.textContent = `Copia remota verificada a las ${new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}; conciliando los dispositivos.`;
       }
-      applyIncomingSyncPayload(cloudCandidate, manual);
+      // A legacy cache with no proven local edits cannot outrank the verified cloud.
+      // Keep a recoverable snapshot before adopting it; private Leah data stays on
+      // its dedicated transactional module path and is never replaced here.
+      if (!hasPendingLocalCloudChanges() && !isLeahAdultWorkspace() &&
+          cloudSyncFingerprint(appState.data) !== cloudSyncFingerprint(cloudCandidate)) {
+        if (!preserveLocalSnapshotBeforeCloudAdoption(appState.data)) {
+          cloudSyncReady = false;
+          cloudSyncReadyConfig = "";
+          throw new Error("No se pudo guardar un respaldo local; se bloqueó la adopción de la copia de Firestore.");
+        }
+        safeStorage.setItem(STORAGE_KEYS.CLOUD_BASELINE, cloudSyncFingerprint(cloudCandidate));
+        safeStorage.setItem(STORAGE_KEYS.CLOUD_DIRTY, "0");
+        appState.data = applyLocalViewStateToData(normalizeDataPayload(cloudCandidate), appState.data);
+        appState.history = cloudCandidate.history && typeof cloudCandidate.history === "object" ? cloudCandidate.history : {};
+        appState.settings = { ...appState.settings, ...(cloudCandidate.settings || {}) };
+        appState.taskMemory = { ...(cloudCandidate.taskMemoryByBox || {}) };
+        safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
+        safeStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(appState.history));
+        safeStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(appState.history));
+        safeStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(appState.settings));
+        safeStorage.setItem(STORAGE_KEYS.MEMORY, JSON.stringify(appState.taskMemory));
+      }
+      const reconciliation = applyIncomingSyncPayload(cloudCandidate, manual);
+      if (!reconciliation || !reconciliation.ok) {
+        cloudSyncReady = false;
+        cloudSyncReadyConfig = "";
+        return "reconcile-error";
+      }
 
       const localNow = normalizeDataPayload(appState.data);
-      if (
+      if (reconciliation.needsPush ||
         cloudNeedsRepair ||
-        syncFingerprint(localNow) !== syncFingerprint(cloudCandidate) ||
-        Number(localNow.updatedAt || 0) > Number(cloudCandidate.updatedAt || 0)
+        cloudSyncFingerprint(localNow) !== cloudSyncFingerprint(cloudCandidate)
       ) {
         pushCloudSync(false);
       } else {
@@ -4401,10 +4970,12 @@
 
     const alreadyRestoredV143 = safeStorage.getItem("tasky_restored_v143_full");
     if (!loaded || (!loaded.boxes.length && !loaded.tasks.length)) {
-      loaded = buildRestoredUserDataset();
+      loaded = activeWorkspaceId === "jose"
+        ? buildRestoredUserDataset()
+        : buildEmptyWorkspaceDataset(activeWorkspaceId);
       safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(loaded));
-      safeStorage.setItem("tasky_restored_v143_full", "true");
-    } else if (!alreadyRestoredV143) {
+      if (activeWorkspaceId === "jose") safeStorage.setItem("tasky_restored_v143_full", "true");
+    } else if (activeWorkspaceId === "jose" && !alreadyRestoredV143) {
       const baseline = buildRestoredUserDataset();
       baseline.boxes.forEach((baseBox) => {
         // Match the original stable ID first so a renamed casilla is never recreated under its old label.
@@ -4680,7 +5251,7 @@
       // recreate every scheduled-but-uncompleted day after it, then create today's or the next valid occurrence.
       if (completedOnPastDay) {
         changed = true;
-        appState.data.monthlyCompletedBase = (appState.data.monthlyCompletedBase || 66) + 1;
+        appState.data.monthlyCompletedBase = (appState.data.monthlyCompletedBase ?? 66) + 1;
         if (taskHasRecurringSchedule) {
           const completedDateCandidate = String(task.completedDate || task.dueDate || addDaysISO(today, -1)).slice(0, 10);
           const lastCompletedDate = /^\d{4}-\d{2}-\d{2}$/.test(completedDateCandidate) &&
@@ -4868,10 +5439,19 @@
     currentBoxIds.forEach(id => deletedBoxes.delete(id));
     appState.data.deletedTaskIds = Array.from(deletedTasks);
     appState.data.deletedBoxIds = Array.from(deletedBoxes);
+    appState.data.deletedTaskUpdatedAt = buildVersionedDeletionTimestamps(
+      Array.from(deletedTasks), { ...(previousData && previousData.deletedTaskUpdatedAt), ...(appState.data.deletedTaskUpdatedAt || {}) },
+      previousData && previousData.tasks, currentTaskIds, recordChangeTime);
+    appState.data.deletedBoxUpdatedAt = buildVersionedDeletionTimestamps(
+      Array.from(deletedBoxes), { ...(previousData && previousData.deletedBoxUpdatedAt), ...(appState.data.deletedBoxUpdatedAt || {}) },
+      previousData && previousData.boxes, currentBoxIds, recordChangeTime);
     appState.data.syncSchemaVersion = 1;
     const syncContentChanged = !previousData || previousSyncFingerprint !== syncFingerprint(appState.data);
     if (syncContentChanged) {
       appState.data.updatedAt = Math.max(Date.now(), Number(appState.data.updatedAt || 0) + 1);
+      safeStorage.setItem(STORAGE_KEYS.CLOUD_DIRTY, "1");
+    } else if (!safeStorage.getItem(STORAGE_KEYS.CLOUD_BASELINE)) {
+      safeStorage.setItem(STORAGE_KEYS.CLOUD_DIRTY, "0");
     }
     const payloadStr = JSON.stringify(appState.data);
     const ok = safeStorage.setItem(STORAGE_KEYS.DATA, payloadStr);
@@ -5276,8 +5856,8 @@
 
   function saveQuoteDeckState() {
     try {
-      if (typeof localStorage !== "undefined" && quoteDeckState) {
-        localStorage.setItem(QUOTE_DECK_STORAGE_KEY, JSON.stringify(quoteDeckState));
+      if (quoteDeckState) {
+        safeStorage.setItem(QUOTE_DECK_STORAGE_KEY, JSON.stringify(quoteDeckState));
       }
     } catch (_) {
       // Continue with the in-memory deck if storage is unavailable.
@@ -5291,9 +5871,7 @@
 
     let saved = null;
     try {
-      if (typeof localStorage !== "undefined") {
-        saved = JSON.parse(localStorage.getItem(QUOTE_DECK_STORAGE_KEY) || "null");
-      }
+      saved = JSON.parse(safeStorage.getItem(QUOTE_DECK_STORAGE_KEY) || "null");
     } catch (_) {
       saved = null;
     }
@@ -5591,7 +6169,7 @@
     document.getElementById("metric-pending-count").textContent = String(pendingToday);
 
     const totalDoneNow = tasks.filter(t => t.done).length;
-    const monthlyTotal = (appState.data.monthlyCompletedBase || 66) + totalDoneNow;
+    const monthlyTotal = (appState.data.monthlyCompletedBase ?? 66) + totalDoneNow;
     document.getElementById("metric-completed-count").textContent = String(monthlyTotal);
 
     const reschedTasks = tasks.filter(t => isTaskRescheduledFuture(t));
@@ -6532,6 +7110,7 @@
   }
 
   function renderBoard() {
+    applyLeahChildTaskProjection();
     expandLegacyNoDeadlineBoxesOnce();
     // Save the viewport before rebuilding cards; detached controls can otherwise make mobile browsers jump.
     const viewportScrollX = Number.isFinite(window.scrollX) ? window.scrollX : (window.pageXOffset || 0);
@@ -6909,7 +7488,7 @@
       };
 
       boxTopRow.addEventListener("pointerdown", (e) => {
-        if (e.target.closest("button") || e.target.closest(".box-name")) return;
+        if (isLeahChildAccount() || e.target.closest("button") || e.target.closest(".box-name")) return;
         beginHoldDrag("box", box.id, card, e.clientX, e.clientY);
       });
 
@@ -7182,7 +7761,7 @@
         suggestionsBox.classList.add("open");
       }
 
-      function saveInlineTask(rawTitle, options = {}) {
+      async function saveInlineTask(rawTitle, options = {}) {
         const noDeadline = Boolean(inlineNoDeadlineInput && inlineNoDeadlineInput.checked);
         // A pasted list becomes one task per non-empty line. Strip common list
         // markers without damaging measurements such as "1.80 m × 3.5–4 cm".
@@ -7201,7 +7780,7 @@
           return false;
         }
 
-        if (!options.skipDuplicateCheck) {
+        if (!options.skipDuplicateCheck && !isLeahChildAccount()) {
           const incomingKeys = new Set(taskTitles.map(normalizeDuplicateTaskTitle).filter(Boolean));
           const existingMatches = new Map();
           const existingDuplicateKeys = new Set();
@@ -7260,6 +7839,45 @@
               document.getElementById("modal-confirm").classList.add("open");
               return true;
             }
+          }
+        }
+
+        if (isLeahChildAccount()) {
+          const childApi = window.TaskyFamilyTasks;
+          if (!childApi || typeof childApi.create !== "function") {
+            showToast("No se pudo conectar el registro de tareas de Leah. Recarga Tasky e inténtalo nuevamente.", true);
+            return false;
+          }
+          const submitButton = inlineForm.querySelector('button[type="submit"]');
+          if (submitButton) submitButton.disabled = true;
+          try {
+            for (const title of taskTitles) {
+              await childApi.create({
+                title,
+                description: "",
+                module: String(box.id),
+                scheduledDate: getTodayISO(),
+                deadlineDate: "",
+                priority: "normal"
+              });
+            }
+            appState.keepInlineAddOpenBoxId = options.closeAfterSave ? null : box.id;
+            inlineInput.value = "";
+            resizeInlineInput();
+            suggestionsBox.classList.remove("open");
+            suggestionsBox.innerHTML = "";
+            activeSuggestionIdx = -1;
+            playUiSound("addTask");
+            showToast(taskTitles.length === 1
+              ? "Tarea registrada en tu casilla"
+              : taskTitles.length + " tareas registradas en " + box.name);
+            return true;
+          } catch (error) {
+            showToast(String(error && error.message || "No se pudieron registrar tus tareas."), true);
+            window.console && window.console.error("[Tasky Leah] Board task create failed:", error);
+            return false;
+          } finally {
+            if (submitButton) submitButton.disabled = false;
           }
         }
 
@@ -8609,8 +9227,13 @@
 
 function createTaskRowElement(task, box, showOriginBox = false) {
     const item = document.createElement("div");
+    const isLeahChild = isLeahChildAccount();
+    const isLeahOwnedTask = isLeahChild && task.__leahChildTask === true;
+    const canLeahEditTask = isLeahOwnedTask && task.leahChildTaskStatus === "pending";
+    const isLeahAwaitingReview = isLeahChild &&
+      (task.leahChildTaskStatus === "awaiting_review" || task.leahCompletionPending);
     const focusPriority = getFocusPriorityLevel(task.id);
-    item.className = `task-item ${task.done ? "done" : ""} ${appState.selectedTaskIds && appState.selectedTaskIds.has(String(task.id)) ? "multi-selected" : ""} ${focusPriority ? `focus-priority-task focus-priority-${focusPriority}` : ""}`;
+    item.className = `task-item ${task.done ? "done" : ""} ${appState.selectedTaskIds && appState.selectedTaskIds.has(String(task.id)) ? "multi-selected" : ""} ${focusPriority ? `focus-priority-task focus-priority-${focusPriority}` : ""} ${isLeahChild ? (canLeahEditTask ? "leah-child-board-row leah-child-owned-row" : "leah-child-board-row leah-child-readonly-row") : ""}`;
     item.dataset.taskId = task.id;
     if (focusPriority) item.dataset.focusPriority = `P${focusPriority}`;
 
@@ -8632,6 +9255,11 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     }
     if (hasRepeat) {
       subBadges += `<span class="task-daily-pill">${escapeHtml(repeatLabel)}</span>`;
+    }
+    if (isLeahChild && task.__leahChildTask && task.leahChildTaskStatus === "awaiting_review") {
+      subBadges += '<span class="task-leah-review-tag">📨 Lista para revisar</span>';
+    } else if (isLeahChild && !task.__leahChildTask && task.leahCompletionPending) {
+      subBadges += '<span class="task-leah-review-tag">📨 Aviso enviado · espera a un adulto</span>';
     }
     if (task.noDeadline) {
       subBadges += `<span class="task-no-deadline-tag" title="Esta tarea no tiene fecha límite y no se marcará como atrasada.">∞ Sin fecha límite</span>`;
@@ -8661,7 +9289,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       <div class="hold-charge-bar"><div class="hold-charge-fill"></div></div>
       <div class="task-left">
         <span class="drag-handle task-drag-handle" data-tip-title="⋮⋮ Mantén presionado para mover" data-tip-desc="Sostén el clic unos instantes hasta cargar la barra superior y arrastra la tarea.">⋮⋮</span>
-        <button type="button" class="task-check-circle" ${isUpcomingRepeat ? "disabled" : ""} aria-label="${isUpcomingRepeat ? `Disponible el ${escapeHtml(formatSpanishDateLong(task.dueDate))}` : "Completar tarea"}" data-tip-title="✓ Marcar como completada" data-tip-desc="${isUpcomingRepeat ? `Estará disponible el ${escapeHtml(formatSpanishDateLong(task.dueDate))}.` : "Registra el cumplimiento de esta tarea y actualiza tu progreso diario."}">
+        <button type="button" class="task-check-circle" ${(isUpcomingRepeat || (isLeahChild && (task.done || isLeahAwaitingReview))) ? "disabled" : ""} aria-label="${isUpcomingRepeat ? `Disponible el ${escapeHtml(formatSpanishDateLong(task.dueDate))}` : (isLeahChild ? (isLeahAwaitingReview ? "Tarea enviada a revisión" : (isLeahOwnedTask ? "Enviar mi tarea a revisión" : "Avisar que terminé esta tarea")) : "Completar tarea")}" data-tip-title="${isLeahChild ? "Enviar a revisión" : "✓ Marcar como completada"}" data-tip-desc="${isUpcomingRepeat ? `Estará disponible el ${escapeHtml(formatSpanishDateLong(task.dueDate))}.` : (isLeahChild ? "Leah avisa que terminó. José o Camila confirma la finalización." : "Registra el cumplimiento de esta tarea y actualiza tu progreso diario.")}">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </button>
         <div class="task-text-wrap">
@@ -8701,9 +9329,9 @@ function createTaskRowElement(task, box, showOriginBox = false) {
         <button type="button" class="task-act-btn ${hasRepeat ? "repeat-active" : ""}" data-task-action="toggle-daily" data-tip-title="🔁 Configurar Repetición" data-tip-desc="Elige si deseas repetir la tarea todos los días, algunos días o un día específico.">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
         </button>
-        <button type="button" class="task-act-btn del-btn" data-task-action="delete" data-tip-title="✕ Eliminar Tarea" data-tip-desc="Retira esta tarea permanentemente de la casilla actual.">
+        ${isLeahChild ? "" : `<button type="button" class="task-act-btn del-btn" data-task-action="delete" data-tip-title="✕ Eliminar Tarea" data-tip-desc="Retira esta tarea permanentemente de la casilla actual.">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+        </button>`}
         <button type="button" class="task-act-btn task-mobile-more" aria-label="Más opciones de tarea" data-task-action="mobile-more">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
         </button>
@@ -8712,12 +9340,17 @@ function createTaskRowElement(task, box, showOriginBox = false) {
 
     // Point 8: Hold-to-Drag works on any blank space of the task or even holding on the row
     item.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0 || e.ctrlKey || e.metaKey || e.target.closest("button") || e.target.closest("input")) return;
+      if (isLeahChild || e.button !== 0 || e.ctrlKey || e.metaKey || e.target.closest("button") || e.target.closest("input")) return;
       if (item.closest(".smart-filter-results")) return;
       beginHoldDrag("task", task.id, item, e.clientX, e.clientY);
     });
 
     item.addEventListener("contextmenu", event => {
+      if (isLeahChild) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
       openTaskContextMenu(task.id, event.clientX, event.clientY);
@@ -8745,6 +9378,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     }
     item.querySelector(".task-title").addEventListener("click", () => {
       if (dragEngine.justDragged) return;
+      if (isLeahChild && !canLeahEditTask) return;
       playUiSound("modalOpen");
       openEditTaskTitleModal(task.id);
     });
@@ -8809,7 +9443,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       openRepeatPickerModal(task.id);
     });
 
-    item.querySelector('[data-task-action="delete"]').addEventListener("click", () => {
+    const deleteButton = item.querySelector('[data-task-action="delete"]');
+    if (deleteButton) deleteButton.addEventListener("click", () => {
       playUiSound("tap");
       deleteTask(task.id);
     });
@@ -9020,6 +9655,8 @@ function createTaskRowElement(task, box, showOriginBox = false) {
   }
 
   function checkTodayBirthdayPopup() {
+    // Birthday tools are intentionally hidden in Leah's child workspace.
+    if (activeWorkspaceId === "leah") return false;
     if (!todayBirthdayPopupSchedulerReady || document.visibilityState === "hidden") return false;
     const today = getTodayISO();
     if (safeStorage.getItem(TASKY_BIRTHDAY_POPUP_ACKNOWLEDGED_KEY) === today) return false;
@@ -9630,6 +10267,34 @@ function createTaskRowElement(task, box, showOriginBox = false) {
   }
 
   function toggleTaskDone(taskId, checkBtnEl) {
+    if (isLeahChildAccount()) {
+      const task = appState.data.tasks.find((item) => String(item.id) === String(taskId));
+      if (!task || task.done || task.leahChildTaskStatus === "awaiting_review" || task.leahCompletionPending) {
+        showToast("Esta tarea ya está terminada o espera la revisión de un adulto.");
+        return;
+      }
+      const childApi = window.TaskyFamilyTasks;
+      if (!childApi) {
+        showToast("No se pudo conectar el registro de tareas. Recarga Tasky e inténtalo nuevamente.", true);
+        return;
+      }
+      const operation = task.__leahChildTask
+        ? childApi.submitForReview(task.childTaskDocId)
+        : childApi.requestAssignedCompletion(task.id);
+      Promise.resolve(operation).then((ok) => {
+        if (ok) {
+          playUiSound("complete");
+          showToast(task.__leahChildTask
+            ? "✓ Tu tarea fue enviada a revisión"
+            : "✓ Avisamos a José o Camila que terminaste esta tarea");
+        } else {
+          showToast("No se pudo enviar la tarea a revisión. Comprueba su estado e inténtalo nuevamente.", true);
+        }
+      }).catch((error) => {
+        showToast(String(error && error.message || "No se pudo enviar la tarea a revisión."), true);
+      });
+      return;
+    }
     const selectedTasks = getTasksForSelectedAction(taskId);
     if (selectedTasks.length > 1) {
       completeSelectedTasks(taskId, checkBtnEl);
@@ -10163,6 +10828,10 @@ function createTaskRowElement(task, box, showOriginBox = false) {
   }
 
   function deleteTask(taskId) {
+    if (isLeahChildAccount()) {
+      showToast("Leah no puede eliminar tareas. Pide a un adulto que te ayude.", true);
+      return;
+    }
     const id = String(taskId);
     const selectedIds = appState.selectedTaskIds;
     if (selectedIds && selectedIds.size > 1 && selectedIds.has(id)) {
@@ -11416,6 +12085,224 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     showToast("Respaldo exportado");
   }
 
+  function isTaskyBackupRecord(value) {
+    return Boolean(value && typeof value === "object" && !Array.isArray(value));
+  }
+
+  function buildTaskyBackupEnvelope({ data, history, settings, taskMemoryByBox } = {}) {
+    const sourceData = isTaskyBackupRecord(data) ? data : {};
+    const memory = isTaskyBackupRecord(taskMemoryByBox)
+      ? taskMemoryByBox
+      : (isTaskyBackupRecord(sourceData.taskMemoryByBox) ? sourceData.taskMemoryByBox : {});
+    const taskyData = { ...sourceData, taskMemoryByBox: { ...memory } };
+    return {
+      format: "tasky-backup",
+      schemaVersion: 2,
+      version: "Tasky Pro Vol. 144",
+      exportedAt: new Date().toISOString(),
+      tasky_data: taskyData,
+      boxes: Array.isArray(taskyData.boxes) ? taskyData.boxes : [],
+      tasks: Array.isArray(taskyData.tasks) ? taskyData.tasks : [],
+      history: isTaskyBackupRecord(history) ? history : {},
+      settings: isTaskyBackupRecord(settings) ? settings : {},
+      taskMemoryByBox: { ...memory }
+    };
+  }
+
+  function normalizeTaskyBackupEnvelope(parsedFile) {
+    const envelope = isTaskyBackupRecord(parsedFile) ? parsedFile : {};
+    const raw = isTaskyBackupRecord(envelope.tasky_data) ? envelope.tasky_data : envelope;
+    const imported = normalizeDataPayload(raw);
+    if (!imported) throw new Error("El respaldo no contiene datos Tasky válidos.");
+
+    const historySource = isTaskyBackupRecord(envelope.history)
+      ? envelope.history
+      : (isTaskyBackupRecord(raw.history) ? raw.history : {});
+    const settingsSource = isTaskyBackupRecord(envelope.settings)
+      ? envelope.settings
+      : (isTaskyBackupRecord(raw.settings) ? raw.settings : null);
+    const memorySource = isTaskyBackupRecord(envelope.taskMemoryByBox)
+      ? envelope.taskMemoryByBox
+      : (isTaskyBackupRecord(envelope.taskMemory)
+        ? envelope.taskMemory
+        : (isTaskyBackupRecord(raw.taskMemoryByBox)
+          ? raw.taskMemoryByBox
+          : (isTaskyBackupRecord(raw.taskMemory)
+            ? raw.taskMemory
+            : (isTaskyBackupRecord(imported.taskMemoryByBox) ? imported.taskMemoryByBox : {}))));
+
+    imported.taskMemoryByBox = { ...memorySource };
+    return {
+      raw,
+      imported,
+      history: { ...historySource },
+      settings: settingsSource ? { ...settingsSource } : null,
+      taskMemoryByBox: { ...memorySource }
+    };
+  }
+
+  function exportJsonBackup() {
+    const taskMemoryByBox = appState.taskMemory || appState.data.taskMemoryByBox || {};
+    const exportPayload = buildTaskyBackupEnvelope({
+      data: appState.data,
+      history: appState.history,
+      settings: appState.settings,
+      taskMemoryByBox
+    });
+    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `tasky-backup-${getTodayISO()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("Respaldo exportado");
+  }
+
+  async function importJoseBackupSafely(file) {
+    const environment = window.TaskyFirebaseEnvironment || {};
+    if (activeWorkspaceId !== "jose" || environment.name !== "staging" || environment.projectId !== "tasky-staging-82acb") {
+      throw new Error("La importación explícita de José está limitada al proyecto de Staging.");
+    }
+    const cfg = appState.firebaseConfig || {};
+    const projectId = String(cfg.projectId || environment.projectId || "");
+    const docPath = String(cfg.docPath || "").split("/").filter(Boolean).join("/");
+    if (projectId !== "tasky-staging-82acb" || docPath !== "workspaces/jose/shared/main") {
+      throw new Error("El destino no coincide con el espacio José de Staging.");
+    }
+    if (Number(file.size || 0) > 10 * 1024 * 1024) throw new Error("El archivo supera el límite de 10 MiB para la importación segura.");
+
+    const parsedFile = JSON.parse(await file.text());
+    const backup = normalizeTaskyBackupEnvelope(parsedFile);
+    const raw = backup.raw;
+    const imported = backup.imported;
+    if (!imported || imported.boxes.length < 1 || !Array.isArray(imported.tasks) ||
+        imported.boxes.some(box => !box || !box.id || !box.name) ||
+        imported.tasks.some(task => !task || !task.id || !task.boxId || !task.title)) {
+      throw new Error("El respaldo no tiene una estructura Tasky válida; no se modificó el espacio.");
+    }
+    const history = backup.history;
+    const settings = backup.settings || appState.settings || {};
+    const taskMemoryByBox = backup.taskMemoryByBox;
+
+    const baseUrl = getFirebaseFirestoreUrl();
+    const headers = await getFirestoreAuthHeaders();
+    const read = await window.fetch(baseUrl, { headers, cache: "no-store" });
+    let currentDocument = null;
+    let currentRemoteDocument = null;
+    let destinationSummary = "el documento destino aún no existe";
+    let currentPayload = null;
+    if (read.status === 404) {
+      currentDocument = { exists: false };
+    } else if (read.ok) {
+      const remote = await read.json();
+      if (!remote.updateTime) throw new Error("Firestore no devolvió updateTime del destino; se canceló la importación.");
+      currentDocument = { updateTime: remote.updateTime };
+      const encoded = remote.fields && remote.fields.payloadJson && remote.fields.payloadJson.stringValue;
+      if (!encoded) {
+        throw new Error("El destino existente no contiene un respaldo Tasky verificable; se canceló la importación para no sobrescribir datos desconocidos.");
+      }
+      try {
+        currentPayload = JSON.parse(encoded);
+      } catch (error) {
+        throw new Error("El destino existente no se puede validar; se canceló la importación.");
+      }
+      if (!isTaskyBackupRecord(currentPayload) || !Array.isArray(currentPayload.boxes) || !Array.isArray(currentPayload.tasks)) {
+        throw new Error("El destino existente tiene un formato Tasky incompleto; se canceló la importación.");
+      }
+      currentRemoteDocument = remote;
+      const currentData = normalizeDataPayload(currentPayload);
+      destinationSummary = currentData
+        ? `destino actual: ${currentData.boxes.length} casillas y ${currentData.tasks.length} tareas`
+        : "destino actual con formato no reconocido";
+    } else {
+      throw new Error(`No se pudo leer el destino (${read.status}); se canceló la importación.`);
+    }
+
+    const confirmText = `¿Importar el respaldo de José a Staging?\\n\\nArchivo: ${imported.boxes.length} casillas, ${imported.tasks.length} tareas, ${Object.keys(history).length} entradas de historial y ${Object.keys(taskMemoryByBox).length} grupos de memoria.\\n${destinationSummary}.\\n\\nLa importación reemplaza el tablero de Staging si confirmas.`;
+    if (!window.confirm(confirmText)) return false;
+
+    const recoverySnapshot = {
+      savedAt: new Date().toISOString(),
+      projectId,
+      documentPath: docPath,
+      updateTime: currentDocument.updateTime || null,
+      exists: currentDocument.exists !== false,
+      document: currentRemoteDocument,
+      previousPayload: currentPayload
+    };
+    if (safeStorage.setItem("tasky:migration-recovery:jose", JSON.stringify(recoverySnapshot)) === false) {
+      throw new Error("No se pudo guardar la copia íntegra de recuperación del destino; se canceló la importación.");
+    }
+
+    const payload = {
+      ...buildSyncPayload(imported),
+      history,
+      settings,
+      taskMemoryByBox,
+      deviceId: appState.deviceId,
+      updatedAt: Math.max(Date.now(), Number(imported.updatedAt || 0) + 1)
+    };
+    const expectedPayloadJson = JSON.stringify(payload);
+    const documentFields = {
+      payloadJson: { stringValue: expectedPayloadJson },
+      compactEnvelope: { stringValue: "" },
+      updatedAt: { integerValue: String(payload.updatedAt) },
+      deviceId: { stringValue: String(appState.deviceId) },
+      protocolVersion: { integerValue: "2" }
+    };
+    const encodedPath = docPath.split("/").map(encodeURIComponent).join("/");
+    const commitUrl = `${getFirebaseFirestoreApiBase()}/projects/${encodeURIComponent(projectId)}/databases/(default)/documents:commit${cfg.apiKey ? `?key=${encodeURIComponent(cfg.apiKey)}` : ""}`;
+    const committed = await window.fetch(commitUrl, {
+      method: "POST", headers,
+      body: JSON.stringify({ writes: [{ update: { name: `projects/${projectId}/databases/(default)/documents/${encodedPath}`, fields: documentFields }, currentDocument }] })
+    });
+    if (!committed.ok) throw new Error(`Firestore rechazó la importación (${committed.status}); el destino no se sobrescribió.`);
+    const commitResult = await committed.json();
+    const updateTime = commitResult && commitResult.writeResults && commitResult.writeResults[0] && commitResult.writeResults[0].updateTime;
+    if (!updateTime) throw new Error("Firestore no confirmó updateTime; se requiere relectura antes de confirmar.");
+    const verify = await window.fetch(baseUrl, { headers, cache: "no-store" });
+    if (!verify.ok) throw new Error("La escritura se envió, pero la lectura confirmatoria falló; revisa Diagnóstico antes de reintentar.");
+    const verifiedJson = await verify.json();
+    const verifiedPayloadJson = verifiedJson.fields && verifiedJson.fields.payloadJson && verifiedJson.fields.payloadJson.stringValue;
+    if (verifiedPayloadJson) {
+      try { JSON.parse(verifiedPayloadJson); } catch (error) {
+        throw new Error("La lectura confirmatoria devolvió un documento no válido; la importación queda sin confirmar.");
+      }
+    }
+    if (verifiedJson.updateTime !== updateTime || verifiedPayloadJson !== expectedPayloadJson) {
+      throw new Error("La lectura confirmatoria no coincide con la revisión ni con el contenido completo escrito; la importación queda sin confirmar.");
+    }
+
+    appState.data = imported;
+    appState.taskMemory = { ...taskMemoryByBox };
+    appState.data.taskMemoryByBox = { ...taskMemoryByBox };
+    appState.history = history;
+    appState.settings = { ...appState.settings, ...settings };
+    appState.data.updatedAt = payload.updatedAt;
+    safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
+    safeStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(appState.history));
+    safeStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(appState.history));
+    safeStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(appState.settings));
+    safeStorage.setItem(STORAGE_KEYS.MEMORY, JSON.stringify(appState.taskMemory));
+    cloudFirestoreExists = true;
+    cloudFirestoreUpdateTime = verifiedJson.updateTime;
+    cloudSyncReady = true;
+    cloudSyncReadyConfig = getCloudSyncConfigKey();
+    safeStorage.setItem(STORAGE_KEYS.CLOUD_BASELINE, cloudSyncFingerprint({
+      ...payload,
+      taskMemoryByBox: appState.taskMemory,
+      history: appState.history,
+      settings: appState.settings
+    }));
+    safeStorage.setItem(STORAGE_KEYS.CLOUD_DIRTY, "0");
+    renderBoard();
+    showToast(`Importación de Staging confirmada: ${imported.boxes.length} casillas y ${imported.tasks.length} tareas.`);
+    return true;
+  }
+
   // Point 5: Synchronization & Backups details inside the 3-dots Options Modal
   function openOptionsModal() {
     const modal = document.getElementById("modal-options");
@@ -11482,7 +12369,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     const reschedCount = tasks.filter(t => isTaskRescheduledFuture(t)).length;
     const recurringCount = tasks.filter(t => t.frequency !== "once" || (t.repeatDays && t.repeatDays.length > 0)).length;
     const focusScore = tasks.length > 0 ? Math.round(((tasks.length - reschedCount) / tasks.length) * 100) : 100;
-    const monthlyTotal = (appState.data.monthlyCompletedBase || 66) + tasks.filter(t => t.done).length;
+    const monthlyTotal = (appState.data.monthlyCompletedBase ?? 66) + tasks.filter(t => t.done).length;
     const weekStart = getLearningWeekStartISO(todayIso);
     const weekEnd = addDaysISO(weekStart, 6);
     const completedThisWeek = normalizeCompletionLog(appState.data.completionLog)
@@ -12613,6 +13500,35 @@ function createTaskRowElement(task, box, showOriginBox = false) {
         showToast("Las tareas que intentabas editar ya no están disponibles.", true);
         return;
       }
+      if (isLeahChildAccount()) {
+        if (tasks.length !== 1 || !tasks[0].__leahChildTask ||
+            tasks[0].leahChildTaskStatus !== "pending") {
+          showToast("Solo puedes editar tus propias tareas pendientes.", true);
+          return;
+        }
+        const childApi = window.TaskyFamilyTasks;
+        if (!childApi || typeof childApi.update !== "function") {
+          showToast("No se pudo conectar el registro de tareas. Recarga Tasky e inténtalo nuevamente.", true);
+          return;
+        }
+        const descriptionInput = document.getElementById("input-edit-task-description");
+        childApi.update(tasks[0].childTaskDocId, {
+          title: val,
+          description: descriptionInput ? String(descriptionInput.value || "").trim().slice(0, 500) : "",
+          module: tasks[0].boxId,
+          scheduledDate: tasks[0].dueDate || getTodayISO(),
+          deadlineDate: tasks[0].deadlineDate || "",
+          priority: tasks[0].priority || "normal"
+        }).then(() => {
+          appState.editingTaskIds = [];
+          appState.editingTaskId = null;
+          document.getElementById("modal-edit-task").classList.remove("open");
+          showToast("Cambios guardados en tu tarea.");
+        }).catch((error) => {
+          showToast(String(error && error.message || "No se pudieron guardar los cambios."), true);
+        });
+        return;
+      }
       const descriptionInput = document.getElementById("input-edit-task-description");
       const descriptionValue = descriptionInput ? String(descriptionInput.value || "").trim().slice(0, 800) : "";
       pushUndoSnapshot(tasks.length > 1
@@ -12683,6 +13599,9 @@ function createTaskRowElement(task, box, showOriginBox = false) {
       safeStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(appState.firebaseConfig));
       cloudSyncReady = false;
       cloudSyncReadyConfig = "";
+      cloudFirestoreUpdateTime = "";
+      cloudFirestoreExists = null;
+      cloudRescueAuthorized = false;
       startCloudSyncStream();
     }
 
@@ -12702,6 +13621,11 @@ function createTaskRowElement(task, box, showOriginBox = false) {
         saveFirebaseSettingsFromInputs();
         cloudSyncReady = true;
         cloudSyncReadyConfig = getCloudSyncConfigKey();
+        cloudRescueAuthorized = true;
+        // Rescue is create-only: an existing cloud document cannot be replaced
+        // by this control without first being read and version-checked.
+        cloudFirestoreExists = false;
+        cloudFirestoreUpdateTime = "";
         appState.data.updatedAt = Math.max(Date.now(), Number(appState.data.updatedAt || 0) + 1);
         appState.data.bootstrapSeedData = false;
         (appState.data.tasks || []).forEach(task => { delete task.bootstrapSeed; });
@@ -12728,9 +13652,19 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     document.getElementById("input-import-json").addEventListener("change", (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
+      if (activeWorkspaceId === "jose" && Number(file.size || 0) > 10 * 1024 * 1024) {
+        showToast("El archivo supera el límite de 10 MiB para la importación segura.", true);
+        e.target.value = "";
+        return;
+      }
       const reader = new FileReader();
-      reader.onload = (ev) => {
+      reader.onload = async (ev) => {
         try {
+          if (activeWorkspaceId === "jose") {
+            const imported = await importJoseBackupSafely(file);
+            if (imported) document.getElementById("modal-options").classList.remove("open");
+            return;
+          }
           const parsed = JSON.parse(String(ev.target.result || ""));
           const target = parsed.tasky_data ? parsed.tasky_data : parsed;
           const norm = normalizeDataPayload(target);
@@ -12745,7 +13679,7 @@ function createTaskRowElement(task, box, showOriginBox = false) {
           renderBoard();
           showToast("Respaldo importado");
         } catch (err) {
-          showToast("Error al leer el archivo JSON", true);
+          showToast(String(err && err.message || "Error al leer el archivo JSON").slice(0, 180), true);
         }
       };
       reader.readAsText(file);
@@ -13011,9 +13945,42 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     renderDeadlineReminderSettings();
   }
 
-  function boot() {
+  let taskyWorkspaceBooted = false;
+
+  async function boot() {
+    if (taskyWorkspaceBooted || !activeWorkspaceId) return;
+    taskyWorkspaceBooted = true;
     initMobileAppNavigation();
     loadRegisteredData();
+
+    window.addEventListener("tasky:private-modules-error", (event) => {
+      privateModulesReady = false;
+      const detail = event && event.detail || {};
+      const message = String(detail.message || "No se pudieron verificar Salud y Gastos privados.");
+      const syncText = document.getElementById("sync-status-text");
+      if (syncText) syncText.textContent = "Sincronización privada bloqueada";
+      setRealtimeSyncStatus(message);
+      showToast(message, true);
+    });
+
+    if (isLeahAdultWorkspace()) {
+      try {
+        const privateManager = await waitForPrivateModulesApi();
+        const hydratedData = await privateManager.initialize(appState.data, appState.taskMemory, activeWorkspaceContext);
+        appState.data = applyLocalViewStateToData(hydratedData, appState.data, true);
+        safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
+        rebuildTaskMemoryFromTasks();
+        privateModulesReady = true;
+      } catch (error) {
+        privateModulesReady = false;
+        showToast("No se pudieron verificar Salud y Gastos privados. La sincronización quedó bloqueada para proteger esos datos.", true);
+        setRealtimeSyncStatus("Módulos privados no verificados; sincronización bloqueada");
+      }
+    }
+
+    appState.firebaseConfig.docPath = "workspaces/" + activeWorkspaceId + "/shared/main";
+    appState.firebaseConfig.databaseURL = "";
+    appState.cloudChannel = "tasky_workspace_" + activeWorkspaceId;
     cleanupCompletedTasksFromPreviousDays();
     // The midnight timeout and focus/visibility handlers cover date rollover.
     // Do not poll cleanup every 5 seconds: it can trigger repeated board renders.
@@ -13032,18 +13999,228 @@ function createTaskRowElement(task, box, showOriginBox = false) {
     renderBirthdayUpcomingList();
     document.documentElement.classList.remove("tasky-booting");
 
+    // Listen to private module documents only for authenticated adults in Leah's workspace.
+    if (isLeahAdultWorkspace() && privateModulesReady && window.TaskyPrivateModules) {
+      window.TaskyPrivateModules.startListeners(activeWorkspaceContext);
+    }
+
     // Initial sync, real-time updates, and a quiet recovery poll for mobile WebViews.
-    // Incoming payloads are fingerprinted before rendering, so unchanged data won't redraw the board.
-    pullCloudSync(false).finally(() => {
+    // Incoming shared snapshots never contain the two adult-only modules.
+    if (!isLeahAdultWorkspace() || privateModulesReady) {
+      pullCloudSync(false).finally(() => {
+        startTodayBirthdayPopupScheduler();
+      });
+      startCloudSyncStream();
+      startCloudSyncRecovery();
+    } else {
+      const syncText = document.getElementById("sync-status-text");
+      if (syncText) syncText.textContent = "Sincronización bloqueada";
       startTodayBirthdayPopupScheduler();
-    });
-    startCloudSyncStream();
-    startCloudSyncRecovery();
+    }
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot);
-  } else {
-    boot();
+  // Move the personalized greeting with hysteresis so small scroll changes
+  // near the handoff point do not make it repeatedly appear and disappear.
+  function updateTaskyGreetingPlacement() {
+    const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    const isMobile = window.innerWidth <= 700;
+    const root = document.documentElement;
+    const alreadyScrolled = root.classList.contains("tasky-greeting-scrolled");
+    const enterThreshold = isMobile ? 170 : 125;
+    const leaveThreshold = isMobile ? 110 : 80;
+
+    if (!alreadyScrolled && scrollTop >= enterThreshold) {
+      root.classList.add("tasky-greeting-scrolled");
+    } else if (alreadyScrolled && scrollTop <= leaveThreshold) {
+      root.classList.remove("tasky-greeting-scrolled");
+    }
   }
+  window.addEventListener("scroll", updateTaskyGreetingPlacement, { passive: true });
+  window.addEventListener("resize", updateTaskyGreetingPlacement);
+  window.addEventListener("pageshow", updateTaskyGreetingPlacement);
+  updateTaskyGreetingPlacement();
+
+  window.addEventListener("tasky:workspace-ready", (event) => {
+    const detail = event && event.detail ? event.detail : {};
+    const authApi = window.TaskyAuth;
+    const workspaceId = String(detail.workspaceId || "");
+    if (!authApi || !authApi.currentUser || authApi.currentUser.uid !== detail.uid) return;
+    if (!["jose", "camila", "leah"].includes(workspaceId)) return;
+    const membership = typeof authApi.getMembership === "function"
+      ? authApi.getMembership(workspaceId)
+      : null;
+    if (!membership || membership.active !== true || membership.role !== detail.role) return;
+
+    // Expose the validated workspace to scoped layout rules only after Firebase membership checks.
+    document.documentElement.dataset.taskyWorkspace = workspaceId;
+    const isLeahWorkspace = workspaceId === "leah";
+    document.documentElement.classList.toggle("tasky-leah-workspace", isLeahWorkspace);
+    document.body.classList.toggle("tasky-leah-workspace", isLeahWorkspace);
+    document.documentElement.classList.remove("tasky-greeting-scrolled");
+
+    activeWorkspaceId = workspaceId;
+    activeWorkspaceContext = {
+      uid: authApi.currentUser.uid,
+      email: authApi.currentUser.email || "",
+      displayName: String(detail.displayName || ""),
+      workspaceId,
+      workspaceName: String(detail.workspaceName || workspaceId),
+      role: membership.role
+    };
+
+    const welcomeTitles = document.querySelectorAll("#tasky-welcome-title, [data-tasky-welcome-title]");
+    const welcomeSubtitles = document.querySelectorAll("#tasky-welcome-subtitle, [data-tasky-welcome-subtitle]");
+    const fallbackNames = { jose: "José Carranza", camila: "Camila", leah: "Leah" };
+    const greetingName = activeWorkspaceContext.displayName || fallbackNames[workspaceId] || "usuario";
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
+    welcomeTitles.forEach(element => {
+      element.textContent = "¡" + greeting + ", " + greetingName + "!";
+    });
+    welcomeSubtitles.forEach(element => {
+      element.textContent = "Te damos la bienvenida a tu espacio de Tasky.";
+    });
+
+    activeStorageNamespace = "tasky:v2:" + workspaceId + (workspaceId === "leah" ? ":" + activeWorkspaceContext.uid : "");
+    appState.activeWorkspace = { ...activeWorkspaceContext };
+    appState.firebaseConfig.docPath = "workspaces/" + workspaceId + "/shared/main";
+    appState.firebaseConfig.databaseURL = "";
+    appState.cloudChannel = "tasky_workspace_" + workspaceId;
+    initializeWorkspaceBroadcastChannel();
+
+    document.documentElement.classList.remove("tasky-auth-required");
+    document.documentElement.classList.add("tasky-workspace-active");
+    document.documentElement.dataset.taskyWorkspace = workspaceId;
+    document.documentElement.dataset.taskyRole = membership.role;
+    const workspaceShell = document.querySelector(".app-shell");
+    const childBanner = document.getElementById("tasky-child-readonly-banner");
+    const familyPanel = document.getElementById("tasky-family-panel");
+    const familyShortcut = document.getElementById("tasky-child-tasks-shortcut");
+    const topActions = document.querySelector(".top-actions");
+    const backupOptionsButton = document.getElementById("btn-more-options");
+    const projectIdInput = document.getElementById("input-firebase-project-id");
+    const rtdbUrlInput = document.getElementById("input-firebase-db-url");
+    const workspacePathInput = document.getElementById("input-cloud-sync-channel");
+    const rawConfigInput = document.getElementById("input-firebase-raw-paste");
+    const rescueButton = document.getElementById("btn-firebase-rescue-migrate");
+    if (projectIdInput) {
+      projectIdInput.value = appState.firebaseConfig.projectId || "tasky-7a30c";
+      projectIdInput.readOnly = true;
+    }
+    if (rtdbUrlInput) {
+      rtdbUrlInput.value = "Desactivada; Tasky usa Firestore autenticado";
+      rtdbUrlInput.disabled = true;
+    }
+    if (workspacePathInput) {
+      workspacePathInput.value = "workspaces/" + workspaceId + "/shared/main";
+      workspacePathInput.readOnly = true;
+    }
+    if (rawConfigInput) rawConfigInput.hidden = true;
+    if (rescueButton) rescueButton.hidden = true;
+    if (workspaceId === "leah" && membership.role !== "child" &&
+        workspaceShell && workspaceShell.parentNode) {
+      // Adult review items stay before the shared board. Leah's own task panel
+      // is hidden until requested and opens as a fixed overlay.
+      if (childBanner) workspaceShell.parentNode.insertBefore(childBanner, workspaceShell);
+      if (familyPanel) workspaceShell.parentNode.insertBefore(familyPanel, workspaceShell);
+    }
+
+    if (membership.role === "child") {
+      // Keep the shared task data protected, but leave permitted child task
+      // actions active on the main board. The task dialog remains a separate
+      // optional workflow, not the only place where Leah can register tasks.
+      if (familyPanel) {
+        familyPanel.hidden = true;
+        familyPanel.inert = true;
+        familyPanel.classList.remove("is-open", "is-child-dialog");
+        familyPanel.setAttribute("aria-hidden", "true");
+      }
+      if (familyShortcut) {
+        familyShortcut.hidden = false;
+        if (window.innerWidth > 700 && topActions) {
+          topActions.insertBefore(familyShortcut, topActions.firstChild);
+          if (childBanner) childBanner.hidden = true;
+        } else if (childBanner) {
+          childBanner.appendChild(familyShortcut);
+          childBanner.hidden = false;
+        }
+      } else if (childBanner) {
+        childBanner.hidden = true;
+      }
+      // Leah can use task controls in the board; every task mutation is
+      // routed to her own child_tasks records or to a completion request.
+      // The shared board document itself remains read-only in pushCloudSync.
+      if (workspaceShell) {
+        workspaceShell.removeAttribute("inert");
+        workspaceShell.dataset.taskyChildInteractive = "true";
+      }
+      if (backupOptionsButton) backupOptionsButton.hidden = true;
+    } else {
+      if (workspaceShell) {
+        workspaceShell.removeAttribute("inert");
+        delete workspaceShell.dataset.taskyChildInteractive;
+      }
+      if (familyPanel) {
+        familyPanel.inert = false;
+        familyPanel.hidden = true;
+        familyPanel.classList.remove("is-open", "is-child-dialog");
+        familyPanel.setAttribute("aria-hidden", "true");
+      }
+      if (childBanner) childBanner.hidden = true;
+      if (familyShortcut) {
+        familyShortcut.hidden = true;
+        if (childBanner && familyShortcut.parentNode !== childBanner) childBanner.appendChild(familyShortcut);
+      }
+      if (backupOptionsButton) backupOptionsButton.hidden = false;
+    }
+    const authGate = document.getElementById("tasky-auth-gate");
+    if (authGate) authGate.hidden = true;
+    const accountButton = document.getElementById("btn-tasky-account");
+    if (accountButton) {
+      accountButton.textContent = activeWorkspaceContext.workspaceName;
+      accountButton.setAttribute("aria-label", "Cambiar espacio o cerrar sesión");
+      accountButton.title = "Cambiar espacio o cerrar sesión";
+    }
+    boot();
+  });
+
+  window.addEventListener("tasky:private-modules-updated", (event) => {
+    const detail = event && event.detail ? event.detail : {};
+    if (!isLeahAdultWorkspace() || !privateModulesReady ||
+        String(detail.uid || "") !== String(activeWorkspaceContext.uid || "") ||
+        !window.TaskyPrivateModules || !Array.isArray(detail.modules)) return;
+    try {
+      appState.data = window.TaskyPrivateModules.mergeIntoWorkspace(appState.data, detail.modules);
+      safeStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(appState.data));
+      rebuildTaskMemoryFromTasks();
+      renderBoard();
+      renderLearningGoalsPanel();
+    } catch (error) {
+      setRealtimeSyncStatus("No se pudieron actualizar los módulos privados en este dispositivo.");
+    }
+  });
+
+  window.addEventListener("tasky:open-workspace-picker", () => {
+    leahChildTaskRecords = [];
+    leahChildPendingCompletionIds = new Set();
+    if (window.TaskyPrivateModules) window.TaskyPrivateModules.close(activeWorkspaceContext);
+    privateModulesReady = false;
+  });
+
+  window.addEventListener("tasky:family-board-updated", () => {
+    // A family approval updates the authenticated shared Firestore document transactionally.
+    // Pull it through the normal merge engine so the active guardian board stays consistent.
+    pullCloudSync(true, true);
+  });
+
+  window.addEventListener("tasky:open-workspace-picker", () => {
+    document.documentElement.removeAttribute("data-tasky-workspace");
+    document.documentElement.classList.remove("tasky-greeting-scrolled", "tasky-leah-workspace");
+    document.body.classList.remove("tasky-leah-workspace");
+    document.documentElement.classList.add("tasky-auth-required");
+    document.documentElement.classList.remove("tasky-workspace-active");
+    const authGate = document.getElementById("tasky-auth-gate");
+    if (authGate) authGate.hidden = false;
+    window.dispatchEvent(new CustomEvent("tasky:show-workspace-picker"));
+  });
 })();

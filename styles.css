@@ -7451,3 +7451,1480 @@ body.focus-mode-open #boxes-container {
   .birthday-today-footer { flex-direction: column-reverse; }
   .birthday-today-footer button { width: 100%; justify-content: center; }
 }
+
+
+/* ==========================================================================
+   TASKY MULTI-WORKSPACE AUTH GATE · PERSONAL + FAMILY SPACES
+   ========================================================================= */
+.tasky-auth-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 28px 18px;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(244, 167, 200, 0.42), transparent 32%),
+    radial-gradient(circle at 88% 82%, rgba(168, 85, 247, 0.25), transparent 34%),
+    rgba(248, 246, 251, 0.97);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.tasky-auth-gate[hidden] {
+  display: none !important;
+}
+.tasky-auth-panel {
+  width: min(100%, 480px);
+  padding: clamp(24px, 5vw, 38px);
+  border: 1px solid rgba(168, 85, 247, 0.16);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 28px 90px rgba(39, 22, 49, 0.16);
+  color: #17131D;
+}
+.tasky-auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+.tasky-auth-mark {
+  display: grid;
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border-radius: 19px;
+  background: linear-gradient(145deg, #F4A7C8, #A855F7);
+  color: #17131D;
+  font-size: 27px;
+  font-weight: 900;
+  box-shadow: 0 10px 26px rgba(168, 85, 247, 0.2);
+}
+.tasky-auth-eyebrow {
+  margin: 0 0 6px;
+  color: #9333EA;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.tasky-auth-brand h1,
+.tasky-workspace-picker h2 {
+  margin: 0;
+  color: #17131D;
+  font-size: clamp(24px, 4vw, 30px);
+  line-height: 1.13;
+  font-weight: 850;
+}
+.tasky-auth-subtitle {
+  margin: 7px 0 0;
+  color: #766d7e;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.tasky-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.tasky-auth-form label {
+  margin-top: 7px;
+  color: #30283a;
+  font-size: 12px;
+  font-weight: 750;
+}
+.tasky-auth-form input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #e7ddea;
+  border-radius: 13px;
+  outline: none;
+  background: #fff;
+  color: #17131D;
+  font: inherit;
+  font-size: 14px;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.tasky-auth-form input:focus {
+  border-color: #A855F7;
+  box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.12);
+}
+.tasky-password-field {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+.tasky-password-field input {
+  padding-right: 54px;
+}
+.tasky-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+}
+.tasky-password-toggle:hover {
+  background: rgba(168, 85, 247, 0.09);
+}
+.tasky-password-toggle:focus-visible {
+  outline: 2px solid #A855F7;
+  outline-offset: 2px;
+}
+.tasky-auth-primary {
+  width: 100%;
+  min-height: 49px;
+  margin-top: 13px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(110deg, #A855F7, #D946EF 58%, #F4A7C8);
+  color: #17131D;
+  font-size: 14px;
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: 0 11px 24px rgba(168, 85, 247, 0.22);
+}
+.tasky-auth-primary:disabled {
+  opacity: .62;
+  cursor: wait;
+}
+.tasky-auth-link {
+  display: inline-flex;
+  width: 100%;
+  min-height: 43px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 9px;
+  padding: 10px 16px;
+  border: 1px solid rgba(148, 119, 163, .22);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fff, #faf6fd);
+  color: #765c83;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(50, 25, 65, .035);
+  transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.tasky-auth-link:hover {
+  transform: translateY(-1px);
+  border-color: rgba(168, 85, 247, .34);
+  background: linear-gradient(135deg, #faf5ff, #fff8fc);
+  color: #7E22CE;
+  box-shadow: 0 7px 18px rgba(126, 34, 206, .10);
+}
+.tasky-auth-link:focus-visible {
+  outline: 3px solid rgba(168, 85, 247, .25);
+  outline-offset: 3px;
+}
+.tasky-auth-signout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 10px 16px;
+  border: 1px solid rgba(148, 119, 163, .22);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(250, 247, 252, .98), rgba(255, 255, 255, .96));
+  color: #6f6278;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: .01em;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(50, 25, 65, .035);
+  transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.tasky-auth-signout:hover {
+  transform: translateY(-1px);
+  border-color: rgba(168, 85, 247, .34);
+  background: linear-gradient(135deg, #faf5ff, #fff8fc);
+  color: #7E22CE;
+  box-shadow: 0 7px 18px rgba(126, 34, 206, .10);
+}
+.tasky-auth-signout:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(126, 34, 206, .07);
+}
+.tasky-auth-signout:focus-visible {
+  outline: 3px solid rgba(168, 85, 247, .25);
+  outline-offset: 3px;
+}
+.tasky-auth-signout svg {
+  flex: 0 0 auto;
+  opacity: .8;
+}
+.tasky-auth-message {
+  margin: 12px 0 0;
+  color: #7E22CE;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.tasky-auth-message:empty {
+  display: none;
+}
+.tasky-auth-message.is-error {
+  color: #BE123C;
+}
+.tasky-workspace-picker h2 {
+  font-size: 23px;
+}
+.tasky-workspace-options {
+  display: grid;
+  gap: 11px;
+  margin: 20px 0 12px;
+}
+.tasky-workspace-option {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  min-height: 76px;
+  padding: 13px 15px;
+  border: 1px solid #e9dff0;
+  border-radius: 17px;
+  background: #fff;
+  color: #17131D;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+.tasky-workspace-option:hover,
+.tasky-workspace-option:focus-visible {
+  transform: translateY(-1px);
+  border-color: #C084FC;
+  outline: none;
+  box-shadow: 0 10px 25px rgba(126, 34, 206, 0.1);
+}
+.tasky-workspace-option[data-workspace="leah"] {
+  border: 1.5px solid #D946EF;
+  background: linear-gradient(110deg, rgba(252, 231, 243, .78), rgba(243, 232, 255, .75));
+}
+.tasky-workspace-option-icon {
+  display: grid;
+  flex: 0 0 43px;
+  width: 43px;
+  height: 43px;
+  place-items: center;
+  border-radius: 14px;
+  background: #F3E8FF;
+  color: #7E22CE;
+  font-size: 21px;
+}
+.tasky-workspace-option[data-workspace="leah"] .tasky-workspace-option-icon {
+  background: #F4A7C8;
+  color: #17131D;
+}
+.tasky-workspace-option-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.tasky-workspace-option-title {
+  color: #17131D;
+  font-size: 14px;
+  font-weight: 850;
+}
+.tasky-workspace-option-description {
+  color: #7a7081;
+  font-size: 11px;
+}
+.tasky-workspace-option-role {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(168, 85, 247, .1);
+  color: #7E22CE;
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.tasky-account-button {
+  max-width: 155px;
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid rgba(168, 85, 247, .22);
+  border-radius: 11px;
+  background: linear-gradient(110deg, rgba(244, 167, 200, .22), rgba(168, 85, 247, .13));
+  color: var(--text, #17131D);
+  font-size: 11px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+html.tasky-auth-required .top-navbar,
+html.tasky-auth-required .app-shell {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+@media (max-width: 540px) {
+  .tasky-auth-gate {
+    align-items: flex-start;
+    padding: 14px 11px;
+  }
+  .tasky-auth-panel {
+    margin: auto 0;
+    padding: 23px 18px;
+    border-radius: 23px;
+  }
+  .tasky-auth-brand {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .tasky-auth-mark {
+    flex-basis: 47px;
+    width: 47px;
+    height: 47px;
+    border-radius: 15px;
+    font-size: 23px;
+  }
+  .tasky-workspace-option {
+    min-height: 70px;
+    padding: 11px;
+  }
+  .tasky-workspace-option-role {
+    display: none;
+  }
+  .tasky-account-button {
+    max-width: 105px;
+    padding: 0 7px;
+    font-size: 10px;
+  }
+}
+
+
+.tasky-child-readonly-banner {
+  width: min(1120px, calc(100% - 36px));
+  margin: 14px auto 0;
+  padding: 12px 16px;
+  border: 1px solid rgba(217, 70, 239, .32);
+  border-radius: 15px;
+  background: linear-gradient(110deg, rgba(252, 231, 243, .96), rgba(243, 232, 255, .96));
+  color: #3b2147;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  box-shadow: 0 8px 22px rgba(168, 85, 247, .08);
+}
+.tasky-child-readonly-banner[hidden] { display: none !important; }
+.tasky-child-readonly-banner > span:first-child {
+  font-size: 22px;
+  line-height: 1;
+  color: #BE185D;
+}
+.tasky-child-readonly-banner > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.tasky-child-readonly-banner strong {
+  font-size: 12px;
+  font-weight: 850;
+}
+.tasky-child-readonly-banner small {
+  color: #6f5b79;
+  font-size: 11px;
+  line-height: 1.45;
+}
+html.tasky-auth-required body > *:not(#tasky-auth-gate):not(.gemini-aurora-bg):not(#tasky-boot-screen) {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+html.tasky-auth-required #tasky-auth-gate {
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+
+/* Leah's shared family space uses her favorite palette. */
+html[data-tasky-workspace="leah"] {
+  --bg: #fbf6fc;
+  --surface: rgba(255, 255, 255, 0.9);
+  --surface-solid: #ffffff;
+  --surface-muted: rgba(252, 244, 251, 0.9);
+  --surface-hover: rgba(250, 232, 247, 0.96);
+  --text: #17131D;
+  --text-secondary: #4b3c52;
+  --muted: #786a80;
+  --primary: #A855F7;
+  --primary-hover: #9333EA;
+  --primary-2: #D946EF;
+  --primary-soft: rgba(168, 85, 247, 0.12);
+}
+html[data-tasky-workspace="leah"] .brand-logo {
+  filter: drop-shadow(0 3px 14px rgba(217, 70, 239, 0.16));
+}
+#btn-more-options[hidden] { display: none !important; }
+
+
+/* ==========================================================================
+   TASKY FAMILY REQUESTS · LEAH WORKSPACE
+   ========================================================================== */
+.tasky-family-panel {
+  width: min(1180px, calc(100% - 40px));
+  margin: 22px auto 18px;
+  color: var(--text);
+}
+.tasky-family-panel[hidden] { display: none !important; }
+.tasky-family-card {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface, var(--card));
+  box-shadow: 0 12px 34px rgba(28, 16, 44, 0.06);
+  padding: clamp(16px, 2.5vw, 26px);
+}
+.tasky-family-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.tasky-family-eyebrow {
+  margin: 0 0 6px;
+  color: var(--primary);
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.tasky-family-title {
+  margin: 0;
+  font-size: clamp(1.15rem, 2vw, 1.55rem);
+  line-height: 1.2;
+  font-weight: 850;
+}
+.tasky-family-subtitle {
+  margin: 7px 0 0;
+  color: var(--text-secondary);
+  font-size: .88rem;
+  line-height: 1.55;
+  max-width: 720px;
+}
+.tasky-family-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--primary-soft, rgba(168,85,247,.12));
+  color: var(--primary);
+  font-weight: 850;
+}
+.tasky-family-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.tasky-family-form-card,
+.tasky-family-inbox-card {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  padding: 16px;
+  background: var(--surface-hover, rgba(148, 117, 170, .035));
+}
+.tasky-family-form-card h3,
+.tasky-family-inbox-card h3 {
+  margin: 0 0 6px;
+  font-size: .98rem;
+  font-weight: 800;
+}
+.tasky-family-help {
+  margin: 0 0 14px;
+  color: var(--text-secondary);
+  font-size: .82rem;
+  line-height: 1.5;
+}
+.tasky-family-field {
+  display: grid;
+  gap: 6px;
+  margin: 11px 0;
+}
+.tasky-family-field span,
+.tasky-family-field label {
+  color: var(--text-secondary);
+  font-size: .77rem;
+  font-weight: 750;
+}
+.tasky-family-field input,
+.tasky-family-field select,
+.tasky-family-field textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 11px;
+  color: var(--text);
+  background: var(--card);
+  font: inherit;
+  font-size: .88rem;
+}
+.tasky-family-field textarea {
+  min-height: 78px;
+  resize: vertical;
+}
+.tasky-family-two-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.tasky-family-primary,
+.tasky-family-secondary,
+.tasky-family-danger {
+  min-height: 39px;
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 13px;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform .16s ease, opacity .16s ease;
+}
+.tasky-family-primary {
+  color: #fff;
+  background: linear-gradient(135deg, #a855f7, #c026d3);
+}
+.tasky-family-secondary {
+  color: var(--text);
+  background: var(--surface-hover, rgba(148,117,170,.12));
+  border: 1px solid var(--border);
+}
+.tasky-family-danger {
+  color: #b42335;
+  background: rgba(220, 53, 69, .09);
+  border: 1px solid rgba(220, 53, 69, .18);
+}
+.tasky-family-primary:hover,
+.tasky-family-secondary:hover,
+.tasky-family-danger:hover { transform: translateY(-1px); }
+.tasky-family-primary:disabled,
+.tasky-family-secondary:disabled,
+.tasky-family-danger:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+.tasky-family-message {
+  min-height: 20px;
+  margin: 12px 0 0;
+  color: var(--text-secondary);
+  font-size: .8rem;
+  line-height: 1.45;
+}
+.tasky-family-message.is-error { color: #c53b4b; }
+.tasky-family-list {
+  display: grid;
+  gap: 10px;
+}
+.tasky-family-request {
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 13px;
+  background: var(--card);
+}
+.tasky-family-request-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.tasky-family-request-title {
+  margin: 0;
+  font-size: .91rem;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.tasky-family-request-meta {
+  margin: 5px 0 0;
+  color: var(--text-secondary);
+  font-size: .74rem;
+  line-height: 1.45;
+}
+.tasky-family-request-description {
+  margin: 9px 0 0;
+  color: var(--text);
+  font-size: .83rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.tasky-family-status {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: var(--surface-hover, rgba(148,117,170,.12));
+  color: var(--text-secondary);
+  font-size: .68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.tasky-family-status.is-pending { background: rgba(245, 158, 11, .12); color: #a16207; }
+.tasky-family-status.is-approved { background: rgba(22, 163, 74, .11); color: #15803d; }
+.tasky-family-status.is-awaiting-review { background: rgba(245, 158, 11, .14); color: #a16207; }
+.tasky-family-request-title.is-struck { text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: currentColor; opacity: .78; }
+.tasky-family-task-editor { width: 100%; }
+.tasky-family-status.is-rejected { background: rgba(220, 53, 69, .1); color: #b42335; }
+.tasky-family-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.tasky-family-empty {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  color: var(--text-secondary);
+  text-align: center;
+  font-size: .82rem;
+  line-height: 1.5;
+}
+@media (max-width: 720px) {
+  .tasky-family-panel { width: calc(100% - 24px); margin: 14px auto; }
+  .tasky-family-grid { grid-template-columns: 1fr; }
+  .tasky-family-two-fields { grid-template-columns: 1fr; }
+  .tasky-family-card { border-radius: 16px; }
+}
+
+
+
+
+/* LEAH WORKSPACE · avoid viewport-height filler after the final module.
+   The aurora background is fixed to the viewport, so the document itself
+   can end shortly after the content. Keep mobile navigation spacing intact. */
+@media (min-width: 701px) {
+  html[data-tasky-workspace="leah"] body {
+    min-height: 0;
+    padding-bottom: 40px;
+  }
+  html[data-tasky-workspace="leah"] .app-shell {
+    padding-bottom: 40px;
+  }
+}
+
+/* TASKY LOGIN · PROFILE DROPDOWN AND PERSONALIZED WELCOME */
+.tasky-profile-picker h2 {
+  margin: 0 0 14px;
+  color: #17131D;
+  font-size: clamp(20px, 3.5vw, 24px);
+  line-height: 1.15;
+  font-weight: 850;
+}
+.tasky-profile-picker label {
+  display: block;
+  margin: 0 0 7px;
+  color: #334155;
+  font-size: 0.83rem;
+  font-weight: 750;
+}
+.tasky-profile-select {
+  width: 100%;
+  min-height: 48px;
+  margin: 0 0 16px;
+  padding: 11px 42px 11px 14px;
+  border: 1px solid #d8d4e2;
+  border-radius: 13px;
+  background: #fff;
+  color: #17131D;
+  font: 600 0.94rem var(--font);
+  cursor: pointer;
+  outline: none;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.tasky-profile-select:focus {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, .13);
+}
+.tasky-profile-picker[hidden],
+.tasky-auth-form[hidden],
+#tasky-login-credentials[hidden] {
+  display: none !important;
+}
+.tasky-auth-form .tasky-auth-subtitle {
+  margin: 0 0 5px;
+}
+#tasky-auth-signout[hidden] {
+  display: none !important;
+}
+.tasky-welcome {
+  margin: 0 0 12px;
+}
+.tasky-welcome h2 {
+  color: var(--text);
+  font-size: clamp(1.05rem, 2.4vw, 1.45rem);
+  line-height: 1.2;
+  font-weight: 850;
+  letter-spacing: -0.035em;
+}
+.tasky-welcome p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 550;
+}
+
+/* Workspace greeting now lives beside the Tasky logo in the top bar. */
+.tasky-welcome.brand-workspace-welcome {
+  margin: 0;
+  flex: 0 1 340px;
+  min-width: 0;
+  max-width: min(340px, 30vw);
+}
+.tasky-welcome.brand-workspace-welcome h2 {
+  margin: 0;
+  font-size: clamp(0.9rem, 1.35vw, 1.06rem);
+  line-height: 1.16;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tasky-welcome.brand-workspace-welcome p {
+  margin: 3px 0 0;
+  font-size: 0.74rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 700px) {
+  .tasky-welcome.brand-workspace-welcome {
+    flex: 0 1 auto;
+    max-width: min(260px, calc(100vw - 100px));
+  }
+  .tasky-welcome.brand-workspace-welcome h2 {
+    font-size: 0.84rem;
+  }
+  .tasky-welcome.brand-workspace-welcome p {
+    font-size: 0.66rem;
+  }
+}
+
+
+/* LEAH WORKSPACE · greeting appears in the hero at the top and moves to the
+   sticky brand bar after the user scrolls down. */
+.tasky-welcome.brand-workspace-welcome { display: none; }
+.tasky-welcome.hero-workspace-welcome {
+  display: block;
+  margin: 0 0 8px;
+}
+.tasky-welcome.hero-workspace-welcome h2 {
+  font-size: clamp(1.05rem, 2.1vw, 1.4rem);
+}
+.tasky-welcome.hero-workspace-welcome p {
+  margin-top: 3px;
+}
+html.tasky-greeting-scrolled .tasky-welcome.brand-workspace-welcome {
+  display: block;
+}
+html.tasky-greeting-scrolled .tasky-welcome.hero-workspace-welcome {
+  display: none !important;
+}
+
+/* Leah desktop: finish the document shortly after the final box. */
+@media (min-width: 701px) {
+  html[data-tasky-workspace="leah"] body {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-bottom: 12px !important;
+  }
+  html[data-tasky-workspace="leah"] .app-shell {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 0 !important;
+  }
+  html[data-tasky-workspace="leah"] #boxes-container {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+}
+
+/* On small screens the body alone reserves room for the fixed bottom nav. */
+@media (max-width: 700px) {
+  html:not(.tasky-greeting-scrolled) .hero-left {
+    display: block !important;
+  }
+  html:not(.tasky-greeting-scrolled) .hero-header::before {
+    display: none !important;
+    content: none !important;
+  }
+  html:not(.tasky-greeting-scrolled) .hero-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+  }
+  html:not(.tasky-greeting-scrolled) .hero-date-stack {
+    width: 100%;
+    max-width: none;
+    align-items: flex-start;
+  }
+  html:not(.tasky-greeting-scrolled) .hero-date-stack .date-card {
+    text-align: left;
+  }
+  html[data-tasky-workspace="leah"] body {
+    min-height: 0 !important;
+    padding-bottom: calc(var(--mobile-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 12px) !important;
+  }
+  html[data-tasky-workspace="leah"] .app-shell {
+    min-height: 0 !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 0 !important;
+  }
+  html[data-tasky-workspace="leah"] #boxes-container {
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+}
+
+
+/* LEAH WORKSPACE · smooth greeting handoff without changing document flow.
+   The hero copy remains in layout while fading; the brand copy expands in
+   the sticky bar. This prevents scroll-height jumps and threshold flicker. */
+.tasky-welcome.hero-workspace-welcome {
+  display: block !important;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition:
+    opacity 180ms ease,
+    transform 260ms cubic-bezier(.22, 1, .36, 1),
+    visibility 0s linear 0s;
+}
+html.tasky-greeting-scrolled .tasky-welcome.hero-workspace-welcome {
+  display: block !important;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-7px);
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    transform 260ms cubic-bezier(.22, 1, .36, 1),
+    visibility 0s linear 180ms;
+}
+
+.tasky-welcome.brand-workspace-welcome {
+  display: block !important;
+  flex: 0 1 0px;
+  width: 0;
+  min-width: 0;
+  max-width: 0;
+  margin: 0;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-9px);
+  pointer-events: none;
+  transition:
+    flex-basis 280ms cubic-bezier(.22, 1, .36, 1),
+    max-width 280ms cubic-bezier(.22, 1, .36, 1),
+    opacity 180ms ease,
+    transform 280ms cubic-bezier(.22, 1, .36, 1),
+    visibility 0s linear 180ms;
+}
+html.tasky-greeting-scrolled .tasky-welcome.brand-workspace-welcome {
+  display: block !important;
+  flex: 0 1 340px;
+  width: auto;
+  max-width: min(340px, 30vw);
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+@media (max-width: 700px) {
+  .tasky-welcome.brand-workspace-welcome {
+    flex: 0 1 0px;
+    width: 0;
+    max-width: 0;
+  }
+  html.tasky-greeting-scrolled .tasky-welcome.brand-workspace-welcome {
+    flex-basis: min(260px, calc(100vw - 100px));
+    max-width: min(260px, calc(100vw - 100px));
+  }
+  .tasky-welcome.brand-workspace-welcome h2 {
+    font-size: 0.84rem;
+  }
+  .tasky-welcome.brand-workspace-welcome p {
+    font-size: 0.66rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tasky-welcome.hero-workspace-welcome,
+  .tasky-welcome.brand-workspace-welcome {
+    transition: none !important;
+  }
+}
+
+
+/* TASKY BOOT EXPERIENCE · branded, accessible loading state during Auth + workspace hydration. */
+.tasky-boot-screen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(250, 247, 253, .74);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  backdrop-filter: blur(18px) saturate(145%);
+}
+html.tasky-booting #tasky-boot-screen {
+  display: flex;
+}
+.tasky-boot-card {
+  width: min(360px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 17px;
+  padding: 30px 27px 25px;
+  border: 1px solid rgba(168, 85, 247, .15);
+  border-radius: 25px;
+  background: rgba(255, 255, 255, .84);
+  box-shadow: 0 22px 70px rgba(91, 54, 120, .13), 0 3px 12px rgba(91, 54, 120, .06);
+  text-align: center;
+}
+.tasky-boot-mark {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 17px;
+  background: linear-gradient(145deg, #181827, #3a3151);
+  color: #fff;
+  box-shadow: 0 9px 22px rgba(53, 42, 82, .2);
+}
+.tasky-boot-mark span {
+  font-size: 29px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -.06em;
+}
+.tasky-boot-mark i {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #262239;
+  border-radius: 50%;
+  background: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, .18);
+}
+.tasky-boot-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(168, 85, 247, .17);
+  border-top-color: #a855f7;
+  border-right-color: #ec77bd;
+  border-radius: 50%;
+  animation: taskyBootSpin .82s linear infinite;
+}
+.tasky-boot-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tasky-boot-copy strong {
+  color: #241b30;
+  font-size: 1rem;
+  font-weight: 850;
+  letter-spacing: -.02em;
+}
+.tasky-boot-copy span {
+  color: #796b83;
+  font-size: .8rem;
+  line-height: 1.5;
+}
+.tasky-boot-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tasky-boot-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #b46be8;
+  animation: taskyBootDot 1.05s ease-in-out infinite;
+}
+.tasky-boot-dots i:nth-child(2) { animation-delay: .14s; }
+.tasky-boot-dots i:nth-child(3) { animation-delay: .28s; }
+@keyframes taskyBootSpin { to { transform: rotate(360deg); } }
+@keyframes taskyBootDot {
+  0%, 60%, 100% { opacity: .32; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tasky-boot-spinner, .tasky-boot-dots i { animation: none !important; }
+}
+
+/* The workspace marker is added only after Firebase validates membership.
+   For Leah's compact board, let the aurora follow the document rather than
+   staying fixed to a taller desktop viewport. */
+@media (min-width: 701px) {
+  body.tasky-leah-workspace {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-bottom: 16px !important;
+  }
+  body.tasky-leah-workspace .app-shell {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-bottom: 16px !important;
+    margin-bottom: 0 !important;
+  }
+  body.tasky-leah-workspace #boxes-container {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+  body.tasky-leah-workspace .gemini-aurora-bg {
+    position: absolute !important;
+    inset: 0 !important;
+    height: auto !important;
+  }
+  html.tasky-leah-workspace {
+    background-color: #fbf6fc;
+  }
+}
+
+
+
+/* TASKY LEAH · child workspace keeps the shared board read-only,
+   while offering an explicit path to Leah's own editable task workflow. */
+html[data-tasky-workspace="leah"][data-tasky-role="child"] #learning-goals-section,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] #learning-details-panel,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .birthday-calendar-btn,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] #btn-date-birthday-shortcut,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] #modal-birthdays,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] #modal-today-birthdays,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] #fab-main-trigger {
+  display: none !important;
+}
+
+/* Remove controls that belong to the adults' shared-board editor.
+   Leah can add, edit and submit her own tasks from the separate family panel. */
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .box-header-actions,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .box-left-move-btns,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .add-task-BarBtn,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .inline-add-wrapper,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-check-circle,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-right-actions,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .drag-handle,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .box-ctrl-btn {
+  display: none !important;
+}
+
+.tasky-child-readonly-banner {
+  align-items: center;
+}
+.tasky-child-banner-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+}
+.tasky-child-tasks-shortcut {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  margin-left: auto;
+  padding: 8px 15px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(110deg, #A855F7, #D946EF 58%, #F4A7C8);
+  color: #24112E;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: 0 7px 18px rgba(168, 85, 247, .17);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.tasky-child-tasks-shortcut:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(168, 85, 247, .23);
+}
+.tasky-child-tasks-shortcut:focus-visible {
+  outline: 3px solid rgba(168, 85, 247, .28);
+  outline-offset: 3px;
+}
+.tasky-child-tasks-shortcut[hidden] {
+  display: none !important;
+}
+
+/* Compact end-of-page spacing for Leah on desktop and mobile.
+   Preserve the fixed mobile navigation's safe area only where it exists. */
+html[data-tasky-workspace="leah"] body.tasky-leah-workspace {
+  min-height: 0 !important;
+  height: auto !important;
+  padding-bottom: 8px !important;
+}
+html[data-tasky-workspace="leah"] body.tasky-leah-workspace .app-shell {
+  min-height: 0 !important;
+  height: auto !important;
+  padding-bottom: 8px !important;
+  margin-bottom: 0 !important;
+}
+html[data-tasky-workspace="leah"] #boxes-container {
+  min-height: 0 !important;
+  height: auto !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+html[data-tasky-workspace="leah"] .tasky-family-panel {
+  margin-top: 10px !important;
+  margin-bottom: 8px !important;
+}
+html[data-tasky-workspace="leah"] .gemini-aurora-bg {
+  position: absolute !important;
+  inset: 0 !important;
+  height: 100% !important;
+}
+@media (max-width: 700px) {
+  html[data-tasky-workspace="leah"] body.tasky-leah-workspace {
+    padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  html[data-tasky-workspace="leah"] body.tasky-leah-workspace .app-shell {
+    padding-bottom: 8px !important;
+  }
+  .tasky-child-readonly-banner {
+    width: calc(100% - 20px);
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 11px 12px;
+  }
+  .tasky-child-tasks-shortcut {
+    margin-left: auto;
+  }
+}
+
+
+/* Auth state: keep the single-workspace action screen compact and explicit. */
+#tasky-profile-select[hidden],
+#tasky-profile-select-label[hidden],
+#tasky-login-submit[hidden] {
+  display: none !important;
+}
+#tasky-profile-picker-title {
+  margin-bottom: 14px;
+}
+.tasky-auth-message:empty {
+  display: none;
+}
+.tasky-family-panel[data-tasky-role="child"] {
+  scroll-margin-top: 18px;
+}
+.tasky-family-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text-secondary);
+  font-size: .85rem;
+}
+.tasky-family-loading::before {
+  content: "";
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(168, 85, 247, .18);
+  border-top-color: #a855f7;
+  border-radius: 50%;
+  animation: taskyBootSpin .8s linear infinite;
+}
+
+
+/* TASKY LEAH · place the family task workflow before the read-only board
+   and let the document end close to the final visible section. */
+html[data-tasky-workspace="leah"] body.tasky-leah-workspace {
+  min-height: 0 !important;
+  height: auto !important;
+  padding-bottom: 0 !important;
+}
+html[data-tasky-workspace="leah"] body.tasky-leah-workspace .app-shell {
+  min-height: 0 !important;
+  height: auto !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+html[data-tasky-workspace="leah"] body.tasky-leah-workspace #boxes-container {
+  min-height: 0 !important;
+  height: auto !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+html[data-tasky-workspace="leah"] .tasky-family-panel {
+  margin: 8px auto 14px !important;
+}
+@media (max-width: 700px) {
+  html[data-tasky-workspace="leah"] body.tasky-leah-workspace {
+    padding-bottom: calc(var(--mobile-nav-height, 66px) + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  html[data-tasky-workspace="leah"] .tasky-family-panel {
+    margin-top: 8px !important;
+  }
+}
+
+
+/* TASKY LEAH · balanced dashboard spacing and an overlay-only task workspace.
+   The aurora must remain behind page content; it must never cover flow items
+   while their layout height is still reserved. */
+@media (min-width: 701px) {
+  html[data-tasky-workspace="leah"] body.tasky-leah-workspace {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-top: 0 !important;
+    padding-bottom: 64px !important;
+  }
+  html[data-tasky-workspace="leah"] body.tasky-leah-workspace .app-shell {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-top: 18px !important;
+    padding-bottom: 22px !important;
+    margin-bottom: 0 !important;
+  }
+}
+html[data-tasky-workspace="leah"] .tasky-child-readonly-banner {
+  position: relative;
+  z-index: 2;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .top-actions .tasky-child-tasks-shortcut {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 34px;
+  height: 34px;
+  margin: 0 2px 0 0;
+  padding: 7px 11px;
+  border-radius: 11px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+html[data-tasky-workspace="leah"] .gemini-aurora-bg {
+  position: fixed !important;
+  inset: 0 !important;
+  height: 100vh !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+/* Leah's task form is a dialog overlay: opening it does not move the dashboard. */
+html.tasky-family-dialog-open,
+html.tasky-family-dialog-open body {
+  overflow: hidden !important;
+}
+.tasky-family-panel.is-child-dialog.is-open {
+  position: fixed !important;
+  z-index: 300 !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  max-height: 100vh;
+  max-height: 100dvh;
+  margin: 0 !important;
+  padding: max(18px, env(safe-area-inset-top, 0px)) 18px max(22px, env(safe-area-inset-bottom, 0px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: rgba(25, 18, 37, .42);
+  -webkit-backdrop-filter: blur(9px);
+  backdrop-filter: blur(9px);
+}
+.tasky-family-panel.is-child-dialog.is-open #tasky-family-content {
+  width: min(1180px, 100%);
+  max-width: 1180px;
+  margin: 0 auto;
+}
+.tasky-family-panel.is-child-dialog.is-open .tasky-family-card {
+  margin: 0 auto 14px;
+  box-shadow: 0 24px 70px rgba(18, 12, 29, .22);
+}
+.tasky-family-close {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 8px 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-hover, #f4eafa);
+  color: var(--text);
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.tasky-family-close:hover {
+  background: var(--primary-soft, #f3e8ff);
+}
+@media (max-width: 700px) {
+  html[data-tasky-workspace="leah"] body.tasky-leah-workspace {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-top: 0 !important;
+    padding-bottom: calc(var(--mobile-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 18px) !important;
+  }
+  html[data-tasky-workspace="leah"] body.tasky-leah-workspace .app-shell {
+    padding-top: 12px !important;
+    padding-bottom: 14px !important;
+  }
+  html[data-tasky-workspace="leah"] .tasky-family-panel.is-child-dialog.is-open {
+    padding: max(10px, env(safe-area-inset-top, 0px)) 10px max(16px, env(safe-area-inset-bottom, 0px));
+  }
+  html[data-tasky-workspace="leah"] .tasky-child-readonly-banner {
+    z-index: 2;
+    margin-top: 8px;
+  }
+}
+
+
+/* TASKY LEAH · main board permissions.
+   The child can add and complete tasks from her visible casillas, while
+   shared-board structure and adult-created task controls stay read-only. */
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .box-left-move-btns,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .box-header-actions > button:not([data-box-action="collapse"]),
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-drag-handle,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-duplicate-marker {
+  display: none !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .box-name {
+  cursor: default !important;
+  pointer-events: none !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-board-row {
+  cursor: default;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-board-row .task-right-actions > button {
+  display: none !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-owned-row .task-right-actions > [data-task-action="edit"] {
+  display: inline-flex !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-readonly-row .task-title {
+  cursor: default !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-owned-row .task-title {
+  cursor: pointer !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-leah-review-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 3px 5px 0 0;
+  padding: 3px 7px;
+  border: 1px solid rgba(124, 58, 237, .2);
+  border-radius: 999px;
+  background: rgba(237, 233, 254, .82);
+  color: #6d28d9;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-readonly-row .task-check-circle:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .inline-add-form {
+  pointer-events: auto;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .inline-add-form :is(textarea, input, button) {
+  pointer-events: auto;
+}
+@media (max-width: 700px) {
+  html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-owned-row .task-right-actions > [data-task-action="edit"],
+  html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-owned-row .task-right-actions > [data-task-action="delete"] {
+    display: inline-flex !important;
+  }
+}
+
+
+/* TASKY LEAH · interactive child-owned tasks on the main board.
+   Only add, edit and send-to-review actions for Leah's own pending records
+   remain active. Adult-created shared tasks stay read-only. */
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .box-left-move-btns,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .box-header-actions > button:not([data-box-action="collapse"]),
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-drag-handle,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-duplicate-marker {
+  display: none !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .box-name {
+  cursor: default !important;
+  pointer-events: none !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-board-row {
+  cursor: default;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-board-row .task-right-actions > button {
+  display: none !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-owned-row .task-right-actions > [data-task-action="edit"] {
+  display: inline-flex !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-readonly-row .task-title {
+  cursor: default !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-owned-row .task-title {
+  cursor: pointer !important;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-leah-review-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 3px 5px 0 0;
+  padding: 3px 7px;
+  border: 1px solid rgba(124, 58, 237, .2);
+  border-radius: 999px;
+  background: rgba(237, 233, 254, .82);
+  color: #6d28d9;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-readonly-row .task-check-circle:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .inline-add-form,
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .inline-add-form :is(textarea, input, button) {
+  pointer-events: auto;
+}
