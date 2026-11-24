@@ -152,3 +152,89 @@ test("Jose 404 stays pending and backup import is staging-only, previewed, backe
   assert.match(app, /if \(creatingNewFirestoreDocument\)\s*\{\s*const confirmation = await window\.fetch\(getFirebaseFirestoreUrl\(\)/);
   assert.match(app, /if \(response\.ok\) \{\s*const confirmation = await window\.fetch/);
 });
+
+
+test("Tasky backup round-trips separate history, settings, memory and durable task metadata", () => {
+  const isRecord = value => Boolean(value && typeof value === "object" && !Array.isArray(value));
+  const isRecordSource = extractFunction("isTaskyBackupRecord", "\\n  function buildTaskyBackupEnvelope");
+  const buildSource = extractFunction("buildTaskyBackupEnvelope", "\\n  function normalizeTaskyBackupEnvelope");
+  const normalizeSource = extractFunction("normalizeTaskyBackupEnvelope", "\\n  function exportJsonBackup");
+  const predicate = new Function(`return (${isRecordSource});`)();
+  const build = new Function("isTaskyBackupRecord", `return (${buildSource});`)(predicate);
+  const normalizeDataPayloadForTest = raw => ({
+    ...raw,
+    boxes: Array.isArray(raw.boxes) ? raw.boxes : [],
+    tasks: Array.isArray(raw.tasks) ? raw.tasks : [],
+    taskMemoryByBox: isRecord(raw.taskMemoryByBox) ? raw.taskMemoryByBox : {}
+  });
+  const normalize = new Function("isTaskyBackupRecord", "normalizeDataPayload", `return (${normalizeSource});`)(
+    predicate, normalizeDataPayloadForTest
+  );
+
+  const source = {
+    boxes: [{ id: "home", name: "CASA", updatedAt: 20 }],
+    tasks: [{ id: "task-1", boxId: "home", title: "Tarea guardada", updatedAt: 30 }],
+    deletedTaskIds: ["deleted-task"],
+    deletedBoxIds: ["deleted-box"],
+    deletedTaskUpdatedAt: { "deleted-task": 40 },
+    deletedBoxUpdatedAt: { "deleted-box": 50 },
+    learningGoals: { daily: { "2026-11-24": "Leer" }, weekly: {} },
+    focusPlan: { date: "2026-11-24", byBox: { home: ["task-1"] }, updatedAt: 60 },
+    completionLog: [{ taskId: "task-1", completedDate: "2026-11-23", updatedAt: 70 }],
+    dismissedTaskSuggestionsByBox: { home: ["No repetir"] },
+    birthdays: [{ id: "birthday-1", name: "Familiar", date: "2026-12-01" }],
+    monthlyCompletedBase: 66,
+    updatedAt: 80
+  };
+  const history = { "2026-11-23": 3, "2026-11-24": 1 };
+  const settings = { theme: "dark", soundsEnabled: false, weekStartsOn: 1 };
+  const taskMemoryByBox = { home: ["Comprar pan", "Llamar"] };
+
+  const exported = build({ data: source, history, settings, taskMemoryByBox });
+  const restored = normalize(JSON.parse(JSON.stringify(exported)));
+
+  assert.deepEqual(restored.history, history);
+  assert.deepEqual(restored.settings, settings);
+  assert.deepEqual(restored.taskMemoryByBox, taskMemoryByBox);
+  assert.deepEqual(restored.imported.boxes, source.boxes);
+  assert.deepEqual(restored.imported.tasks, source.tasks);
+  for (const key of [
+    "deletedTaskIds", "deletedBoxIds", "deletedTaskUpdatedAt", "deletedBoxUpdatedAt",
+    "learningGoals", "focusPlan", "completionLog", "dismissedTaskSuggestionsByBox",
+    "birthdays", "monthlyCompletedBase"
+  ]) assert.deepEqual(restored.imported[key], source[key], `round-trip failed for ${key}`);
+
+  const importSource = extractFunction("importJoseBackupSafely", "\\n\\n  // Point 5:");
+  assert.match(importSource, /document: currentRemoteDocument/);
+  assert.match(importSource, /verifiedPayloadJson !== expectedPayloadJson/);
+  assert.match(importSource, /STORAGE_KEYS\\.SETTINGS/);
+  assert.match(importSource, /STORAGE_KEYS\\.MEMORY/);
+});
+
+test("legacy Tasky JSON backups keep embedded history, settings and task memory", () => {
+  const isRecord = value => Boolean(value && typeof value === "object" && !Array.isArray(value));
+  const isRecordSource = extractFunction("isTaskyBackupRecord", "\\n  function buildTaskyBackupEnvelope");
+  const normalizeSource = extractFunction("normalizeTaskyBackupEnvelope", "\\n  function exportJsonBackup");
+  const predicate = new Function(`return (${isRecordSource});`)();
+  const normalizeDataPayloadForTest = raw => ({
+    ...raw,
+    boxes: Array.isArray(raw.boxes) ? raw.boxes : [],
+    tasks: Array.isArray(raw.tasks) ? raw.tasks : [],
+    taskMemoryByBox: isRecord(raw.taskMemoryByBox) ? raw.taskMemoryByBox : {}
+  });
+  const normalize = new Function("isTaskyBackupRecord", "normalizeDataPayload", `return (${normalizeSource});`)(
+    predicate, normalizeDataPayloadForTest
+  );
+  const legacy = {
+    boxes: [{ id: "home", name: "CASA" }],
+    tasks: [],
+    history: { "2026-11-20": 2 },
+    settings: { theme: "light" },
+    taskMemoryByBox: { home: ["Lavar"] }
+  };
+  const restored = normalize(legacy);
+  assert.deepEqual(restored.history, legacy.history);
+  assert.deepEqual(restored.settings, legacy.settings);
+  assert.deepEqual(restored.taskMemoryByBox, legacy.taskMemoryByBox);
+  assert.deepEqual(restored.imported.boxes, legacy.boxes);
+});
