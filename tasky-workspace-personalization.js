@@ -135,21 +135,21 @@
     if (getWorkspaceId() !== "leah") return;
     if (getRole() === "child") return;
 
-    const targets = document.querySelectorAll(".tasky-welcome-title, .tasky-welcome h1, .tasky-welcome strong, .tasky-welcome");
-    if (!targets.length) return;
+    const containers = document.querySelectorAll(".tasky-welcome, .hero-workspace-welcome, .brand-workspace-welcome");
+    if (!containers.length) return;
 
     isOwnGreetingUpdate = true;
     try {
-      targets.forEach((el) => {
-        // Actualizar solo nodos de texto directos para no romper sub-elementos
-        Array.from(el.childNodes).forEach((node) => {
-          if (node.nodeType !== Node.TEXT_NODE) return;
+      containers.forEach((root) => {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        let node = walker.nextNode();
+        while (node) {
           const val = String(node.nodeValue || "");
-          if (/papá\s+José/i.test(val)) return;
-          if (/José(\s+Carranza)?/i.test(val)) {
+          if (val && !/papá\s+José/i.test(val) && /José(\s+Carranza)?/i.test(val)) {
             node.nodeValue = val.replace(/José(\s+Carranza)?/gi, "papá José");
           }
-        });
+          node = walker.nextNode();
+        }
       });
     } finally {
       window.setTimeout(() => {
