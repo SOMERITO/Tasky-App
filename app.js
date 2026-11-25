@@ -34,6 +34,7 @@
     if (target.closest(".add-task-BarBtn, .inline-add-form, .task-memory-suggestions .memory-suggestion-select")) return true;
     if (target.closest(".task-check-circle")) return true;
     if (target.closest('.box-header-actions [data-box-action="collapse"]')) return true;
+    if (target.closest("#btn-toggle-all-boxes")) return true;
 
     const taskRow = target.closest(".task-item[data-task-id]");
     if (!taskRow) return false;
