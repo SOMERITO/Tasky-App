@@ -1,40 +1,44 @@
 /* ==========================================================================
-   TASKY WORKSPACE PERSONALIZATION · Frases dedicadas para Leah y Camila
-   Intercepta #quote-text / #quote-author sin modificar app.js.
+   TASKY WORKSPACE PERSONALIZATION · Frases Harry Potter (Leah), Camila y saludo papá José
+   Intercepta #quote-text / #quote-author y el saludo en Tasky Leah sin modificar app.js.
    ========================================================================== */
 (() => {
   "use strict";
 
-  // Frases mágicas, dulces e inspiradoras de cuentos, libros y películas para una niña de 11 años
+  // Colección especial de Harry Potter para Leah (11 años, fan de Hogwarts ⚡)
   const LEAH_QUOTES = [
-    { text: "Lo esencial es invisible a los ojos; solo se ve bien con el corazón.", author: "El Principito" },
-    { text: "Eres más valiente de lo que crees, más fuerte de lo que pareces y más inteligente de lo que piensas.", author: "Winnie the Pooh" },
-    { text: "Los libros le dieron a Matilda un mensaje maravilloso: nunca estás sola cuando tienes historias contigo.", author: "Matilda · Roald Dahl" },
-    { text: "A veces he creído hasta seis cosas imposibles antes del desayuno.", author: "Alicia en el País de las Maravillas" },
-    { text: "En el momento en que dudas si puedes volar, dejas de poder hacerlo para siempre. ¡Confía en tus alas!", author: "Peter Pan" },
-    { text: "En cada trabajo que hay que hacer hay un toque de diversión; encuentra lo divertido y ¡zas!, la tarea se vuelve un juego.", author: "Mary Poppins" },
-    { text: "No es un día cualquiera cuando decides aprender algo nuevo y sorprendente.", author: "Ana de las Tejas Verdes" },
-    { text: "Aventúrate más allá de lo conocido: las mejores recompensas esperan a quienes se atreven a explorar.", author: "Enredados" },
-    { text: "No importa cuán grande parezca la montaña, siempre se sube dando un pequeño paso con alegría.", author: "Cuento de la Estrella Curiosa" },
-    { text: "Tu magia no está en ser perfecta, sino en ser tú misma y brillar con tu propio don.", author: "Encanto" },
-    { text: "A veces el mar te llama a descubrir hasta dónde puedes llegar, y la respuesta siempre te sorprenderá.", author: "Moana" },
+    { text: "La felicidad se puede hallar hasta en los más oscuros momentos, si somos capaces de usar bien la luz.", author: "Albus Dumbledore · Harry Potter" },
     { text: "Son nuestras decisiones, mucho más que nuestras habilidades, las que muestran quiénes somos realmente.", author: "Albus Dumbledore · Harry Potter" },
-    { text: "Cuando tienes una chispa de curiosidad, cada día se convierte en una aventura nueva.", author: "El Mago de Oz" },
-    { text: "Los sueños grandes empiezan con ideas pequeñas guardadas en el corazón.", author: "Charlie y la Fábrica de Chocolate" },
-    { text: "Una pequeña amabilidad puede iluminar el día entero de alguien más.", author: "El Jardín Secreto" },
-    { text: "La imaginación es el puente mágico que nos lleva a cualquier lugar del universo.", author: "Las Crónicas de Narnia" },
-    { text: "Cada error es solo una pista secreta que te acerca un poquito más a lograrlo.", author: "La Pequeña Inventora" },
-    { text: "Incluso la estrella más pequeña brilla con luz propia en el cielo nocturno.", author: "Cuentos bajo la Luna" },
-    { text: "Aprender es como coleccionar superpoderes invisibles que nadie te puede quitar.", author: "Matilda" },
-    { text: "Sé siempre curiosa, haz muchas preguntas y nunca dejes de maravillarte con el mundo.", author: "Alicia" },
-    { text: "Cuando pones amor y ganas en lo que haces, hasta las tareas chiquitas se vuelven especiales.", author: "Winnie the Pooh" },
-    { text: "El corazón alegre encuentra tesoros donde otros solo ven días comunes.", author: "Ana de las Tejas Verdes" },
-    { text: "Nunca subestimes lo lejos que puedes llegar cuando confías en tu esfuerzo y en tu creatividad.", author: "Valiente" },
-    { text: "Tu sonrisa y tu esfuerzo son dos superpoderes que hacen el mundo más bonito.", author: "Tasky Leah ✨" },
-    { text: "Las flores no compiten con la flor de al lado; simplemente florecen a su propio ritmo.", author: "El Jardín Secreto" },
-    { text: "Leer un buen libro es como abrir una puerta secreta hacia mil mundos nuevos.", author: "La Historia Interminable" },
-    { text: "Hoy es un gran día para descubrir algo nuevo, reír fuerte y sentirte orgullosa de ti.", author: "Tasky Leah ✨" },
-    { text: "Los mejores cuentos empiezan cuando alguien se atreve a dar el primer paso.", author: "El Hobbit" }
+    { text: "No sirve de nada preocuparse. Lo que tenga que venir, vendrá, y lo enfrentaremos cuando llegue.", author: "Rubeus Hagrid · Harry Potter" },
+    { text: "Las cosas que perdemos siempre encuentran el camino de regreso a nosotros, aunque no siempre de la forma que esperamos.", author: "Luna Lovegood · Harry Potter" },
+    { text: "Eres igual de cuerdo que yo... ¡y la imaginación es un regalo maravilloso!", author: "Luna Lovegood · Harry Potter" },
+    { text: "Libros e inteligencia: hay cosas mucho más importantes, como la amistad y la valentía.", author: "Hermione Granger · Harry Potter" },
+    { text: "Cuando tengas dudas, ve a la biblioteca.", author: "Hermione Granger · Harry Potter" },
+    { text: "Se necesita una gran valentía para enfrentarse a los enemigos, pero aún más para defender a los amigos.", author: "Albus Dumbledore · Harry Potter" },
+    { text: "Trabajar duro es importante, pero hay algo que importa todavía más: creer en ti misma.", author: "Harry Potter" },
+    { text: "No importa lo que alguien sea al nacer, sino en quién elige convertirse al crecer.", author: "Albus Dumbledore · Harry Potter" },
+    { text: "Todo es posible si tienes suficiente valor.", author: "Ginny Weasley · Harry Potter" },
+    { text: "Las palabras son, en mi no tan humilde opinión, nuestra fuente más inagotable de magia.", author: "Albus Dumbledore · Harry Potter" },
+    { text: "Hogwarts siempre estará ahí para darte la bienvenida a casa.", author: "J. K. Rowling · Harry Potter" },
+    { text: "La curiosidad no es un pecado, pero debemos aprender a usarla con sabiduría y alegría.", author: "Albus Dumbledore · Harry Potter" },
+    { text: "Nunca te avergüences de ser diferente; la magia más auténtica nace de ser tú misma.", author: "Luna Lovegood · Harry Potter" },
+    { text: "Juro solemnemente que mis intenciones son lograr todas mis tareas de hoy.", author: "Mapa del Merodeador ⚡" },
+    { text: "¡Travesura realizada! Cada tarea terminada es un hechizo cumplido con éxito.", author: "Fred y George Weasley ⚡" },
+    { text: "Preocuparse significa sufrir dos veces; respira hondo y da un paso a la vez.", author: "Newt Scamander · Mundo Mágico" },
+    { text: "La verdadera magia no está solo en la varita, sino en la bondad de tu corazón.", author: "Dobby · Harry Potter" },
+    { text: "Incluso un pequeño paso valiente puede cambiar el rumbo de toda una historia.", author: "Neville Longbottom · Harry Potter" },
+    { text: "Nunca subestimes el poder de una mente curiosa y unas ganas enormes de aprender.", author: "Minerva McGonagall · Harry Potter" },
+    { text: "Las personas que nos aman nunca nos dejan del todo; siempre están aquí, en nuestro corazón.", author: "Sirius Black · Harry Potter" },
+    { text: "En Hogwarts siempre se ayudará a quienes lo pidan; nunca tengas miedo de preguntar.", author: "Albus Dumbledore · Harry Potter" },
+    { text: "No es la perfección lo que hace grande a una maga, sino las ganas de intentarlo una y otra vez.", author: "Remus Lupin · Harry Potter" },
+    { text: "¡Expecto Patronum! Piensa en tu recuerdo más feliz y llena tu día de luz.", author: "Harry Potter ⚡" },
+    { text: "¡Lumos! Que hoy brille tu creatividad, tu alegría y tu esfuerzo en cada reto.", author: "Mundo Mágico de Leah ✨" },
+    { text: "¡Wingardium Leviosa! Con calma, práctica y buena actitud, hasta lo difícil se vuelve ligero.", author: "Hermione Granger ⚡" },
+    { text: "Una gran aventura te espera cada vez que abres un libro o aprendes algo nuevo.", author: "Hogwarts · Tasky Leah 🦉" },
+    { text: "El coraje no significa no tener miedo, sino avanzar con el corazón firme y una sonrisa.", author: "Gryffindor · Mundo Mágico" },
+    { text: "La lealtad, la paciencia y el esfuerzo constante siempre traen recompensas mágicas.", author: "Hufflepuff · Mundo Mágico" },
+    { text: "Un ingenio sin medida es el mayor tesoro que puedes cultivar cada día.", author: "Ravenclaw · Mundo Mágico" },
+    { text: "La carta de Hogwarts llega a quienes nunca dejan de creer en la magia de sus sueños.", author: "Tasky Leah ⚡🦉" }
   ];
 
   // Frases cálidas de mujeres empoderadas, brillantes, seguras y que construyen en amor y equipo
@@ -71,12 +75,19 @@
   };
 
   let activeWorkspace = "";
+  let activeRole = "";
   let currentIndex = -1;
-  let isOwnUpdate = false;
-  let observer = null;
+  let isOwnQuoteUpdate = false;
+  let isOwnGreetingUpdate = false;
+  let quoteObserver = null;
+  let greetingObserver = null;
 
   function getWorkspaceId() {
     return String(document.documentElement.dataset.taskyWorkspace || activeWorkspace || "").toLowerCase();
+  }
+
+  function getRole() {
+    return String(document.documentElement.dataset.taskyRole || activeRole || "").toLowerCase();
   }
 
   function getActivePool() {
@@ -108,46 +119,87 @@
     const next = pickNextQuote(pool);
     if (!next) return;
 
-    isOwnUpdate = true;
+    isOwnQuoteUpdate = true;
     try {
       textEl.textContent = next.text;
       authorEl.textContent = "— " + next.author;
     } finally {
       window.setTimeout(() => {
-        isOwnUpdate = false;
+        isOwnQuoteUpdate = false;
       }, 30);
     }
   }
 
-  function installQuoteInterceptor() {
-    const textEl = document.getElementById("quote-text");
-    if (!textEl) return;
+  // Personalizar saludo en Tasky Leah cuando entra papá José
+  function applyPapaJoseGreeting() {
+    if (getWorkspaceId() !== "leah") return;
+    if (getRole() === "child") return;
 
-    if (!observer) {
-      observer = new MutationObserver(() => {
-        if (isOwnUpdate) return;
+    const targets = document.querySelectorAll(".tasky-welcome-title, .tasky-welcome h1, .tasky-welcome strong, .tasky-welcome");
+    if (!targets.length) return;
+
+    isOwnGreetingUpdate = true;
+    try {
+      targets.forEach((el) => {
+        // Actualizar solo nodos de texto directos para no romper sub-elementos
+        Array.from(el.childNodes).forEach((node) => {
+          if (node.nodeType !== Node.TEXT_NODE) return;
+          const val = String(node.nodeValue || "");
+          if (/papá\s+José/i.test(val)) return;
+          if (/José(\s+Carranza)?/i.test(val)) {
+            node.nodeValue = val.replace(/José(\s+Carranza)?/gi, "papá José");
+          }
+        });
+      });
+    } finally {
+      window.setTimeout(() => {
+        isOwnGreetingUpdate = false;
+      }, 30);
+    }
+  }
+
+  function installInterceptors() {
+    const textEl = document.getElementById("quote-text");
+    if (textEl && !quoteObserver) {
+      quoteObserver = new MutationObserver(() => {
+        if (isOwnQuoteUpdate) return;
         if (!getActivePool()) return;
         applyCustomQuote(true);
       });
-      observer.observe(textEl, { childList: true, characterData: true, subtree: true });
+      quoteObserver.observe(textEl, { childList: true, characterData: true, subtree: true });
+    }
+
+    if (!greetingObserver && document.body) {
+      greetingObserver = new MutationObserver(() => {
+        if (isOwnGreetingUpdate) return;
+        applyPapaJoseGreeting();
+      });
+      greetingObserver.observe(document.body, { childList: true, characterData: true, subtree: true });
     }
 
     applyCustomQuote(false);
+    applyPapaJoseGreeting();
   }
 
   window.addEventListener("tasky:workspace-ready", (event) => {
-    const ws = event && event.detail && event.detail.workspaceId ? String(event.detail.workspaceId).toLowerCase() : "";
+    const detail = (event && event.detail) || {};
+    const ws = detail.workspaceId ? String(detail.workspaceId).toLowerCase() : "";
+    const role = detail.role ? String(detail.role).toLowerCase() : "";
     if (ws) {
       activeWorkspace = ws;
       currentIndex = -1;
     }
-    installQuoteInterceptor();
-    window.setTimeout(() => applyCustomQuote(false), 250);
+    if (role) activeRole = role;
+    installInterceptors();
+    window.setTimeout(() => {
+      applyCustomQuote(false);
+      applyPapaJoseGreeting();
+    }, 250);
   });
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", installQuoteInterceptor, { once: true });
+    document.addEventListener("DOMContentLoaded", installInterceptors, { once: true });
   } else {
-    installQuoteInterceptor();
+    installInterceptors();
   }
 })();
