@@ -1199,3 +1199,46 @@ html[data-theme="dark"] .tasky-family-close {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   10. Desbloqueo real de autonomía para Leah + Ocultar Salud y Gastos
+       Corrige el bloqueo legacy de styles.css (L8546-8555) y conserva
+       exactamente el mismo estilo "+ Añadir tarea" del espacio de José.
+   -------------------------------------------------------------------------- */
+
+/* Ocultar visualmente Salud y citas y Gastos relacionados con Leah
+   sin tocar los documentos privados requeridos por firestore.rules */
+.box-card[data-box-id="box_salud"],
+.box-card[data-box-id="box_gastos"] {
+  display: none !important;
+}
+
+/* Restaurar "+ Añadir tarea", formulario inline, círculo de revisión y colapsar
+   para la cuenta de Leah (sobrescribiendo styles.css L8546-8555) */
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .inline-add-wrapper {
+  display: block !important;
+}
+
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .add-task-BarBtn:not([style*="display: none"]) {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-check-circle {
+  display: inline-flex !important;
+}
+
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .box-header-actions {
+  display: inline-flex !important;
+}
+
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child-owned-row .task-right-actions {
+  display: inline-flex !important;
+}
+
+/* Mantener oculto el botón de borrar para Leah también en móvil */
+html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-right-actions > [data-task-action="delete"] {
+  display: none !important;
+   }
