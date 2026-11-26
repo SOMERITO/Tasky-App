@@ -14,6 +14,7 @@ let lastSeenUpdatedAt = 0;
 let initializedSnapshot = false;
 let pendingRemoteSync = false;
 let coalesceTimer = null;
+let retryTimer = null;
 let isLiveConnected = false;
 
 function isUserTyping() {
@@ -25,7 +26,7 @@ function isUserTyping() {
   return false;
 }
 
-function dispatchSilentRealtimeSync(reason) {
+function dispatchSilentRealtimeSync(reason, retryCount = 0) {
   if (document.visibilityState === "hidden") {
     pendingRemoteSync = true;
     return;
@@ -36,11 +37,31 @@ function dispatchSilentRealtimeSync(reason) {
   }
   pendingRemoteSync = false;
   window.clearTimeout(coalesceTimer);
+  window.clearTimeout(retryTimer);
   coalesceTimer = window.setTimeout(() => {
+    let completedStatus = null;
     window.dispatchEvent(new CustomEvent("tasky:realtime-remote-change", {
-      detail: { reason, workspaceId: activeWorkspaceId, at: Date.now() }
+      detail: {
+        reason,
+        workspaceId: activeWorkspaceId,
+        at: Date.now(),
+        complete: (status) => {
+          completedStatus = status;
+          if (status === "busy" && retryCount < 3) {
+            retryTimer = window.setTimeout(() => {
+              dispatchSilentRealtimeSync("busy-retry", retryCount + 1);
+            }, 850);
+          }
+        }
+      }
     }));
-  }, reason === "snapshot" ? 180 : 60);
+    // Respaldo por si app.js no invocó complete (compatibilidad)
+    if (completedStatus === null && reason === "snapshot" && retryCount === 0) {
+      retryTimer = window.setTimeout(() => {
+        if (pendingRemoteSync) flushPendingSyncIfIdle();
+      }, 1500);
+    }
+  }, reason === "snapshot" ? 150 : 60);
 }
 
 function flushPendingSyncIfIdle() {
@@ -69,6 +90,7 @@ function startRealtimeListener(workspaceId) {
     { includeMetadataChanges: false },
     (snapshot) => {
       isLiveConnected = true;
+      document.documentElement.dataset.taskyRealtime = "live";
       if (!snapshot || !snapshot.exists()) return;
       const data = snapshot.data() || {};
       const remoteUpdatedAt = Number(data.updatedAt || 0);
@@ -76,7 +98,6 @@ function startRealtimeListener(workspaceId) {
       if (!initializedSnapshot) {
         initializedSnapshot = true;
         lastSeenUpdatedAt = remoteUpdatedAt;
-        // Reconciliar una vez al enganchar el canal en vivo por si había caché local vieja
         dispatchSilentRealtimeSync("initial-live-attach");
         return;
       }
@@ -88,8 +109,7 @@ function startRealtimeListener(workspaceId) {
     },
     (error) => {
       isLiveConnected = false;
-      // Si el WebView perdió conexión temporalmente, el reconectador de Firestore reintenta solo;
-      // al volver online o al frente también forzaremos conciliación.
+      document.documentElement.dataset.taskyRealtime = "reconnecting";
       if (window.TaskyFirebaseEnvironment && window.TaskyFirebaseEnvironment.isStaging) {
         console.warn("[Tasky Realtime] onSnapshot error:", error && error.code ? error.code : error);
       }
@@ -97,7 +117,6 @@ function startRealtimeListener(workspaceId) {
   );
 }
 
-// Reconciliación inmediata al reanudar la app (Median.co WebView, cambio de pestaña o reconexión)
 function handleAppResume(source) {
   if (!activeWorkspaceId) return;
   dispatchSilentRealtimeSync(source);
