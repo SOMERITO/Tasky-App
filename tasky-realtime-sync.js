@@ -39,29 +39,21 @@ function dispatchSilentRealtimeSync(reason, retryCount = 0) {
   window.clearTimeout(coalesceTimer);
   window.clearTimeout(retryTimer);
   coalesceTimer = window.setTimeout(() => {
-    let completedStatus = null;
     window.dispatchEvent(new CustomEvent("tasky:realtime-remote-change", {
       detail: {
         reason,
         workspaceId: activeWorkspaceId,
         at: Date.now(),
         complete: (status) => {
-          completedStatus = status;
-          if (status === "busy" && retryCount < 3) {
+          if (status === "busy" && retryCount < 4) {
             retryTimer = window.setTimeout(() => {
               dispatchSilentRealtimeSync("busy-retry", retryCount + 1);
-            }, 850);
+            }, 800);
           }
         }
       }
     }));
-    // Respaldo por si app.js no invocó complete (compatibilidad)
-    if (completedStatus === null && reason === "snapshot" && retryCount === 0) {
-      retryTimer = window.setTimeout(() => {
-        if (pendingRemoteSync) flushPendingSyncIfIdle();
-      }, 1500);
-    }
-  }, reason === "snapshot" ? 150 : 60);
+  }, reason === "snapshot" ? 120 : 50);
 }
 
 function flushPendingSyncIfIdle() {
@@ -80,9 +72,12 @@ function stopRealtimeListener() {
 }
 
 function startRealtimeListener(workspaceId) {
+  const ws = String(workspaceId || "").trim();
+  if (!ws) return;
+  if (ws === activeWorkspaceId && typeof unsubscribeSnapshot === "function") return;
+
   stopRealtimeListener();
-  if (!workspaceId) return;
-  activeWorkspaceId = String(workspaceId);
+  activeWorkspaceId = ws;
 
   const sharedRef = doc(db, "workspaces", activeWorkspaceId, "shared", "main");
   unsubscribeSnapshot = onSnapshot(
@@ -117,7 +112,23 @@ function startRealtimeListener(workspaceId) {
   );
 }
 
+function detectAndAttachWorkspace() {
+  const fromAttr = String(document.documentElement.dataset.taskyWorkspace || "").trim();
+  if (fromAttr) {
+    startRealtimeListener(fromAttr);
+    return;
+  }
+  try {
+    const authUser = window.TaskyAuth && window.TaskyAuth.currentUser;
+    const fromSession = String(window.sessionStorage.getItem("tasky:selected-workspace:v1") || "").trim();
+    if (authUser && fromSession) {
+      startRealtimeListener(fromSession);
+    }
+  } catch (_) {}
+}
+
 function handleAppResume(source) {
+  if (!activeWorkspaceId) detectAndAttachWorkspace();
   if (!activeWorkspaceId) return;
   dispatchSilentRealtimeSync(source);
 }
@@ -126,6 +137,10 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     handleAppResume("visibility-visible");
   }
+});
+
+window.addEventListener("pageshow", () => {
+  handleAppResume("pageshow");
 });
 
 window.addEventListener("online", () => {
@@ -153,10 +168,24 @@ window.gonative_app_resumed = function (...args) {
   handleAppResume("gonative-resumed");
 };
 
+// 1. Escuchar el evento normal tasky:workspace-ready
 window.addEventListener("tasky:workspace-ready", (event) => {
   const ws = event && event.detail && event.detail.workspaceId ? String(event.detail.workspaceId) : "";
   if (ws) startRealtimeListener(ws);
 });
+
+// 2. Evitar race condition si tasky:workspace-ready ya ocurrió antes de cargar este módulo
+const attrObserver = new MutationObserver(() => {
+  detectAndAttachWorkspace();
+});
+attrObserver.observe(document.documentElement, {
+  attributes: true,
+  attributeFilter: ["data-tasky-workspace"]
+});
+
+detectAndAttachWorkspace();
+window.setTimeout(detectAndAttachWorkspace, 600);
+window.setTimeout(detectAndAttachWorkspace, 1800);
 
 window.TaskyRealtimeSync = {
   get isLive() { return isLiveConnected; },
