@@ -7699,6 +7699,9 @@ function isTaskDuplicateWithinBox(task) {
         const oldOrder = Number(box.order) || 0;
         box.order = Number(neighbor.order) || 0;
         neighbor.order = oldOrder;
+        const moveNow = Date.now();
+        box.updatedAt = moveNow;
+        neighbor.updatedAt = moveNow;
         playUiSound("tap");
         saveData(false);
         renderBoard();
