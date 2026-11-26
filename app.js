@@ -4900,6 +4900,14 @@
       if (typeof complete === "function") complete(status);
     }
   });
+   
+  window.addEventListener("tasky:realtime-remote-change", async () => {
+    if (!isCloudNetworkAllowed() || document.visibilityState === "hidden") return;
+    const status = await pullCloudSync(false, true);
+    if (status === "synced" || status === "syncing") renderBoard();
+  });
+
+
 
   function requestSyncCatchup() {
     if (!isCloudNetworkAllowed() || document.visibilityState === "hidden") return;
