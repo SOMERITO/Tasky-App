@@ -1399,4 +1399,156 @@ html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-right-actions >
     min-height: 52px !important;
     border-radius: 14px !important;
   }
+}
+
+/* --------------------------------------------------------------------------
+   12. Proporciones y Tipografía de App Nativa Móvil (<= 700px)
+       Reduce ruido visual arriba, ordena cabeceras de casillas en 2 filas
+       y convierte filtros en carrusel horizontal compacto estilo Todoist.
+   -------------------------------------------------------------------------- */
+@media (max-width: 700px) {
+  /* Contenedor principal más limpio y equilibrado */
+  .app-shell {
+    padding: 10px 12px calc(98px + env(safe-area-inset-bottom, 0px)) !important;
+    gap: 10px !important;
+  }
+
+  /* Hero compacto para llegar mucho más rápido a las tareas */
+  .hero-header,
+  .hero-section {
+    gap: 6px !important;
+    margin-bottom: 8px !important;
+    padding: 4px 2px !important;
+  }
+
+  .hero-title,
+  h1.hero-title {
+    font-size: 1.48rem !important;
+    line-height: 1.15 !important;
+    letter-spacing: -0.03em !important;
+    margin: 2px 0 4px !important;
+  }
+
+  .tasky-welcome.hero-workspace-welcome {
+    font-size: 0.84rem !important;
+    line-height: 1.3 !important;
+    margin-bottom: 2px !important;
+  }
+
+  .quote-inline-box,
+  #quote-container {
+    padding: 10px 13px !important;
+    border-radius: 14px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .quote-text {
+    font-size: 0.82rem !important;
+    line-height: 1.4 !important;
+  }
+
+  .quote-author {
+    font-size: 0.74rem !important;
+    margin-top: 4px !important;
+  }
+
+  /* Tarjetas de métricas compactas y con jerarquía limpia */
+  .metric-card {
+    border-radius: 16px !important;
+    padding: 11px 12px !important;
+  }
+
+  .metric-label {
+    font-size: 0.74rem !important;
+  }
+
+  .metric-value {
+    font-size: 1.38rem !important;
+    line-height: 1.15 !important;
+  }
+
+  .metric-sub {
+    font-size: 0.70rem !important;
+    line-height: 1.25 !important;
+  }
+
+  /* Metas de aprendizaje compactas en móvil (José) */
+  .learning-summary-grid {
+    gap: 8px !important;
+  }
+
+  .learning-summary-card {
+    padding: 12px 13px !important;
+    border-radius: 16px !important;
+  }
+
+  .learning-summary-goal {
+    font-size: 0.85rem !important;
+    line-height: 1.35 !important;
+  }
+
+  /* Barras de filtros como carrusel horizontal nativo en 1 sola fila */
+  .controls-bar,
+  .task-filter-bar {
+    padding: 9px 10px !important;
+    border-radius: 16px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .task-filter-bar {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    gap: 6px !important;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .task-filter-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .task-filter-bar > * {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  /* Cabecera de casillas ordenada en 2 bloques limpios (sin 8 botones chocando) */
+  .box-top-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px 6px !important;
+  }
+
+  .box-name {
+    font-size: 0.94rem !important;
+    line-height: 1.25 !important;
+    letter-spacing: -0.015em !important;
+  }
+
+  .box-header-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 5px !important;
+  }
+
+  /* Texto y badges de tareas proporcionados para lectura rápida en móvil */
+  .task-title {
+    font-size: 0.92rem !important;
+    line-height: 1.38 !important;
+  }
+
+  .task-sub-badges span,
+  .task-sub-badges button {
+    font-size: 0.70rem !important;
+    padding: 3px 8px !important;
+  }
+
+  /* Espacio limpio para que el botón flotante + no tape botones de la última casilla */
+  #boxes-container {
+    padding-bottom: 24px !important;
+  }
    }
