@@ -1241,4 +1241,162 @@ html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-item.leah-child
 /* Mantener oculto el botón de borrar para Leah también en móvil */
 html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-right-actions > [data-task-action="delete"] {
   display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   11. Experiencia Móvil Táctil (Finger-First para celular y Median.co)
+       Objetivos táctiles >= 44px, acciones sin choques, sin tooltips pegados.
+   -------------------------------------------------------------------------- */
+
+/* Desactivar tooltips flotantes de escritorio en pantallas táctiles */
+@media (hover: none), (pointer: coarse) {
+  #pro-tooltip,
+  .pro-tooltip {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
+
+@media (max-width: 700px) {
+  /* Filas de tarea cómodas para los dedos, con acciones debajo sin apretarse */
+  .task-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 14px 13px !important;
+    border-radius: 16px !important;
+    touch-action: manipulation;
+  }
+
+  .task-item:active {
+    background: var(--surface-hover) !important;
+  }
+
+  .task-left {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  /* Círculo de completar amplio (28px visual + área táctil invisible de 44px) */
+  .task-check-circle {
+    position: relative !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    margin-top: 1px;
+  }
+
+  .task-check-circle::before {
+    content: "";
+    position: absolute;
+    inset: -9px;
+    border-radius: 50%;
+  }
+
+  .task-title {
+    font-size: 0.96rem !important;
+    line-height: 1.4 !important;
+    font-weight: 600 !important;
+  }
+
+  .task-sub-badges {
+    gap: 6px !important;
+    margin-top: 6px !important;
+  }
+
+  /* Barra de acciones táctil dedicada debajo del título (botones de 38x38px) */
+  .task-right-actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+    padding-top: 8px !important;
+    padding-left: 40px !important;
+    border-top: 1px solid var(--line) !important;
+    opacity: 1 !important;
+  }
+
+  .task-act-btn {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    border-radius: 11px !important;
+    background: var(--surface-muted) !important;
+    border: 1px solid var(--line) !important;
+  }
+
+  /* Ocultar handle de arrastre de mouse en móvil para no trabar el scroll táctil */
+  .task-drag-handle {
+    display: none !important;
+  }
+
+  /* Cabecera de casillas con botones cómodos para el pulgar */
+  .box-card {
+    border-radius: 20px !important;
+    padding: 15px 14px !important;
+    margin-bottom: 13px !important;
+  }
+
+  .box-header-actions button,
+  .box-left-move-btns button,
+  .box-ctrl-btn {
+    min-width: 36px !important;
+    min-height: 36px !important;
+    border-radius: 11px !important;
+  }
+
+  /* Botón "+ Añadir tarea" alto y cómodo para el pulgar (48px) */
+  .add-task-BarBtn {
+    min-height: 48px !important;
+    border-radius: 14px !important;
+    font-size: 0.94rem !important;
+    font-weight: 700 !important;
+    margin-top: 8px !important;
+  }
+
+  /* Inputs sin zoom automático de iOS/Android (>= 16px) */
+  .inline-add-input,
+  .inline-add-form input,
+  .inline-add-form textarea,
+  .modal-dialog input,
+  .modal-dialog textarea,
+  .modal-dialog select {
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+
+  .inline-add-actions button {
+    min-height: 42px !important;
+    padding: 0 16px !important;
+    border-radius: 12px !important;
+    font-size: 0.9rem !important;
+  }
+
+  /* Pestañas y filtros táctiles con altura mínima cómoda */
+  .tab-btn,
+  .pill-btn,
+  .quick-pill {
+    min-height: 38px !important;
+    padding-left: 13px !important;
+    padding-right: 13px !important;
+    touch-action: manipulation;
+  }
+
+  /* Barra inferior estilo app nativa */
+  .mobile-app-nav {
+    padding-top: 6px !important;
+    box-shadow: 0 -6px 24px rgba(15, 23, 42, 0.08) !important;
+  }
+
+  .mobile-app-nav-item {
+    min-height: 52px !important;
+    border-radius: 14px !important;
+  }
    }
