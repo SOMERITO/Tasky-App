@@ -4901,10 +4901,15 @@
     }
   });
    
-  window.addEventListener("tasky:realtime-remote-change", async () => {
-    if (!isCloudNetworkAllowed() || document.visibilityState === "hidden") return;
+  window.addEventListener("tasky:realtime-remote-change", async (event) => {
+    const complete = event && event.detail && event.detail.complete;
+    if (!isCloudNetworkAllowed() || document.visibilityState === "hidden") {
+      if (typeof complete === "function") complete("skipped");
+      return;
+    }
     const status = await pullCloudSync(false, true);
     if (status === "synced" || status === "syncing") renderBoard();
+    if (typeof complete === "function") complete(status);
   });
 
 
