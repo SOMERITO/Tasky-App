@@ -6079,30 +6079,54 @@
       .replace(/\s+/g, " ");
   }
 
-  function getDuplicateTaskGroupsInBox(boxId) {
-    const groups = new Map();
-    (appState.data.tasks || []).forEach(task => {
-      if (String(task.boxId) !== String(boxId)) return;
-      const key = normalizeDuplicateTaskTitle(task.title);
-      if (!key) return;
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(task);
-    });
-    return Array.from(groups.values())
-      .filter(group => group.length > 1)
-      .sort((a, b) => String(a[0].title || "").localeCompare(String(b[0].title || ""), "es"));
-  }
+  function isTaskEligibleForDuplicateCheck(task) {
+  if (!task || task.done) return false;
+  const today = getTodayISO();
+  if (task.dueDate && String(task.dueDate) > today) return false;
+  if (typeof isUpcomingRecurringTask === "function" && isUpcomingRecurringTask(task)) return false;
+  return true;
+}
 
-  function isTaskDuplicateWithinBox(task) {
-    if (!task) return false;
+function compareDuplicateRegistrationOrder(a, b) {
+  const aTime = Number(a && a.createdAt) || 0;
+  const bTime = Number(b && b.createdAt) || 0;
+  if (aTime !== bTime) return aTime - bTime;
+  const aOrder = Number(a && a.order) || 0;
+  const bOrder = Number(b && b.order) || 0;
+  if (aOrder !== bOrder) return aOrder - bOrder;
+  return String(a && a.id || "").localeCompare(String(b && b.id || ""));
+}
+
+function getDuplicateTaskGroupsInBox(boxId) {
+  const groups = new Map();
+  (appState.data.tasks || []).forEach(task => {
+    if (String(task.boxId) !== String(boxId)) return;
+    if (!isTaskEligibleForDuplicateCheck(task)) return;
     const key = normalizeDuplicateTaskTitle(task.title);
-    if (!key) return false;
-    return (appState.data.tasks || []).some(other =>
-      other !== task &&
-      String(other.boxId) === String(task.boxId) &&
-      normalizeDuplicateTaskTitle(other.title) === key
-    );
-  }
+    if (!key) return;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(task);
+  });
+  return Array.from(groups.values())
+    .filter(group => group.length > 1)
+    .map(group => group.slice().sort(compareDuplicateRegistrationOrder))
+    .sort((a, b) => String(a[0].title || "").localeCompare(String(b[0].title || ""), "es"));
+}
+
+function isTaskDuplicateWithinBox(task) {
+  if (!isTaskEligibleForDuplicateCheck(task)) return false;
+  const key = normalizeDuplicateTaskTitle(task.title);
+  if (!key) return false;
+  const matches = (appState.data.tasks || []).filter(other =>
+    isTaskEligibleForDuplicateCheck(other) &&
+    String(other.boxId) === String(task.boxId) &&
+    normalizeDuplicateTaskTitle(other.title) === key
+  );
+  if (matches.length <= 1) return false;
+  matches.sort(compareDuplicateRegistrationOrder);
+  const latestTask = matches[matches.length - 1];
+  return latestTask === task || String(latestTask && latestTask.id) === String(task.id);
+}
 
   function isRecurringTask(task) {
     return Boolean(task && (
