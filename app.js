@@ -4948,6 +4948,44 @@ return;
     if (typeof complete === "function") complete(status);
   });
 
+  window.addEventListener("tasky:apply-shared-box-from-collab", (event) => {
+    const detail = (event && event.detail) || {};
+    const targetBoxId = String(detail.boxId || "");
+    if (!targetBoxId || !Array.isArray(detail.tasks)) return;
+    const hasBox = (appState.data.boxes || []).some(b => String(b.id) === targetBoxId);
+    if (!hasBox) return;
+    const otherTasks = (appState.data.tasks || []).filter(t => String(t.boxId) !== targetBoxId);
+    const existingById = new Map((appState.data.tasks || []).filter(t => String(t.boxId) === targetBoxId).map(t => [String(t.id), t]));
+    const incomingTasks = detail.tasks.map((t, idx) => {
+      const prev = existingById.get(String(t.id)) || {};
+      return {
+        ...prev,
+        id: String(t.id),
+        boxId: targetBoxId,
+        title: String(t.title || ""),
+        description: String(t.description || prev.description || ""),
+        done: Boolean(t.done),
+        pendingReview: Boolean(t.pendingReview),
+        dueDate: String(t.dueDate || prev.dueDate || ""),
+        deadlineDate: String(t.deadlineDate || prev.deadlineDate || ""),
+        noDeadline: Boolean(t.noDeadline),
+        frequency: prev.frequency || "once",
+        repeatDays: Array.isArray(prev.repeatDays) ? prev.repeatDays : [],
+        createdAt: Number(t.createdAt || prev.createdAt || Date.now()),
+        updatedAt: Number(t.updatedAt || Date.now()),
+        order: typeof prev.order === "number" ? prev.order : idx
+      };
+    });
+    appState.data.tasks = [...otherTasks, ...incomingTasks];
+    appState.data.updatedAt = Math.max(Date.now(), Number(detail.updatedAt || 0));
+    window.__taskySuppressCollabEcho = true;
+    try {
+      saveData(false);
+      renderBoard();
+    } finally {
+      window.__taskySuppressCollabEcho = false;
+    }
+  });
 
 
   function requestSyncCatchup() {
@@ -5539,6 +5577,7 @@ return;
       const now = new Date();
       modalSyncTime.textContent = `${now.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} (${ok ? "Almacenamiento local activo" : "Memoria activa"})`;
     }
+    window.dispatchEvent(new CustomEvent("tasky:data-saved", { detail: { skipCollabEcho: Boolean(window.__taskySuppressCollabEcho) } }));
   }
 
   function applyThemeAndSoundUI() {
