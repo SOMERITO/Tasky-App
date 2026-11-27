@@ -1552,3 +1552,10 @@ html[data-tasky-workspace="leah"][data-tasky-role="child"] .task-right-actions >
     padding-bottom: 24px !important;
   }
    }
+/* Ocultar mini-saludo duplicado en el header móvil al hacer scroll (evita choque "¡Buen... Tasky") */
+@media (max-width: 700px) {
+  .top-navbar .brand-workspace-welcome,
+  .top-navbar .tasky-welcome {
+    display: none !important;
+  }
+}
