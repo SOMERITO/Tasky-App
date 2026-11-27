@@ -3250,8 +3250,12 @@
       tasksCount: local.tasks.length,
       data: local
     });
-    if (appState.backups.length > 20) appState.backups = appState.backups.slice(0, 20);
-    return safeStorage.setItem(STORAGE_KEYS.BACKUPS, JSON.stringify(appState.backups)) !== false;
+    if (appState.backups.length > 6) appState.backups = appState.backups.slice(0, 6);
+    while (appState.backups.length > 0) {
+      if (safeStorage.setItem(STORAGE_KEYS.BACKUPS, JSON.stringify(appState.backups)) !== false) return true;
+      appState.backups.pop();
+    }
+    return safeStorage.setItem(STORAGE_KEYS.BACKUPS, "[]") !== false;
   }
 
   function waitForPrivateModulesApi() {
@@ -4476,6 +4480,13 @@ return;
       }
       } catch (error) {
         const message = String(error && error.message || error).slice(0, 160);
+        if (message.includes("revisión confirmada de Firestore")) {
+          setRealtimeSyncStatus("Re-verificando revisión de Firestore antes de reintentar.");
+          const syncText = document.getElementById("sync-status-text");
+          if (syncText) syncText.textContent = "Verificando…";
+          scheduleIncomingSyncVerification();
+          return;
+        }
         setRealtimeSyncStatus(`Error de escritura: ${message}`);
         const syncText = document.getElementById("sync-status-text");
         if (syncText) syncText.textContent = "Error de sincronización";
@@ -4918,9 +4929,18 @@ return;
   });
    
   window.addEventListener("tasky:realtime-remote-change", async (event) => {
-    const complete = event && event.detail && event.detail.complete;
+    const detail = (event && event.detail) || {};
+    const complete = detail.complete;
     if (!isCloudNetworkAllowed() || document.visibilityState === "hidden") {
       if (typeof complete === "function") complete("skipped");
+      return;
+    }
+    if (detail.reason === "snapshot" && detail.remoteDeviceId && String(detail.remoteDeviceId) === String(appState.deviceId)) {
+      if (typeof complete === "function") complete("self-echo");
+      return;
+    }
+    if (cloudPushInFlight || cloudPushTimer || cloudPullInFlight) {
+      if (typeof complete === "function") complete("busy");
       return;
     }
     const status = await pullCloudSync(false, true);
