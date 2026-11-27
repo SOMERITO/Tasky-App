@@ -7802,6 +7802,7 @@ function isTaskDuplicateWithinBox(task) {
       const inlineNoDeadlineInput = card.querySelector(".inline-add-no-deadline");
       const suggestionsBox = card.querySelector(".task-memory-suggestions");
       let activeSuggestionIdx = -1;
+      let currentSuggestions = [];
 
       autoCapitalizeInputEl(inlineInput);
 
@@ -7825,14 +7826,17 @@ function isTaskDuplicateWithinBox(task) {
 
       function renderInlineSuggestions() {
         if (/\r?\n/.test(inlineInput.value)) {
+        currentSuggestions = [];
           activeSuggestionIdx = -1;
           suggestionsBox.classList.remove("open");
           suggestionsBox.innerHTML = "";
           return;
         }
         const matches = getTaskSuggestions(inlineInput.value, box.id);
+        currentSuggestions = matches.slice();
         activeSuggestionIdx = -1;
         if (!matches.length) {
+          currentSuggestions = [];
           suggestionsBox.classList.remove("open");
           suggestionsBox.innerHTML = "";
           return;
@@ -7849,7 +7853,7 @@ function isTaskDuplicateWithinBox(task) {
           chooseButton.className = "memory-suggestion-select";
           chooseButton.innerHTML = `
             <span class="memory-suggestion-label">💡 ${escapeHtml(suggestionText)}</span>
-            <span class="memory-suggestion-hint">Clic o Tab</span>
+            <span class="memory-suggestion-hint">↑↓ · Enter / Tab</span>
           `;
           chooseButton.addEventListener("mousedown", ev => {
             // Keep the input stable until the click handler saves the selected suggestion.
@@ -8093,6 +8097,23 @@ function isTaskDuplicateWithinBox(task) {
           }
         }
         const items = Array.from(suggestionsBox.querySelectorAll(".memory-suggestion-item"));
+        if (ev.key === "Tab" && !ev.shiftKey) {
+          const trimmed = String(inlineInput.value || "").trim();
+          if (items.length && suggestionsBox.classList.contains("open") && activeSuggestionIdx < 0 && currentSuggestions[0]) {
+            ev.preventDefault();
+            activeSuggestionIdx = -1;
+            suggestionsBox.classList.remove("open");
+            saveInlineTask(currentSuggestions[0]);
+            return;
+          }
+          if (trimmed && !/\r?\n/.test(inlineInput.value)) {
+            ev.preventDefault();
+            activeSuggestionIdx = -1;
+            suggestionsBox.classList.remove("open");
+            saveInlineTask(inlineInput.value);
+            return;
+          }
+        }
         if (!items.length || !suggestionsBox.classList.contains("open")) return;
 
         if (ev.key === "ArrowDown") {
@@ -8102,6 +8123,12 @@ function isTaskDuplicateWithinBox(task) {
             el.classList.toggle("active", idx === activeSuggestionIdx);
             el.setAttribute("aria-selected", idx === activeSuggestionIdx ? "true" : "false");
           });
+          if (items[activeSuggestionIdx]) items[activeSuggestionIdx].scrollIntoView({ block: "nearest" });
+          if (currentSuggestions[activeSuggestionIdx]) {
+            inlineInput.value = currentSuggestions[activeSuggestionIdx];
+            resizeInlineInput();
+            try { inlineInput.setSelectionRange(inlineInput.value.length, inlineInput.value.length); } catch (_) {}
+          }
         } else if (ev.key === "ArrowUp") {
           ev.preventDefault();
           activeSuggestionIdx = (activeSuggestionIdx - 1 + items.length) % items.length;
@@ -8109,14 +8136,11 @@ function isTaskDuplicateWithinBox(task) {
             el.classList.toggle("active", idx === activeSuggestionIdx);
             el.setAttribute("aria-selected", idx === activeSuggestionIdx ? "true" : "false");
           });
-        } else if (ev.key === "Tab") {
-          ev.preventDefault();
-          const chosenIdx = activeSuggestionIdx >= 0 ? activeSuggestionIdx : 0;
-          const matches = getTaskSuggestions(inlineInput.value, box.id);
-          if (matches[chosenIdx]) {
-            activeSuggestionIdx = -1;
-            suggestionsBox.classList.remove("open");
-            saveInlineTask(matches[chosenIdx]);
+          if (items[activeSuggestionIdx]) items[activeSuggestionIdx].scrollIntoView({ block: "nearest" });
+          if (currentSuggestions[activeSuggestionIdx]) {
+            inlineInput.value = currentSuggestions[activeSuggestionIdx];
+            resizeInlineInput();
+            try { inlineInput.setSelectionRange(inlineInput.value.length, inlineInput.value.length); } catch (_) {}
           }
         }
       });
@@ -8136,15 +8160,8 @@ function isTaskDuplicateWithinBox(task) {
 
       inlineForm.addEventListener("submit", (e) => {
         e.preventDefault();
-        const items = Array.from(suggestionsBox.querySelectorAll(".memory-suggestion-item"));
-        if (activeSuggestionIdx >= 0 && items[activeSuggestionIdx]) {
-          const matches = getTaskSuggestions(inlineInput.value, box.id);
-          if (matches[activeSuggestionIdx]) {
-            suggestionsBox.classList.remove("open");
-            saveInlineTask(matches[activeSuggestionIdx]);
-            return;
-          }
-        }
+        activeSuggestionIdx = -1;
+        suggestionsBox.classList.remove("open");
         saveInlineTask(inlineInput.value);
       });
 
