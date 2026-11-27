@@ -11,6 +11,7 @@ const db = getFirestore(getApp("tasky-multi-workspace"));
 let activeWorkspaceId = "";
 let unsubscribeSnapshot = null;
 let lastSeenUpdatedAt = 0;
+let lastSeenDeviceId = "";
 let initializedSnapshot = false;
 let pendingRemoteSync = false;
 let coalesceTimer = null;
@@ -26,7 +27,7 @@ function isUserTyping() {
   return false;
 }
 
-function dispatchSilentRealtimeSync(reason, retryCount = 0) {
+function dispatchSilentRealtimeSync(reason, retryCount = 0, remoteDeviceId = "") {
   if (document.visibilityState === "hidden") {
     pendingRemoteSync = true;
     return;
@@ -43,17 +44,18 @@ function dispatchSilentRealtimeSync(reason, retryCount = 0) {
       detail: {
         reason,
         workspaceId: activeWorkspaceId,
+        remoteDeviceId: remoteDeviceId || lastSeenDeviceId || "",
         at: Date.now(),
         complete: (status) => {
           if (status === "busy" && retryCount < 4) {
             retryTimer = window.setTimeout(() => {
-              dispatchSilentRealtimeSync("busy-retry", retryCount + 1);
-            }, 800);
+              dispatchSilentRealtimeSync("busy-retry", retryCount + 1, remoteDeviceId);
+            }, 950);
           }
         }
       }
     }));
-  }, reason === "snapshot" ? 120 : 50);
+  }, reason === "snapshot" ? 450 : 120);
 }
 
 function flushPendingSyncIfIdle() {
@@ -89,17 +91,19 @@ function startRealtimeListener(workspaceId) {
       if (!snapshot || !snapshot.exists()) return;
       const data = snapshot.data() || {};
       const remoteUpdatedAt = Number(data.updatedAt || 0);
+      const remoteDeviceId = String(data.deviceId || "");
 
       if (!initializedSnapshot) {
         initializedSnapshot = true;
         lastSeenUpdatedAt = remoteUpdatedAt;
-        dispatchSilentRealtimeSync("initial-live-attach");
+        lastSeenDeviceId = remoteDeviceId;
         return;
       }
 
       if (remoteUpdatedAt > 0 && remoteUpdatedAt !== lastSeenUpdatedAt) {
         lastSeenUpdatedAt = remoteUpdatedAt;
-        dispatchSilentRealtimeSync("snapshot");
+        lastSeenDeviceId = remoteDeviceId;
+        dispatchSilentRealtimeSync("snapshot", 0, remoteDeviceId);
       }
     },
     (error) => {
