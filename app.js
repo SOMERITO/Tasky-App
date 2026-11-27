@@ -3674,12 +3674,12 @@
     if (ev.key === getScopedStorageKey(STORAGE_KEYS.DATA)) scheduleIncomingSyncVerification();
   });
 
-  async function getFirestoreAuthHeaders() {
+  async function getFirestoreAuthHeaders(forceRefresh = false) {
     const authApi = window.TaskyAuth;
     if (!authApi || !authApi.currentUser || typeof authApi.getIdToken !== "function") {
       throw new Error("Se requiere una sesión autenticada para acceder a Firestore.");
     }
-    const token = await authApi.getIdToken();
+    const token = await authApi.getIdToken(Boolean(forceRefresh));
     if (!token) throw new Error("Firebase Authentication no entregó un token válido.");
     return {
       "Content-Type": "application/json",
@@ -4251,11 +4251,15 @@
       return;
     }
     if (!cloudSyncReady || cloudSyncReadyConfig !== getCloudSyncConfigKey()) {
-      if (forceImmediateToast) showToast("Sincronización bloqueada por seguridad: primero hay que verificar la nube o usar «Rescatar y Subir Todo a Firebase».");
+      if (forceImmediateToast) showToast("Verificando la nube antes de guardar tus cambios...");
       const blockedSyncText = document.getElementById("sync-status-text");
-      if (blockedSyncText) blockedSyncText.textContent = "Sin verificar";
-      return;
+      if (blockedSyncText) blockedSyncText.textContent = "Verificando…";
+      scheduleIncomingSyncVerification();
+       
+return;
     }
+
+
     if (syncBroadcastChannel) {
       try {
         syncBroadcastChannel.postMessage({
@@ -4366,11 +4370,19 @@
       // Fetch keepalive bodies are limited to 64 KiB and can throw before reaching Firebase.
       try {
         const authHeaders = await getFirestoreAuthHeaders();
-        const res = await window.fetch(firestoreBytes.url, {
+        let res = await window.fetch(firestoreBytes.url, {
           method: "POST",
           headers: authHeaders,
           body: firestoreBytes.body
         });
+        if (res && (res.status === 401 || res.status === 403)) {
+          const freshHeaders = await getFirestoreAuthHeaders(true);
+          res = await window.fetch(firestoreBytes.url, {
+            method: "POST",
+            headers: freshHeaders,
+            body: firestoreBytes.body
+          });
+        }
         if (res && res.ok) {
           const commit = await res.json().catch(() => null);
           const confirmedUpdateTime = commit && commit.writeResults && commit.writeResults[0] && commit.writeResults[0].updateTime;
@@ -4708,7 +4720,11 @@
       try {
         const fsUrl = getFirebaseFirestoreUrl();
         const authHeaders = await getFirestoreAuthHeaders();
-        const res = await window.fetch(fsUrl, { headers: authHeaders, cache: "no-store" });
+        let res = await window.fetch(fsUrl, { headers: authHeaders, cache: "no-store" });
+        if (res && (res.status === 401 || res.status === 403)) {
+          const freshHeaders = await getFirestoreAuthHeaders(true);
+          res = await window.fetch(fsUrl, { headers: freshHeaders, cache: "no-store" });
+        }
         if (!res.ok) {
           cloudFirestoreExists = res.status === 404 ? false : null;
           cloudFirestoreUpdateTime = "";
