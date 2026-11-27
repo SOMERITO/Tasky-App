@@ -1,7 +1,8 @@
 /* ==========================================================================
    TASKY COLLAB & NOTIFICATIONS · Notificaciones Inteligentes + Casillas Compartidas
-   - Campana de notificaciones (web + móvil) con recordatorios, cumpleaños e invitaciones.
-   - Botón "Compartir" en cada casilla para colaborar en tiempo real con Camila o Leah.
+   - Sin duplicación: el dueño sigue usando su casilla original (con insignia 👥 Compartida)
+     y los cambios se sincronizan bidireccionalmente en vivo con Camila / Leah.
+   - Para la persona invitada (que no tiene esa casilla), aparece una sola vez, plegable.
    ========================================================================== */
 import { getApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {
@@ -42,6 +43,8 @@ let notificationsList = [];
 let sharedBoxesById = new Map();
 let knownNotifIds = new Set();
 let notifInitialLoaded = false;
+let lastAppliedSharedVersion = new Map();
+let ownerPushTimers = new Map();
 
 function escapeHtml(str) {
   return String(str || "")
@@ -58,10 +61,7 @@ function getMemberInfoByUid(uid) {
 
 function getTodayISO() {
   const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function getTomorrowISO() {
@@ -83,6 +83,39 @@ function formatShortTime(ts) {
   } catch (_) {
     return "";
   }
+}
+
+function tasksFingerprint(tasks) {
+  return JSON.stringify(
+    (tasks || [])
+      .map(t => [
+        String(t && t.id || ""),
+        String(t && t.title || "").trim(),
+        Boolean(t && t.done),
+        Boolean(t && t.pendingReview),
+        String(t && t.dueDate || ""),
+        String(t && t.deadlineDate || "")
+      ])
+      .sort((a, b) => a[0].localeCompare(b[0]))
+  );
+}
+
+function isOwnedInCurrentWorkspace(sbox) {
+  return Boolean(
+    sbox &&
+    sbox.ownerUid === currentUid &&
+    String(sbox.sourceWorkspace || "") === String(currentWorkspaceId || "") &&
+    sbox.sourceBoxId
+  );
+}
+
+function findOwnedSharedBoxBySourceId(sourceBoxId) {
+  for (const sbox of sharedBoxesById.values()) {
+    if (isOwnedInCurrentWorkspace(sbox) && String(sbox.sourceBoxId) === String(sourceBoxId)) {
+      return sbox;
+    }
+  }
+  return null;
 }
 
 /* --------------------------------------------------------------------------
@@ -152,7 +185,6 @@ function runSmartDailyNotifications() {
     if (window.localStorage.getItem(ranKey) === "1") return;
   } catch (_) {}
 
-  // Leer snapshot local del espacio activo
   let localData = null;
   try {
     const keyPrefix = currentWorkspaceId === "leah" && currentRole === "child"
@@ -172,7 +204,7 @@ function runSmartDailyNotifications() {
     return d && d < today && !t.noDeadline;
   });
 
-  const md = today.slice(5); // MM-DD
+  const md = today.slice(5);
   const todayBirthdays = (localData.birthdays || []).filter(b => {
     const rawDate = String(b && (b.date || b.birthDate || b.monthDay) || "");
     return rawDate.endsWith(md);
@@ -203,7 +235,6 @@ function runSmartDailyNotifications() {
   }
 
   if (!digestItems.length) return;
-
   try { window.localStorage.setItem(ranKey, "1"); } catch (_) {}
 
   digestItems.forEach((item) => {
@@ -218,7 +249,7 @@ function runSmartDailyNotifications() {
 }
 
 /* --------------------------------------------------------------------------
-   3. UI de Campana de Notificaciones 🔔 y Centro de Notificaciones
+   3. UI de Campana de Notificaciones 🔔 y Modales
    -------------------------------------------------------------------------- */
 function ensureBellAndModals() {
   const topActions = document.querySelector(".top-actions");
@@ -288,16 +319,19 @@ function ensureBellAndModals() {
       '<div class="modal-dialog tasky-collab-dialog">' +
         '<div class="modal-header">' +
           '<div>' +
-            '<div class="modal-eyebrow">👥 CASILLA COMPARTIDA EN VIVO</div>' +
+            '<div class="modal-eyebrow">👥 COMPARTIR CASILLA</div>' +
             '<h3 class="modal-title" id="tasky-share-modal-title">Compartir casilla</h3>' +
           '</div>' +
           '<button type="button" class="modal-close-btn" id="tasky-share-close" aria-label="Cerrar">✕</button>' +
         '</div>' +
-        '<p class="tasky-collab-help">Elige con quién compartir esta casilla. Recibirán una notificación para aceptarla y podrán colaborar en tiempo real.</p>' +
+        '<p class="tasky-collab-help">Elige con quién compartir esta casilla. Recibirán una notificación para aceptarla y todo lo que hagan se reflejará automáticamente en esta misma casilla.</p>' +
         '<div id="tasky-share-members" class="tasky-share-members"></div>' +
-        '<div class="tasky-share-footer">' +
-          '<button type="button" class="tasky-family-secondary" id="tasky-share-cancel">Cancelar</button>' +
-          '<button type="button" class="tasky-family-primary" id="tasky-share-confirm">Enviar invitación y compartir</button>' +
+        '<div class="tasky-share-footer" id="tasky-share-footer">' +
+          '<button type="button" class="tasky-collab-chip-btn is-danger" id="tasky-share-unshare" hidden>Dejar de compartir</button>' +
+          '<div style="display:flex;gap:8px;margin-left:auto;">' +
+            '<button type="button" class="tasky-family-secondary" id="tasky-share-cancel">Cancelar</button>' +
+            '<button type="button" class="tasky-family-primary" id="tasky-share-confirm">Guardar y compartir</button>' +
+          '</div>' +
         '</div>' +
       '</div>';
     document.body.appendChild(shareBackdrop);
@@ -459,7 +493,7 @@ async function respondToSharedInvite(notif, accept) {
         type: "shared_box_accepted",
         title: accept ? `🎉 ${currentName} aceptó la casilla compartida` : `${currentName} rechazó la invitación`,
         body: accept
-          ? `Ahora ambos pueden ver y colaborar en vivo en «${notif.sharedBoxName || "casilla compartida"}».`
+          ? `Ahora ambos comparten «${notif.sharedBoxName || "casilla compartida"}» y recibirás avisos cuando haga cambios.`
           : `No se unió a «${notif.sharedBoxName || "casilla compartida"}».`,
         sharedBoxId: notif.sharedBoxId,
         sharedBoxName: notif.sharedBoxName,
@@ -475,7 +509,7 @@ async function respondToSharedInvite(notif, accept) {
 }
 
 /* --------------------------------------------------------------------------
-   4. Casillas Compartidas Colaborativas 👥 (Botón Compartir + Sección en vivo)
+   4. Casillas Compartidas SIN duplicación para el dueño + Sync bidireccional
    -------------------------------------------------------------------------- */
 function getLocalBoxSnapshot(boxId) {
   try {
@@ -492,12 +526,14 @@ function getLocalBoxSnapshot(boxId) {
         title: String(t.title || ""),
         description: String(t.description || ""),
         done: Boolean(t.done),
+        pendingReview: Boolean(t.pendingReview),
         dueDate: String(t.dueDate || ""),
         deadlineDate: String(t.deadlineDate || ""),
+        noDeadline: Boolean(t.noDeadline),
         createdAt: Number(t.createdAt || Date.now()),
         updatedAt: Number(t.updatedAt || Date.now()),
-        createdByUid: currentUid,
-        createdByName: currentName
+        createdByUid: String(t.createdByUid || currentUid),
+        createdByName: String(t.createdByName || currentName)
       }));
     return { box, tasks };
   } catch (_) {
@@ -511,6 +547,7 @@ function openShareModalForBox(boxId, boxTitleFallback) {
   const titleEl = document.getElementById("tasky-share-modal-title");
   const listEl = document.getElementById("tasky-share-members");
   const confirmBtn = document.getElementById("tasky-share-confirm");
+  const unshareBtn = document.getElementById("tasky-share-unshare");
   if (!modal || !listEl || !confirmBtn) return;
 
   const snap = getLocalBoxSnapshot(boxId);
@@ -519,7 +556,7 @@ function openShareModalForBox(boxId, boxTitleFallback) {
   const boxColor = (snap && snap.box && snap.box.color) || "#4f46e5";
 
   const sharedBoxId = `sb_${currentUid.slice(0, 8)}_${String(boxId).replace(/[^a-zA-Z0-9_-]/g, "")}`;
-  const existingShared = sharedBoxesById.get(sharedBoxId) || null;
+  const existingShared = sharedBoxesById.get(sharedBoxId) || findOwnedSharedBoxBySourceId(boxId) || null;
 
   if (titleEl) titleEl.textContent = `Compartir «${boxName}»`;
 
@@ -538,13 +575,28 @@ function openShareModalForBox(boxId, boxTitleFallback) {
       `<input type="checkbox" value="${escapeHtml(member.uid)}" ${(alreadyMember || alreadyInvited) ? "checked" : ""} />` +
       `<span class="tasky-share-member-avatar">${escapeHtml(member.emoji)}</span>` +
       '<span class="tasky-share-member-info">' +
-        `<strong>${escapeHtml(member.name)} ${alreadyMember ? '<em class="tasky-share-pill">Ya unida</em>' : alreadyInvited ? '<em class="tasky-share-pill is-pending">Invitada</em>' : ""}</strong>` +
+        `<strong>${escapeHtml(member.name)} ${alreadyMember ? '<em class="tasky-share-pill">Compartida</em>' : alreadyInvited ? '<em class="tasky-share-pill is-pending">Invitación enviada</em>' : ""}</strong>` +
         `<small>${escapeHtml(roleLabel)}</small>` +
       '</span>';
     listEl.appendChild(row);
   });
 
-  // Reemplazar listener limpio
+  if (unshareBtn) {
+    const newUnshare = unshareBtn.cloneNode(true);
+    unshareBtn.parentNode.replaceChild(newUnshare, unshareBtn);
+    newUnshare.hidden = !existingShared;
+    if (existingShared) {
+      newUnshare.addEventListener("click", async () => {
+        if (!window.confirm(`¿Dejar de compartir «${boxName}»? Tu casilla y tus tareas locales seguirán intactas.`)) return;
+        await deleteDoc(doc(db, "shared_boxes", existingShared.id));
+        sharedBoxesById.delete(existingShared.id);
+        modal.classList.remove("open");
+        injectShareButtonsIntoBoxes();
+        showInAppBanner(`Se dejó de compartir «${boxName}»`);
+      });
+    }
+  }
+
   const newConfirm = confirmBtn.cloneNode(true);
   confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
 
@@ -559,22 +611,23 @@ function openShareModalForBox(boxId, boxTitleFallback) {
     newConfirm.textContent = "Compartiendo…";
     try {
       const existingMembers = existingShared && Array.isArray(existingShared.memberUids)
-        ? existingShared.memberUids.slice()
+        ? existingShared.memberUids.filter(uid => uid === currentUid || selectedUids.includes(uid))
         : [currentUid];
       if (!existingMembers.includes(currentUid)) existingMembers.push(currentUid);
 
-      const newInvites = selectedUids.filter(uid => !existingMembers.includes(uid));
+      const prevInvited = existingShared && Array.isArray(existingShared.invitedUids) ? existingShared.invitedUids : [];
+      const brandNewInvites = selectedUids.filter(uid => !existingMembers.includes(uid) && !prevInvited.includes(uid));
+      const allInvited = selectedUids.filter(uid => !existingMembers.includes(uid));
+
       const rolesByUid = { [currentUid]: "owner" };
       selectedUids.forEach(uid => {
         rolesByUid[uid] = getMemberInfoByUid(uid).defaultRole;
       });
 
-      const tasksToShare = existingShared && Array.isArray(existingShared.tasks) && existingShared.tasks.length > 0
-        ? existingShared.tasks
-        : (snap && snap.tasks ? snap.tasks : []);
+      const tasksToShare = snap && snap.tasks ? snap.tasks : (existingShared && existingShared.tasks ? existingShared.tasks : []);
 
-      await setDoc(doc(db, "shared_boxes", sharedBoxId), {
-        id: sharedBoxId,
+      await setDoc(doc(db, "shared_boxes", existingShared ? existingShared.id : sharedBoxId), {
+        id: existingShared ? existingShared.id : sharedBoxId,
         sourceBoxId: String(boxId),
         sourceWorkspace: currentWorkspaceId,
         name: String(boxName).toUpperCase(),
@@ -583,10 +636,7 @@ function openShareModalForBox(boxId, boxTitleFallback) {
         ownerUid: currentUid,
         ownerName: currentName,
         memberUids: existingMembers,
-        invitedUids: Array.from(new Set([
-          ...(existingShared && Array.isArray(existingShared.invitedUids) ? existingShared.invitedUids : []),
-          ...newInvites
-        ])),
+        invitedUids: allInvited,
         rolesByUid,
         tasks: tasksToShare,
         updatedAt: Date.now(),
@@ -594,25 +644,26 @@ function openShareModalForBox(boxId, boxTitleFallback) {
         updatedByName: currentName
       }, { merge: true });
 
-      await Promise.all(newInvites.map(uid =>
+      await Promise.all(brandNewInvites.map(uid =>
         sendUserNotification(uid, {
           type: "shared_box_invite",
           title: `👥 ${currentName} te compartió «${boxName}»`,
           body: `Acepta esta invitación para ver, agregar y editar en vivo las tareas de «${boxName}» junto a ${currentName}.`,
-          sharedBoxId,
+          sharedBoxId: existingShared ? existingShared.id : sharedBoxId,
           sharedBoxName: boxName,
           status: "pending"
         })
       ));
 
       modal.classList.remove("open");
-      showInAppBanner(`¡Invitación enviada! «${boxName}» ya está compartida en vivo.`);
+      injectShareButtonsIntoBoxes();
+      showInAppBanner(`¡Listo! «${boxName}» compartida sin duplicar tu pantalla.`);
     } catch (err) {
       console.error("[Tasky Collab] Error al compartir casilla:", err);
       showInAppBanner("No se pudo compartir la casilla. Verifica tu conexión.", true);
     } finally {
       newConfirm.disabled = false;
-      newConfirm.textContent = "Enviar invitación y compartir";
+      newConfirm.textContent = "Guardar y compartir";
     }
   });
 
@@ -626,42 +677,144 @@ function injectShareButtonsIntoBoxes() {
     const boxId = card.dataset.boxId;
     if (!boxId || boxId === "box_salud" || boxId === "box_gastos") return;
     const actions = card.querySelector(".box-header-actions");
-    if (!actions || actions.querySelector(".tasky-share-box-btn")) return;
+    if (!actions) return;
 
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "box-ctrl-btn tasky-share-box-btn";
-    btn.setAttribute("aria-label", "Compartir casilla");
-    btn.title = "Compartir esta casilla con Camila o Leah";
-    btn.innerHTML =
-      '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-        '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>' +
-        '<circle cx="9" cy="7" r="4"/>' +
-        '<path d="M22 21v-2a4 4 0 0 0-3-3.87"/>' +
-        '<path d="M16 3.13a4 4 0 0 1 0 7.75"/>' +
-      '</svg>';
+    const ownedShared = findOwnedSharedBoxBySourceId(boxId);
 
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const nameEl = card.querySelector(".box-name");
-      openShareModalForBox(boxId, nameEl ? nameEl.textContent.trim() : "");
-    });
+    let btn = actions.querySelector(".tasky-share-box-btn");
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "box-ctrl-btn tasky-share-box-btn";
+      btn.setAttribute("aria-label", "Compartir casilla");
+      btn.innerHTML =
+        '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+          '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>' +
+          '<circle cx="9" cy="7" r="4"/>' +
+          '<path d="M22 21v-2a4 4 0 0 0-3-3.87"/>' +
+          '<path d="M16 3.13a4 4 0 0 1 0 7.75"/>' +
+        '</svg>';
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const nameEl = card.querySelector(".box-name");
+        openShareModalForBox(boxId, nameEl ? nameEl.textContent.trim() : "");
+      });
+      actions.insertBefore(btn, actions.firstChild);
+    }
 
-    actions.insertBefore(btn, actions.firstChild);
+    btn.classList.toggle("is-shared-active", Boolean(ownedShared));
+    btn.title = ownedShared ? "Gestionar casilla compartida" : "Compartir esta casilla con Camila o Leah";
+
+    // Mostrar insignia sutil "👥 Compartida · Camila" en la casilla original del dueño (sin duplicar tarjeta)
+    const badgesRow = card.querySelector(".box-badges-row");
+    const existingPill = card.querySelector(".tasky-shared-owner-pill");
+    if (ownedShared && badgesRow) {
+      const otherMembers = (ownedShared.memberUids || []).filter(u => u !== currentUid).map(u => getMemberInfoByUid(u).name);
+      const pendingInvites = (ownedShared.invitedUids || []).filter(u => u !== currentUid).map(u => getMemberInfoByUid(u).name);
+      const label = otherMembers.length
+        ? `👥 Compartida · ${otherMembers.join(", ")}`
+        : pendingInvites.length
+          ? `👥 Invitada · ${pendingInvites.join(", ")}`
+          : "👥 Compartida";
+
+      if (existingPill) {
+        existingPill.textContent = label;
+      } else {
+        const pill = document.createElement("button");
+        pill.type = "button";
+        pill.className = "box-pill tasky-shared-owner-pill";
+        pill.textContent = label;
+        pill.title = "Clic para gestionar con quién está compartida esta casilla";
+        pill.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const nameEl = card.querySelector(".box-name");
+          openShareModalForBox(boxId, nameEl ? nameEl.textContent.trim() : "");
+        });
+        badgesRow.appendChild(pill);
+      }
+    } else if (!ownedShared && existingPill) {
+      existingPill.remove();
+    }
   });
 }
 
+// Sincronizar cambios hechos por el dueño en su casilla normal -> Firestore shared_boxes
+function scheduleOwnerBoxesSyncToCloud() {
+  if (!currentUid || currentRole === "child") return;
+  for (const sbox of sharedBoxesById.values()) {
+    if (!isOwnedInCurrentWorkspace(sbox)) continue;
+    const prevTimer = ownerPushTimers.get(sbox.id);
+    if (prevTimer) window.clearTimeout(prevTimer);
+
+    const timer = window.setTimeout(async () => {
+      ownerPushTimers.delete(sbox.id);
+      const snap = getLocalBoxSnapshot(sbox.sourceBoxId);
+      if (!snap) return;
+      const nextFp = tasksFingerprint(snap.tasks);
+      const currentFp = tasksFingerprint(sbox.tasks || []);
+      if (nextFp === currentFp) return;
+
+      const now = Date.now();
+      lastAppliedSharedVersion.set(sbox.id, now);
+      try {
+        await updateDoc(doc(db, "shared_boxes", sbox.id), {
+          name: String(snap.box.name || sbox.name).toUpperCase(),
+          emoji: String(snap.box.emoji || sbox.emoji || ""),
+          tasks: snap.tasks,
+          updatedAt: now,
+          updatedByUid: currentUid,
+          updatedByName: currentName
+        });
+        await notifyOtherBoxMembers(
+          sbox,
+          `👥 Actualización en «${sbox.name}»`,
+          `${currentName} actualizó las tareas de «${sbox.name}».`
+        );
+      } catch (err) {
+        console.warn("[Tasky Collab] Error sincronizando cambios del dueño:", err);
+      }
+    }, 650);
+
+    ownerPushTimers.set(sbox.id, timer);
+  }
+}
+
+// Aplicar cambios hechos por Camila/Leah -> directamente en la casilla original del dueño
+function applyCollaboratorUpdateToOwnerBox(sbox) {
+  if (!isOwnedInCurrentWorkspace(sbox)) return;
+  if (sbox.updatedByUid === currentUid) return;
+  const version = Number(sbox.updatedAt || 0);
+  if (version <= Number(lastAppliedSharedVersion.get(sbox.id) || 0)) return;
+
+  const snap = getLocalBoxSnapshot(sbox.sourceBoxId);
+  if (snap && tasksFingerprint(snap.tasks) === tasksFingerprint(sbox.tasks || [])) {
+    lastAppliedSharedVersion.set(sbox.id, version);
+    return;
+  }
+
+  lastAppliedSharedVersion.set(sbox.id, version);
+  window.dispatchEvent(new CustomEvent("tasky:apply-shared-box-from-collab", {
+    detail: {
+      boxId: String(sbox.sourceBoxId),
+      tasks: Array.isArray(sbox.tasks) ? sbox.tasks : [],
+      updatedAt: version
+    }
+  }));
+}
+
+// Renderizar casillas compartidas ÚNICAMENTE para quienes fueron invitados (NO duplicar al dueño)
 function renderSharedBoxesSection() {
   const boxesContainer = document.getElementById("boxes-container");
   if (!boxesContainer || !boxesContainer.parentElement) return;
 
   let section = document.getElementById("tasky-shared-boxes-section");
-  const activeBoxes = Array.from(sharedBoxesById.values())
-    .filter(b => b && Array.isArray(b.memberUids) && b.memberUids.includes(currentUid))
+  const guestSharedBoxes = Array.from(sharedBoxesById.values())
+    .filter(b => b && Array.isArray(b.memberUids) && b.memberUids.includes(currentUid) && !isOwnedInCurrentWorkspace(b))
     .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
 
-  if (!activeBoxes.length) {
+  if (!guestSharedBoxes.length) {
     if (section) section.remove();
     return;
   }
@@ -670,61 +823,69 @@ function renderSharedBoxesSection() {
     section = document.createElement("section");
     section.id = "tasky-shared-boxes-section";
     section.className = "tasky-shared-section";
-    section.setAttribute("aria-label", "Casillas compartidas en vivo");
+    section.setAttribute("aria-label", "Casillas compartidas contigo");
     boxesContainer.parentElement.insertBefore(section, boxesContainer);
   }
 
   section.innerHTML =
     '<div class="tasky-shared-section-head">' +
-      '<span>👥 Casillas compartidas en vivo</span>' +
-      `<small>${activeBoxes.length} activa(s)</small>` +
+      '<span>👥 Compartidas contigo</span>' +
+      `<small>${guestSharedBoxes.length}</small>` +
     '</div>';
 
-  activeBoxes.forEach((sbox) => {
-    const isOwner = sbox.ownerUid === currentUid;
+  guestSharedBoxes.forEach((sbox) => {
     const isChildInBox = (sbox.rolesByUid && sbox.rolesByUid[currentUid] === "child") || currentRole === "child";
-    const memberNames = (sbox.memberUids || []).map(uid => getMemberInfoByUid(uid).name).join(" · ");
     const pendingTasks = (sbox.tasks || []).filter(t => !t.done);
     const doneTasks = (sbox.tasks || []).filter(t => t.done);
+    const collapseKey = `tasky:shared-box-collapsed:${sbox.id}`;
+    let isCollapsed = true;
+    try {
+      const saved = window.localStorage.getItem(collapseKey);
+      if (saved !== null) isCollapsed = saved === "1";
+    } catch (_) {}
 
     const card = document.createElement("article");
-    card.className = "box-card tasky-shared-box-card";
+    card.className = "box-card tasky-shared-box-card" + (isCollapsed ? " is-collapsed" : "");
     card.innerHTML =
       '<div class="tasky-shared-box-top">' +
-        '<div class="tasky-shared-box-title-wrap">' +
+        '<div class="tasky-shared-box-title-wrap" role="button" tabindex="0">' +
           `<span class="tasky-shared-emoji">${escapeHtml(sbox.emoji || "👥")}</span>` +
           '<div>' +
             `<h3 class="tasky-shared-box-name">${escapeHtml(sbox.name)}</h3>` +
-            `<span class="tasky-shared-members-line">👥 Compartida con: ${escapeHtml(memberNames)} · ${pendingTasks.length} pendientes</span>` +
+            `<span class="tasky-shared-members-line">👥 De ${escapeHtml(sbox.ownerName || "Familiar")} · ${pendingTasks.length} pendientes</span>` +
           '</div>' +
         '</div>' +
-        '<div class="tasky-shared-box-controls"></div>' +
+        '<div class="tasky-shared-box-controls">' +
+          `<span class="box-count-pill">${pendingTasks.length}</span>` +
+          `<button type="button" class="box-ctrl-btn tasky-shared-collapse-btn" aria-expanded="${!isCollapsed}" title="${isCollapsed ? "Desplegar" : "Plegar"}">${isCollapsed ? "▸" : "▾"}</button>` +
+        '</div>' +
       '</div>' +
-      '<div class="tasky-shared-task-list"></div>' +
-      '<form class="tasky-shared-add-form">' +
-        '<input type="text" maxlength="180" placeholder="+ Añadir tarea compartida…" required />' +
-        '<button type="submit" class="tasky-family-primary">Añadir</button>' +
-      '</form>';
+      '<div class="tasky-shared-box-body"' + (isCollapsed ? " hidden" : "") + '>' +
+        '<div class="tasky-shared-task-list"></div>' +
+        '<form class="tasky-shared-add-form">' +
+          '<input type="text" maxlength="180" placeholder="+ Añadir tarea compartida…" required />' +
+          '<button type="submit" class="tasky-family-primary">Añadir</button>' +
+        '</form>' +
+      '</div>';
 
-    const controls = card.querySelector(".tasky-shared-box-controls");
-    if (isOwner) {
-      const manageBtn = document.createElement("button");
-      manageBtn.type = "button";
-      manageBtn.className = "tasky-collab-chip-btn";
-      manageBtn.textContent = "👥 Personas";
-      manageBtn.addEventListener("click", () => openShareModalForBox(sbox.sourceBoxId || sbox.id, sbox.name));
+    const toggleCollapse = () => {
+      isCollapsed = !isCollapsed;
+      try { window.localStorage.setItem(collapseKey, isCollapsed ? "1" : "0"); } catch (_) {}
+      card.classList.toggle("is-collapsed", isCollapsed);
+      const bodyEl = card.querySelector(".tasky-shared-box-body");
+      const btnEl = card.querySelector(".tasky-shared-collapse-btn");
+      if (bodyEl) bodyEl.hidden = isCollapsed;
+      if (btnEl) {
+        btnEl.textContent = isCollapsed ? "▸" : "▾";
+        btnEl.setAttribute("aria-expanded", String(!isCollapsed));
+      }
+    };
 
-      const stopBtn = document.createElement("button");
-      stopBtn.type = "button";
-      stopBtn.className = "tasky-collab-chip-btn is-danger";
-      stopBtn.textContent = "Dejar de compartir";
-      stopBtn.addEventListener("click", async () => {
-        if (!window.confirm(`¿Dejar de compartir «${sbox.name}»?`)) return;
-        await deleteDoc(doc(db, "shared_boxes", sbox.id));
-        showInAppBanner(`Se dejó de compartir «${sbox.name}»`);
-      });
-      controls.append(manageBtn, stopBtn);
-    }
+    card.querySelector(".tasky-shared-box-title-wrap").addEventListener("click", toggleCollapse);
+    card.querySelector(".tasky-shared-collapse-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleCollapse();
+    });
 
     const listEl = card.querySelector(".tasky-shared-task-list");
     const orderedTasks = [...pendingTasks, ...doneTasks];
@@ -809,6 +970,8 @@ async function addSharedTask(sbox, title) {
     done: false,
     pendingReview: false,
     dueDate: getTodayISO(),
+    deadlineDate: "",
+    noDeadline: false,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     createdByUid: currentUid,
@@ -860,6 +1023,7 @@ async function editSharedTask(sbox, targetTask) {
     updatedByUid: currentUid,
     updatedByName: currentName
   });
+  await notifyOtherBoxMembers(sbox, `✏️ Tarea editada en «${sbox.name}»`, `${currentName} actualizó: ${trimmed}`);
 }
 
 async function deleteSharedTask(sbox, targetTask) {
@@ -870,6 +1034,7 @@ async function deleteSharedTask(sbox, targetTask) {
     updatedByUid: currentUid,
     updatedByName: currentName
   });
+  await notifyOtherBoxMembers(sbox, `🗑️ Tarea retirada en «${sbox.name}»`, `${currentName} quitó: ${targetTask.title}`);
 }
 
 /* --------------------------------------------------------------------------
@@ -901,7 +1066,6 @@ function startCollabForUser(detail) {
   ensureBellAndModals();
   injectShareButtonsIntoBoxes();
 
-  // Escuchar buzón de notificaciones personales en vivo
   const notifQ = query(
     collection(db, "user_notifications", currentUid, "items"),
     orderBy("createdAt", "desc"),
@@ -934,11 +1098,8 @@ function startCollabForUser(detail) {
     notificationsList = next;
     updateBellBadge();
     renderNotificationsList();
-  }, (err) => {
-    console.warn("[Tasky Collab] Error notificaciones:", err && err.code ? err.code : err);
-  });
+  }, () => {});
 
-  // Escuchar casillas compartidas aceptadas
   const memberQ = query(
     collection(db, "shared_boxes"),
     where("memberUids", "array-contains", currentUid)
@@ -946,18 +1107,19 @@ function startCollabForUser(detail) {
   unsubSharedMember = onSnapshot(memberQ, (snap) => {
     const nextIds = new Set();
     snap.forEach((docSnap) => {
+      const sbox = { id: docSnap.id, ...(docSnap.data() || {}) };
       nextIds.add(docSnap.id);
-      sharedBoxesById.set(docSnap.id, { id: docSnap.id, ...(docSnap.data() || {}) });
+      sharedBoxesById.set(docSnap.id, sbox);
+      applyCollaboratorUpdateToOwnerBox(sbox);
     });
-    // Limpiar las que ya no pertenecen como miembro
     Array.from(sharedBoxesById.entries()).forEach(([id, data]) => {
       const stillInvited = Array.isArray(data.invitedUids) && data.invitedUids.includes(currentUid);
       if (!nextIds.has(id) && !stillInvited) sharedBoxesById.delete(id);
     });
+    injectShareButtonsIntoBoxes();
     renderSharedBoxesSection();
   }, () => {});
 
-  // Escuchar invitaciones de casillas compartidas (para mostrar estado "Invitada" en el modal)
   const invitedQ = query(
     collection(db, "shared_boxes"),
     where("invitedUids", "array-contains", currentUid)
@@ -968,19 +1130,23 @@ function startCollabForUser(detail) {
     });
   }, () => {});
 
-  // Ejecutar recordatorios inteligentes diarios tras cargar el tablero
   window.setTimeout(runSmartDailyNotifications, 3500);
 }
 
-// Re-inyectar botón 👥 Compartir cada vez que app.js redibuja #boxes-container
 function installBoxesObserver() {
   const boxesEl = document.getElementById("boxes-container");
-  if (!boxesEl) return;
+  if (!boxesEl || boxesEl.dataset.taskyCollabObs === "1") return;
+  boxesEl.dataset.taskyCollabObs = "1";
   const obs = new MutationObserver(() => {
     injectShareButtonsIntoBoxes();
   });
   obs.observe(boxesEl, { childList: true });
 }
+
+window.addEventListener("tasky:data-saved", (event) => {
+  if (event && event.detail && event.detail.skipCollabEcho) return;
+  scheduleOwnerBoxesSyncToCloud();
+});
 
 window.addEventListener("tasky:workspace-ready", (event) => {
   startCollabForUser((event && event.detail) || {});
