@@ -587,7 +587,10 @@ function openShareModalForBox(boxId, boxTitleFallback) {
     newUnshare.hidden = !existingShared;
     if (existingShared) {
       newUnshare.addEventListener("click", async () => {
-        if (!window.confirm(`¿Dejar de compartir «${boxName}»? Tu casilla y tus tareas locales seguirán intactas.`)) return;
+        const ok = window.TaskyDialog
+          ? await window.TaskyDialog.confirm(`¿Dejar de compartir «${boxName}»?\nTu casilla y tus tareas locales seguirán intactas.`, { title: "Dejar de compartir", confirmText: "Sí, dejar de compartir", tone: "danger" })
+          : window.confirm(`¿Dejar de compartir «${boxName}»? Tu casilla y tus tareas locales seguirán intactas.`);
+        if (!ok) return;
         await deleteDoc(doc(db, "shared_boxes", existingShared.id));
         sharedBoxesById.delete(existingShared.id);
         modal.classList.remove("open");
@@ -1010,7 +1013,9 @@ async function toggleSharedTask(sbox, targetTask, isChildInBox) {
 }
 
 async function editSharedTask(sbox, targetTask) {
-  const nextTitle = window.prompt("Editar tarea compartida:", targetTask.title || "");
+  const nextTitle = window.TaskyDialog
+    ? await window.TaskyDialog.prompt("Actualiza el texto de esta tarea compartida:", targetTask.title || "", { title: "Editar tarea compartida", confirmText: "Guardar cambios" })
+    : window.prompt("Editar tarea compartida:", targetTask.title || "");
   if (nextTitle === null) return;
   const trimmed = nextTitle.trim();
   if (!trimmed) return;
