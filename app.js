@@ -6201,6 +6201,26 @@ function getDuplicateTaskGroupsInBox(boxId) {
     .sort((a, b) => String(a[0].title || "").localeCompare(String(b[0].title || ""), "es"));
 }
 
+function comparePrimaryDuplicateCandidate(a, b) {
+  const aOverdue = isTaskOverdue(a) ? 1 : 0;
+  const bOverdue = isTaskOverdue(b) ? 1 : 0;
+  if (aOverdue !== bOverdue) return aOverdue - bOverdue;
+
+  const aCarried = isTaskCarriedToTodayFromOverdue(a) ? 1 : 0;
+  const bCarried = isTaskCarriedToTodayFromOverdue(b) ? 1 : 0;
+  if (aCarried !== bCarried) return aCarried - bCarried;
+
+  const aDue = String((a && a.dueDate) || "").slice(0, 10);
+  const bDue = String((b && b.dueDate) || "").slice(0, 10);
+  if (aDue !== bDue) return bDue.localeCompare(aDue);
+
+  const aRecurring = isRecurringTask(a) ? 1 : 0;
+  const bRecurring = isRecurringTask(b) ? 1 : 0;
+  if (aRecurring !== bRecurring) return bRecurring - aRecurring;
+
+  return compareDuplicateRegistrationOrder(a, b);
+}
+
 function isTaskDuplicateWithinBox(task) {
   if (!isTaskEligibleForDuplicateCheck(task)) return false;
   const key = normalizeDuplicateTaskTitle(task.title);
@@ -6211,9 +6231,15 @@ function isTaskDuplicateWithinBox(task) {
     normalizeDuplicateTaskTitle(other.title) === key
   );
   if (matches.length <= 1) return false;
-  matches.sort(compareDuplicateRegistrationOrder);
-  const latestTask = matches[matches.length - 1];
-  return latestTask === task || String(latestTask && latestTask.id) === String(task.id);
+  matches.sort(comparePrimaryDuplicateCandidate);
+  const primaryTask = matches[0];
+  const isPrimary = primaryTask === task || (
+    primaryTask &&
+    task &&
+    primaryTask.id != null &&
+    String(primaryTask.id) === String(task.id)
+  );
+  return !isPrimary;
 }
 
   function isRecurringTask(task) {
