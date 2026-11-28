@@ -7376,7 +7376,6 @@ function isTaskDuplicateWithinBox(task) {
     // Preserve manual order inside each section: work due today first, then the completion summary,
     // then fully completed casillas and blue casillas with no unfinished task due today.
     const activeBoxesList = [];
-    const purpleNoDeadlineBoxesList = [];
     const completedBoxesList = [];
     const noTasksTodayBoxesList = [];
     const emptyBoxesList = [];
@@ -7394,27 +7393,13 @@ function isTaskDuplicateWithinBox(task) {
       const pendingTasks = boxTasks.filter(task => !task.done);
       const hasPendingToday = pendingTasks.some(task => isCountedAsPending(task) && isTaskForToday(task));
       const hasVisibleNoDeadlineTasks = pendingTasks.some(task => isTaskWithoutDeadlinePending(task));
-      const visiblePendingForTheme = pendingTasks.filter(task =>
-        (
-          (isCountedAsPending(task) && isTaskForToday(task)) ||
-          isTaskWithoutDeadlinePending(task) ||
-          (!isRecurringTask(task) && getFocusPriorityLevel(task.id) > 0) ||
-          (appState.taskStatusFilter !== "all" && matchesSmartTaskFilter(task)) ||
-          String(task.id) === String(appState.focusRevealTaskId || "")
-        ) &&
-        matchesSearch(task, box.name)
-      );
-      const isPurpleNoDeadlineBox = appState.activeTab !== "completed" &&
-        visiblePendingForTheme.length > 0 &&
-        visiblePendingForTheme.every(task => Boolean(task.noDeadline));
-
-      // Keep no-deadline reference tasks visible, but place fully violet casillas
-      // after casillas that contain tasks with an active planned date.
-      if (hasPendingToday || hasVisibleNoDeadlineTasks) {
-        (isPurpleNoDeadlineBox ? purpleNoDeadlineBoxesList : activeBoxesList).push(box);
-      } else {
-        noTasksTodayBoxesList.push(box);
-      }
+    // Mantener el orden manual entre todas las casillas activas (con fecha definida o sin fecha límite).
+    // El tema morado (box-all-no-deadline-theme) se sigue aplicando visualmente en renderSingleBoxCard.
+    if (hasPendingToday || hasVisibleNoDeadlineTasks) {
+      activeBoxesList.push(box);
+    } else {
+      noTasksTodayBoxesList.push(box);
+    }
     });
 
     function renderSingleBoxCard(box, isEmptyStandby) {
@@ -7781,7 +7766,7 @@ function isTaskDuplicateWithinBox(task) {
 
       function moveBoxWithinVisibleSection(direction) {
         // Up/down controls move a casilla within its current visible section.
-        const sectionLists = [activeBoxesList, purpleNoDeadlineBoxesList, completedBoxesList, noTasksTodayBoxesList, emptyBoxesList];
+        const sectionLists = [activeBoxesList, completedBoxesList, noTasksTodayBoxesList, emptyBoxesList];
         const section = sectionLists.find(list => list.some(entry => String(entry.id) === String(box.id)));
         if (!section) {
           showToast("No pude identificar la sección de esta casilla", true);
@@ -7797,6 +7782,11 @@ function isTaskDuplicateWithinBox(task) {
         }
 
         const neighbor = section[targetIndex];
+        if ((Number(box.order) || 0) === (Number(neighbor.order) || 0)) {
+          sortedBoxes.forEach((entry, index) => {
+            entry.order = index;
+          });
+        }
         const oldOrder = Number(box.order) || 0;
         box.order = Number(neighbor.order) || 0;
         neighbor.order = oldOrder;
@@ -8212,8 +8202,6 @@ function isTaskDuplicateWithinBox(task) {
     // First render casillas with tasks scheduled for today.
     activeBoxesList.forEach(box => renderSingleBoxCard(box, false));
 
-    // Casillas violetas (todas sus tareas visibles sin fecha límite) quedan debajo del trabajo programado.
-    purpleNoDeadlineBoxesList.forEach(box => renderSingleBoxCard(box, false));
 
     // Point 10: AUTOMATIC "TAREAS COMPLETADAS" BOX WITH FOLD / UNFOLD SUPPORT
     const allCompletedTasks = appState.data.tasks.filter(t => t.done && matchesSearch(t, "Tareas completadas"));
